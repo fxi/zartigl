@@ -1,0 +1,45 @@
+{
+  "name": "zartigl",
+  "version": "0.1.0",
+  "description": "MapLibre GL JS plugin for animated particle flow from Zarr ocean current data",
+  "type": "module",
+  "main": "./dist/zartigl.js",
+  "module": "./dist/zartigl.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/zartigl.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:lib": "vite build --config vite.config.lib.ts",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "maplibre",
+    "zarr",
+    "particles",
+    "webgl",
+    "ocean",
+    "currents"
+  ],
+  "author": "fxi",
+  "license": "MIT",
+  "peerDependencies": {
+    "maplibre-gl": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@types/pako": "^2.0.4",
+    "maplibre-gl": "^5.17.0",
+    "pako": "^2.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-glsl": "^1.5.5"
+  }
+}

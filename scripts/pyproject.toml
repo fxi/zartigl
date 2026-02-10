@@ -1,0 +1,14 @@
+[project]
+name = "zartigl-scripts"
+version = "0.1.0"
+description = "Data preparation scripts for zartigl"
+requires-python = ">=3.12"
+dependencies = [
+    "copernicusmarine>=2.0",
+    "xarray>=2024.0",
+    "zarr>=2.18,<3",
+    "numpy>=1.26",
+]
+
+[project.scripts]
+subset-zarr = "subset_zarr:main"
