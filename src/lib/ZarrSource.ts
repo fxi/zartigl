@@ -1,4 +1,6 @@
 import { inflate } from "pako";
+import Blosc from "numcodecs/blosc";
+import type { Codec } from "numcodecs";
 import type {
   ZarrConsolidatedMeta,
   ZarrArrayMeta,
@@ -8,18 +10,23 @@ import type {
 
 interface CoordArrays {
   time: Float64Array | Float32Array;
-  depth: Float32Array;
+  vertical: Float32Array; // "depth" or "elevation" depending on dataset
   latitude: Float32Array;
   longitude: Float32Array;
 }
+
+/** Names that may represent the vertical coordinate. */
+const VERTICAL_NAMES = ["depth", "elevation"] as const;
 
 export class ZarrSource {
   private root: string;
   private meta: ZarrConsolidatedMeta | null = null;
   private coords: CoordArrays | null = null;
+  private verticalName: string = "depth";
   private cache = new Map<string, Float32Array>();
   private maxCacheSize: number;
   private abortControllers = new Map<string, AbortController>();
+  private bloscCodecCache = new Map<string, Codec>();
 
   constructor(root: string, maxCacheSize = 200) {
     this.root = root.replace(/\/$/, "");
@@ -117,7 +124,12 @@ export class ZarrSource {
   }
 
   findDepthIndex(depth: number): number {
-    return this.findNearestIndex(this.getCoords().depth, depth);
+    return this.findNearestIndex(this.getCoords().vertical, depth);
+  }
+
+  /** Return the actual name of the vertical dimension ("depth" or "elevation"). */
+  getVerticalDimName(): string {
+    return this.verticalName;
   }
 
   /**
@@ -227,7 +239,7 @@ export class ZarrSource {
 
     const raw = new Uint8Array(await resp.arrayBuffer());
     const meta = this.getArrayMeta(variable);
-    const decompressed = this.decompress(raw, meta);
+    const decompressed = await this.decompress(raw, meta);
 
     // Evict old entries if cache is full
     if (this.cache.size >= this.maxCacheSize) {
@@ -247,7 +259,27 @@ export class ZarrSource {
     this.abortControllers.clear();
   }
 
-  private decompress(raw: Uint8Array, meta: ZarrArrayMeta): Float32Array {
+  private getBloscCodec(meta: ZarrArrayMeta): Codec {
+    const cfg = meta.compressor!;
+    const key = `${cfg.cname ?? "lz4"}-${cfg.clevel ?? 5}-${cfg.shuffle ?? 1}-${cfg.blocksize ?? 0}`;
+    let codec = this.bloscCodecCache.get(key);
+    if (!codec) {
+      codec = Blosc.fromConfig({
+        id: "blosc",
+        cname: cfg.cname ?? "lz4",
+        clevel: cfg.clevel ?? 5,
+        shuffle: cfg.shuffle ?? 1,
+        blocksize: cfg.blocksize ?? 0,
+      });
+      this.bloscCodecCache.set(key, codec);
+    }
+    return codec;
+  }
+
+  private async decompress(
+    raw: Uint8Array,
+    meta: ZarrArrayMeta,
+  ): Promise<Float32Array> {
     let bytes: Uint8Array;
 
     if (meta.compressor) {
@@ -256,6 +288,11 @@ export class ZarrSource {
         case "gzip":
           bytes = inflate(raw);
           break;
+        case "blosc": {
+          const codec = this.getBloscCodec(meta);
+          bytes = await codec.decode(raw);
+          break;
+        }
         default:
           throw new Error(`Unsupported compressor: ${meta.compressor.id}`);
       }
@@ -264,9 +301,10 @@ export class ZarrSource {
     }
 
     // Parse dtype
+    let result: Float32Array;
     const dtype = meta.dtype;
     if (dtype === "<f4" || dtype === "|f4") {
-      return new Float32Array(
+      result = new Float32Array(
         bytes.buffer,
         bytes.byteOffset,
         bytes.byteLength / 4,
@@ -277,26 +315,39 @@ export class ZarrSource {
         bytes.byteOffset,
         bytes.byteLength / 8,
       );
-      return Float32Array.from(f64);
+      result = Float32Array.from(f64);
     } else if (dtype === "<i4" || dtype === "|i4") {
       const i32 = new Int32Array(
         bytes.buffer,
         bytes.byteOffset,
         bytes.byteLength / 4,
       );
-      return Float32Array.from(i32);
+      result = Float32Array.from(i32);
     } else if (dtype === "<i8" || dtype === "|i8") {
-      // int64 - read as pairs of int32 (loses precision for large values)
-      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      const view = new DataView(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength,
+      );
       const count = bytes.byteLength / 8;
-      const result = new Float32Array(count);
+      result = new Float32Array(count);
       for (let i = 0; i < count; i++) {
-        // Read as float64 reinterpretation for time coordinates
         result[i] = Number(view.getBigInt64(i * 8, true));
       }
-      return result;
+    } else {
+      throw new Error(`Unsupported dtype: ${dtype}`);
     }
-    throw new Error(`Unsupported dtype: ${dtype}`);
+
+    // Replace fill values with NaN so downstream code can detect nodata
+    const fillValue = meta.fill_value;
+    if (fillValue != null && typeof fillValue === "number" && !isNaN(fillValue)) {
+      const fv = Math.fround(fillValue); // match float32 precision
+      for (let i = 0; i < result.length; i++) {
+        if (result[i] === fv) result[i] = NaN;
+      }
+    }
+
+    return result;
   }
 
   private async loadCoordinates(): Promise<void> {
@@ -304,7 +355,6 @@ export class ZarrSource {
       name: string,
     ): Promise<Float32Array | Float64Array> => {
       const meta = this.getArrayMeta(name);
-      const sep = meta.dimension_separator ?? ".";
       const chunkCount = Math.ceil(meta.shape[0] / meta.chunks[0]);
       const arrays: Float32Array[] = [];
 
@@ -313,7 +363,7 @@ export class ZarrSource {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`Failed to fetch coord ${name}/${i}`);
         const raw = new Uint8Array(await resp.arrayBuffer());
-        arrays.push(this.decompress(raw, meta));
+        arrays.push(await this.decompress(raw, meta));
       }
 
       if (arrays.length === 1) return arrays[0];
@@ -327,16 +377,32 @@ export class ZarrSource {
       return merged;
     };
 
-    const [time, depth, latitude, longitude] = await Promise.all([
+    // Detect vertical dimension name: try each known name
+    let verticalName: string | null = null;
+    for (const name of VERTICAL_NAMES) {
+      const key = `${name}/.zarray`;
+      if (this.meta!.metadata[key] && "dtype" in this.meta!.metadata[key]) {
+        verticalName = name;
+        break;
+      }
+    }
+    if (!verticalName) {
+      throw new Error(
+        `No vertical coordinate found (tried: ${VERTICAL_NAMES.join(", ")})`,
+      );
+    }
+    this.verticalName = verticalName;
+
+    const [time, vertical, latitude, longitude] = await Promise.all([
       loadCoord("time"),
-      loadCoord("depth"),
+      loadCoord(verticalName),
       loadCoord("latitude"),
       loadCoord("longitude"),
     ]);
 
     this.coords = {
       time: time as Float64Array | Float32Array,
-      depth: depth as Float32Array,
+      vertical: vertical as Float32Array,
       latitude: latitude as Float32Array,
       longitude: longitude as Float32Array,
     };

@@ -126,7 +126,8 @@ export class ParticleLayer implements CustomLayerInterface {
 
       const dims = this.zarrSource.getDimensions(this.opts.variableU);
       const timeDim = dims.indexOf("time");
-      const depthDim = dims.indexOf("depth");
+      const vertName = this.zarrSource.getVerticalDimName();
+      const depthDim = dims.indexOf(vertName);
       const latDim = dims.indexOf("latitude");
       const lonDim = dims.indexOf("longitude");
 

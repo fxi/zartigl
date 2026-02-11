@@ -827,19 +827,11 @@ wheels = [
 
 [[package]]
 name = "zartigl-scripts"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
     { name = "copernicusmarine" },
-    { name = "numpy" },
-    { name = "xarray" },
-    { name = "zarr" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "copernicusmarine", specifier = ">=2.0" },
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "xarray", specifier = ">=2024.0" },
-    { name = "zarr", specifier = ">=2.18,<3" },
-]
+requires-dist = [{ name = "copernicusmarine", specifier = ">=2.0" }]

@@ -18,7 +18,14 @@ export interface ZarrArrayMeta {
   shape: number[];
   chunks: number[];
   dtype: string;
-  compressor: { id: string; level?: number } | null;
+  compressor: {
+    id: string;
+    level?: number;
+    clevel?: number;
+    cname?: string;
+    shuffle?: number;
+    blocksize?: number;
+  } | null;
   fill_value: number | string | null;
   order: string;
   filters: unknown[] | null;

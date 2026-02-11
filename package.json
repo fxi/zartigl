@@ -37,9 +37,12 @@
   "devDependencies": {
     "@types/pako": "^2.0.4",
     "maplibre-gl": "^5.17.0",
-    "pako": "^2.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-glsl": "^1.5.5"
+  },
+  "dependencies": {
+    "numcodecs": "^0.3.2",
+    "pako": "^2.1.0"
   }
 }
