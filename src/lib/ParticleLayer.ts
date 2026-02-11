@@ -118,6 +118,13 @@ export class ParticleLayer implements CustomLayerInterface {
           : 0;
       const depthIdx = this.zarrSource.findDepthIndex(this.opts.depth);
 
+      const debugCoords = this.zarrSource.getCoords();
+      console.log(
+        `[zartigl] Loading velocity: depth=${this.opts.depth} → depthIdx=${depthIdx}, ` +
+        `actual depth value=${debugCoords.vertical[depthIdx]}, ` +
+        `timeIdx=${timeIdx}`
+      );
+
       const uChunkInfos = this.zarrSource.getChunksForBounds(
         this.opts.variableU,
         timeIdx,

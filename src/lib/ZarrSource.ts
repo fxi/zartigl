@@ -393,16 +393,25 @@ export class ZarrSource {
     }
     this.verticalName = verticalName;
 
-    const [time, vertical, latitude, longitude] = await Promise.all([
+    const [time, rawVertical, latitude, longitude] = await Promise.all([
       loadCoord("time"),
       loadCoord(verticalName),
       loadCoord("latitude"),
       loadCoord("longitude"),
     ]);
 
+    // Normalize elevation (negative) to depth (positive)
+    let vertical = rawVertical as Float32Array;
+    if (vertical.length > 0 && vertical[0] < 0) {
+      vertical = new Float32Array(vertical.length);
+      for (let i = 0; i < rawVertical.length; i++) {
+        vertical[i] = -rawVertical[i];
+      }
+    }
+
     this.coords = {
       time: time as Float64Array | Float32Array,
-      vertical: vertical as Float32Array,
+      vertical,
       latitude: latitude as Float32Array,
       longitude: longitude as Float32Array,
     };

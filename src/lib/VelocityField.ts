@@ -64,6 +64,21 @@ export class VelocityField {
       }
     }
 
+    // Diagnostic: count valid vs NaN pixels
+    let validCount = 0;
+    let nanCount = 0;
+    for (let i = 0; i < width * height; i++) {
+      if (pixels[i * 4 + 3] === 255) validCount++;
+      else nanCount++;
+    }
+    console.log(
+      `[zartigl] Velocity texture: ${width}x${height}, ` +
+      `valid=${validCount} (${(100 * validCount / (width * height)).toFixed(1)}%), ` +
+      `nodata=${nanCount}, ` +
+      `uRange=[${uMin.toFixed(4)}, ${uMax.toFixed(4)}], ` +
+      `vRange=[${vMin.toFixed(4)}, ${vMax.toFixed(4)}]`
+    );
+
     if (!this.texture) {
       this.texture = gl.createTexture();
     }
