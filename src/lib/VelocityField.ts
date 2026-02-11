@@ -40,16 +40,18 @@ export class VelocityField {
     const uRange = uMax - uMin || 1;
     const vRange = vMax - vMin || 1;
 
-    // Encode to RGBA Uint8 (R=u, G=v, B=0, A=255)
+    // Encode to RGBA Uint8 (R=u, G=v, B=unused, A=validity mask)
+    // A=255 for valid ocean data, A=0 for land/nodata
     const pixels = new Uint8Array(width * height * 4);
     for (let i = 0; i < width * height; i++) {
       const uVal = u[i];
       const vVal = v[i];
 
       if (isNaN(uVal) || isNaN(vVal)) {
-        // nodata → zero velocity (particles will be reseeded)
         pixels[i * 4] = 0;
         pixels[i * 4 + 1] = 0;
+        pixels[i * 4 + 2] = 0;
+        pixels[i * 4 + 3] = 0; // no data → mask off
       } else {
         pixels[i * 4] = Math.round(
           (Math.max(0, Math.min(1, (uVal - uMin) / uRange))) * 255,
@@ -57,9 +59,9 @@ export class VelocityField {
         pixels[i * 4 + 1] = Math.round(
           (Math.max(0, Math.min(1, (vVal - vMin) / vRange))) * 255,
         );
+        pixels[i * 4 + 2] = 0;
+        pixels[i * 4 + 3] = 255; // valid ocean data
       }
-      pixels[i * 4 + 2] = 0;
-      pixels[i * 4 + 3] = 255;
     }
 
     if (!this.texture) {

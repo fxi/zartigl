@@ -8,6 +8,7 @@ export interface ParticleLayerOptions {
   fadeOpacity?: number;
   dropRate?: number;
   dropRateBump?: number;
+  pointSize?: number;
   colorRamp?: Record<number, string>;
   time?: string | number;
   depth?: number;

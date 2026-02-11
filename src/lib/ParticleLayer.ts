@@ -68,6 +68,7 @@ export class ParticleLayer implements CustomLayerInterface {
       fadeOpacity: options.fadeOpacity ?? 0.996,
       dropRate: options.dropRate ?? 0.003,
       dropRateBump: options.dropRateBump ?? 0.01,
+      pointSize: options.pointSize ?? 1.0,
       colorRamp: options.colorRamp,
     });
   }
@@ -285,5 +286,25 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setFadeOpacity(v: number): void {
     this.simulation.setFadeOpacity(v);
+  }
+
+  setDropRate(v: number): void {
+    this.simulation.setDropRate(v);
+  }
+
+  setDropRateBump(v: number): void {
+    this.simulation.setDropRateBump(v);
+  }
+
+  setPointSize(v: number): void {
+    this.simulation.setPointSize(v);
+  }
+
+  setParticleCount(count: number): void {
+    this.simulation.setParticleCount(count);
+  }
+
+  setColorRamp(ramp: Record<number, string>): void {
+    this.simulation.setColorRamp(ramp);
   }
 }

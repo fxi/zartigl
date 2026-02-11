@@ -80,9 +80,9 @@ void main() {
     float dropRate = u_drop_rate + speed * u_drop_rate_bump;
     float drop = step(1.0 - dropRate, rand(pos + u_rand_seed));
 
-    // Also drop if out of velocity texture range (no data)
-    vec2 velCheck = texture2D(u_velocity, geoUV).rg;
-    float outOfData = step(velCheck.r + velCheck.g, 0.001);
+    // Drop if on land / no data (alpha channel = validity mask)
+    float valid = texture2D(u_velocity, geoUV).a;
+    float outOfData = 1.0 - step(0.5, valid);
 
     // Also drop if out of viewport bounds
     float outOfBounds = step(newPos.x, u_bounds.x) +

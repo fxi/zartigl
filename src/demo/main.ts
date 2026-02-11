@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl";
+import { Pane } from "tweakpane";
 import { ParticleLayer } from "../lib/index.js";
 
 // ── Catalog ──────────────────────────────────────────────────────────
@@ -56,23 +57,26 @@ const map = new maplibregl.Map({
 
 // ── Init ─────────────────────────────────────────────────────────────
 
-function setStatus(msg: string) {
-  const el = document.getElementById("status");
-  if (el) el.textContent = msg;
-}
-
 map.on("load", async () => {
-  setStatus("Loading catalog...");
-
   try {
     const catalog = await loadCatalog();
     const dataset = catalog.datasets[0];
     if (!dataset) {
-      setStatus("No datasets in catalog");
+      console.error("No datasets in catalog");
       return;
     }
 
-    setStatus(`Loading ${dataset.label}...`);
+    const PARAMS = {
+      particleCount: 65536,
+      speedFactor: 0.25,
+      fadeOpacity: 0.996,
+      dropRate: 0.003,
+      dropRateBump: 0.01,
+      pointSize: 1.0,
+      colorLow: "#3288bd",
+      colorMid: "#fdae61",
+      colorHigh: "#d53e4f",
+    };
 
     const layer = new ParticleLayer({
       id: "particles",
@@ -81,36 +85,98 @@ map.on("load", async () => {
       variableV: "vo",
       time: 0,
       depth: 0,
-      particleCount: 65536,
-      speedFactor: 0.25,
-      fadeOpacity: 0.996,
-      dropRate: 0.003,
-      dropRateBump: 0.01,
+      particleCount: PARAMS.particleCount,
+      speedFactor: PARAMS.speedFactor,
+      fadeOpacity: PARAMS.fadeOpacity,
+      dropRate: PARAMS.dropRate,
+      dropRateBump: PARAMS.dropRateBump,
+      pointSize: PARAMS.pointSize,
     });
 
     map.addLayer(layer);
 
-    // ── Controls ─────────────────────────────────────────────────────
+    // ── Tweakpane ───────────────────────────────────────────────────
 
-    const speedInput = document.getElementById("speed") as HTMLInputElement;
-    const speedVal = document.getElementById("speed-val")!;
-    speedInput.addEventListener("input", () => {
-      const v = parseFloat(speedInput.value);
-      speedVal.textContent = v.toFixed(2);
-      layer.setSpeedFactor(v);
-    });
+    const pane = new Pane({ title: "zartigl" });
 
-    const fadeInput = document.getElementById("fade") as HTMLInputElement;
-    const fadeVal = document.getElementById("fade-val")!;
-    fadeInput.addEventListener("input", () => {
-      const v = parseFloat(fadeInput.value);
-      fadeVal.textContent = v.toFixed(3);
-      layer.setFadeOpacity(v);
-    });
+    // Particles folder
+    const particlesFolder = pane.addFolder({ title: "Particles" });
+    particlesFolder
+      .addBinding(PARAMS, "particleCount", {
+        min: 1024,
+        max: 262144,
+        step: 1024,
+        label: "count",
+      })
+      .on("change", (ev) => layer.setParticleCount(ev.value));
+    particlesFolder
+      .addBinding(PARAMS, "pointSize", {
+        min: 0.5,
+        max: 5,
+        step: 0.5,
+        label: "size",
+      })
+      .on("change", (ev) => layer.setPointSize(ev.value));
 
-    setStatus("");
+    // Motion folder
+    const motionFolder = pane.addFolder({ title: "Motion" });
+    motionFolder
+      .addBinding(PARAMS, "speedFactor", {
+        min: 0.01,
+        max: 2,
+        step: 0.01,
+        label: "speed",
+      })
+      .on("change", (ev) => layer.setSpeedFactor(ev.value));
+    motionFolder
+      .addBinding(PARAMS, "dropRate", {
+        min: 0,
+        max: 0.1,
+        step: 0.001,
+        label: "drop rate",
+      })
+      .on("change", (ev) => layer.setDropRate(ev.value));
+    motionFolder
+      .addBinding(PARAMS, "dropRateBump", {
+        min: 0,
+        max: 0.1,
+        step: 0.001,
+        label: "drop bump",
+      })
+      .on("change", (ev) => layer.setDropRateBump(ev.value));
+
+    // Trail folder
+    const trailFolder = pane.addFolder({ title: "Trail" });
+    trailFolder
+      .addBinding(PARAMS, "fadeOpacity", {
+        min: 0.9,
+        max: 0.999,
+        step: 0.001,
+        label: "fade",
+      })
+      .on("change", (ev) => layer.setFadeOpacity(ev.value));
+
+    // Colors folder
+    const colorsFolder = pane.addFolder({ title: "Colors" });
+
+    function updateColorRamp() {
+      layer.setColorRamp({
+        0.0: PARAMS.colorLow,
+        0.5: PARAMS.colorMid,
+        1.0: PARAMS.colorHigh,
+      });
+    }
+
+    colorsFolder
+      .addBinding(PARAMS, "colorLow", { label: "slow" })
+      .on("change", updateColorRamp);
+    colorsFolder
+      .addBinding(PARAMS, "colorMid", { label: "mid" })
+      .on("change", updateColorRamp);
+    colorsFolder
+      .addBinding(PARAMS, "colorHigh", { label: "fast" })
+      .on("change", updateColorRamp);
   } catch (err) {
-    setStatus(`Error: ${(err as Error).message}`);
-    console.error(err);
+    console.error("Failed to initialize:", err);
   }
 });

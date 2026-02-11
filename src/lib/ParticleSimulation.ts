@@ -19,6 +19,7 @@ export interface SimulationParams {
   fadeOpacity: number;
   dropRate: number;
   dropRateBump: number;
+  pointSize: number;
   colorRamp?: Record<number, string>;
 }
 
@@ -28,6 +29,7 @@ const DEFAULTS: SimulationParams = {
   fadeOpacity: 0.996,
   dropRate: 0.003,
   dropRateBump: 0.01,
+  pointSize: 1.0,
 };
 
 export class ParticleSimulation {
@@ -94,6 +96,7 @@ export class ParticleSimulation {
       "u_particles_res",
       "u_matrix",
       "u_world_size",
+      "u_point_size",
       "u_color_ramp",
       "u_geo_bounds",
     ]);
@@ -293,6 +296,7 @@ export class ParticleSimulation {
       this.particleStateRes,
     );
     gl.uniform1f(this.drawLocs["u_world_size"], worldSize);
+    gl.uniform1f(this.drawLocs["u_point_size"], this.params.pointSize);
 
     bindTexture(gl, this.colorRampTexture, 2);
     gl.uniform1i(this.drawLocs["u_color_ramp"], 2);
@@ -383,6 +387,42 @@ export class ParticleSimulation {
 
   setDropRate(v: number): void {
     this.params.dropRate = v;
+  }
+
+  setDropRateBump(v: number): void {
+    this.params.dropRateBump = v;
+  }
+
+  setPointSize(v: number): void {
+    this.params.pointSize = v;
+  }
+
+  setParticleCount(count: number): void {
+    this.params.particleCount = count;
+
+    // Clean up old particle state
+    const gl = this.gl;
+    for (const t of this.particleStateTextures) gl.deleteTexture(t);
+    for (const f of this.particleFramebuffers) gl.deleteFramebuffer(f);
+    gl.deleteBuffer(this.particleIndexBuffer);
+
+    // Re-create with new count
+    this.initParticleState();
+
+    // Clear screen textures to avoid stale trails
+    for (let i = 0; i < 2; i++) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenFramebuffers[i]);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  setColorRamp(ramp: Record<number, string>): void {
+    const gl = this.gl;
+    gl.deleteTexture(this.colorRampTexture);
+    this.colorRampTexture = createColorRampTexture(gl, ramp);
+    this.params.colorRamp = ramp;
   }
 
   /**

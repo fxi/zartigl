@@ -9,9 +9,11 @@ uniform vec2 u_velocity_min;
 uniform vec2 u_velocity_max;
 uniform mat4 u_matrix;
 uniform float u_world_size;  // 512 * 2^zoom
+uniform float u_point_size;
 uniform vec4 u_geo_bounds;   // west, south, east, north in degrees
 
 varying float v_speed;
+varying float v_valid;
 
 const float PI = 3.141592653589793;
 
@@ -45,7 +47,9 @@ void main() {
         (lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x),
         (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
     );
-    vec2 velNorm = texture2D(u_velocity, geoUV).rg;
+    vec4 velSample = texture2D(u_velocity, geoUV);
+    v_valid = velSample.a;
+    vec2 velNorm = velSample.rg;
     vec2 velocity = mix(u_velocity_min, u_velocity_max, velNorm);
     float speed = length(velocity);
     float maxSpeed = length(max(abs(u_velocity_min), abs(u_velocity_max)));
@@ -54,5 +58,5 @@ void main() {
     // MapLibre's modelViewProjectionMatrix expects world coords in [0, worldSize]
     vec2 worldPos = pos * u_world_size;
     gl_Position = u_matrix * vec4(worldPos, 0.0, 1.0);
-    gl_PointSize = 1.0;
+    gl_PointSize = u_point_size;
 }
