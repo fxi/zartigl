@@ -112,9 +112,9 @@ map.on("load", async () => {
       timeIndex: 0,
       timeLabel: formatTime(initialTimeMs),
       depth: initialDepth,
-      particleCount: 65536,
-      speedFactor: 0.25,
-      fadeOpacity: 0.996,
+      particleCount: 262144,
+      speedFactor: 2,
+      fadeOpacity: 0.99991,
       dropRate: 0.003,
       dropRateBump: 0.01,
       pointSize: 1.0,
@@ -257,8 +257,8 @@ map.on("load", async () => {
     trailFolder
       .addBinding(PARAMS, "fadeOpacity", {
         min: 0.9,
-        max: 0.999,
-        step: 0.001,
+        max: 1,
+        step: 0.0001,
         label: "fade",
       })
       .on("change", (ev) => layer.setFadeOpacity(ev.value));
