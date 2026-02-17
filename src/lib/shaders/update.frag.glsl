@@ -77,8 +77,11 @@ void main() {
     vec2 newPos = pos + offset;
 
     // Random respawn logic
+    // Use v_tex_coord (unique per particle) to prevent merged particles
+    // from getting identical random values and staying permanently fused.
+    vec2 rng_id = pos + v_tex_coord;
     float dropRate = u_drop_rate + speed * u_drop_rate_bump;
-    float drop = step(1.0 - dropRate, rand(pos + u_rand_seed));
+    float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
 
     // Drop if on land / no data (alpha channel = validity mask)
     float valid = texture2D(u_velocity, geoUV).a;
@@ -95,8 +98,8 @@ void main() {
 
     // Random position within viewport bounds
     vec2 randomPos = vec2(
-        mix(u_bounds.x, u_bounds.z, rand(pos + 1.3 + u_rand_seed)),
-        mix(u_bounds.y, u_bounds.w, rand(pos + 2.1 + u_rand_seed))
+        mix(u_bounds.x, u_bounds.z, rand(rng_id + 1.3 + u_rand_seed)),
+        mix(u_bounds.y, u_bounds.w, rand(rng_id + 2.1 + u_rand_seed))
     );
 
     newPos = mix(newPos, randomPos, drop);
