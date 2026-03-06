@@ -1,0 +1,9 @@
+{
+  "name": "zartigl",
+  "description": "MapLibre GL JS plugin for animated particle flow from Zarr ocean current data",
+  "tags": ["maplibre", "webgl", "glsl", "zarr", "oceanography"],
+  "year_init": 2026,
+  "year_last": 2026,
+  "url": "https://fxi.io/zartigl/",
+  "featured": false
+}
