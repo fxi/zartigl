@@ -219,8 +219,14 @@ export class ParticleLayer implements CustomLayerInterface {
     }
   }
 
-  render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    const matrix = options.modelViewProjectionMatrix;
+  render(
+    gl: WebGLRenderingContext,
+    options: CustomRenderMethodInput | number[],
+  ): void {
+    // maplibre-gl passes { modelViewProjectionMatrix, ... }; mapbox-gl passes the matrix directly
+    const matrix = Array.isArray(options)
+      ? options
+      : (options as CustomRenderMethodInput).modelViewProjectionMatrix;
     if (!this.initialized || !this.velocityField.hasData() || !this.map) return;
 
     const saved = saveGLState(gl);
