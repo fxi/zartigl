@@ -234,6 +234,9 @@ export class ParticleLayer implements CustomLayerInterface {
     try {
       const canvas = gl.canvas as HTMLCanvasElement;
       this.simulation.resize(canvas.width, canvas.height);
+      // createFramebuffer (called inside resize) resets the FBO to null;
+      // restore mapbox's active render target before simulation captures it.
+      gl.bindFramebuffer(gl.FRAMEBUFFER, saved.framebuffer);
 
       // Bind velocity texture
       this.velocityField.bind(this.velocityTexUnit);
