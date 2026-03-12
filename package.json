@@ -17,8 +17,9 @@
   ],
   "scripts": {
     "dev": "vite",
-    "dev:mapbox": "npx serve . --cors -p 5174",
+    "dev:mapbox": "vite --config vite.config.demo-mapbox.ts",
     "build": "vite build",
+    "build:mapbox": "vite build --config vite.config.demo-mapbox.ts",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
     "prepublishOnly": "npm run build:lib"
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",
     "@types/pako": "^2.0.4",
+    "mapbox-gl": "^2.15.0",
     "maplibre-gl": "^5.17.0",
     "numcodecs": "^0.3.2",
     "pako": "^2.1.0",

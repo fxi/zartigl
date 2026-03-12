@@ -1,12 +1,14 @@
 # Dependencies
 node_modules/
 
+.env 
 
 .claude
 
 # Build output
 dist/
 dist-demo/
+dist-demo-mapbox/
 
 # Vite
 *.local
