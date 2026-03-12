@@ -253,7 +253,12 @@ export class ParticleLayer implements CustomLayerInterface {
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.STENCIL_TEST);
 
-      const worldSize = 512 * Math.pow(2, this.map.getZoom());
+      // mapbox-gl matrix maps [0, 1] Mercator → clip space.
+      // maplibre-gl matrix maps [0, worldSize] Mercator → clip space.
+      // The draw shader does: worldPos = pos * worldSize, then matrix * worldPos.
+      // For mapbox-gl we must pass worldSize = 1.0 so pos stays in [0, 1].
+      const isMapboxConvention = Array.isArray(options);
+      const worldSize = isMapboxConvention ? 1.0 : 512 * Math.pow(2, this.map.getZoom());
       this.simulation.render(
         this.velocityTexUnit,
         [this.velocityField.uMin, this.velocityField.vMin],

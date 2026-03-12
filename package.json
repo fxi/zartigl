@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:mapbox": "npx serve . --cors -p 5174",
     "build": "vite build",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
