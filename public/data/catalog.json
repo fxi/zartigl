@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-11T08:27:15.746557+00:00",
+  "generated": "2026-03-15T09:18:07.870787+00:00",
   "datasets": [
     {
       "id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
@@ -95,14 +95,62 @@
         },
         "time": {
           "axis": "t",
-          "size": 5445,
+          "size": 5573,
           "min": 1654041600000.0,
-          "max": 1771632000000.0,
+          "max": 1774396800000.0,
           "step": 21600000.0,
           "chunk_size": 1,
           "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
         }
-      }
+      },
+      "vertical_label": "depth",
+      "default_speed_factor": 2.0
+    },
+    {
+      "id": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
+      "product": "WIND_GLO_PHY_L4_NRT_012_004",
+      "label": "Global Surface Wind L4 NRT (0.125\u00b0)",
+      "zarr_url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr",
+      "variables": {
+        "eastward_wind": {
+          "standard_name": "eastward_wind",
+          "units": "m s-1"
+        },
+        "northward_wind": {
+          "standard_name": "northward_wind",
+          "units": "m s-1"
+        }
+      },
+      "dimensions": {
+        "time": {
+          "axis": "t",
+          "size": 20280,
+          "min": 1700438400000.0,
+          "max": 1773442800000.0,
+          "step": 3600000.0,
+          "chunk_size": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        },
+        "latitude": {
+          "axis": "y",
+          "size": 1440,
+          "min": -89.9375,
+          "max": 89.9375,
+          "step": 0.125,
+          "chunk_size": 512,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "axis": "x",
+          "size": 2880,
+          "min": -179.9375,
+          "max": 179.9375,
+          "step": 0.125,
+          "chunk_size": 1024,
+          "units": "degrees_east"
+        }
+      },
+      "default_speed_factor": 0.2
     }
   ]
 }

@@ -22,6 +22,7 @@
     "build:mapbox": "vite build --config vite.config.demo-mapbox.ts",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
+    "catalog": "cd scripts && uv run build_catalog.py",
     "prepublishOnly": "npm run build:lib"
   },
   "publishConfig": {

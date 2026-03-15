@@ -1,6 +1,7 @@
 import mapboxgl from "mapbox-gl";
 import "../demo/style.css";
 import { Pane } from "tweakpane";
+import type { BindingApi, FolderApi } from "@tweakpane/core";
 import { ParticleLayer } from "../lib/index.js";
 
 // ── Catalog types ─────────────────────────────────────────────────────
@@ -23,6 +24,8 @@ interface CatalogDataset {
   zarr_url: string;
   variables: Record<string, { standard_name: string; units: string }>;
   dimensions: Record<string, CatalogDimension>;
+  vertical_label?: string;
+  default_speed_factor?: number;
 }
 
 interface Catalog {
@@ -44,10 +47,18 @@ function formatTime(ms: number): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
-function formatDepth(v: number): string {
+function formatVertical(v: number, label: string): string {
+  if (label === "pressure") return `${Math.round(v)} hPa`;
   if (v < 10) return `${v.toFixed(2)} m`;
   if (v < 100) return `${v.toFixed(1)} m`;
   return `${Math.round(v)} m`;
+}
+
+/** Return the [key, dim] entry for the z-axis dimension, if any. */
+function getVerticalDim(
+  dataset: CatalogDataset,
+): [string, CatalogDimension] | undefined {
+  return Object.entries(dataset.dimensions).find(([, d]) => d.axis === "z");
 }
 
 // ── Map setup — mapbox-gl ─────────────────────────────────────────────
@@ -72,31 +83,23 @@ const map = new mapboxgl.Map({
 map.on("load", async () => {
   try {
     const catalog = await loadCatalog();
-    const dataset = catalog.datasets[0];
-    if (!dataset) {
+    if (!catalog.datasets.length) {
       console.error("No datasets in catalog");
       return;
     }
 
-    // ── Dimension metadata from catalog ───────────────────────────
+    // ── Shared mutable state ───────────────────────────────────────
 
-    const timeDim = dataset.dimensions.time;
-    const depthDim = dataset.dimensions.depth;
-    const depthValues = [...(depthDim.values ?? [])].sort((a, b) => a - b);
-
-    const timeMin = timeDim.min ?? 0;
-    const timeStep = timeDim.step ?? 21600000;
-    const timeSize = timeDim.size ?? 1;
-
-    const initialTimeMs = timeMin;
-    const initialDepth = depthValues[0] ?? 0;
-
-    // ── Params ────────────────────────────────────────────────────
+    let layer: ParticleLayer;
+    let currentDataset: CatalogDataset;
+    let dataFolderChildren: { dispose(): void }[] = [];
+    let speedBinding: BindingApi;
 
     const PARAMS = {
+      datasetIndex: 0,
       timeIndex: 0,
-      timeLabel: formatTime(initialTimeMs),
-      depth: initialDepth,
+      timeLabel: "",
+      vertical: 0,
       particleCount: 262144,
       speedFactor: 2,
       fadeOpacity: 0.99991,
@@ -108,87 +111,157 @@ map.on("load", async () => {
       colorHigh: "#d53e4f",
     };
 
-    // ── Layer ─────────────────────────────────────────────────────
-
-    const layer = new ParticleLayer({
-      id: "particles",
-      source: dataset.zarr_url,
-      variableU: "uo",
-      variableV: "vo",
-      time: initialTimeMs,
-      depth: initialDepth,
-      particleCount: PARAMS.particleCount,
-      speedFactor: PARAMS.speedFactor,
-      fadeOpacity: PARAMS.fadeOpacity,
-      dropRate: PARAMS.dropRate,
-      dropRateBump: PARAMS.dropRateBump,
-      pointSize: PARAMS.pointSize,
-    });
-
-    // ParticleLayer implements maplibre's CustomLayerInterface;
-    // mapbox-gl's CustomLayerInterface is identical at runtime.
-    map.addLayer(layer as unknown as mapboxgl.CustomLayerInterface);
-
-    // ── Info panel (bottom-left) ──────────────────────────────────
+    // ── Info panel ─────────────────────────────────────────────────
 
     const infoEl = document.getElementById("info")!;
 
     function updateInfo() {
-      const vars = Object.entries(dataset.variables)
+      const ds = currentDataset;
+      const vars = Object.entries(ds.variables)
         .map(([k, v]) => `${k} (${v.standard_name.replace(/_/g, " ")})`)
         .join(" + ");
-      const units = Object.values(dataset.variables)[0]?.units ?? "";
+      const units = Object.values(ds.variables)[0]?.units ?? "";
+      const vertEntry = getVerticalDim(ds);
+      const vertLabel = ds.vertical_label ?? "depth";
+      const vertPart = vertEntry
+        ? `  ${vertLabel[0].toUpperCase() + vertLabel.slice(1)}: ${formatVertical(PARAMS.vertical, vertLabel)}`
+        : "";
       infoEl.textContent =
-        `${dataset.product}\n` +
-        `${dataset.label}\n` +
+        `${ds.product}\n` +
+        `${ds.label}\n` +
         `${vars} — ${units}\n` +
-        `Time: ${PARAMS.timeLabel}  Depth: ${formatDepth(PARAMS.depth)}`;
+        `Time: ${PARAMS.timeLabel}${vertPart}`;
     }
-
-    updateInfo();
 
     // ── Tweakpane ─────────────────────────────────────────────────
 
     const pane = new Pane({ title: "zartigl" });
 
-    // ── Data folder ───────────────────────────────────────────────
-
-    const dataFolder = pane.addFolder({ title: "Data" });
-
-    dataFolder
-      .addBinding(PARAMS, "timeIndex", {
-        min: 0,
-        max: timeSize - 1,
-        step: 1,
-        label: "time",
-      })
-      .on("change", (ev) => {
-        const ms = timeMin + ev.value * timeStep;
-        PARAMS.timeLabel = formatTime(ms);
-        timeLabelBinding.refresh();
-        layer.setTime(ms);
-        updateInfo();
-      });
-
-    const timeLabelBinding = dataFolder.addBinding(PARAMS, "timeLabel", {
-      readonly: true,
-      label: "",
-    });
-
-    const depthOptions = depthValues.map((v) => ({
-      text: formatDepth(v),
-      value: v,
+    // Dataset selector (top-level, before Data folder)
+    const datasetOptions = catalog.datasets.map((ds, i) => ({
+      text: ds.label,
+      value: i,
     }));
+    if (datasetOptions.length > 1) {
+      pane
+        .addBinding(PARAMS, "datasetIndex", {
+          options: datasetOptions,
+          label: "dataset",
+        })
+        .on("change", (ev) => switchDataset(catalog.datasets[ev.value]));
+    }
 
-    dataFolder
-      .addBinding(PARAMS, "depth", {
-        options: depthOptions,
-        label: "depth",
-      })
-      .on("change", (ev) => {
-        layer.setDepth(ev.value);
-        updateInfo();
+    // ── Data folder (rebuilt on dataset switch) ────────────────────
+
+    const dataFolder = pane.addFolder({ title: "Data" }) as FolderApi;
+
+    function rebuildDataFolder(dataset: CatalogDataset) {
+      // Dispose previous children
+      for (const c of dataFolderChildren) c.dispose();
+      dataFolderChildren = [];
+
+      const timeDim = dataset.dimensions.time;
+      const timeMin = timeDim.min ?? 0;
+      const timeStep = timeDim.step ?? 21600000;
+      const timeSize = timeDim.size ?? 1;
+
+      const timeSlider = dataFolder
+        .addBinding(PARAMS, "timeIndex", {
+          min: 0,
+          max: timeSize - 1,
+          step: 1,
+          label: "time",
+        })
+        .on("change", (ev) => {
+          const ms = timeMin + ev.value * timeStep;
+          PARAMS.timeLabel = formatTime(ms);
+          timeLabelBinding.refresh();
+          layer.setTime(ms);
+          updateInfo();
+        });
+
+      const timeLabelBinding = dataFolder.addBinding(PARAMS, "timeLabel", {
+        readonly: true,
+        label: "",
+      }) as BindingApi;
+
+      dataFolderChildren.push(timeSlider, timeLabelBinding);
+
+      // Vertical selector — only if dataset has a z-axis dimension
+      const vertEntry = getVerticalDim(dataset);
+      if (vertEntry) {
+        const [, vertDim] = vertEntry;
+        const vertLabel = dataset.vertical_label ?? "depth";
+        const vertValues = [...(vertDim.values ?? [])].sort((a, b) => a - b);
+        const vertOptions = vertValues.map((v) => ({
+          text: formatVertical(v, vertLabel),
+          value: v,
+        }));
+
+        const vertBinding = dataFolder
+          .addBinding(PARAMS, "vertical", {
+            options: vertOptions,
+            label: vertLabel,
+          })
+          .on("change", (ev) => {
+            layer.setDepth(ev.value);
+            updateInfo();
+          });
+
+        dataFolderChildren.push(vertBinding);
+      }
+    }
+
+    // ── switchDataset ──────────────────────────────────────────────
+
+    function switchDataset(dataset: CatalogDataset) {
+      if (map.getLayer("particles")) map.removeLayer("particles");
+
+      currentDataset = dataset;
+
+      const varKeys = Object.keys(dataset.variables);
+      const uVar = varKeys[0] ?? "uo";
+      const vVar = varKeys[1] ?? "vo";
+
+      const timeDim = dataset.dimensions.time;
+      const timeMin = timeDim.min ?? 0;
+      const vertEntry = getVerticalDim(dataset);
+      const vertValues = [...(vertEntry?.[1].values ?? [0])].sort(
+        (a, b) => a - b,
+      );
+
+      PARAMS.timeIndex = 0;
+      PARAMS.timeLabel = formatTime(timeMin);
+      PARAMS.vertical = vertValues[0] ?? 0;
+
+      const sf = dataset.default_speed_factor ?? 2.0;
+      PARAMS.speedFactor = sf;
+      speedBinding?.refresh();
+
+      // ParticleLayer implements maplibre's CustomLayerInterface;
+      // mapbox-gl's CustomLayerInterface is identical at runtime.
+      layer = new ParticleLayer({
+        id: "particles",
+        source: dataset.zarr_url,
+        variableU: uVar,
+        variableV: vVar,
+        time: timeMin,
+        depth: PARAMS.vertical,
+        particleCount: PARAMS.particleCount,
+        speedFactor: sf,
+        fadeOpacity: PARAMS.fadeOpacity,
+        dropRate: PARAMS.dropRate,
+        dropRateBump: PARAMS.dropRateBump,
+        pointSize: PARAMS.pointSize,
       });
+      map.addLayer(layer as unknown as mapboxgl.CustomLayerInterface);
+
+      rebuildDataFolder(dataset);
+      updateInfo();
+    }
+
+    // Initialize with first dataset
+    switchDataset(catalog.datasets[0]);
 
     // ── Particles folder ──────────────────────────────────────────
 
@@ -213,7 +286,7 @@ map.on("load", async () => {
     // ── Motion folder ─────────────────────────────────────────────
 
     const motionFolder = pane.addFolder({ title: "Motion" });
-    motionFolder
+    speedBinding = motionFolder
       .addBinding(PARAMS, "speedFactor", {
         min: 0.01,
         max: 2,

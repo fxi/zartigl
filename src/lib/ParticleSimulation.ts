@@ -46,6 +46,7 @@ export class ParticleSimulation {
   private particleFramebuffers!: [WebGLFramebuffer, WebGLFramebuffer];
   private particleStateRes!: number;
   private particleIndexBuffer!: WebGLBuffer;
+  private particleIsCurrBuffer!: WebGLBuffer;
   private numParticles!: number;
 
   // Screen textures for trail rendering
@@ -96,7 +97,7 @@ export class ParticleSimulation {
       "u_particles_res",
       "u_matrix",
       "u_world_size",
-      "u_point_size",
+      "u_speed_factor",
       "u_color_ramp",
       "u_geo_bounds",
     ]);
@@ -145,12 +146,24 @@ export class ParticleSimulation {
     this.particleStateTextures = [tex0, tex1];
     this.particleFramebuffers = [fb0, fb1];
 
-    // Create particle index buffer for draw call
-    const indices = new Float32Array(this.numParticles);
-    for (let i = 0; i < this.numParticles; i++) indices[i] = i;
+    // Line rendering: 2 vertices per particle (prev endpoint + curr endpoint).
+    // a_index selects the particle; a_is_curr selects which state texture to read.
+    const n = this.numParticles;
+    const indices = new Float32Array(n * 2);
+    const isCurr = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      indices[i * 2]     = i;  // prev endpoint
+      indices[i * 2 + 1] = i;  // curr endpoint
+      isCurr[i * 2]      = 0.0;
+      isCurr[i * 2 + 1]  = 1.0;
+    }
     this.particleIndexBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIndexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+    this.particleIsCurrBuffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIsCurrBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, isCurr, gl.STATIC_DRAW);
   }
 
   /**
@@ -296,7 +309,7 @@ export class ParticleSimulation {
       this.particleStateRes,
     );
     gl.uniform1f(this.drawLocs["u_world_size"], worldSize);
-    gl.uniform1f(this.drawLocs["u_point_size"], this.params.pointSize);
+    gl.uniform1f(this.drawLocs["u_speed_factor"], this.params.speedFactor);
 
     bindTexture(gl, this.colorRampTexture, 2);
     gl.uniform1i(this.drawLocs["u_color_ramp"], 2);
@@ -307,14 +320,20 @@ export class ParticleSimulation {
       matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
     );
 
-    // Draw particles as points
+    // Draw particles as line segments: prev pos → curr pos (2 vertices each)
     const aIndex = gl.getAttribLocation(this.drawProgram, "a_index");
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIndexBuffer);
     gl.enableVertexAttribArray(aIndex);
     gl.vertexAttribPointer(aIndex, 1, gl.FLOAT, false, 0, 0);
 
-    gl.drawArrays(gl.POINTS, 0, this.numParticles);
+    const aIsCurr = gl.getAttribLocation(this.drawProgram, "a_is_curr");
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIsCurrBuffer);
+    gl.enableVertexAttribArray(aIsCurr);
+    gl.vertexAttribPointer(aIsCurr, 1, gl.FLOAT, false, 0, 0);
+
+    gl.drawArrays(gl.LINES, 0, this.numParticles * 2);
     gl.disableVertexAttribArray(aIndex);
+    gl.disableVertexAttribArray(aIsCurr);
 
     // Debug: check if anything was drawn to screen FBO
     if (!(this as any)._debugDone) {
@@ -405,6 +424,7 @@ export class ParticleSimulation {
     for (const t of this.particleStateTextures) gl.deleteTexture(t);
     for (const f of this.particleFramebuffers) gl.deleteFramebuffer(f);
     gl.deleteBuffer(this.particleIndexBuffer);
+    gl.deleteBuffer(this.particleIsCurrBuffer);
 
     // Re-create with new count
     this.initParticleState();
@@ -473,6 +493,7 @@ export class ParticleSimulation {
     }
     gl.deleteBuffer(this.quadBuffer);
     gl.deleteBuffer(this.particleIndexBuffer);
+    gl.deleteBuffer(this.particleIsCurrBuffer);
     gl.deleteTexture(this.colorRampTexture);
   }
 }

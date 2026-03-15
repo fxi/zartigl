@@ -10,19 +10,20 @@ import type {
 
 interface CoordArrays {
   time: Float64Array | Float32Array;
-  vertical: Float32Array; // "depth" or "elevation" depending on dataset
+  vertical: Float32Array; // "depth", "elevation", "level", etc. — empty ([0]) for surface-only datasets
   latitude: Float32Array;
   longitude: Float32Array;
 }
 
 /** Names that may represent the vertical coordinate. */
-const VERTICAL_NAMES = ["depth", "elevation"] as const;
+const VERTICAL_NAMES = ["depth", "elevation", "level", "altitude", "pressure_level"] as const;
 
 export class ZarrSource {
   private root: string;
   private meta: ZarrConsolidatedMeta | null = null;
   private coords: CoordArrays | null = null;
   private verticalName: string = "depth";
+  private timeUnits: string = "";
   private cache = new Map<string, Float32Array>();
   private maxCacheSize: number;
   private abortControllers = new Map<string, AbortController>();
@@ -79,7 +80,6 @@ export class ZarrSource {
     const attrs = this.getAttrs(variable);
     return (attrs._ARRAY_DIMENSIONS as string[]) ?? [
       "time",
-      "depth",
       "latitude",
       "longitude",
     ];
@@ -106,21 +106,35 @@ export class ZarrSource {
     } else {
       targetMs = time;
     }
-    // Time coords may be in various units - try to match
-    const timeArr = coords.time;
-    // Heuristic: if values are > 1e12, they're likely ms since epoch
-    // If values are < 1e6, they're likely days since some reference
-    const sample = timeArr[0];
-    if (sample > 1e12) {
-      return this.findNearestIndex(timeArr, targetMs);
-    } else if (sample > 1e9) {
-      return this.findNearestIndex(timeArr, targetMs / 1000);
-    } else {
-      // Assume days since 1950-01-01 (CF convention)
-      const ref = new Date("1950-01-01T00:00:00Z").getTime();
-      const days = (targetMs - ref) / 86400000;
-      return this.findNearestIndex(timeArr, days);
+    return this.findNearestIndex(coords.time, this.msToZarrTime(targetMs));
+  }
+
+  /**
+   * Convert a Unix-ms timestamp to the native time units used by this zarr
+   * (read from the time variable's .zattrs "units" field).
+   * Falls back to a magnitude heuristic when units are absent or unparseable.
+   */
+  private msToZarrTime(ms: number): number {
+    const units = this.timeUnits;
+    const m = units.match(
+      /^(milliseconds?|seconds?|hours?|days?)\s+since\s+(\S+)/i,
+    );
+    if (m) {
+      const refMs = new Date(m[2]).getTime();
+      const delta = ms - refMs;
+      const u = m[1].toLowerCase();
+      if (u.startsWith("ms") || u.startsWith("milli")) return delta;
+      if (u.startsWith("s")) return delta / 1000;
+      if (u.startsWith("h")) return delta / 3600000;
+      if (u.startsWith("d")) return delta / 86400000;
     }
+    // Fallback heuristic based on magnitude of the first coordinate value
+    const sample = this.coords!.time[0];
+    if (sample > 1e12) return ms;
+    if (sample > 1e9) return ms / 1000;
+    // Assume days since 1950-01-01 (CF convention)
+    const ref = new Date("1950-01-01T00:00:00Z").getTime();
+    return (ms - ref) / 86400000;
   }
 
   findDepthIndex(depth: number): number {
@@ -239,7 +253,7 @@ export class ZarrSource {
 
     const raw = new Uint8Array(await resp.arrayBuffer());
     const meta = this.getArrayMeta(variable);
-    const decompressed = await this.decompress(raw, meta);
+    const decompressed = await this.decompress(raw, meta, variable);
 
     // Evict old entries if cache is full
     if (this.cache.size >= this.maxCacheSize) {
@@ -279,6 +293,7 @@ export class ZarrSource {
   private async decompress(
     raw: Uint8Array,
     meta: ZarrArrayMeta,
+    variable?: string,
   ): Promise<Float32Array> {
     let bytes: Uint8Array;
 
@@ -316,6 +331,13 @@ export class ZarrSource {
         bytes.byteLength / 8,
       );
       result = Float32Array.from(f64);
+    } else if (dtype === "<i2" || dtype === "|i2") {
+      const i16 = new Int16Array(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength / 2,
+      );
+      result = Float32Array.from(i16);
     } else if (dtype === "<i4" || dtype === "|i4") {
       const i32 = new Int32Array(
         bytes.buffer,
@@ -341,9 +363,22 @@ export class ZarrSource {
     // Replace fill values with NaN so downstream code can detect nodata
     const fillValue = meta.fill_value;
     if (fillValue != null && typeof fillValue === "number" && !isNaN(fillValue)) {
-      const fv = Math.fround(fillValue); // match float32 precision
       for (let i = 0; i < result.length; i++) {
-        if (result[i] === fv) result[i] = NaN;
+        if (result[i] === fillValue) result[i] = NaN;
+      }
+    }
+
+    // Apply CF scale_factor / add_offset if present in .zattrs
+    if (variable) {
+      const attrs = this.getAttrs(variable);
+      const scale = attrs.scale_factor as number | undefined;
+      const offset = attrs.add_offset as number | undefined;
+      if (scale != null || offset != null) {
+        const s = scale ?? 1;
+        const o = offset ?? 0;
+        for (let i = 0; i < result.length; i++) {
+          if (!isNaN(result[i])) result[i] = result[i] * s + o;
+        }
       }
     }
 
@@ -355,7 +390,8 @@ export class ZarrSource {
       name: string,
     ): Promise<Float32Array | Float64Array> => {
       const meta = this.getArrayMeta(name);
-      const chunkCount = Math.ceil(meta.shape[0] / meta.chunks[0]);
+      const actualSize = meta.shape[0];
+      const chunkCount = Math.ceil(actualSize / meta.chunks[0]);
       const arrays: Float32Array[] = [];
 
       for (let i = 0; i < chunkCount; i++) {
@@ -366,13 +402,21 @@ export class ZarrSource {
         arrays.push(await this.decompress(raw, meta));
       }
 
-      if (arrays.length === 1) return arrays[0];
-      const total = arrays.reduce((s, a) => s + a.length, 0);
-      const merged = new Float32Array(total);
+      // Merge chunks and truncate to the declared shape size.
+      // Some zarr writers pad the last chunk to the full chunk size with
+      // fill/zero values; truncating prevents spurious out-of-bounds lookups.
+      if (arrays.length === 1) {
+        return arrays[0].length > actualSize
+          ? arrays[0].subarray(0, actualSize)
+          : arrays[0];
+      }
+      const merged = new Float32Array(actualSize);
       let offset = 0;
       for (const arr of arrays) {
-        merged.set(arr, offset);
-        offset += arr.length;
+        const toCopy = Math.min(arr.length, actualSize - offset);
+        merged.set(arr.subarray(0, toCopy), offset);
+        offset += toCopy;
+        if (offset >= actualSize) break;
       }
       return merged;
     };
@@ -386,27 +430,32 @@ export class ZarrSource {
         break;
       }
     }
-    if (!verticalName) {
-      throw new Error(
-        `No vertical coordinate found (tried: ${VERTICAL_NAMES.join(", ")})`,
-      );
-    }
-    this.verticalName = verticalName;
 
-    const [time, rawVertical, latitude, longitude] = await Promise.all([
+    this.verticalName = verticalName ?? "";
+
+    // Read time units before loading coordinates so msToZarrTime works correctly
+    this.timeUnits = (this.getAttrs("time").units as string) ?? "";
+
+    const [time, latitude, longitude] = await Promise.all([
       loadCoord("time"),
-      loadCoord(verticalName),
       loadCoord("latitude"),
       loadCoord("longitude"),
     ]);
 
-    // Normalize elevation (negative) to depth (positive)
-    let vertical = rawVertical as Float32Array;
-    if (vertical.length > 0 && vertical[0] < 0) {
-      vertical = new Float32Array(vertical.length);
-      for (let i = 0; i < rawVertical.length; i++) {
-        vertical[i] = -rawVertical[i];
+    let vertical: Float32Array;
+    if (verticalName) {
+      const rawVertical = await loadCoord(verticalName);
+      // Normalize elevation (negative) to depth (positive)
+      vertical = rawVertical as Float32Array;
+      if (vertical.length > 0 && vertical[0] < 0) {
+        vertical = new Float32Array(vertical.length);
+        for (let i = 0; i < rawVertical.length; i++) {
+          vertical[i] = -(rawVertical as Float32Array)[i];
+        }
       }
+    } else {
+      // Surface-only dataset — synthesize a single level at 0
+      vertical = new Float32Array([0]);
     }
 
     this.coords = {

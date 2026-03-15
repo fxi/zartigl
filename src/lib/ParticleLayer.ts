@@ -46,6 +46,7 @@ export class ParticleLayer implements CustomLayerInterface {
 
   private initialized = false;
   private loading = false;
+  // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveEndHandler: (() => void) | null = null;
 

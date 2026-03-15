@@ -31,6 +31,16 @@ TARGETS = [
         "variables": ["uo", "vo"],
         # Prefer the timeChunked variant (large spatial chunks, 1 time step)
         "preferred_service": "arco-geo-series",
+        "vertical_label": "depth",
+        "default_speed_factor": 2.0,  # ocean currents ~0–2 m/s
+    },
+    {
+        "dataset_id": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
+        "label": "Global Surface Wind L4 NRT (0.125°)",
+        "variables": ["eastward_wind", "northward_wind"],
+        "preferred_service": "arco-geo-series",
+        # Surface-only dataset — no vertical coordinate
+        "default_speed_factor": 0.2,  # wind up to 30 m/s → needs ~15× slower
     },
 ]
 
@@ -104,7 +114,7 @@ def build_entry(target: dict) -> dict | None:
 
         dimensions[coord.coordinate_id] = dim
 
-    return {
+    entry: dict = {
         "id": dataset_id,
         "product": prod.product_id,
         "label": target["label"],
@@ -112,6 +122,11 @@ def build_entry(target: dict) -> dict | None:
         "variables": variables,
         "dimensions": dimensions,
     }
+    if "vertical_label" in target:
+        entry["vertical_label"] = target["vertical_label"]
+    if "default_speed_factor" in target:
+        entry["default_speed_factor"] = target["default_speed_factor"]
+    return entry
 
 
 def main():

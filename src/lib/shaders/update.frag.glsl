@@ -74,12 +74,28 @@ void main() {
         -velocity.y               // flip Y: positive V = northward = decreasing mercator Y
     ) * u_speed_factor * 0.0001;
 
-    vec2 newPos = pos + offset;
-
     // Random respawn logic
     // Use v_tex_coord (unique per particle) to prevent merged particles
     // from getting identical random values and staying permanently fused.
     vec2 rng_id = pos + v_tex_coord;
+
+    // Stochastic sub-pixel motion: when offset is below the 16-bit encoding
+    // precision (1/65025), the position would never change. Instead, randomly
+    // advance by one minimum step with probability |offset| / MIN_STEP so the
+    // average speed is preserved and slow particles still move visibly.
+    const float MIN_STEP = 1.0 / 65025.0;
+    vec2 prob = clamp(abs(offset) / MIN_STEP, 0.0, 1.0);
+    float rx = rand(rng_id + vec2(u_rand_seed * 1.7 + 4.3, 2.1));
+    float ry = rand(rng_id + vec2(2.1, u_rand_seed * 1.7 + 4.3));
+    vec2 stochStep = sign(offset) * MIN_STEP * vec2(
+        step(1.0 - prob.x, rx),
+        step(1.0 - prob.y, ry)
+    );
+    // Component-wise: use stochastic step when offset is below threshold
+    vec2 belowThreshold = 1.0 - step(MIN_STEP, abs(offset));
+    vec2 finalOffset = mix(offset, stochStep, belowThreshold);
+
+    vec2 newPos = pos + finalOffset;
     float dropRate = u_drop_rate + speed * u_drop_rate_bump;
     float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
 
