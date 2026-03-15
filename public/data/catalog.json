@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-15T09:18:07.870787+00:00",
+  "generated": "2026-03-15T18:18:22.945037+00:00",
   "datasets": [
     {
       "id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
@@ -124,9 +124,9 @@
       "dimensions": {
         "time": {
           "axis": "t",
-          "size": 20280,
+          "size": 20304,
           "min": 1700438400000.0,
-          "max": 1773442800000.0,
+          "max": 1773529200000.0,
           "step": 3600000.0,
           "chunk_size": 1,
           "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"

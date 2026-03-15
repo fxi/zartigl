@@ -108,19 +108,24 @@ map.on("load", async () => {
     let layer: ParticleLayer;
     let currentDataset: CatalogDataset;
     let dataFolderChildren: { dispose(): void }[] = [];
-    let speedBinding: BindingApi;
 
     const PARAMS = {
       datasetIndex: 0,
       timeIndex: 0,
       timeLabel: "",
       vertical: 0,
-      particleCount: 262144,
-      speedFactor: 2,
-      fadeOpacity: 0.99991,
+      particleDensity: 0.05,
+      // Speed factor — [min=local, max=global]
+      speedMin: 0.07,
+      speedMax: 0.27,
+      // Fade opacity — [min=local, max=global]
+      fadeMin: 0.9,
+      fadeMax: 0.9315,
       dropRate: 0.003,
       dropRateBump: 0.01,
-      pointSize: 1.0,
+      // Zoom breakpoints for the above ranges
+      zoomLow: 2,
+      zoomHigh: 8,
       colorLow: "#3288bd",
       colorMid: "#fdae61",
       colorHigh: "#d53e4f",
@@ -249,10 +254,6 @@ map.on("load", async () => {
       PARAMS.timeLabel = formatTime(timeMin);
       PARAMS.vertical = vertValues[0] ?? 0;
 
-      const sf = dataset.default_speed_factor ?? 2.0;
-      PARAMS.speedFactor = sf;
-      speedBinding?.refresh();
-
       layer = new ParticleLayer({
         id: "particles",
         source: dataset.zarr_url,
@@ -260,12 +261,12 @@ map.on("load", async () => {
         variableV: vVar,
         time: timeMin,
         depth: PARAMS.vertical,
-        particleCount: PARAMS.particleCount,
-        speedFactor: sf,
-        fadeOpacity: PARAMS.fadeOpacity,
+        particleDensity: PARAMS.particleDensity,
+        speedFactor: [PARAMS.speedMin, PARAMS.speedMax],
+        fadeOpacity: [PARAMS.fadeMin, PARAMS.fadeMax],
         dropRate: PARAMS.dropRate,
         dropRateBump: PARAMS.dropRateBump,
-        pointSize: PARAMS.pointSize,
+        zoomRange: [PARAMS.zoomLow, PARAMS.zoomHigh],
       });
       map.addLayer(layer);
 
@@ -280,33 +281,33 @@ map.on("load", async () => {
 
     const particlesFolder = pane.addFolder({ title: "Particles" });
     particlesFolder
-      .addBinding(PARAMS, "particleCount", {
-        min: 1024,
-        max: 262144,
-        step: 1024,
-        label: "count",
+      .addBinding(PARAMS, "particleDensity", {
+        min: 0.001,
+        max: 0.15,
+        step: 0.001,
+        label: "density",
       })
-      .on("change", (ev) => layer.setParticleCount(ev.value));
-    particlesFolder
-      .addBinding(PARAMS, "pointSize", {
-        min: 0.5,
-        max: 5,
-        step: 0.5,
-        label: "size",
-      })
-      .on("change", (ev) => layer.setPointSize(ev.value));
+      .on("change", (ev) => layer.setParticleDensity(ev.value));
 
     // ── Motion folder ─────────────────────────────────────────────
 
     const motionFolder = pane.addFolder({ title: "Motion" });
-    speedBinding = motionFolder
-      .addBinding(PARAMS, "speedFactor", {
+    motionFolder
+      .addBinding(PARAMS, "speedMin", {
         min: 0.01,
         max: 2,
         step: 0.01,
-        label: "speed",
+        label: "speed (local)",
       })
-      .on("change", (ev) => layer.setSpeedFactor(ev.value));
+      .on("change", () => layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]));
+    motionFolder
+      .addBinding(PARAMS, "speedMax", {
+        min: 0.01,
+        max: 2,
+        step: 0.01,
+        label: "speed (global)",
+      })
+      .on("change", () => layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]));
     motionFolder
       .addBinding(PARAMS, "dropRate", {
         min: 0,
@@ -328,13 +329,41 @@ map.on("load", async () => {
 
     const trailFolder = pane.addFolder({ title: "Trail" });
     trailFolder
-      .addBinding(PARAMS, "fadeOpacity", {
+      .addBinding(PARAMS, "fadeMin", {
         min: 0.9,
         max: 1,
         step: 0.0001,
-        label: "fade",
+        label: "fade (local)",
       })
-      .on("change", (ev) => layer.setFadeOpacity(ev.value));
+      .on("change", () => layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]));
+    trailFolder
+      .addBinding(PARAMS, "fadeMax", {
+        min: 0.9,
+        max: 1,
+        step: 0.0001,
+        label: "fade (global)",
+      })
+      .on("change", () => layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]));
+
+    // ── Zoom range folder ─────────────────────────────────────────
+
+    const zoomFolder = pane.addFolder({ title: "Zoom range" });
+    zoomFolder
+      .addBinding(PARAMS, "zoomLow", {
+        min: 0,
+        max: 8,
+        step: 0.5,
+        label: "low (global)",
+      })
+      .on("change", () => layer.setZoomRange([PARAMS.zoomLow, PARAMS.zoomHigh]));
+    zoomFolder
+      .addBinding(PARAMS, "zoomHigh", {
+        min: 2,
+        max: 20,
+        step: 0.5,
+        label: "high (local)",
+      })
+      .on("change", () => layer.setZoomRange([PARAMS.zoomLow, PARAMS.zoomHigh]));
 
     // ── Colors folder ─────────────────────────────────────────────
 

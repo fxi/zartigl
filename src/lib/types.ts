@@ -1,17 +1,31 @@
+/**
+ * A param that is either a fixed scalar or a zoom-weighted range.
+ * When a range [min, max] is given:
+ *   - min is the value at high zoom (local / detail view)
+ *   - max is the value at low zoom  (global / overview)
+ * The layer interpolates between them based on the current map zoom
+ * and the configured zoomRange.
+ */
+export type ZoomWeighted = number | [min: number, max: number];
+
 export interface ParticleLayerOptions {
   id: string;
   source: string;
   variableU?: string;
   variableV?: string;
-  particleCount?: number;
-  speedFactor?: number;
-  fadeOpacity?: number;
+  /** Particles per screen pixel. Count = clamp(w × h × density, 1, 262144). Default 0.05. */
+  particleDensity?: number;
+  /** Fixed speed or [atHighZoom, atLowZoom]. */
+  speedFactor?: ZoomWeighted;
+  /** Fixed fade or [atHighZoom, atLowZoom]. */
+  fadeOpacity?: ZoomWeighted;
   dropRate?: number;
   dropRateBump?: number;
-  pointSize?: number;
   colorRamp?: Record<number, string>;
   time?: string | number;
   depth?: number;
+  /** [lowZoom, highZoom] breakpoints for zoom-weighted params. Default [2, 12]. */
+  zoomRange?: [number, number];
 }
 
 export interface ZarrArrayMeta {
@@ -72,4 +86,6 @@ export interface VelocityData {
   vMin: number;
   vMax: number;
   bounds: { west: number; south: number; east: number; north: number };
+  /** True when latitude rows are stored north-to-south (needs GL Y-flip). */
+  latDescending?: boolean;
 }

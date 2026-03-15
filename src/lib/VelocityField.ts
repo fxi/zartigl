@@ -64,6 +64,20 @@ export class VelocityField {
       }
     }
 
+    // Latitude data is often stored north-to-south (descending).
+    // WebGL texImage2D places data[0] at t=0 (bottom of texture),
+    // but geoUV.y=0 means south — so the Y axis is flipped unless we
+    // reverse the rows to store south-to-north before uploading.
+    if (data.latDescending) {
+      const rowBytes = width * 4;
+      const tmp = new Uint8Array(rowBytes);
+      for (let top = 0, bot = height - 1; top < bot; top++, bot--) {
+        tmp.set(pixels.subarray(top * rowBytes, (top + 1) * rowBytes));
+        pixels.copyWithin(top * rowBytes, bot * rowBytes, (bot + 1) * rowBytes);
+        pixels.set(tmp, bot * rowBytes);
+      }
+    }
+
     // Diagnostic: count valid vs NaN pixels
     let validCount = 0;
     let nanCount = 0;
@@ -84,10 +98,11 @@ export class VelocityField {
     }
 
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);        // seamless date-line wrap
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // poles must not wrap
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(
       gl.TEXTURE_2D,
       0,
@@ -132,6 +147,7 @@ export function stitchVelocityChunks(
     lonStart: number;
     latSize: number;
     lonSize: number;
+    lonChunkSize: number;
   }>,
   vChunks: Array<{
     data: Float32Array;
@@ -139,10 +155,12 @@ export function stitchVelocityChunks(
     lonStart: number;
     latSize: number;
     lonSize: number;
+    lonChunkSize: number;
   }>,
   totalLat: number,
   totalLon: number,
   geoBounds?: { west: number; south: number; east: number; north: number },
+  latDescending?: boolean,
 ): VelocityData {
   const u = new Float32Array(totalLat * totalLon).fill(NaN);
   const v = new Float32Array(totalLat * totalLon).fill(NaN);
@@ -150,7 +168,7 @@ export function stitchVelocityChunks(
   for (const chunk of uChunks) {
     for (let r = 0; r < chunk.latSize; r++) {
       for (let c = 0; c < chunk.lonSize; c++) {
-        const srcIdx = r * chunk.lonSize + c;
+        const srcIdx = r * chunk.lonChunkSize + c;
         const dstIdx = (chunk.latStart + r) * totalLon + (chunk.lonStart + c);
         u[dstIdx] = chunk.data[srcIdx];
       }
@@ -160,7 +178,7 @@ export function stitchVelocityChunks(
   for (const chunk of vChunks) {
     for (let r = 0; r < chunk.latSize; r++) {
       for (let c = 0; c < chunk.lonSize; c++) {
-        const srcIdx = r * chunk.lonSize + c;
+        const srcIdx = r * chunk.lonChunkSize + c;
         const dstIdx = (chunk.latStart + r) * totalLon + (chunk.lonStart + c);
         v[dstIdx] = chunk.data[srcIdx];
       }
@@ -197,5 +215,6 @@ export function stitchVelocityChunks(
     vMin,
     vMax,
     bounds: geoBounds ?? { west: -180, south: -90, east: 180, north: 90 },
+    latDescending,
   };
 }

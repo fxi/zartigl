@@ -9,7 +9,8 @@ uniform sampler2D u_velocity;
 uniform vec2 u_velocity_min;
 uniform vec2 u_velocity_max;
 uniform mat4 u_matrix;
-uniform float u_world_size;  // 512 * 2^zoom
+uniform float u_world_size;   // 512 * 2^zoom
+uniform float u_world_offset; // integer world copy offset (0 = primary, ±1 = copies)
 uniform float u_speed_factor;
 uniform vec4 u_geo_bounds;   // west, south, east, north in degrees
 
@@ -39,7 +40,7 @@ void main() {
     float lng = mercToLng(currPos.x);
     float lat = mercToLat(currPos.y);
     vec2 geoUV = vec2(
-        (lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x),
+        fract((lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x)),
         (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
     );
 
@@ -62,6 +63,6 @@ void main() {
     // a_is_curr=0 → tail of the segment (one step back), a_is_curr=1 → head (current)
     vec2 pos = currPos - offset * (1.0 - a_is_curr);
 
-    vec2 worldPos = pos * u_world_size;
+    vec2 worldPos = vec2((pos.x + u_world_offset) * u_world_size, pos.y * u_world_size);
     gl_Position = u_matrix * vec4(worldPos, 0.0, 1.0);
 }

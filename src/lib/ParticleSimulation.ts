@@ -13,23 +13,30 @@ import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 
+/**
+ * State texture is always allocated at this fixed resolution.
+ * MAX_PARTICLES = 512 * 512 = 262144.
+ * The active draw count varies with canvas size and density — no reallocation.
+ */
+const MAX_PARTICLE_STATE_RES = 512;
+const MAX_PARTICLES = MAX_PARTICLE_STATE_RES * MAX_PARTICLE_STATE_RES;
+
 export interface SimulationParams {
-  particleCount: number;
+  /** Particles per screen pixel. Active count = clamp(w * h * density, 1, MAX). */
+  particleDensity: number;
   speedFactor: number;
   fadeOpacity: number;
   dropRate: number;
   dropRateBump: number;
-  pointSize: number;
   colorRamp?: Record<number, string>;
 }
 
 const DEFAULTS: SimulationParams = {
-  particleCount: 65536,
+  particleDensity: 0.05,
   speedFactor: 0.25,
   fadeOpacity: 0.996,
   dropRate: 0.003,
   dropRateBump: 0.01,
-  pointSize: 1.0,
 };
 
 export class ParticleSimulation {
@@ -41,13 +48,14 @@ export class ParticleSimulation {
   private drawProgram!: WebGLProgram;
   private fadeProgram!: WebGLProgram;
 
-  // Particle state ping-pong
+  // Particle state ping-pong — fixed MAX size, never reallocated
   private particleStateTextures!: [WebGLTexture, WebGLTexture];
   private particleFramebuffers!: [WebGLFramebuffer, WebGLFramebuffer];
-  private particleStateRes!: number;
   private particleIndexBuffer!: WebGLBuffer;
   private particleIsCurrBuffer!: WebGLBuffer;
-  private numParticles!: number;
+
+  /** Active draw count — changes with canvas size / density, no realloc. */
+  private numParticles = 0;
 
   // Screen textures for trail rendering
   private screenTextures!: [WebGLTexture, WebGLTexture];
@@ -97,6 +105,7 @@ export class ParticleSimulation {
       "u_particles_res",
       "u_matrix",
       "u_world_size",
+      "u_world_offset",
       "u_speed_factor",
       "u_color_ramp",
       "u_geo_bounds",
@@ -110,7 +119,7 @@ export class ParticleSimulation {
     this.quadBuffer = createQuadBuffer(gl);
     this.colorRampTexture = createColorRampTexture(gl, this.params.colorRamp);
 
-    // Initialize particle state
+    // Allocate particle state at MAX size — never reallocated after this
     this.initParticleState();
   }
 
@@ -127,17 +136,14 @@ export class ParticleSimulation {
 
   private initParticleState(): void {
     const gl = this.gl;
-    const count = this.params.particleCount;
-    this.particleStateRes = Math.ceil(Math.sqrt(count));
-    this.numParticles = this.particleStateRes * this.particleStateRes;
+    const res = MAX_PARTICLE_STATE_RES;
 
-    // Random initial positions
-    const stateData = new Uint8Array(this.numParticles * 4);
+    // Random initial positions across the full texture
+    const stateData = new Uint8Array(res * res * 4);
     for (let i = 0; i < stateData.length; i++) {
       stateData[i] = Math.floor(Math.random() * 256);
     }
 
-    const res = this.particleStateRes;
     const tex0 = createTexture(gl, gl.NEAREST, stateData, res, res);
     const tex1 = createTexture(gl, gl.NEAREST, stateData, res, res);
     const fb0 = createFramebuffer(gl, tex0);
@@ -146,17 +152,16 @@ export class ParticleSimulation {
     this.particleStateTextures = [tex0, tex1];
     this.particleFramebuffers = [fb0, fb1];
 
-    // Line rendering: 2 vertices per particle (prev endpoint + curr endpoint).
-    // a_index selects the particle; a_is_curr selects which state texture to read.
-    const n = this.numParticles;
-    const indices = new Float32Array(n * 2);
-    const isCurr = new Float32Array(n * 2);
-    for (let i = 0; i < n; i++) {
-      indices[i * 2]     = i;  // prev endpoint
-      indices[i * 2 + 1] = i;  // curr endpoint
+    // Index + isCurr buffers at max capacity — draw call uses only numParticles * 2
+    const indices = new Float32Array(MAX_PARTICLES * 2);
+    const isCurr = new Float32Array(MAX_PARTICLES * 2);
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      indices[i * 2]     = i;
+      indices[i * 2 + 1] = i;
       isCurr[i * 2]      = 0.0;
       isCurr[i * 2 + 1]  = 1.0;
     }
+
     this.particleIndexBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIndexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, indices, gl.STATIC_DRAW);
@@ -167,16 +172,22 @@ export class ParticleSimulation {
   }
 
   /**
-   * Ensure screen textures match the current canvas size.
+   * Ensure screen textures match the current canvas size and recompute
+   * the active particle count from density × canvas area.
    */
   resize(width: number, height: number): void {
+    // Always recompute active count — density or canvas size may have changed
+    this.numParticles = Math.max(
+      1,
+      Math.min(MAX_PARTICLES, Math.round(width * height * this.params.particleDensity)),
+    );
+
     if (width === this.screenWidth && height === this.screenHeight) return;
 
     const gl = this.gl;
     this.screenWidth = width;
     this.screenHeight = height;
 
-    // Clean up old
     if (this.screenTextures) {
       gl.deleteTexture(this.screenTextures[0]);
       gl.deleteTexture(this.screenTextures[1]);
@@ -205,6 +216,7 @@ export class ParticleSimulation {
     matrix: Iterable<number>,
     bounds: { minX: number; minY: number; maxX: number; maxY: number },
     worldSize: number,
+    worldCopyOffsets: number[],
     geoBounds?: { west: number; south: number; east: number; north: number },
   ): void {
     const gl = this.gl;
@@ -219,60 +231,41 @@ export class ParticleSimulation {
     // not transparency. If blend leaks in, particles snap to 1/255 grid lines.
     gl.disable(gl.BLEND);
     gl.useProgram(this.updateProgram);
-    gl.viewport(0, 0, this.particleStateRes, this.particleStateRes);
+    gl.viewport(0, 0, MAX_PARTICLE_STATE_RES, MAX_PARTICLE_STATE_RES);
 
-    // Bind current particle state to unit 0
     bindTexture(gl, this.particleStateTextures[0], 0);
     gl.uniform1i(this.updateLocs["u_particles"], 0);
 
-    // Velocity already bound to velocityTexUnit
     gl.uniform1i(this.updateLocs["u_velocity"], velocityTexUnit);
-    gl.uniform2f(
-      this.updateLocs["u_velocity_min"],
-      velocityMin[0],
-      velocityMin[1],
-    );
-    gl.uniform2f(
-      this.updateLocs["u_velocity_max"],
-      velocityMax[0],
-      velocityMax[1],
-    );
+    gl.uniform2f(this.updateLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
+    gl.uniform2f(this.updateLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
     gl.uniform1f(this.updateLocs["u_speed_factor"], this.params.speedFactor);
     gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
     gl.uniform1f(this.updateLocs["u_drop_rate"], this.params.dropRate);
     gl.uniform1f(this.updateLocs["u_drop_rate_bump"], this.params.dropRateBump);
     gl.uniform4f(
       this.updateLocs["u_bounds"],
-      bounds.minX,
-      bounds.minY,
-      bounds.maxX,
-      bounds.maxY,
+      bounds.minX, bounds.minY, bounds.maxX, bounds.maxY,
     );
     if (geoBounds) {
       gl.uniform4f(
         this.updateLocs["u_geo_bounds"],
-        geoBounds.west,
-        geoBounds.south,
-        geoBounds.east,
-        geoBounds.north,
+        geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
       );
     }
 
-    // Draw fullscreen quad into particle framebuffer 1
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFramebuffers[1]);
     this.drawQuad();
 
     // --- 2. Fade pass: write faded trails directly (no blending) ---
     gl.viewport(0, 0, this.screenWidth, this.screenHeight);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenFramebuffers[1]);
-
     gl.useProgram(this.fadeProgram);
     gl.disable(gl.BLEND);
 
     bindTexture(gl, this.screenTextures[0], 0);
     gl.uniform1i(this.fadeLocs["u_screen"], 0);
     gl.uniform1f(this.fadeLocs["u_opacity"], this.params.fadeOpacity);
-
     this.drawQuad();
 
     // --- 3. Draw pass: render particles on top of faded trails ---
@@ -284,30 +277,16 @@ export class ParticleSimulation {
     gl.uniform1i(this.drawLocs["u_particles"], 0);
 
     gl.uniform1i(this.drawLocs["u_velocity"], velocityTexUnit);
-    gl.uniform2f(
-      this.drawLocs["u_velocity_min"],
-      velocityMin[0],
-      velocityMin[1],
-    );
-    gl.uniform2f(
-      this.drawLocs["u_velocity_max"],
-      velocityMax[0],
-      velocityMax[1],
-    );
+    gl.uniform2f(this.drawLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
+    gl.uniform2f(this.drawLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
     if (geoBounds) {
       gl.uniform4f(
         this.drawLocs["u_geo_bounds"],
-        geoBounds.west,
-        geoBounds.south,
-        geoBounds.east,
-        geoBounds.north,
+        geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
       );
     }
 
-    gl.uniform1f(
-      this.drawLocs["u_particles_res"],
-      this.particleStateRes,
-    );
+    gl.uniform1f(this.drawLocs["u_particles_res"], MAX_PARTICLE_STATE_RES);
     gl.uniform1f(this.drawLocs["u_world_size"], worldSize);
     gl.uniform1f(this.drawLocs["u_speed_factor"], this.params.speedFactor);
 
@@ -320,7 +299,6 @@ export class ParticleSimulation {
       matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
     );
 
-    // Draw particles as line segments: prev pos → curr pos (2 vertices each)
     const aIndex = gl.getAttribLocation(this.drawProgram, "a_index");
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIndexBuffer);
     gl.enableVertexAttribArray(aIndex);
@@ -331,46 +309,23 @@ export class ParticleSimulation {
     gl.enableVertexAttribArray(aIsCurr);
     gl.vertexAttribPointer(aIsCurr, 1, gl.FLOAT, false, 0, 0);
 
-    gl.drawArrays(gl.LINES, 0, this.numParticles * 2);
+    // Draw active particles once per visible world copy
+    for (const offset of worldCopyOffsets) {
+      gl.uniform1f(this.drawLocs["u_world_offset"], offset);
+      gl.drawArrays(gl.LINES, 0, this.numParticles * 2);
+    }
     gl.disableVertexAttribArray(aIndex);
     gl.disableVertexAttribArray(aIsCurr);
-
-    // Debug: check if anything was drawn to screen FBO
-    if (!(this as any)._debugDone) {
-      (this as any)._debugDone = true;
-      // Read a few pixels from screen FBO (we're still bound to it)
-      const px = new Uint8Array(4);
-      gl.readPixels(
-        Math.floor(this.screenWidth / 2),
-        Math.floor(this.screenHeight / 2),
-        1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px,
-      );
-      console.log("[zartigl] screen FBO center pixel after draw:", px);
-
-      // Read particle state to verify positions
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFramebuffers[1]);
-      const statePx = new Uint8Array(4);
-      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, statePx);
-      const posX = (statePx[0] + statePx[1] / 256);
-      const posY = (statePx[2] + statePx[3] / 256);
-      console.log("[zartigl] particle 0 state RGBA:", statePx,
-        "=> mercator pos:", posX.toFixed(4), posY.toFixed(4));
-
-      // Rebind screen FBO for the blit step
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenFramebuffers[1]);
-    }
 
     gl.disable(gl.BLEND);
 
     // --- 4. Display: blit screen texture to MapLibre's framebuffer ---
     gl.bindFramebuffer(gl.FRAMEBUFFER, mapFramebuffer);
     gl.viewport(0, 0, this.screenWidth, this.screenHeight);
-
     gl.useProgram(this.fadeProgram);
     bindTexture(gl, this.screenTextures[1], 0);
     gl.uniform1i(this.fadeLocs["u_screen"], 0);
     gl.uniform1f(this.fadeLocs["u_opacity"], 1.0);
-
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     this.drawQuad();
@@ -412,30 +367,13 @@ export class ParticleSimulation {
     this.params.dropRateBump = v;
   }
 
-  setPointSize(v: number): void {
-    this.params.pointSize = v;
-  }
-
-  setParticleCount(count: number): void {
-    this.params.particleCount = count;
-
-    // Clean up old particle state
-    const gl = this.gl;
-    for (const t of this.particleStateTextures) gl.deleteTexture(t);
-    for (const f of this.particleFramebuffers) gl.deleteFramebuffer(f);
-    gl.deleteBuffer(this.particleIndexBuffer);
-    gl.deleteBuffer(this.particleIsCurrBuffer);
-
-    // Re-create with new count
-    this.initParticleState();
-
-    // Clear screen textures to avoid stale trails
-    for (let i = 0; i < 2; i++) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenFramebuffers[i]);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  setParticleDensity(density: number): void {
+    this.params.particleDensity = density;
+    // Recompute active count with current canvas dimensions
+    this.numParticles = Math.max(
+      1,
+      Math.min(MAX_PARTICLES, Math.round(this.screenWidth * this.screenHeight * density)),
+    );
   }
 
   setColorRamp(ramp: Record<number, string>): void {
@@ -446,11 +384,13 @@ export class ParticleSimulation {
   }
 
   /**
-   * Reset all particles to random positions. Call after time/depth change.
+   * Reset all particles to random positions. Call after time/depth change
+   * or map move. Randomises the full state texture and clears trail FBOs.
    */
   resetParticles(): void {
     const gl = this.gl;
-    const stateData = new Uint8Array(this.numParticles * 4);
+    const res = MAX_PARTICLE_STATE_RES;
+    const stateData = new Uint8Array(res * res * 4);
     for (let i = 0; i < stateData.length; i++) {
       stateData[i] = Math.floor(Math.random() * 256);
     }
@@ -458,20 +398,22 @@ export class ParticleSimulation {
     for (const tex of this.particleStateTextures) {
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        this.particleStateRes,
-        this.particleStateRes,
-        0,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        stateData,
+        gl.TEXTURE_2D, 0, gl.RGBA, res, res, 0,
+        gl.RGBA, gl.UNSIGNED_BYTE, stateData,
       );
     }
     gl.bindTexture(gl.TEXTURE_2D, null);
 
-    // Clear screen textures
+    this.clearState();
+  }
+
+  /**
+   * Clear screen framebuffers to transparent black.
+   * Eliminates ghost trails when the viewport shifts.
+   */
+  clearState(): void {
+    const gl = this.gl;
+    if (!this.screenFramebuffers) return;
     for (let i = 0; i < 2; i++) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenFramebuffers[i]);
       gl.clearColor(0, 0, 0, 0);

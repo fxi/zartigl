@@ -3,7 +3,7 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { ParticleLayerOptions } from "./types.js";
+import type { ParticleLayerOptions, ZoomWeighted } from "./types.js";
 import { saveGLState, restoreGLState } from "./gl-util.js";
 import { ParticleSimulation } from "./ParticleSimulation.js";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField.js";
@@ -24,6 +24,7 @@ function lngToMercX(lng: number): number {
   return (lng + 180) / 360;
 }
 
+
 export class ParticleLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
@@ -36,40 +37,43 @@ export class ParticleLayer implements CustomLayerInterface {
   private velocityField: VelocityField;
   private zarrSource: ZarrSource;
 
-  private opts: Required<
-    Pick<
-      ParticleLayerOptions,
-      "variableU" | "variableV" | "time" | "depth" | "speedFactor"
-    >
-  > &
-    ParticleLayerOptions;
+  // Zoom-weighted params
+  private speedFactorParam: ZoomWeighted;
+  private fadeOpacityParam: ZoomWeighted;
+  private zoomRange: [number, number];
+
+  private variableU: string;
+  private variableV: string;
+  private time: string | number;
+  private depth: number;
 
   private initialized = false;
   private loading = false;
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
+  private moveStartHandler: (() => void) | null = null;
   private moveEndHandler: (() => void) | null = null;
 
   constructor(options: ParticleLayerOptions) {
     this.id = options.id;
-    this.opts = {
-      variableU: "uo",
-      variableV: "vo",
-      time: 0,
-      depth: 0,
-      speedFactor: 0.25,
-      ...options,
-    };
+
+    this.variableU = options.variableU ?? "uo";
+    this.variableV = options.variableV ?? "vo";
+    this.time = options.time ?? 0;
+    this.depth = options.depth ?? 0;
+
+    this.speedFactorParam = options.speedFactor ?? 0.25;
+    this.fadeOpacityParam = options.fadeOpacity ?? 0.996;
+    this.zoomRange = options.zoomRange ?? [2, 12];
 
     this.zarrSource = new ZarrSource(options.source);
     this.velocityField = new VelocityField();
     this.simulation = new ParticleSimulation({
-      particleCount: options.particleCount ?? 65536,
-      speedFactor: this.opts.speedFactor,
-      fadeOpacity: options.fadeOpacity ?? 0.996,
+      particleDensity: options.particleDensity ?? 0.05,
+      speedFactor: Array.isArray(options.speedFactor) ? options.speedFactor[0] : (options.speedFactor ?? 0.25),
+      fadeOpacity: Array.isArray(options.fadeOpacity) ? options.fadeOpacity[0] : (options.fadeOpacity ?? 0.996),
       dropRate: options.dropRate ?? 0.003,
       dropRateBump: options.dropRateBump ?? 0.01,
-      pointSize: options.pointSize ?? 1.0,
       colorRamp: options.colorRamp,
     });
   }
@@ -84,8 +88,17 @@ export class ParticleLayer implements CustomLayerInterface {
     // Load Zarr metadata and initial velocity data
     this.initAsync();
 
-    // Reload velocity data when the map moves
-    this.moveEndHandler = () => this.loadViewportVelocity();
+    // Clear trail history on move start so screen-space ghost trails
+    // don't persist when the viewport shifts.
+    this.moveStartHandler = () => this.simulation.clearState();
+    map.on("movestart", this.moveStartHandler);
+
+    // On settle: clear trail history, randomise particle positions, reload velocity.
+    this.moveEndHandler = () => {
+      this.simulation.clearState();
+      this.simulation.resetParticles();
+      this.loadViewportVelocity();
+    };
     map.on("moveend", this.moveEndHandler);
   }
 
@@ -106,34 +119,39 @@ export class ParticleLayer implements CustomLayerInterface {
 
     try {
       const bounds = this.map.getBounds();
+      // Always load the full longitude range so the velocity texture covers
+      // [-180, 180] end-to-end. This makes the REPEAT wrap and fract(geoUV.x)
+      // in the update shader geometrically correct: the left and right edges of
+      // the texture correspond to the same geographic line (the date line), so
+      // bilinear interpolation and particle position wrapping are seamless.
       const geoBounds = {
-        west: Math.max(bounds.getWest(), -180),
+        west: -180,
+        east: 180,
         south: Math.max(bounds.getSouth(), -85),
-        east: Math.min(bounds.getEast(), 180),
         north: Math.min(bounds.getNorth(), 85),
       };
 
       const timeIdx =
-        typeof this.opts.time === "string" || typeof this.opts.time === "number"
-          ? this.zarrSource.findTimeIndex(this.opts.time)
+        typeof this.time === "string" || typeof this.time === "number"
+          ? this.zarrSource.findTimeIndex(this.time)
           : 0;
-      const depthIdx = this.zarrSource.findDepthIndex(this.opts.depth);
+      const depthIdx = this.zarrSource.findDepthIndex(this.depth);
 
       const debugCoords = this.zarrSource.getCoords();
       console.log(
-        `[zartigl] Loading velocity: depth=${this.opts.depth} → depthIdx=${depthIdx}, ` +
+        `[zartigl] Loading velocity: depth=${this.depth} → depthIdx=${depthIdx}, ` +
         `actual depth value=${debugCoords.vertical[depthIdx]}, ` +
         `timeIdx=${timeIdx}`
       );
 
       const uChunkInfos = this.zarrSource.getChunksForBounds(
-        this.opts.variableU,
+        this.variableU,
         timeIdx,
         depthIdx,
         geoBounds,
       );
 
-      const dims = this.zarrSource.getDimensions(this.opts.variableU);
+      const dims = this.zarrSource.getDimensions(this.variableU);
       const timeDim = dims.indexOf("time");
       const vertName = this.zarrSource.getVerticalDimName();
       const depthDim = dims.indexOf(vertName);
@@ -148,17 +166,19 @@ export class ParticleLayer implements CustomLayerInterface {
         indices[latDim] = info.latIdx;
         indices[lonDim] = info.lonIdx;
         const data = await this.zarrSource.fetchChunk(
-          this.opts.variableU,
+          this.variableU,
           indices,
         );
+        const lonChunkSize = this.zarrSource.getChunkShape(this.variableU)[lonDim];
         return {
           data,
           latStart:
-            info.latIdx * this.zarrSource.getChunkShape(this.opts.variableU)[latDim],
+            info.latIdx * this.zarrSource.getChunkShape(this.variableU)[latDim],
           lonStart:
-            info.lonIdx * this.zarrSource.getChunkShape(this.opts.variableU)[lonDim],
+            info.lonIdx * lonChunkSize,
           latSize: info.latSize,
           lonSize: info.lonSize,
+          lonChunkSize,
         };
       });
 
@@ -169,17 +189,19 @@ export class ParticleLayer implements CustomLayerInterface {
         indices[latDim] = info.latIdx;
         indices[lonDim] = info.lonIdx;
         const data = await this.zarrSource.fetchChunk(
-          this.opts.variableV,
+          this.variableV,
           indices,
         );
+        const lonChunkSize = this.zarrSource.getChunkShape(this.variableV)[lonDim];
         return {
           data,
           latStart:
-            info.latIdx * this.zarrSource.getChunkShape(this.opts.variableV)[latDim],
+            info.latIdx * this.zarrSource.getChunkShape(this.variableV)[latDim],
           lonStart:
-            info.lonIdx * this.zarrSource.getChunkShape(this.opts.variableV)[lonDim],
+            info.lonIdx * lonChunkSize,
           latSize: info.latSize,
           lonSize: info.lonSize,
+          lonChunkSize,
         };
       });
 
@@ -188,25 +210,49 @@ export class ParticleLayer implements CustomLayerInterface {
         Promise.all(vPromises),
       ]);
 
-      const shape = this.zarrSource.getShape(this.opts.variableU);
-      const totalLat = shape[latDim];
-      const totalLon = shape[lonDim];
+      // Compute the pixel extent covered by the fetched chunks only.
+      // Using the full dataset shape would leave NaN holes outside the
+      // viewport, causing particles there to be dropped and re-spawned
+      // as stripe artifacts.
+      const latPixMin = Math.min(...uChunks.map(c => c.latStart));
+      const latPixMax = Math.max(...uChunks.map(c => c.latStart + c.latSize));
+      const lonPixMin = Math.min(...uChunks.map(c => c.lonStart));
+      const lonPixMax = Math.max(...uChunks.map(c => c.lonStart + c.lonSize));
+      const fetchedHeight = latPixMax - latPixMin;
+      const fetchedWidth  = lonPixMax - lonPixMin;
 
-      // Compute actual geographic bounds from coordinate arrays
+      // Offset chunk positions to be relative to the fetched sub-region.
+      const uChunksRel = uChunks.map(c => ({
+        ...c,
+        latStart: c.latStart - latPixMin,
+        lonStart: c.lonStart - lonPixMin,
+      }));
+      const vChunksRel = vChunks.map(c => ({
+        ...c,
+        latStart: c.latStart - latPixMin,
+        lonStart: c.lonStart - lonPixMin,
+      }));
+
+      // Geographic bounds of the fetched sub-region.
       const coords = this.zarrSource.getCoords();
+      const latLast = Math.min(latPixMax - 1, coords.latitude.length - 1);
+      const lonLast = Math.min(lonPixMax - 1, coords.longitude.length - 1);
       const dataGeoBounds = {
-        west: coords.longitude[0],
-        south: Math.min(coords.latitude[0], coords.latitude[coords.latitude.length - 1]),
-        east: coords.longitude[coords.longitude.length - 1],
-        north: Math.max(coords.latitude[0], coords.latitude[coords.latitude.length - 1]),
+        west:  coords.longitude[lonPixMin],
+        east:  coords.longitude[lonLast],
+        south: Math.min(coords.latitude[latPixMin], coords.latitude[latLast]),
+        north: Math.max(coords.latitude[latPixMin], coords.latitude[latLast]),
       };
+      // Detect north-to-south latitude storage (needs Y-flip in GL texture).
+      const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
 
       const velocityData = stitchVelocityChunks(
-        uChunks,
-        vChunks,
-        totalLat,
-        totalLon,
+        uChunksRel,
+        vChunksRel,
+        fetchedHeight,
+        fetchedWidth,
         dataGeoBounds,
+        latDescending,
       );
 
       this.velocityField.update(velocityData);
@@ -230,6 +276,9 @@ export class ParticleLayer implements CustomLayerInterface {
       : (options as CustomRenderMethodInput).modelViewProjectionMatrix;
     if (!this.initialized || !this.velocityField.hasData() || !this.map) return;
 
+    // Apply zoom-weighted params each frame
+    this.applyZoomWeighting(this.map.getZoom());
+
     const saved = saveGLState(gl);
 
     try {
@@ -242,7 +291,8 @@ export class ParticleLayer implements CustomLayerInterface {
       // Bind velocity texture
       this.velocityField.bind(this.velocityTexUnit);
 
-      // Get viewport bounds in mercator [0,1] coordinates
+      // Viewport bounds — clamped to primary world for the update pass
+      // (particle positions always live in [0,1] Mercator)
       const mapBounds = this.map.getBounds();
       const mercBounds = {
         minX: lngToMercX(Math.max(mapBounds.getWest(), -180)),
@@ -251,12 +301,21 @@ export class ParticleLayer implements CustomLayerInterface {
         maxY: latToMercY(Math.max(mapBounds.getSouth(), -85)),
       };
 
+      // Determine which world copies are visible (raw, unclamped bounds).
+      // offset 0 = primary, +1 = right copy, -1 = left copy, etc.
+      const rawMinX = (mapBounds.getWest() + 180) / 360;
+      const rawMaxX = (mapBounds.getEast() + 180) / 360;
+      const worldCopyOffsets: number[] = [];
+      for (let n = Math.floor(rawMinX); n <= Math.floor(rawMaxX); n++) {
+        worldCopyOffsets.push(n);
+      }
+
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.STENCIL_TEST);
 
       // mapbox-gl matrix maps [0, 1] Mercator → clip space.
       // maplibre-gl matrix maps [0, worldSize] Mercator → clip space.
-      // The draw shader does: worldPos = pos * worldSize, then matrix * worldPos.
+      // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
       // For mapbox-gl we must pass worldSize = 1.0 so pos stays in [0, 1].
       const isMapboxConvention = Array.isArray(options);
       const worldSize = isMapboxConvention ? 1.0 : 512 * Math.pow(2, this.map.getZoom());
@@ -267,6 +326,7 @@ export class ParticleLayer implements CustomLayerInterface {
         matrix,
         mercBounds,
         worldSize,
+        worldCopyOffsets,
         this.velocityField.geoBounds,
       );
     } finally {
@@ -277,8 +337,9 @@ export class ParticleLayer implements CustomLayerInterface {
   }
 
   onRemove(): void {
-    if (this.map && this.moveEndHandler) {
-      this.map.off("moveend", this.moveEndHandler);
+    if (this.map) {
+      if (this.moveStartHandler) this.map.off("movestart", this.moveStartHandler);
+      if (this.moveEndHandler) this.map.off("moveend", this.moveEndHandler);
     }
     this.zarrSource.cancelAll();
     this.simulation.destroy();
@@ -287,27 +348,48 @@ export class ParticleLayer implements CustomLayerInterface {
     this.gl = null;
   }
 
-  // --- Public setters ---
+  /**
+   * Interpolate speed and fade per render frame (cheap uniform uploads).
+   * t=0 at low zoom (global), t=1 at high zoom (local).
+   * For each range [min, max]: min applies at high zoom, max at low zoom.
+   */
+  private applyZoomWeighting(zoom: number): void {
+    const [zLow, zHigh] = this.zoomRange;
+    const t = Math.max(0, Math.min(1, (zoom - zLow) / (zHigh - zLow)));
+
+    if (Array.isArray(this.speedFactorParam)) {
+      const [min, max] = this.speedFactorParam;
+      this.simulation.setSpeedFactor(max + (min - max) * t);
+    }
+
+    if (Array.isArray(this.fadeOpacityParam)) {
+      const [min, max] = this.fadeOpacityParam;
+      this.simulation.setFadeOpacity(max + (min - max) * t);
+    }
+  }
+
+// --- Public setters ---
 
   setTime(time: string | number): void {
-    this.opts.time = time;
+    this.time = time;
     this.simulation.resetParticles();
     this.loadViewportVelocity();
   }
 
   setDepth(depth: number): void {
-    this.opts.depth = depth;
+    this.depth = depth;
     this.simulation.resetParticles();
     this.loadViewportVelocity();
   }
 
-  setSpeedFactor(v: number): void {
-    this.opts.speedFactor = v;
-    this.simulation.setSpeedFactor(v);
+  setSpeedFactor(v: ZoomWeighted): void {
+    this.speedFactorParam = v;
+    if (!Array.isArray(v)) this.simulation.setSpeedFactor(v);
   }
 
-  setFadeOpacity(v: number): void {
-    this.simulation.setFadeOpacity(v);
+  setFadeOpacity(v: ZoomWeighted): void {
+    this.fadeOpacityParam = v;
+    if (!Array.isArray(v)) this.simulation.setFadeOpacity(v);
   }
 
   setDropRate(v: number): void {
@@ -318,12 +400,12 @@ export class ParticleLayer implements CustomLayerInterface {
     this.simulation.setDropRateBump(v);
   }
 
-  setPointSize(v: number): void {
-    this.simulation.setPointSize(v);
+  setParticleDensity(density: number): void {
+    this.simulation.setParticleDensity(density);
   }
 
-  setParticleCount(count: number): void {
-    this.simulation.setParticleCount(count);
+  setZoomRange(range: [number, number]): void {
+    this.zoomRange = range;
   }
 
   setColorRamp(ramp: Record<number, string>): void {

@@ -55,7 +55,7 @@ void main() {
 
     // Velocity texture UV from actual data geographic bounds
     vec2 geoUV = vec2(
-        (lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x),
+        fract((lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x)),
         (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
     );
 
@@ -96,6 +96,12 @@ void main() {
     vec2 finalOffset = mix(offset, stochStep, belowThreshold);
 
     vec2 newPos = pos + finalOffset;
+
+    // Wrap longitude: a particle crossing ±180° continues on the other side
+    // instead of being dropped. Y (latitude) is intentionally not wrapped —
+    // the outOfBounds drop below handles polar exit.
+    newPos.x = fract(newPos.x);
+
     float dropRate = u_drop_rate + speed * u_drop_rate_bump;
     float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
 

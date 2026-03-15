@@ -4,6 +4,7 @@ export { VelocityField, stitchVelocityChunks } from "./VelocityField.js";
 export { ParticleSimulation } from "./ParticleSimulation.js";
 export type {
   ParticleLayerOptions,
+  ZoomWeighted,
   VelocityData,
   ZarrConsolidatedMeta,
   ZarrArrayMeta,

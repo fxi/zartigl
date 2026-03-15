@@ -100,12 +100,11 @@ map.on("load", async () => {
       timeIndex: 0,
       timeLabel: "",
       vertical: 0,
-      particleCount: 262144,
+      particleDensity: 0.05,
       speedFactor: 2,
       fadeOpacity: 0.99991,
       dropRate: 0.003,
       dropRateBump: 0.01,
-      pointSize: 1.0,
       colorLow: "#3288bd",
       colorMid: "#fdae61",
       colorHigh: "#d53e4f",
@@ -247,12 +246,11 @@ map.on("load", async () => {
         variableV: vVar,
         time: timeMin,
         depth: PARAMS.vertical,
-        particleCount: PARAMS.particleCount,
+        particleDensity: PARAMS.particleDensity,
         speedFactor: sf,
         fadeOpacity: PARAMS.fadeOpacity,
         dropRate: PARAMS.dropRate,
         dropRateBump: PARAMS.dropRateBump,
-        pointSize: PARAMS.pointSize,
       });
       map.addLayer(layer as unknown as mapboxgl.CustomLayerInterface);
 
@@ -267,21 +265,13 @@ map.on("load", async () => {
 
     const particlesFolder = pane.addFolder({ title: "Particles" });
     particlesFolder
-      .addBinding(PARAMS, "particleCount", {
-        min: 1024,
-        max: 262144,
-        step: 1024,
-        label: "count",
+      .addBinding(PARAMS, "particleDensity", {
+        min: 0.001,
+        max: 0.15,
+        step: 0.001,
+        label: "density",
       })
-      .on("change", (ev) => layer.setParticleCount(ev.value));
-    particlesFolder
-      .addBinding(PARAMS, "pointSize", {
-        min: 0.5,
-        max: 5,
-        step: 0.5,
-        label: "size",
-      })
-      .on("change", (ev) => layer.setPointSize(ev.value));
+      .on("change", (ev) => layer.setParticleDensity(ev.value));
 
     // ── Motion folder ─────────────────────────────────────────────
 
