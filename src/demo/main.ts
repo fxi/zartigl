@@ -123,9 +123,6 @@ map.on("load", async () => {
       fadeMax: 0.9315,
       dropRate: 0.003,
       dropRateBump: 0.01,
-      // Zoom breakpoints for the above ranges
-      zoomLow: 2,
-      zoomHigh: 8,
       colorLow: "#3288bd",
       colorMid: "#fdae61",
       colorHigh: "#d53e4f",
@@ -266,7 +263,6 @@ map.on("load", async () => {
         fadeOpacity: [PARAMS.fadeMin, PARAMS.fadeMax],
         dropRate: PARAMS.dropRate,
         dropRateBump: PARAMS.dropRateBump,
-        zoomRange: [PARAMS.zoomLow, PARAMS.zoomHigh],
       });
       map.addLayer(layer);
 
@@ -344,26 +340,6 @@ map.on("load", async () => {
         label: "fade (global)",
       })
       .on("change", () => layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]));
-
-    // ── Zoom range folder ─────────────────────────────────────────
-
-    const zoomFolder = pane.addFolder({ title: "Zoom range" });
-    zoomFolder
-      .addBinding(PARAMS, "zoomLow", {
-        min: 0,
-        max: 8,
-        step: 0.5,
-        label: "low (global)",
-      })
-      .on("change", () => layer.setZoomRange([PARAMS.zoomLow, PARAMS.zoomHigh]));
-    zoomFolder
-      .addBinding(PARAMS, "zoomHigh", {
-        min: 2,
-        max: 20,
-        step: 0.5,
-        label: "high (local)",
-      })
-      .on("change", () => layer.setZoomRange([PARAMS.zoomLow, PARAMS.zoomHigh]));
 
     // ── Colors folder ─────────────────────────────────────────────
 
