@@ -12,6 +12,9 @@ import updateFrag from "./shaders/update.frag.glsl";
 import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
+import gridFrag from "./shaders/grid.frag.glsl?raw";
+
+export type RenderMode = 'raster' | 'particles' | 'raster+particles';
 
 /**
  * State texture is always allocated at this fixed resolution.
@@ -29,6 +32,9 @@ export interface SimulationParams {
   dropRate: number;
   dropRateBump: number;
   colorRamp?: Record<number, string>;
+  opacity: number;
+  logScale: boolean;
+  vibrance: number;
 }
 
 const DEFAULTS: SimulationParams = {
@@ -37,6 +43,9 @@ const DEFAULTS: SimulationParams = {
   fadeOpacity: 0.996,
   dropRate: 0.003,
   dropRateBump: 0.01,
+  opacity: 1.0,
+  logScale: false,
+  vibrance: 0.0,
 };
 
 export class ParticleSimulation {
@@ -47,6 +56,7 @@ export class ParticleSimulation {
   private updateProgram!: WebGLProgram;
   private drawProgram!: WebGLProgram;
   private fadeProgram!: WebGLProgram;
+  private gridProgram!: WebGLProgram;
 
   // Particle state ping-pong — fixed MAX size, never reallocated
   private particleStateTextures!: [WebGLTexture, WebGLTexture];
@@ -67,10 +77,14 @@ export class ParticleSimulation {
   private quadBuffer!: WebGLBuffer;
   private colorRampTexture!: WebGLTexture;
 
+  // Render mode
+  renderMode: RenderMode = 'raster+particles';
+
   // Uniform locations (cached)
   private updateLocs!: Record<string, WebGLUniformLocation | null>;
   private drawLocs!: Record<string, WebGLUniformLocation | null>;
   private fadeLocs!: Record<string, WebGLUniformLocation | null>;
+  private gridLocs!: Record<string, WebGLUniformLocation | null>;
 
   constructor(params?: Partial<SimulationParams>) {
     this.params = { ...DEFAULTS, ...params };
@@ -83,6 +97,7 @@ export class ParticleSimulation {
     this.updateProgram = createProgram(gl, quadVert, updateFrag);
     this.drawProgram = createProgram(gl, drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
+    this.gridProgram = createProgram(gl, quadVert, gridFrag);
 
     // Cache uniform locations
     this.updateLocs = this.getUniforms(this.updateProgram, [
@@ -109,11 +124,31 @@ export class ParticleSimulation {
       "u_speed_factor",
       "u_color_ramp",
       "u_geo_bounds",
+      "u_particle_color",
+      "u_opacity",
+      "u_log_scale",
+      "u_vibrance",
     ]);
     this.fadeLocs = this.getUniforms(this.fadeProgram, [
       "u_screen",
       "u_opacity",
     ]);
+    this.gridLocs = this.getUniforms(this.gridProgram, [
+      "u_field",
+      "u_color_ramp",
+      "u_bounds",
+      "u_geo_bounds",
+      "u_field_min",
+      "u_field_max",
+      "u_u_min",
+      "u_u_max",
+      "u_v_min",
+      "u_v_max",
+      "u_opacity",
+      "u_log_scale",
+      "u_vibrance",
+    ]);
+
 
     // Shared resources
     this.quadBuffer = createQuadBuffer(gl);
@@ -226,7 +261,10 @@ export class ParticleSimulation {
     // Capture MapLibre's current framebuffer so we can restore it for the final blit
     const mapFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
 
-    // --- 1. Update pass: advance particle positions ---
+    const runParticles = this.renderMode === 'particles' || this.renderMode === 'raster+particles';
+    const runGrid = this.renderMode === 'raster' || this.renderMode === 'raster+particles';
+
+    // --- 1. Update pass: advance particle positions (always — keeps simulation live) ---
     // Blending MUST be off: the alpha channel encodes position data (lo byte of Y),
     // not transparency. If blend leaks in, particles snap to 1/255 grid lines.
     gl.disable(gl.BLEND);
@@ -268,58 +306,123 @@ export class ParticleSimulation {
     gl.uniform1f(this.fadeLocs["u_opacity"], this.params.fadeOpacity);
     this.drawQuad();
 
-    // --- 3. Draw pass: render particles on top of faded trails ---
-    gl.useProgram(this.drawProgram);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
+    if (runGrid && geoBounds) {
+      gl.useProgram(this.gridProgram);
+      gl.disable(gl.BLEND);
 
-    bindTexture(gl, this.particleStateTextures[1], 0);
-    gl.uniform1i(this.drawLocs["u_particles"], 0);
+      // velocity field texture is already bound to velocityTexUnit
+      gl.uniform1i(this.gridLocs["u_field"], velocityTexUnit);
 
-    gl.uniform1i(this.drawLocs["u_velocity"], velocityTexUnit);
-    gl.uniform2f(this.drawLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
-    gl.uniform2f(this.drawLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
-    if (geoBounds) {
+      bindTexture(gl, this.colorRampTexture, 2);
+      gl.uniform1i(this.gridLocs["u_color_ramp"], 2);
+
+      // u_bounds: mercator bounds in radians for the grid shader coordinate transform.
+      // The grid shader uses the same u_bounds as the update shader (mercator [0,1] space),
+      // but interprets it as radians — convert from [0,1] to radians here.
+      const PI = Math.PI;
+      const mercWest  = (bounds.minX * 2.0 - 1.0) * PI;
+      const mercEast  = (bounds.maxX * 2.0 - 1.0) * PI;
+      const mercSouth = (1.0 - bounds.maxY * 2.0) * PI;
+      const mercNorth = (1.0 - bounds.minY * 2.0) * PI;
+      gl.uniform4f(this.gridLocs["u_bounds"], mercWest, mercSouth, mercEast, mercNorth);
+
       gl.uniform4f(
-        this.drawLocs["u_geo_bounds"],
+        this.gridLocs["u_geo_bounds"],
         geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
       );
+
+      // Speed range: 0 to max possible speed from the velocity components
+      const maxSpeed = Math.sqrt(
+        Math.max(Math.abs(velocityMin[0]), Math.abs(velocityMax[0])) ** 2 +
+        Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
+      );
+      gl.uniform1f(this.gridLocs["u_field_min"], 0.0);
+      gl.uniform1f(this.gridLocs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
+
+      gl.uniform1f(this.gridLocs["u_u_min"], velocityMin[0]);
+      gl.uniform1f(this.gridLocs["u_u_max"], velocityMax[0]);
+      gl.uniform1f(this.gridLocs["u_v_min"], velocityMin[1]);
+      gl.uniform1f(this.gridLocs["u_v_max"], velocityMax[1]);
+
+      gl.uniform1f(this.gridLocs["u_opacity"], this.params.opacity);
+      gl.uniform1f(this.gridLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
+      gl.uniform1f(this.gridLocs["u_vibrance"], this.params.vibrance);
+
+      // Render grid blended on top of the faded trail screen buffer
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      this.drawQuad();
+      gl.disable(gl.BLEND);
+
+ 
     }
 
-    gl.uniform1f(this.drawLocs["u_particles_res"], MAX_PARTICLE_STATE_RES);
-    gl.uniform1f(this.drawLocs["u_world_size"], worldSize);
-    gl.uniform1f(this.drawLocs["u_speed_factor"], this.params.speedFactor);
+    // --- 4. Draw pass: render particles on top of trails/grid ---
+    if (runParticles) {
+      gl.useProgram(this.drawProgram);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    bindTexture(gl, this.colorRampTexture, 2);
-    gl.uniform1i(this.drawLocs["u_color_ramp"], 2);
+      bindTexture(gl, this.particleStateTextures[1], 0);
+      gl.uniform1i(this.drawLocs["u_particles"], 0);
 
-    gl.uniformMatrix4fv(
-      this.drawLocs["u_matrix"],
-      false,
-      matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
-    );
+      gl.uniform1i(this.drawLocs["u_velocity"], velocityTexUnit);
+      gl.uniform2f(this.drawLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
+      gl.uniform2f(this.drawLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
+      if (geoBounds) {
+        gl.uniform4f(
+          this.drawLocs["u_geo_bounds"],
+          geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+        );
+      }
 
-    const aIndex = gl.getAttribLocation(this.drawProgram, "a_index");
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIndexBuffer);
-    gl.enableVertexAttribArray(aIndex);
-    gl.vertexAttribPointer(aIndex, 1, gl.FLOAT, false, 0, 0);
+      gl.uniform1f(this.drawLocs["u_particles_res"], MAX_PARTICLE_STATE_RES);
+      gl.uniform1f(this.drawLocs["u_world_size"], worldSize);
+      gl.uniform1f(this.drawLocs["u_speed_factor"], this.params.speedFactor);
 
-    const aIsCurr = gl.getAttribLocation(this.drawProgram, "a_is_curr");
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIsCurrBuffer);
-    gl.enableVertexAttribArray(aIsCurr);
-    gl.vertexAttribPointer(aIsCurr, 1, gl.FLOAT, false, 0, 0);
+      bindTexture(gl, this.colorRampTexture, 2);
+      gl.uniform1i(this.drawLocs["u_color_ramp"], 2);
 
-    // Draw active particles once per visible world copy
-    for (const offset of worldCopyOffsets) {
-      gl.uniform1f(this.drawLocs["u_world_offset"], offset);
-      gl.drawArrays(gl.LINES, 0, this.numParticles * 2);
+      // In raster+particles mode render particles white so they are visible over the colormap
+      if (this.renderMode === 'raster+particles') {
+        gl.uniform4f(this.drawLocs["u_particle_color"], 1.0, 1.0, 1.0, 1.0);
+      } else {
+        gl.uniform4f(this.drawLocs["u_particle_color"], 0.0, 0.0, 0.0, 0.0);
+      }
+
+      gl.uniform1f(this.drawLocs["u_opacity"], this.params.opacity);
+      gl.uniform1f(this.drawLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
+      gl.uniform1f(this.drawLocs["u_vibrance"], this.params.vibrance);
+
+      gl.uniformMatrix4fv(
+        this.drawLocs["u_matrix"],
+        false,
+        matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
+      );
+
+      const aIndex = gl.getAttribLocation(this.drawProgram, "a_index");
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIndexBuffer);
+      gl.enableVertexAttribArray(aIndex);
+      gl.vertexAttribPointer(aIndex, 1, gl.FLOAT, false, 0, 0);
+
+      const aIsCurr = gl.getAttribLocation(this.drawProgram, "a_is_curr");
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.particleIsCurrBuffer);
+      gl.enableVertexAttribArray(aIsCurr);
+      gl.vertexAttribPointer(aIsCurr, 1, gl.FLOAT, false, 0, 0);
+
+      // Draw active particles once per visible world copy
+      for (const offset of worldCopyOffsets) {
+        gl.uniform1f(this.drawLocs["u_world_offset"], offset);
+        gl.drawArrays(gl.LINES, 0, this.numParticles * 2);
+      }
+      gl.disableVertexAttribArray(aIndex);
+      gl.disableVertexAttribArray(aIsCurr);
+
+      gl.disable(gl.BLEND);
     }
-    gl.disableVertexAttribArray(aIndex);
-    gl.disableVertexAttribArray(aIsCurr);
 
-    gl.disable(gl.BLEND);
-
-    // --- 4. Display: blit screen texture to MapLibre's framebuffer ---
+    // --- 5. Display: blit screen texture to MapLibre's framebuffer ---
     gl.bindFramebuffer(gl.FRAMEBUFFER, mapFramebuffer);
     gl.viewport(0, 0, this.screenWidth, this.screenHeight);
     gl.useProgram(this.fadeProgram);
@@ -331,7 +434,7 @@ export class ParticleSimulation {
     this.drawQuad();
     gl.disable(gl.BLEND);
 
-    // --- 5. Swap ping-pong buffers ---
+    // --- 6. Swap ping-pong buffers ---
     this.particleStateTextures.reverse();
     this.particleFramebuffers.reverse();
     this.screenTextures.reverse();
@@ -383,6 +486,22 @@ export class ParticleSimulation {
     this.params.colorRamp = ramp;
   }
 
+  setRenderMode(mode: RenderMode): void {
+    this.renderMode = mode;
+  }
+
+  setOpacity(v: number): void {
+    this.params.opacity = v;
+  }
+
+  setLogScale(v: boolean): void {
+    this.params.logScale = v;
+  }
+
+  setVibrance(v: number): void {
+    this.params.vibrance = v;
+  }
+
   /**
    * Reset all particles to random positions. Call after time/depth change
    * or map move. Randomises the full state texture and clears trail FBOs.
@@ -427,6 +546,7 @@ export class ParticleSimulation {
     gl.deleteProgram(this.updateProgram);
     gl.deleteProgram(this.drawProgram);
     gl.deleteProgram(this.fadeProgram);
+    gl.deleteProgram(this.gridProgram);
     for (const t of this.particleStateTextures) gl.deleteTexture(t);
     for (const f of this.particleFramebuffers) gl.deleteFramebuffer(f);
     if (this.screenTextures) {

@@ -1,0 +1,211 @@
+{
+  "thermal": {
+    "label": "Thermal",
+    "tags": ["sequential", "temperature"],
+    "colors": [
+      "#042333",
+      "#2c3395",
+      "#744796",
+      "#b15f82",
+      "#eb7958",
+      "#fbb43d",
+      "#e8fa5b"
+    ]
+  },
+  "haline": {
+    "label": "Haline",
+    "tags": ["sequential", "salinity"],
+    "colors": [
+      "#2a186c",
+      "#17568b",
+      "#1a7e8f",
+      "#22a785",
+      "#55c666",
+      "#aadc32",
+      "#fde333"
+    ]
+  },
+  "solar": {
+    "label": "Solar",
+    "tags": ["sequential", "irradiance"],
+    "colors": [
+      "#330f0b",
+      "#6b2313",
+      "#a83c12",
+      "#d6621a",
+      "#f3951e",
+      "#f7c741",
+      "#f9f871"
+    ]
+  },
+  "ice": {
+    "label": "Ice",
+    "tags": ["sequential"],
+    "colors": [
+      "#040d1a",
+      "#123365",
+      "#1c5f9e",
+      "#2b8ece",
+      "#62bde3",
+      "#aaddf2",
+      "#f2faff"
+    ]
+  },
+  "deep": {
+    "label": "Deep",
+    "tags": ["sequential", "depth"],
+    "colors": [
+      "#fdfecc",
+      "#c8e59b",
+      "#74c8a3",
+      "#3194b0",
+      "#2a5b8e",
+      "#281a5e",
+      "#0c0820"
+    ]
+  },
+  "rdylbu": {
+    "label": "RdYlBu",
+    "tags": ["diverging"],
+    "colors": [
+      "#3288bd",
+      "#66c2a5",
+      "#abdda4",
+      "#e6f598",
+      "#fee08b",
+      "#fdae61",
+      "#f46d43",
+      "#d53e4f"
+    ]
+  },
+  "dense": {
+    "label": "Dense",
+    "tags": ["sequential"],
+    "colors": [
+      "#e6f1f1",
+      "#92c4ca",
+      "#44929a",
+      "#20627a",
+      "#1a3c6a",
+      "#211a50",
+      "#0d0621"
+    ]
+  },
+  "algae": {
+    "label": "Algae",
+    "tags": ["sequential", "biology", "log"],
+    "colors": [
+      "#d7f9d0",
+      "#a2d595",
+      "#64b463",
+      "#129450",
+      "#126e45",
+      "#1a482f",
+      "#122414"
+    ]
+  },
+  "matter": {
+    "label": "Matter",
+    "tags": ["sequential", "biology"],
+    "colors": [
+      "#fdfecc",
+      "#f2c98a",
+      "#e07c4e",
+      "#bc3754",
+      "#8d1a6d",
+      "#51156b",
+      "#1c0c3f"
+    ]
+  },
+  "turbid": {
+    "label": "Turbid",
+    "tags": ["sequential", "biology", "log"],
+    "colors": [
+      "#e9f5a0",
+      "#c8c86e",
+      "#a09845",
+      "#786031",
+      "#533324",
+      "#341423",
+      "#150d17"
+    ]
+  },
+  "speed": {
+    "label": "Speed",
+    "tags": ["sequential", "velocity"],
+    "colors": [
+      "#fcfea4",
+      "#d5e429",
+      "#94c63e",
+      "#52a657",
+      "#2d8169",
+      "#1d5b6d",
+      "#0d3361"
+    ]
+  },
+  "amp": {
+    "label": "Amp",
+    "tags": ["sequential"],
+    "colors": [
+      "#f2f2f2",
+      "#c0b8db",
+      "#9180b6",
+      "#6c4e9e",
+      "#4e2e83",
+      "#32185d",
+      "#110a35"
+    ]
+  },
+  "balance": {
+    "label": "Balance",
+    "tags": ["diverging"],
+    "colors": [
+      "#181c43",
+      "#3066af",
+      "#9bbcdd",
+      "#f2f2f2",
+      "#e07d53",
+      "#b13626",
+      "#2c0b0e"
+    ]
+  },
+  "delta": {
+    "label": "Delta",
+    "tags": ["diverging"],
+    "colors": [
+      "#0e3f31",
+      "#20877b",
+      "#99d4c1",
+      "#f2f2f2",
+      "#a1b0d4",
+      "#3c5b9e",
+      "#0d1938"
+    ]
+  },
+  "curl": {
+    "label": "Curl",
+    "tags": ["diverging"],
+    "colors": [
+      "#152237",
+      "#2471b3",
+      "#8dbac4",
+      "#f2f2f2",
+      "#c79f84",
+      "#a63827",
+      "#270b17"
+    ]
+  },
+  "gray": {
+    "label": "Gray",
+    "tags": ["sequential"],
+    "colors": [
+      "#000000",
+      "#252525",
+      "#4d4d4d",
+      "#7a7a7a",
+      "#a8a8a8",
+      "#d4d4d4",
+      "#ffffff"
+    ]
+  }
+}

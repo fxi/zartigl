@@ -1,3 +1,59 @@
+import palettesJson from "./palettes.json";
+
+export type ColorRampInput =
+  | string                      // palette ID → look up palettes.json
+  | string[]                    // hex array → evenly-spaced stops
+  | Record<number, string>;     // stops map → current API
+
+export interface PaletteMeta {
+  id: string;
+  label: string;
+  tags: string[];
+  colors: string[];
+}
+
+type PalettesJson = Record<string, { label: string; tags: string[]; colors: string[] }>;
+
+function colorsToStops(colors: string[]): Record<number, string> {
+  const stops: Record<number, string> = {};
+  const last = colors.length - 1;
+  colors.forEach((hex, i) => {
+    stops[last === 0 ? 0 : i / last] = hex;
+  });
+  return stops;
+}
+
+export function resolveColorRamp(
+  input: ColorRampInput,
+  options?: { reverse?: boolean },
+): Record<number, string> {
+  const palettes = palettesJson as PalettesJson;
+
+  if (typeof input === "string") {
+    const entry = palettes[input];
+    if (!entry) {
+      throw new Error(
+        `Palette "${input}" not found. Available palettes: ${Object.keys(palettes).join(", ")}`,
+      );
+    }
+    const colors = options?.reverse ? [...entry.colors].reverse() : entry.colors;
+    return colorsToStops(colors);
+  }
+
+  if (Array.isArray(input)) {
+    const colors = options?.reverse ? [...input].reverse() : input;
+    return colorsToStops(colors);
+  }
+
+  // Record<number, string> — return as-is (reverse not applicable to arbitrary stops)
+  return input;
+}
+
+export function getPalettes(): PaletteMeta[] {
+  const palettes = palettesJson as PalettesJson;
+  return Object.entries(palettes).map(([id, entry]) => ({ id, ...entry }));
+}
+
 export function createShader(
   gl: WebGLRenderingContext,
   type: number,
@@ -118,9 +174,9 @@ const DEFAULT_COLOR_RAMP: Record<number, string> = {
 
 export function createColorRampTexture(
   gl: WebGLRenderingContext,
-  ramp?: Record<number, string>,
+  ramp?: ColorRampInput,
 ): WebGLTexture {
-  const colors = ramp ?? DEFAULT_COLOR_RAMP;
+  const colors = ramp != null ? resolveColorRamp(ramp) : DEFAULT_COLOR_RAMP;
   const canvas = document.createElement("canvas");
   canvas.width = 256;
   canvas.height = 1;

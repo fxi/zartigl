@@ -26,6 +26,12 @@ export interface ParticleLayerOptions {
   depth?: number;
   /** [lowZoom, highZoom] breakpoints for zoom-weighted params. Default [2, 12]. */
   zoomRange?: [number, number];
+  /** Global layer opacity [0, 1]. Default 1.0. */
+  opacity?: number;
+  /** Logarithmic speed normalization. Default false. */
+  logScale?: boolean;
+  /** Vibrance adjustment [-1, 1]. Default 0.0. */
+  vibrance?: number;
 }
 
 export interface ZarrArrayMeta {
@@ -88,4 +94,12 @@ export interface VelocityData {
   bounds: { west: number; south: number; east: number; north: number };
   /** True when latitude rows are stored north-to-south (needs GL Y-flip). */
   latDescending?: boolean;
+}
+
+export interface FieldMeta {
+  min: number;
+  max: number;
+  unit: string;
+  time: string;
+  depth?: number;
 }

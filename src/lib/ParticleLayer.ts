@@ -3,11 +3,21 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { ParticleLayerOptions, ZoomWeighted } from "./types.js";
+import type { ParticleLayerOptions, ZoomWeighted, FieldMeta } from "./types.js";
 import { saveGLState, restoreGLState } from "./gl-util.js";
+import type { ColorRampInput } from "./gl-util.js";
 import { ParticleSimulation } from "./ParticleSimulation.js";
+import type { RenderMode } from "./ParticleSimulation.js";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField.js";
 import { ZarrSource } from "./ZarrSource.js";
+
+// ── Minimal event emitter ────────────────────────────────────────────
+
+type LayerEventMap = {
+  loading: () => void;
+  loaded: (meta: FieldMeta) => void;
+  error: (err: Error) => void;
+};
 
 /**
  * Convert latitude to Mercator Y in [0,1] range.
@@ -54,6 +64,8 @@ export class ParticleLayer implements CustomLayerInterface {
   private moveStartHandler: (() => void) | null = null;
   private moveEndHandler: (() => void) | null = null;
 
+  private listeners: Map<string, Set<Function>> = new Map();
+
   constructor(options: ParticleLayerOptions) {
     this.id = options.id;
 
@@ -75,6 +87,9 @@ export class ParticleLayer implements CustomLayerInterface {
       dropRate: options.dropRate ?? 0.003,
       dropRateBump: options.dropRateBump ?? 0.01,
       colorRamp: options.colorRamp,
+      opacity: options.opacity ?? 1.0,
+      logScale: options.logScale ?? false,
+      vibrance: options.vibrance ?? 0.0,
     });
   }
 
@@ -116,6 +131,7 @@ export class ParticleLayer implements CustomLayerInterface {
   private async loadViewportVelocity(): Promise<void> {
     if (this.loading || !this.map) return;
     this.loading = true;
+    this.emit('loading');
 
     try {
       const bounds = this.map.getBounds();
@@ -256,10 +272,29 @@ export class ParticleLayer implements CustomLayerInterface {
       );
 
       this.velocityField.update(velocityData);
+
+      // Compute field meta and emit 'loaded'
+      const maxSpeed = Math.sqrt(
+        Math.max(velocityData.uMin ** 2, velocityData.uMax ** 2) +
+        Math.max(velocityData.vMin ** 2, velocityData.vMax ** 2),
+      );
+      const timeStr =
+        typeof this.time === "string"
+          ? this.time
+          : new Date(this.time).toISOString();
+      this.emit('loaded', {
+        min: 0,
+        max: maxSpeed,
+        unit: 'm/s',
+        time: timeStr,
+        depth: this.depth,
+      });
+
       this.map?.triggerRepaint();
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         console.error("[zartigl] Failed to load velocity:", err);
+        this.emit('error', err instanceof Error ? err : new Error(String(err)));
       }
     } finally {
       this.loading = false;
@@ -372,13 +407,11 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setTime(time: string | number): void {
     this.time = time;
-    this.simulation.resetParticles();
     this.loadViewportVelocity();
   }
 
   setDepth(depth: number): void {
     this.depth = depth;
-    this.simulation.resetParticles();
     this.loadViewportVelocity();
   }
 
@@ -408,7 +441,48 @@ export class ParticleLayer implements CustomLayerInterface {
     this.zoomRange = range;
   }
 
-  setColorRamp(ramp: Record<number, string>): void {
-    this.simulation.setColorRamp(ramp);
+  setColorRamp(ramp: ColorRampInput): void {
+    // ParticleSimulation.setColorRamp delegates to createColorRampTexture which accepts ColorRampInput.
+    // The cast is safe: ColorRampInput is a superset of Record<number, string> here.
+    this.simulation.setColorRamp(ramp as unknown as Record<number, string>);
+  }
+
+  setRenderMode(mode: RenderMode): void {
+    this.simulation.setRenderMode(mode);
+  }
+
+  setOpacity(v: number): void {
+    this.simulation.setOpacity(v);
+  }
+
+  setLogScale(v: boolean): void {
+    this.simulation.setLogScale(v);
+  }
+
+  setVibrance(v: number): void {
+    this.simulation.setVibrance(v);
+  }
+
+  on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event)!.add(handler);
+    return this;
+  }
+
+  off<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
+    this.listeners.get(event)?.delete(handler);
+    return this;
+  }
+
+  private emit<K extends keyof LayerEventMap>(
+    event: K,
+    ...args: Parameters<LayerEventMap[K]>
+  ): void {
+    const handlers = this.listeners.get(event);
+    if (handlers) {
+      for (const h of handlers) {
+        (h as Function)(...args);
+      }
+    }
   }
 }

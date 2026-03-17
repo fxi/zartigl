@@ -1,7 +1,9 @@
 import maplibregl from "maplibre-gl";
 import { Pane } from "tweakpane";
 import type { BindingApi, FolderApi } from "@tweakpane/core";
-import { ParticleLayer } from "../lib/index.js";
+import { ParticleLayer, getPalettes } from "../lib/index.js";
+import type { RenderMode } from "../lib/ParticleSimulation.js";
+import type { FieldMeta } from "../lib/index.js";
 
 // ── Catalog types ────────────────────────────────────────────────────
 
@@ -105,9 +107,10 @@ map.on("load", async () => {
 
     // ── Shared mutable state ───────────────────────────────────────
 
-    let layer: ParticleLayer;
+    let layer: ParticleLayer = null!;
     let currentDataset: CatalogDataset;
     let dataFolderChildren: { dispose(): void }[] = [];
+    let currentPaletteId = "rdylbu";
 
     const PARAMS = {
       datasetIndex: 0,
@@ -123,9 +126,9 @@ map.on("load", async () => {
       fadeMax: 0.9315,
       dropRate: 0.003,
       dropRateBump: 0.01,
-      colorLow: "#3288bd",
-      colorMid: "#fdae61",
-      colorHigh: "#d53e4f",
+      opacity: 1.0,
+      logScale: false,
+      vibrance: 0.0,
     };
 
     // ── Info panel ─────────────────────────────────────────────────
@@ -231,6 +234,11 @@ map.on("load", async () => {
 
     // ── switchDataset ──────────────────────────────────────────────
 
+    // Holder so switchDataset can attach event listeners defined later.
+    const layerEventHandlers: {
+      onLoaded?: (meta: FieldMeta) => void;
+    } = {};
+
     function switchDataset(dataset: CatalogDataset) {
       if (map.getLayer("particles")) map.removeLayer("particles");
 
@@ -263,8 +271,18 @@ map.on("load", async () => {
         fadeOpacity: [PARAMS.fadeMin, PARAMS.fadeMax],
         dropRate: PARAMS.dropRate,
         dropRateBump: PARAMS.dropRateBump,
+        opacity: PARAMS.opacity,
+        logScale: PARAMS.logScale,
+        vibrance: PARAMS.vibrance,
       });
+
+      // Attach event listeners defined later in this closure
+      if (layerEventHandlers.onLoaded) {
+        layer.on('loaded', layerEventHandlers.onLoaded);
+      }
+
       map.addLayer(layer);
+      layer.setColorRamp(currentPaletteId);
 
       rebuildDataFolder(dataset);
       updateInfo();
@@ -341,57 +359,118 @@ map.on("load", async () => {
       })
       .on("change", () => layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]));
 
-    // ── Colors folder ─────────────────────────────────────────────
+    // ── Render Mode folder ────────────────────────────────────────
 
-    const colorsFolder = pane.addFolder({ title: "Colors" });
+    let currentRenderMode: RenderMode = 'raster+particles';
 
-    function updateColorRamp() {
-      layer.setColorRamp({
-        0.0: PARAMS.colorLow,
-        0.5: PARAMS.colorMid,
-        1.0: PARAMS.colorHigh,
+    const renderModeFolder = pane.addFolder({ title: "Render Mode" });
+    const renderModes: RenderMode[] = ['raster', 'particles', 'raster+particles'];
+    const renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
+
+    const renderModeBtnContainer = document.createElement("div");
+    renderModeBtnContainer.className = "render-mode-btns";
+
+    for (const mode of renderModes) {
+      const btn = document.createElement("button");
+      btn.textContent = mode;
+      btn.className = "render-mode-btn" + (mode === currentRenderMode ? " active" : "");
+      btn.addEventListener("click", () => {
+        currentRenderMode = mode;
+        layer.setRenderMode(mode);
+        for (const entry of renderModeButtons) {
+          entry.btn.classList.toggle("active", entry.mode === mode);
+        }
       });
-      drawLegend();
+      renderModeButtons.push({ mode, btn });
+      renderModeBtnContainer.appendChild(btn);
     }
 
-    colorsFolder
-      .addBinding(PARAMS, "colorLow", { label: "slow" })
-      .on("change", updateColorRamp);
-    colorsFolder
-      .addBinding(PARAMS, "colorMid", { label: "mid" })
-      .on("change", updateColorRamp);
-    colorsFolder
-      .addBinding(PARAMS, "colorHigh", { label: "fast" })
-      .on("change", updateColorRamp);
+    renderModeFolder.element.appendChild(renderModeBtnContainer);
 
-    // ── Legend (below pane) ───────────────────────────────────────
+    // ── Palette folder ────────────────────────────────────────────
 
-    const legendDiv = document.createElement("div");
-    legendDiv.id = "legend";
+    const palettes = getPalettes();
+    const paletteFolder = pane.addFolder({ title: "Palette" });
 
-    const legendCanvas = document.createElement("canvas");
-    legendCanvas.width = 200;
-    legendCanvas.height = 10;
-
-    const legendLabels = document.createElement("div");
-    legendLabels.className = "legend-labels";
-    legendLabels.innerHTML = "<span>slow</span><span>fast</span>";
-
-    legendDiv.appendChild(legendCanvas);
-    legendDiv.appendChild(legendLabels);
-    pane.element.appendChild(legendDiv);
-
-    function drawLegend() {
-      const ctx = legendCanvas.getContext("2d")!;
-      const grad = ctx.createLinearGradient(0, 0, legendCanvas.width, 0);
-      grad.addColorStop(0, PARAMS.colorLow);
-      grad.addColorStop(0.5, PARAMS.colorMid);
-      grad.addColorStop(1, PARAMS.colorHigh);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, legendCanvas.width, legendCanvas.height);
+    const paletteSelect = document.createElement("select");
+    paletteSelect.className = "palette-select";
+    for (const p of palettes) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.label;
+      if (p.id === currentPaletteId) opt.selected = true;
+      paletteSelect.appendChild(opt);
     }
 
-    drawLegend();
+    paletteSelect.addEventListener("change", () => {
+      currentPaletteId = paletteSelect.value;
+      layer.setColorRamp(currentPaletteId);
+      updateStandaloneLegendGradient();
+    });
+
+    paletteFolder.element.appendChild(paletteSelect);
+
+    paletteFolder
+      .addBinding(PARAMS, "opacity", { min: 0, max: 1, step: 0.01, label: "opacity" })
+      .on("change", (ev) => layer.setOpacity(ev.value));
+    paletteFolder
+      .addBinding(PARAMS, "vibrance", { min: -1, max: 1, step: 0.01, label: "vibrance" })
+      .on("change", (ev) => layer.setVibrance(ev.value));
+    paletteFolder
+      .addBinding(PARAMS, "logScale", { label: "log scale" })
+      .on("change", (ev) => layer.setLogScale(ev.value));
+
+    // ── Standalone legend (bottom-center DOM element) ─────────────
+
+    const standaloneLegend = document.createElement("div");
+    standaloneLegend.id = "standalone-legend";
+
+    const legendGradientBar = document.createElement("div");
+    legendGradientBar.className = "legend-gradient-bar";
+
+    const legendMetaRow = document.createElement("div");
+    legendMetaRow.className = "legend-meta-row";
+
+    const legendMinLabel = document.createElement("span");
+    legendMinLabel.className = "legend-min";
+    legendMinLabel.textContent = "0";
+
+    const legendUnitLabel = document.createElement("span");
+    legendUnitLabel.className = "legend-unit";
+    legendUnitLabel.textContent = "m/s";
+
+    const legendMaxLabel = document.createElement("span");
+    legendMaxLabel.className = "legend-max";
+    legendMaxLabel.textContent = "";
+
+    legendMetaRow.appendChild(legendMinLabel);
+    legendMetaRow.appendChild(legendUnitLabel);
+    legendMetaRow.appendChild(legendMaxLabel);
+
+    standaloneLegend.appendChild(legendGradientBar);
+    standaloneLegend.appendChild(legendMetaRow);
+    document.body.appendChild(standaloneLegend);
+
+    function updateStandaloneLegendGradient() {
+      const palette = palettes.find((p) => p.id === currentPaletteId);
+      if (palette) {
+        legendGradientBar.style.background = `linear-gradient(to right, ${palette.colors.join(", ")})`;
+      }
+    }
+
+    function updateStandaloneLegendMeta(meta: FieldMeta) {
+      legendMinLabel.textContent = meta.min.toFixed(2);
+      legendMaxLabel.textContent = meta.max.toFixed(2);
+      legendUnitLabel.textContent = meta.unit;
+    }
+
+    // Register handler so switchDataset (defined earlier) attaches it on each new layer.
+    layerEventHandlers.onLoaded = updateStandaloneLegendMeta;
+    // Also attach to the already-created first layer (switchDataset was called above).
+    layer.on('loaded', updateStandaloneLegendMeta);
+
+    updateStandaloneLegendGradient();
+
   } catch (err) {
     console.error("Failed to initialize:", err);
   }

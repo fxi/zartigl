@@ -65,3 +65,102 @@ body {
   display: flex;
   justify-content: space-between;
 }
+
+/* Render mode buttons (inside Tweakpane folder) */
+.render-mode-btns {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  flex-wrap: wrap;
+}
+
+.render-mode-btn {
+  flex: 1;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #999;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.render-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ccc;
+}
+
+.render-mode-btn.active {
+  background: rgba(100, 180, 100, 0.2);
+  border-color: rgba(100, 180, 100, 0.5);
+  color: #6a6;
+}
+
+/* Palette select (inside Tweakpane folder) */
+.palette-select {
+  width: 100%;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #ccc;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 11px;
+  cursor: pointer;
+  margin: 6px 8px;
+  box-sizing: border-box;
+  width: calc(100% - 16px);
+}
+
+.palette-select:focus {
+  outline: none;
+  border-color: rgba(100, 180, 100, 0.5);
+}
+
+/* Standalone legend — bottom-center */
+#standalone-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: 320px;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  color: #999;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.legend-gradient-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 2px;
+  margin-bottom: 4px;
+  background: linear-gradient(to right, #3288bd, #fdae61, #d53e4f);
+}
+
+.legend-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.legend-min,
+.legend-max {
+  color: #aaa;
+}
+
+.legend-unit {
+  color: #6a6;
+  font-size: 10px;
+}
