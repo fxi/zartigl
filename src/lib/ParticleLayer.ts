@@ -56,13 +56,14 @@ export class ParticleLayer implements CustomLayerInterface {
   private variableV: string;
   private time: string | number;
   private depth: number;
+  private scalarMode: boolean;
+  private scalarUnit: string;
 
   private initialized = false;
   private loading = false;
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveStartHandler: (() => void) | null = null;
-  private moveEndHandler: (() => void) | null = null;
 
   private listeners: Map<string, Set<Function>> = new Map();
 
@@ -73,6 +74,8 @@ export class ParticleLayer implements CustomLayerInterface {
     this.variableV = options.variableV ?? "vo";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
+    this.scalarMode = options.scalarMode ?? false;
+    this.scalarUnit = options.scalarUnit ?? "m/s";
 
     this.speedFactorParam = options.speedFactor ?? 0.25;
     this.fadeOpacityParam = options.fadeOpacity ?? 0.996;
@@ -108,13 +111,6 @@ export class ParticleLayer implements CustomLayerInterface {
     this.moveStartHandler = () => this.simulation.clearState();
     map.on("movestart", this.moveStartHandler);
 
-    // On settle: clear trail history, randomise particle positions, reload velocity.
-    this.moveEndHandler = () => {
-      this.simulation.clearState();
-      this.simulation.resetParticles();
-      this.loadViewportVelocity();
-    };
-    map.on("moveend", this.moveEndHandler);
   }
 
   private async initAsync(): Promise<void> {
@@ -198,33 +194,32 @@ export class ParticleLayer implements CustomLayerInterface {
         };
       });
 
-      const vPromises = uChunkInfos.map(async (info) => {
-        const indices: number[] = [];
-        indices[timeDim] = info.timeIdx;
-        indices[depthDim] = info.depthIdx;
-        indices[latDim] = info.latIdx;
-        indices[lonDim] = info.lonIdx;
-        const data = await this.zarrSource.fetchChunk(
-          this.variableV,
-          indices,
-        );
-        const lonChunkSize = this.zarrSource.getChunkShape(this.variableV)[lonDim];
-        return {
-          data,
-          latStart:
-            info.latIdx * this.zarrSource.getChunkShape(this.variableV)[latDim],
-          lonStart:
-            info.lonIdx * lonChunkSize,
-          latSize: info.latSize,
-          lonSize: info.lonSize,
-          lonChunkSize,
-        };
-      });
+      const uChunks = await Promise.all(uPromises);
 
-      const [uChunks, vChunks] = await Promise.all([
-        Promise.all(uPromises),
-        Promise.all(vPromises),
-      ]);
+      const vChunks = this.scalarMode
+        ? []
+        : await Promise.all(uChunkInfos.map(async (info) => {
+            const indices: number[] = [];
+            indices[timeDim] = info.timeIdx;
+            indices[depthDim] = info.depthIdx;
+            indices[latDim] = info.latIdx;
+            indices[lonDim] = info.lonIdx;
+            const data = await this.zarrSource.fetchChunk(
+              this.variableV,
+              indices,
+            );
+            const lonChunkSize = this.zarrSource.getChunkShape(this.variableV)[lonDim];
+            return {
+              data,
+              latStart:
+                info.latIdx * this.zarrSource.getChunkShape(this.variableV)[latDim],
+              lonStart:
+                info.lonIdx * lonChunkSize,
+              latSize: info.latSize,
+              lonSize: info.lonSize,
+              lonChunkSize,
+            };
+          }));
 
       // Compute the pixel extent covered by the fetched chunks only.
       // Using the full dataset shape would leave NaN holes outside the
@@ -269,26 +264,27 @@ export class ParticleLayer implements CustomLayerInterface {
         fetchedWidth,
         dataGeoBounds,
         latDescending,
+        this.scalarMode,
       );
 
       this.velocityField.update(velocityData);
+      this.simulation.setScalarMode(velocityData.scalarMode ?? false);
 
       // Compute field meta and emit 'loaded'
-      const maxSpeed = Math.sqrt(
-        Math.max(velocityData.uMin ** 2, velocityData.uMax ** 2) +
-        Math.max(velocityData.vMin ** 2, velocityData.vMax ** 2),
-      );
       const timeStr =
         typeof this.time === "string"
           ? this.time
           : new Date(this.time).toISOString();
-      this.emit('loaded', {
-        min: 0,
-        max: maxSpeed,
-        unit: 'm/s',
-        time: timeStr,
-        depth: this.depth,
-      });
+      const meta: FieldMeta = this.scalarMode
+        ? { min: velocityData.uMin, max: velocityData.uMax, unit: this.scalarUnit, time: timeStr, depth: this.depth }
+        : (() => {
+            const maxSpeed = Math.sqrt(
+              Math.max(velocityData.uMin ** 2, velocityData.uMax ** 2) +
+              Math.max(velocityData.vMin ** 2, velocityData.vMax ** 2),
+            );
+            return { min: 0, max: maxSpeed, unit: 'm/s', time: timeStr, depth: this.depth };
+          })();
+      this.emit('loaded', meta);
 
       this.map?.triggerRepaint();
     } catch (err) {
@@ -374,7 +370,6 @@ export class ParticleLayer implements CustomLayerInterface {
   onRemove(): void {
     if (this.map) {
       if (this.moveStartHandler) this.map.off("movestart", this.moveStartHandler);
-      if (this.moveEndHandler) this.map.off("moveend", this.moveEndHandler);
     }
     this.zarrSource.cancelAll();
     this.simulation.destroy();
@@ -461,6 +456,11 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.simulation.setVibrance(v);
+  }
+
+  setScalarVariable(varName: string): void {
+    this.variableU = varName;
+    this.loadViewportVelocity();
   }
 
   on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {

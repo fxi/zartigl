@@ -168,8 +168,39 @@ map.on("load", async () => {
     let currentPaletteId = "rdylbu";
     let currentRenderMode: RenderMode = "raster+particles";
 
+    let playerInterval: ReturnType<typeof setInterval> | null = null;
+    let isPlaying = false;
+    let playBtn: HTMLButtonElement | null = null;
+    let timeLabelBinding: BindingApi;
+    let timeSliderBinding: BindingApi;
+
     // Pending hash state — consumed on first matching switchDataset call
     let pendingHashState = loadHashState();
+
+    function stopPlayer() {
+      if (playerInterval !== null) { clearInterval(playerInterval); playerInterval = null; }
+      isPlaying = false;
+      if (playBtn) { playBtn.textContent = "▶ play"; playBtn.classList.remove("playing"); }
+    }
+
+    function startPlayer() {
+      if (isPlaying) return;
+      isPlaying = true;
+      if (playBtn) { playBtn.textContent = "⏸ pause"; playBtn.classList.add("playing"); }
+      const ds = currentDataset;
+      const timeMin = ds.dimensions.time.min ?? 0;
+      const timeStep = ds.dimensions.time.step ?? 21600000;
+      const timeSize = ds.dimensions.time.size ?? 1;
+      playerInterval = setInterval(() => {
+        PARAMS.timeIndex = (PARAMS.timeIndex + 1) % timeSize;
+        const ms = timeMin + PARAMS.timeIndex * timeStep;
+        PARAMS.timeLabel = formatTime(ms);
+        timeLabelBinding.refresh();
+        timeSliderBinding.refresh();
+        layer.setTime(ms);
+        updateInfo();
+      }, 500);
+    }
 
     // DOM element refs — assigned when UI is built, used by refreshUI()
     let paletteSelectEl: HTMLSelectElement | null = null;
@@ -190,6 +221,7 @@ map.on("load", async () => {
       opacity: 1.0,
       logScale: false,
       vibrance: 0.0,
+      scalarVariable: "",
     };
 
     // ── Legend DOM (early init — needed by refreshUI) ──────────────
@@ -272,8 +304,10 @@ map.on("load", async () => {
 
     function refreshUI() {
       if (paletteSelectEl) paletteSelectEl.value = currentPaletteId;
+      const isScalar = currentDataset?.type === "scalar";
       for (const { mode, btn } of renderModeButtons) {
         btn.classList.toggle("active", mode === currentRenderMode);
+        btn.disabled = isScalar && mode !== "raster";
       }
       pane.refresh();
       updateStandaloneLegendGradient();
@@ -332,7 +366,7 @@ map.on("load", async () => {
       const timeStep = timeDim.step ?? 21600000;
       const timeSize = timeDim.size ?? 1;
 
-      const timeSlider = dataFolder
+      timeSliderBinding = dataFolder
         .addBinding(PARAMS, "timeIndex", {
           min: 0,
           max: timeSize - 1,
@@ -340,6 +374,7 @@ map.on("load", async () => {
           label: "time",
         })
         .on("change", (ev) => {
+          stopPlayer();
           const ms = timeMin + ev.value * timeStep;
           PARAMS.timeLabel = formatTime(ms);
           timeLabelBinding.refresh();
@@ -347,12 +382,23 @@ map.on("load", async () => {
           updateInfo();
         });
 
-      const timeLabelBinding = dataFolder.addBinding(PARAMS, "timeLabel", {
+      timeLabelBinding = dataFolder.addBinding(PARAMS, "timeLabel", {
         readonly: true,
         label: "",
       }) as BindingApi;
 
-      dataFolderChildren.push(timeSlider, timeLabelBinding);
+      dataFolderChildren.push(timeSliderBinding, timeLabelBinding);
+
+      const playerContainer = document.createElement("div");
+      playerContainer.className = "player-btns";
+      const btn = document.createElement("button");
+      btn.className = "player-btn";
+      btn.textContent = "▶ play";
+      btn.addEventListener("click", () => (isPlaying ? stopPlayer() : startPlayer()));
+      playBtn = btn;
+      playerContainer.appendChild(btn);
+      dataFolder.element.appendChild(playerContainer);
+      dataFolderChildren.push({ dispose() { stopPlayer(); playerContainer.remove(); playBtn = null; } });
 
       const vertEntry = getVerticalDim(dataset);
       if (vertEntry) {
@@ -376,6 +422,17 @@ map.on("load", async () => {
 
         dataFolderChildren.push(vertBinding);
       }
+
+      if (dataset.type === "scalar") {
+        const varKeys = Object.keys(dataset.variables);
+        if (varKeys.length > 1) {
+          const varOptions = varKeys.map(k => ({ text: k, value: k }));
+          const varBinding = dataFolder
+            .addBinding(PARAMS, "scalarVariable", { options: varOptions, label: "variable" })
+            .on("change", (ev) => { layer.setScalarVariable(ev.value); updateInfo(); });
+          dataFolderChildren.push(varBinding);
+        }
+      }
     }
 
     // ── switchDataset ──────────────────────────────────────────────
@@ -383,13 +440,18 @@ map.on("load", async () => {
     const layerEventHandlers: { onLoaded?: (meta: FieldMeta) => void } = {};
 
     function switchDataset(dataset: CatalogDataset) {
+      stopPlayer();
       if (map.getLayer("particles")) map.removeLayer("particles");
 
       currentDataset = dataset;
 
+      const isScalar = dataset.type === "scalar";
       const varKeys = Object.keys(dataset.variables);
-      const uVar = varKeys[0] ?? "uo";
-      const vVar = varKeys[1] ?? "vo";
+      const uVar = isScalar
+        ? (dataset.defaults?.selectedVariable ?? varKeys[0] ?? "scalar")
+        : (varKeys[0] ?? "uo");
+      const vVar = isScalar ? undefined : (varKeys[1] ?? "vo");
+      if (isScalar) PARAMS.scalarVariable = uVar;
 
       const timeDim = dataset.dimensions.time;
       const timeMin = timeDim.min ?? 0;
@@ -422,6 +484,8 @@ map.on("load", async () => {
         PARAMS.vertical = vertValues[0] ?? 0;
       }
 
+      if (isScalar) currentRenderMode = "raster";
+
       layer = new ParticleLayer({
         id: "particles",
         source: dataset.zarr_url,
@@ -437,6 +501,8 @@ map.on("load", async () => {
         opacity: PARAMS.opacity,
         logScale: PARAMS.logScale,
         vibrance: PARAMS.vibrance,
+        scalarMode: isScalar,
+        scalarUnit: isScalar ? (dataset.variables[uVar]?.units ?? "") : undefined,
       });
 
       if (layerEventHandlers.onLoaded) {
@@ -447,18 +513,15 @@ map.on("load", async () => {
       layer.setColorRamp(currentPaletteId);
       layer.setRenderMode(currentRenderMode);
       rebuildDataFolder(dataset);
+
+      const hide = isScalar ? "none" : "";
+      particlesFolder.element.style.display = hide;
+      motionFolder.element.style.display = hide;
+      trailFolder.element.style.display = hide;
+
       updateInfo();
       refreshUI();
     }
-
-    // ── Initial dataset (from hash or first) ───────────────────────
-
-    const initialIdx = Math.min(
-      Math.max(pendingHashState?.d ?? 0, 0),
-      catalog.datasets.length - 1,
-    );
-    PARAMS.datasetIndex = initialIdx;
-    switchDataset(catalog.datasets[initialIdx]);
 
     // ── Particles folder ──────────────────────────────────────────
 
@@ -536,6 +599,15 @@ map.on("load", async () => {
         layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
       );
 
+    // ── Initial dataset (from hash or first) ───────────────────────
+
+    const initialIdx = Math.min(
+      Math.max(pendingHashState?.d ?? 0, 0),
+      catalog.datasets.length - 1,
+    );
+    PARAMS.datasetIndex = initialIdx;
+    switchDataset(catalog.datasets[initialIdx]);
+
     // ── Render Mode folder ────────────────────────────────────────
 
     const renderModeFolder = pane.addFolder({ title: "Render Mode" });
@@ -600,22 +672,29 @@ map.on("load", async () => {
     const exportFolder = pane.addFolder({ title: "Export", expanded: false });
 
     exportFolder.addButton({ title: "Copy settings" }).on("click", () => {
-      const yaml = [
-        `${currentDataset.id}:`,
-        `  palette: ${currentPaletteId}`,
-        `  renderMode: ${currentRenderMode}`,
-        `  particleDensity: ${PARAMS.particleDensity}`,
-        `  speedMin: ${PARAMS.speedMin}`,
-        `  speedMax: ${PARAMS.speedMax}`,
-        `  fadeMin: ${PARAMS.fadeMin}`,
-        `  fadeMax: ${PARAMS.fadeMax}`,
-        `  dropRate: ${PARAMS.dropRate}`,
-        `  dropRateBump: ${PARAMS.dropRateBump}`,
-        `  opacity: ${PARAMS.opacity}`,
-        `  logScale: ${PARAMS.logScale}`,
-        `  vibrance: ${PARAMS.vibrance}`,
-      ].join("\n");
-      navigator.clipboard.writeText(yaml).then(() => showToast("Copied!"));
+      const isScalarDs = currentDataset.type === "scalar";
+      const lines = [
+        `  - id: ${currentDataset.id}`,
+        `    palette: ${currentPaletteId}`,
+        `    renderMode: ${currentRenderMode}`,
+      ];
+      if (!isScalarDs) {
+        lines.push(
+          `    particleDensity: ${PARAMS.particleDensity}`,
+          `    speedMin: ${PARAMS.speedMin}`,
+          `    speedMax: ${PARAMS.speedMax}`,
+          `    fadeMin: ${PARAMS.fadeMin}`,
+          `    fadeMax: ${PARAMS.fadeMax}`,
+          `    dropRate: ${PARAMS.dropRate}`,
+          `    dropRateBump: ${PARAMS.dropRateBump}`,
+        );
+      }
+      lines.push(
+        `    opacity: ${PARAMS.opacity}`,
+        `    logScale: ${PARAMS.logScale}`,
+        `    vibrance: ${PARAMS.vibrance}`,
+      );
+      navigator.clipboard.writeText(lines.join("\n")).then(() => showToast("Copied!"));
     });
 
     exportFolder.addButton({ title: "Share view" }).on("click", () => {

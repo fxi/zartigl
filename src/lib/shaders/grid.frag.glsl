@@ -13,6 +13,7 @@ uniform float u_v_max;            // v component physical max (m/s)
 uniform float u_opacity;          // overall opacity of raster layer
 uniform float u_log_scale;        // 0.0 = linear, 1.0 = log normalization
 uniform float u_vibrance;         // vibrance adjustment [-1, 1]
+uniform float u_scalar_mode;      // 0.0 = vector (speed magnitude), 1.0 = scalar (R direct)
 
 varying vec2 v_tex_coord;         // screen UV [0,1]
 
@@ -55,15 +56,17 @@ void main() {
         discard;
     }
 
-    // decode normalized u, v back to physical values
-    float u = mix(u_u_min, u_u_max, sample.r);
-    float v = mix(u_v_min, u_v_max, sample.g);
-
-    // compute speed magnitude
-    float speed = length(vec2(u, v));
-
-    // normalize to [0, 1]
-    float t = clamp((speed - u_field_min) / (u_field_max - u_field_min), 0.0, 1.0);
+    float t;
+    if (u_scalar_mode > 0.5) {
+        // Scalar: R channel is already normalized [0,1] — use directly
+        t = clamp(sample.r, 0.0, 1.0);
+    } else {
+        // Vector: decode physical values, compute speed magnitude
+        float u = mix(u_u_min, u_u_max, sample.r);
+        float v = mix(u_v_min, u_v_max, sample.g);
+        float speed = length(vec2(u, v));
+        t = clamp((speed - u_field_min) / (u_field_max - u_field_min), 0.0, 1.0);
+    }
 
     // optional log scale
     t = mix(t, log(1.0 + t * 9.0) / log(10.0), u_log_scale);

@@ -15,6 +15,7 @@ export class VelocityField {
   vMin = 0;
   vMax = 0;
   geoBounds = { west: -180, south: -90, east: 180, north: 90 };
+  public scalarMode = false;
 
   init(gl: WebGLRenderingContext): void {
     this.gl = gl;
@@ -29,6 +30,7 @@ export class VelocityField {
     const gl = this.gl!;
     const { u, v, width, height, uMin, uMax, vMin, vMax } = data;
 
+    this.scalarMode = data.scalarMode ?? false;
     this.width = width;
     this.height = height;
     this.uMin = uMin;
@@ -47,20 +49,33 @@ export class VelocityField {
       const uVal = u[i];
       const vVal = v[i];
 
-      if (isNaN(uVal) || isNaN(vVal)) {
-        pixels[i * 4] = 0;
-        pixels[i * 4 + 1] = 0;
-        pixels[i * 4 + 2] = 0;
-        pixels[i * 4 + 3] = 0; // no data → mask off
+      if (this.scalarMode) {
+        // Scalar: pack R=normalized value, G=128 (neutral, ignored by shader), A=validity
+        if (isNaN(uVal)) {
+          pixels[i * 4] = 0; pixels[i * 4 + 1] = 0; pixels[i * 4 + 2] = 0; pixels[i * 4 + 3] = 0;
+        } else {
+          pixels[i * 4]   = Math.round(Math.max(0, Math.min(1, (uVal - uMin) / uRange)) * 255);
+          pixels[i * 4 + 1] = 128;
+          pixels[i * 4 + 2] = 0;
+          pixels[i * 4 + 3] = 255;
+        }
       } else {
-        pixels[i * 4] = Math.round(
-          (Math.max(0, Math.min(1, (uVal - uMin) / uRange))) * 255,
-        );
-        pixels[i * 4 + 1] = Math.round(
-          (Math.max(0, Math.min(1, (vVal - vMin) / vRange))) * 255,
-        );
-        pixels[i * 4 + 2] = 0;
-        pixels[i * 4 + 3] = 255; // valid ocean data
+        // Vector: existing logic
+        if (isNaN(uVal) || isNaN(vVal)) {
+          pixels[i * 4] = 0;
+          pixels[i * 4 + 1] = 0;
+          pixels[i * 4 + 2] = 0;
+          pixels[i * 4 + 3] = 0; // no data → mask off
+        } else {
+          pixels[i * 4] = Math.round(
+            (Math.max(0, Math.min(1, (uVal - uMin) / uRange))) * 255,
+          );
+          pixels[i * 4 + 1] = Math.round(
+            (Math.max(0, Math.min(1, (vVal - vMin) / vRange))) * 255,
+          );
+          pixels[i * 4 + 2] = 0;
+          pixels[i * 4 + 3] = 255; // valid ocean data
+        }
       }
     }
 
@@ -161,6 +176,7 @@ export function stitchVelocityChunks(
   totalLon: number,
   geoBounds?: { west: number; south: number; east: number; north: number },
   latDescending?: boolean,
+  scalarMode?: boolean,
 ): VelocityData {
   const u = new Float32Array(totalLat * totalLon).fill(NaN);
   const v = new Float32Array(totalLat * totalLon).fill(NaN);
@@ -216,5 +232,6 @@ export function stitchVelocityChunks(
     vMax,
     bounds: geoBounds ?? { west: -180, south: -90, east: 180, north: 90 },
     latDescending,
+    scalarMode,
   };
 }

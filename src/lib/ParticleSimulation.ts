@@ -35,6 +35,7 @@ export interface SimulationParams {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  scalarMode: boolean;
 }
 
 const DEFAULTS: SimulationParams = {
@@ -46,6 +47,7 @@ const DEFAULTS: SimulationParams = {
   opacity: 1.0,
   logScale: false,
   vibrance: 0.0,
+  scalarMode: false,
 };
 
 export class ParticleSimulation {
@@ -147,6 +149,7 @@ export class ParticleSimulation {
       "u_opacity",
       "u_log_scale",
       "u_vibrance",
+      "u_scalar_mode",
     ]);
 
 
@@ -348,6 +351,7 @@ export class ParticleSimulation {
       gl.uniform1f(this.gridLocs["u_opacity"], this.params.opacity);
       gl.uniform1f(this.gridLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
       gl.uniform1f(this.gridLocs["u_vibrance"], this.params.vibrance);
+      gl.uniform1f(this.gridLocs["u_scalar_mode"], this.params.scalarMode ? 1.0 : 0.0);
 
       // Render grid blended on top of the faded trail screen buffer
       gl.enable(gl.BLEND);
@@ -500,6 +504,10 @@ export class ParticleSimulation {
 
   setVibrance(v: number): void {
     this.params.vibrance = v;
+  }
+
+  setScalarMode(v: boolean): void {
+    this.params.scalarMode = v;
   }
 
   /**

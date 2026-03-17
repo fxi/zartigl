@@ -29,7 +29,7 @@ BASE_CONFIG = Path(__file__).resolve().parent / "base_catalog.yaml"
 
 VISUAL_DEFAULTS_VECTOR = {
     "palette": "rdylbu",
-    "renderMode": "raster+particles",
+    "renderMode": "particles",
     "particleDensity": 0.05,
     "speedMin": 0.01,
     "speedMax": 1.0,
@@ -43,7 +43,7 @@ VISUAL_DEFAULTS_VECTOR = {
 }
 
 VISUAL_DEFAULTS_SCALAR = {
-    "palette": "viridis",
+    "palette": "rdylbu",
     "renderMode": "raster",
     "opacity": 1.0,
     "logScale": False,
@@ -84,8 +84,10 @@ def detect_type_and_variables(svc) -> tuple[str, list[str]]:
     """
     Detect whether this dataset is a vector or scalar field.
 
-    Vector: exactly one variable with 'eastward' in standard_name
-            and exactly one with 'northward' in standard_name.
+    Vector: at least one variable with 'eastward' in standard_name
+            and at least one with 'northward' in standard_name.
+            When multiple candidates exist, prefer the shortest standard_name
+            (fewest qualifiers — e.g. 'eastward_wind' over 'eastward_wind_bias').
     Scalar: everything else.
 
     Returns ("vector", [u_name, v_name]) or ("scalar", [all_var_names]).
@@ -98,12 +100,14 @@ def detect_type_and_variables(svc) -> tuple[str, list[str]]:
         all_names.append(v.short_name)
         sn = (v.standard_name or "").lower()
         if "eastward" in sn:
-            u_candidates.append(v.short_name)
+            u_candidates.append((v.short_name, sn))
         elif "northward" in sn:
-            v_candidates.append(v.short_name)
+            v_candidates.append((v.short_name, sn))
 
-    if len(u_candidates) == 1 and len(v_candidates) == 1:
-        return "vector", [u_candidates[0], v_candidates[0]]
+    if u_candidates and v_candidates:
+        u_name = min(u_candidates, key=lambda x: len(x[1]))[0]
+        v_name = min(v_candidates, key=lambda x: len(x[1]))[0]
+        return "vector", [u_name, v_name]
 
     return "scalar", all_names
 
@@ -166,6 +170,8 @@ def build_dimensions(ref_var) -> dict:
 def build_entry(entry_cfg: dict) -> dict | None:
     dataset_id = entry_cfg["id"]
     yaml_overrides = {k: v for k, v in entry_cfg.items() if k != "id"}
+    forced_u = yaml_overrides.pop("variableU", None)
+    forced_v = yaml_overrides.pop("variableV", None)
     print(f"  Querying {dataset_id} ...")
 
     try:
@@ -197,7 +203,10 @@ def build_entry(entry_cfg: dict) -> dict | None:
 
     print(f"    URL: {svc.uri}")
 
-    dtype, var_names = detect_type_and_variables(svc)
+    if forced_u and forced_v:
+        dtype, var_names = "vector", [forced_u, forced_v]
+    else:
+        dtype, var_names = detect_type_and_variables(svc)
     print(f"    Type: {dtype}, variables: {var_names}")
 
     variables = {}

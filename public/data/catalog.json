@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-17T11:40:45.718274+00:00",
+  "generated": "2026-03-17T18:45:02.246673+00:00",
   "datasets": [
     {
       "id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
@@ -122,118 +122,18 @@
     },
     {
       "id": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
-      "type": "scalar",
+      "type": "vector",
       "product": "WIND_GLO_PHY_L4_NRT_012_004",
       "label": "Global Ocean Hourly Sea Surface Wind and Stress from Scatterometer and Model",
       "zarr_url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr",
       "variables": {
-        "air_density": {
-          "standard_name": "air_density",
-          "units": "kg m-3"
-        },
-        "eastward_stress": {
-          "standard_name": "surface_downward_eastward_stress",
-          "units": "N m-2"
-        },
-        "eastward_stress_bias": {
-          "standard_name": "surface_downward_eastward_stress_bias",
-          "units": "N m-2"
-        },
-        "eastward_stress_sdd": {
-          "standard_name": "surface_downward_eastward_stress_standard_deviation_of_differences",
-          "units": "N m-2"
-        },
         "eastward_wind": {
           "standard_name": "eastward_wind",
           "units": "m s-1"
         },
-        "eastward_wind_bias": {
-          "standard_name": "eastward_wind_bias",
-          "units": "m s-1"
-        },
-        "eastward_wind_sdd": {
-          "standard_name": "eastward_wind_standard_deviation_of_differences",
-          "units": "m s-1"
-        },
-        "northward_stress": {
-          "standard_name": "surface_downward_northward_stress",
-          "units": "N m-2"
-        },
-        "northward_stress_bias": {
-          "standard_name": "surface_downward_northward_stress_bias",
-          "units": "N m-2"
-        },
-        "northward_stress_sdd": {
-          "standard_name": "surface_downward_northward_stress_standard_deviation_of_differences",
-          "units": "N m-2"
-        },
         "northward_wind": {
           "standard_name": "northward_wind",
           "units": "m s-1"
-        },
-        "northward_wind_bias": {
-          "standard_name": "northward_wind_bias",
-          "units": "m s-1"
-        },
-        "northward_wind_sdd": {
-          "standard_name": "northward_wind_standard_deviation_of_differences",
-          "units": "m s-1"
-        },
-        "number_of_observations": {
-          "standard_name": "number_of_observations",
-          "units": "1"
-        },
-        "number_of_observations_divcurl": {
-          "standard_name": "number_of_observations",
-          "units": "1"
-        },
-        "stress_curl": {
-          "standard_name": "vertical_component_of_surface_downward_stress_curl",
-          "units": "N m-3"
-        },
-        "stress_curl_bias": {
-          "standard_name": "vertical_component_of_surface_downward_stress_curl_bias",
-          "units": "N m-3"
-        },
-        "stress_curl_dv": {
-          "standard_name": "vertical_component_of_surface_downward_stress_curl_difference_of_variances",
-          "units": "N2 m-6"
-        },
-        "stress_divergence": {
-          "standard_name": "divergence_of_surface_downward_stress",
-          "units": "N m-3"
-        },
-        "stress_divergence_bias": {
-          "standard_name": "divergence_of_surface_downward_stress_bias",
-          "units": "N m-3"
-        },
-        "stress_divergence_dv": {
-          "standard_name": "divergence_of_surface_downward_stress_difference_of_variances",
-          "units": "N2 m-6"
-        },
-        "wind_curl": {
-          "standard_name": "atmosphere_relative_vorticity",
-          "units": "s-1"
-        },
-        "wind_curl_bias": {
-          "standard_name": "atmosphere_relative_vorticity_bias",
-          "units": "s-1"
-        },
-        "wind_curl_dv": {
-          "standard_name": "atmosphere_relative_vorticity_difference_of_variances",
-          "units": "s-2"
-        },
-        "wind_divergence": {
-          "standard_name": "divergence_of_wind",
-          "units": "s-1"
-        },
-        "wind_divergence_bias": {
-          "standard_name": "divergence_of_wind_bias",
-          "units": "s-1"
-        },
-        "wind_divergence_dv": {
-          "standard_name": "divergence_of_wind_difference_of_variances",
-          "units": "s-2"
         }
       },
       "dimensions": {
@@ -268,17 +168,129 @@
       "defaults": {
         "palette": "rdylbu",
         "renderMode": "particles",
-        "opacity": 0.96,
-        "logScale": true,
-        "vibrance": 0.76,
-        "particleDensity": 0.001,
-        "speedMin": 0.01,
-        "speedMax": 0.51,
-        "fadeMin": 0.9,
-        "fadeMax": 0.9272,
+        "particleDensity": 0.004000000000000002,
+        "speedMin": 0.010000000000000005,
+        "speedMax": 0.07000000000000002,
+        "fadeMin": 0.9174,
+        "fadeMax": 0.9793000000000001,
         "dropRate": 0.005,
-        "dropRateBump": 0.0,
-        "selectedVariable": "air_density"
+        "dropRateBump": 0,
+        "opacity": 0.9,
+        "logScale": true,
+        "vibrance": 1
+      }
+    },
+    {
+      "id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+      "type": "scalar",
+      "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+      "label": "Global Ocean Biogeochemistry Analysis and Forecast",
+      "zarr_url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+      "variables": {
+        "chl": {
+          "standard_name": "mass_concentration_of_chlorophyll_a_in_sea_water",
+          "units": "mg m-3"
+        },
+        "phyc": {
+          "standard_name": "mole_concentration_of_phytoplankton_expressed_as_carbon_in_sea_water",
+          "units": "mmol m-3"
+        }
+      },
+      "dimensions": {
+        "time": {
+          "axis": "t",
+          "size": 1607,
+          "min": 1635724800000.0,
+          "max": 1774483200000.0,
+          "step": 86400000.0,
+          "chunk_size": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        },
+        "depth": {
+          "axis": "z",
+          "values": [
+            5727.91650390625,
+            5274.7841796875,
+            4833.29052734375,
+            4405.22412109375,
+            3992.48388671875,
+            3597.031982421875,
+            3220.8203125,
+            2865.70263671875,
+            2533.336181640625,
+            2225.077880859375,
+            1941.8934326171875,
+            1684.284423828125,
+            1452.2509765625,
+            1245.2911376953125,
+            1062.439697265625,
+            902.3392944335938,
+            763.3330688476562,
+            643.5668334960938,
+            541.0889282226562,
+            453.937744140625,
+            380.2130126953125,
+            318.12744140625,
+            266.0402526855469,
+            222.4751739501953,
+            186.1255645751953,
+            155.85072326660156,
+            130.66598510742188,
+            109.72927856445312,
+            92.3260726928711,
+            77.85385131835938,
+            65.8072738647461,
+            55.76428985595703,
+            47.373687744140625,
+            40.344051361083984,
+            34.43415451049805,
+            29.44472885131836,
+            25.211408615112305,
+            21.59881591796875,
+            18.495559692382812,
+            15.810072898864746,
+            13.467138290405273,
+            11.40500259399414,
+            9.572997093200684,
+            7.92956018447876,
+            6.440614223480225,
+            5.078223705291748,
+            3.8194947242736816,
+            2.6456685066223145,
+            1.5413753986358643,
+            0.4940253794193268
+          ],
+          "size": 50,
+          "chunk_size": 1,
+          "units": "m"
+        },
+        "latitude": {
+          "axis": "y",
+          "size": 681,
+          "min": -80.0,
+          "max": 90.0,
+          "step": 0.25,
+          "chunk_size": 681,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "axis": "x",
+          "size": 1440,
+          "min": -180.0,
+          "max": 179.75,
+          "step": 0.25,
+          "chunk_size": 1440,
+          "units": "degrees_east"
+        }
+      },
+      "vertical_label": "depth",
+      "defaults": {
+        "palette": "balance",
+        "renderMode": "raster",
+        "opacity": 0.9,
+        "logScale": true,
+        "vibrance": 0.2,
+        "selectedVariable": "chl"
       }
     }
   ]

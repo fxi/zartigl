@@ -100,6 +100,11 @@ body {
   color: #6a6;
 }
 
+.render-mode-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
 /* Palette select (inside Tweakpane folder) */
 .palette-select {
   width: 100%;
@@ -163,6 +168,32 @@ body {
 .legend-unit {
   color: #6a6;
   font-size: 10px;
+}
+
+/* Player buttons (inside Data folder) */
+.player-btns {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px 6px;
+}
+
+.player-btn {
+  padding: 3px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #999;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.player-btn.playing {
+  background: rgba(100, 200, 100, 0.15);
+  border-color: rgba(100, 200, 100, 0.4);
+  color: #8d8;
 }
 
 /* Copy / share toast notification */

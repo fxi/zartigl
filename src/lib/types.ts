@@ -32,6 +32,8 @@ export interface ParticleLayerOptions {
   logScale?: boolean;
   /** Vibrance adjustment [-1, 1]. Default 0.0. */
   vibrance?: number;
+  scalarMode?: boolean;
+  scalarUnit?: string;
 }
 
 export interface ZarrArrayMeta {
@@ -94,6 +96,8 @@ export interface VelocityData {
   bounds: { west: number; south: number; east: number; north: number };
   /** True when latitude rows are stored north-to-south (needs GL Y-flip). */
   latDescending?: boolean;
+  /** When true: R=scalar_norm, G=128(neutral), V loop skipped. */
+  scalarMode?: boolean;
 }
 
 export interface FieldMeta {
