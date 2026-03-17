@@ -18,20 +18,67 @@ interface CatalogDimension {
   units: string;
 }
 
+interface LayerDefaults {
+  palette?: string;
+  renderMode?: string;
+  particleDensity?: number;
+  speedMin?: number;
+  speedMax?: number;
+  fadeMin?: number;
+  fadeMax?: number;
+  dropRate?: number;
+  dropRateBump?: number;
+  opacity?: number;
+  logScale?: boolean;
+  vibrance?: number;
+  selectedVariable?: string;
+}
+
 interface CatalogDataset {
   id: string;
+  type: "vector" | "scalar";
   product: string;
   label: string;
   zarr_url: string;
   variables: Record<string, { standard_name: string; units: string }>;
   dimensions: Record<string, CatalogDimension>;
   vertical_label?: string;
-  default_speed_factor?: number;
+  defaults?: LayerDefaults;
 }
 
 interface Catalog {
   generated: string;
   datasets: CatalogDataset[];
+}
+
+// ── Hash state ───────────────────────────────────────────────────────
+
+interface HashState {
+  d: number;    // dataset index
+  t: number;    // time ms
+  v: number;    // vertical value
+  p: string;    // palette id
+  rm: string;   // render mode
+  pd: number;   // particleDensity
+  sm: number;   // speedMin
+  sx: number;   // speedMax
+  fm: number;   // fadeMin
+  fx: number;   // fadeMax
+  dr: number;   // dropRate
+  db: number;   // dropRateBump
+  op: number;   // opacity
+  ls: boolean;  // logScale
+  vb: number;   // vibrance
+}
+
+function loadHashState(): HashState | null {
+  const hash = window.location.hash.slice(1);
+  if (!hash) return null;
+  try {
+    return JSON.parse(atob(hash)) as HashState;
+  } catch {
+    return null;
+  }
 }
 
 async function loadCatalog(): Promise<Catalog> {
@@ -60,6 +107,14 @@ function getVerticalDim(
   dataset: CatalogDataset,
 ): [string, CatalogDimension] | undefined {
   return Object.entries(dataset.dimensions).find(([, d]) => d.axis === "z");
+}
+
+function showToast(msg: string) {
+  const t = document.createElement("div");
+  t.className = "copy-toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1800);
 }
 
 // ── Map setup ────────────────────────────────────────────────────────
@@ -111,6 +166,14 @@ map.on("load", async () => {
     let currentDataset: CatalogDataset;
     let dataFolderChildren: { dispose(): void }[] = [];
     let currentPaletteId = "rdylbu";
+    let currentRenderMode: RenderMode = "raster+particles";
+
+    // Pending hash state — consumed on first matching switchDataset call
+    let pendingHashState = loadHashState();
+
+    // DOM element refs — assigned when UI is built, used by refreshUI()
+    let paletteSelectEl: HTMLSelectElement | null = null;
+    let renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
 
     const PARAMS = {
       datasetIndex: 0,
@@ -118,10 +181,8 @@ map.on("load", async () => {
       timeLabel: "",
       vertical: 0,
       particleDensity: 0.05,
-      // Speed factor — [min=local, max=global]
       speedMin: 0.07,
       speedMax: 0.27,
-      // Fade opacity — [min=local, max=global]
       fadeMin: 0.9,
       fadeMax: 0.9315,
       dropRate: 0.003,
@@ -130,6 +191,93 @@ map.on("load", async () => {
       logScale: false,
       vibrance: 0.0,
     };
+
+    // ── Legend DOM (early init — needed by refreshUI) ──────────────
+
+    const palettes = getPalettes();
+
+    const standaloneLegend = document.createElement("div");
+    standaloneLegend.id = "standalone-legend";
+
+    const legendGradientBar = document.createElement("div");
+    legendGradientBar.className = "legend-gradient-bar";
+
+    const legendMetaRow = document.createElement("div");
+    legendMetaRow.className = "legend-meta-row";
+
+    const legendMinLabel = document.createElement("span");
+    legendMinLabel.className = "legend-min";
+    legendMinLabel.textContent = "0";
+
+    const legendUnitLabel = document.createElement("span");
+    legendUnitLabel.className = "legend-unit";
+    legendUnitLabel.textContent = "m/s";
+
+    const legendMaxLabel = document.createElement("span");
+    legendMaxLabel.className = "legend-max";
+    legendMaxLabel.textContent = "";
+
+    legendMetaRow.appendChild(legendMinLabel);
+    legendMetaRow.appendChild(legendUnitLabel);
+    legendMetaRow.appendChild(legendMaxLabel);
+    standaloneLegend.appendChild(legendGradientBar);
+    standaloneLegend.appendChild(legendMetaRow);
+    document.body.appendChild(standaloneLegend);
+
+    function updateStandaloneLegendGradient() {
+      const palette = palettes.find((p) => p.id === currentPaletteId);
+      if (palette) {
+        legendGradientBar.style.background = `linear-gradient(to right, ${palette.colors.join(", ")})`;
+      }
+    }
+
+    function updateStandaloneLegendMeta(meta: FieldMeta) {
+      legendMinLabel.textContent = meta.min.toFixed(2);
+      legendMaxLabel.textContent = meta.max.toFixed(2);
+      legendUnitLabel.textContent = meta.unit;
+    }
+
+    // ── Defaults / state helpers ───────────────────────────────────
+
+    function applyDefaults(dataset: CatalogDataset) {
+      const d = dataset.defaults ?? {};
+      PARAMS.particleDensity = d.particleDensity ?? 0.05;
+      PARAMS.speedMin = d.speedMin ?? 0.07;
+      PARAMS.speedMax = d.speedMax ?? 0.27;
+      PARAMS.fadeMin = d.fadeMin ?? 0.9;
+      PARAMS.fadeMax = d.fadeMax ?? 0.9315;
+      PARAMS.dropRate = d.dropRate ?? 0.003;
+      PARAMS.dropRateBump = d.dropRateBump ?? 0.01;
+      PARAMS.opacity = d.opacity ?? 1.0;
+      PARAMS.logScale = d.logScale ?? false;
+      PARAMS.vibrance = d.vibrance ?? 0.0;
+      currentPaletteId = d.palette ?? "rdylbu";
+      currentRenderMode = (d.renderMode as RenderMode) ?? "raster+particles";
+    }
+
+    function applyHashState(state: HashState) {
+      PARAMS.particleDensity = state.pd;
+      PARAMS.speedMin = state.sm;
+      PARAMS.speedMax = state.sx;
+      PARAMS.fadeMin = state.fm;
+      PARAMS.fadeMax = state.fx;
+      PARAMS.dropRate = state.dr;
+      PARAMS.dropRateBump = state.db;
+      PARAMS.opacity = state.op;
+      PARAMS.logScale = state.ls;
+      PARAMS.vibrance = state.vb;
+      currentPaletteId = state.p;
+      currentRenderMode = state.rm as RenderMode;
+    }
+
+    function refreshUI() {
+      if (paletteSelectEl) paletteSelectEl.value = currentPaletteId;
+      for (const { mode, btn } of renderModeButtons) {
+        btn.classList.toggle("active", mode === currentRenderMode);
+      }
+      pane.refresh();
+      updateStandaloneLegendGradient();
+    }
 
     // ── Info panel ─────────────────────────────────────────────────
 
@@ -176,7 +324,6 @@ map.on("load", async () => {
     const dataFolder = pane.addFolder({ title: "Data" }) as FolderApi;
 
     function rebuildDataFolder(dataset: CatalogDataset) {
-      // Dispose previous children
       for (const c of dataFolderChildren) c.dispose();
       dataFolderChildren = [];
 
@@ -207,7 +354,6 @@ map.on("load", async () => {
 
       dataFolderChildren.push(timeSlider, timeLabelBinding);
 
-      // Vertical selector — only if dataset has a z-axis dimension
       const vertEntry = getVerticalDim(dataset);
       if (vertEntry) {
         const [, vertDim] = vertEntry;
@@ -234,10 +380,7 @@ map.on("load", async () => {
 
     // ── switchDataset ──────────────────────────────────────────────
 
-    // Holder so switchDataset can attach event listeners defined later.
-    const layerEventHandlers: {
-      onLoaded?: (meta: FieldMeta) => void;
-    } = {};
+    const layerEventHandlers: { onLoaded?: (meta: FieldMeta) => void } = {};
 
     function switchDataset(dataset: CatalogDataset) {
       if (map.getLayer("particles")) map.removeLayer("particles");
@@ -250,21 +393,41 @@ map.on("load", async () => {
 
       const timeDim = dataset.dimensions.time;
       const timeMin = timeDim.min ?? 0;
+      const timeStep = timeDim.step ?? 21600000;
       const vertEntry = getVerticalDim(dataset);
       const vertValues = [...(vertEntry?.[1].values ?? [0])].sort(
         (a, b) => a - b,
       );
 
-      PARAMS.timeIndex = 0;
-      PARAMS.timeLabel = formatTime(timeMin);
-      PARAMS.vertical = vertValues[0] ?? 0;
+      const dsIdx = catalog.datasets.indexOf(dataset);
+      if (pendingHashState && pendingHashState.d === dsIdx) {
+        const hs = pendingHashState;
+        applyHashState(hs);
+        PARAMS.timeIndex = Math.max(
+          0,
+          Math.min(
+            Math.round((hs.t - timeMin) / timeStep),
+            (timeDim.size ?? 1) - 1,
+          ),
+        );
+        PARAMS.timeLabel = formatTime(timeMin + PARAMS.timeIndex * timeStep);
+        PARAMS.vertical = vertValues.includes(hs.v)
+          ? hs.v
+          : (vertValues[0] ?? 0);
+        pendingHashState = null;
+      } else {
+        applyDefaults(dataset);
+        PARAMS.timeIndex = 0;
+        PARAMS.timeLabel = formatTime(timeMin);
+        PARAMS.vertical = vertValues[0] ?? 0;
+      }
 
       layer = new ParticleLayer({
         id: "particles",
         source: dataset.zarr_url,
         variableU: uVar,
         variableV: vVar,
-        time: timeMin,
+        time: timeMin + PARAMS.timeIndex * timeStep,
         depth: PARAMS.vertical,
         particleDensity: PARAMS.particleDensity,
         speedFactor: [PARAMS.speedMin, PARAMS.speedMax],
@@ -276,20 +439,26 @@ map.on("load", async () => {
         vibrance: PARAMS.vibrance,
       });
 
-      // Attach event listeners defined later in this closure
       if (layerEventHandlers.onLoaded) {
-        layer.on('loaded', layerEventHandlers.onLoaded);
+        layer.on("loaded", layerEventHandlers.onLoaded);
       }
 
       map.addLayer(layer);
       layer.setColorRamp(currentPaletteId);
-
+      layer.setRenderMode(currentRenderMode);
       rebuildDataFolder(dataset);
       updateInfo();
+      refreshUI();
     }
 
-    // Initialize with first dataset
-    switchDataset(catalog.datasets[0]);
+    // ── Initial dataset (from hash or first) ───────────────────────
+
+    const initialIdx = Math.min(
+      Math.max(pendingHashState?.d ?? 0, 0),
+      catalog.datasets.length - 1,
+    );
+    PARAMS.datasetIndex = initialIdx;
+    switchDataset(catalog.datasets[initialIdx]);
 
     // ── Particles folder ──────────────────────────────────────────
 
@@ -313,7 +482,9 @@ map.on("load", async () => {
         step: 0.01,
         label: "speed (local)",
       })
-      .on("change", () => layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]));
+      .on("change", () =>
+        layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]),
+      );
     motionFolder
       .addBinding(PARAMS, "speedMax", {
         min: 0.01,
@@ -321,7 +492,9 @@ map.on("load", async () => {
         step: 0.01,
         label: "speed (global)",
       })
-      .on("change", () => layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]));
+      .on("change", () =>
+        layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]),
+      );
     motionFolder
       .addBinding(PARAMS, "dropRate", {
         min: 0,
@@ -349,7 +522,9 @@ map.on("load", async () => {
         step: 0.0001,
         label: "fade (local)",
       })
-      .on("change", () => layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]));
+      .on("change", () =>
+        layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
+      );
     trailFolder
       .addBinding(PARAMS, "fadeMax", {
         min: 0.9,
@@ -357,15 +532,14 @@ map.on("load", async () => {
         step: 0.0001,
         label: "fade (global)",
       })
-      .on("change", () => layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]));
+      .on("change", () =>
+        layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
+      );
 
     // ── Render Mode folder ────────────────────────────────────────
 
-    let currentRenderMode: RenderMode = 'raster+particles';
-
     const renderModeFolder = pane.addFolder({ title: "Render Mode" });
-    const renderModes: RenderMode[] = ['raster', 'particles', 'raster+particles'];
-    const renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
+    const renderModes: RenderMode[] = ["raster", "particles", "raster+particles"];
 
     const renderModeBtnContainer = document.createElement("div");
     renderModeBtnContainer.className = "render-mode-btns";
@@ -373,7 +547,8 @@ map.on("load", async () => {
     for (const mode of renderModes) {
       const btn = document.createElement("button");
       btn.textContent = mode;
-      btn.className = "render-mode-btn" + (mode === currentRenderMode ? " active" : "");
+      btn.className =
+        "render-mode-btn" + (mode === currentRenderMode ? " active" : "");
       btn.addEventListener("click", () => {
         currentRenderMode = mode;
         layer.setRenderMode(mode);
@@ -389,7 +564,6 @@ map.on("load", async () => {
 
     // ── Palette folder ────────────────────────────────────────────
 
-    const palettes = getPalettes();
     const paletteFolder = pane.addFolder({ title: "Palette" });
 
     const paletteSelect = document.createElement("select");
@@ -409,6 +583,7 @@ map.on("load", async () => {
     });
 
     paletteFolder.element.appendChild(paletteSelect);
+    paletteSelectEl = paletteSelect;
 
     paletteFolder
       .addBinding(PARAMS, "opacity", { min: 0, max: 1, step: 0.01, label: "opacity" })
@@ -420,55 +595,60 @@ map.on("load", async () => {
       .addBinding(PARAMS, "logScale", { label: "log scale" })
       .on("change", (ev) => layer.setLogScale(ev.value));
 
-    // ── Standalone legend (bottom-center DOM element) ─────────────
+    // ── Export folder ─────────────────────────────────────────────
 
-    const standaloneLegend = document.createElement("div");
-    standaloneLegend.id = "standalone-legend";
+    const exportFolder = pane.addFolder({ title: "Export", expanded: false });
 
-    const legendGradientBar = document.createElement("div");
-    legendGradientBar.className = "legend-gradient-bar";
+    exportFolder.addButton({ title: "Copy settings" }).on("click", () => {
+      const yaml = [
+        `${currentDataset.id}:`,
+        `  palette: ${currentPaletteId}`,
+        `  renderMode: ${currentRenderMode}`,
+        `  particleDensity: ${PARAMS.particleDensity}`,
+        `  speedMin: ${PARAMS.speedMin}`,
+        `  speedMax: ${PARAMS.speedMax}`,
+        `  fadeMin: ${PARAMS.fadeMin}`,
+        `  fadeMax: ${PARAMS.fadeMax}`,
+        `  dropRate: ${PARAMS.dropRate}`,
+        `  dropRateBump: ${PARAMS.dropRateBump}`,
+        `  opacity: ${PARAMS.opacity}`,
+        `  logScale: ${PARAMS.logScale}`,
+        `  vibrance: ${PARAMS.vibrance}`,
+      ].join("\n");
+      navigator.clipboard.writeText(yaml).then(() => showToast("Copied!"));
+    });
 
-    const legendMetaRow = document.createElement("div");
-    legendMetaRow.className = "legend-meta-row";
+    exportFolder.addButton({ title: "Share view" }).on("click", () => {
+      const ds = catalog.datasets[PARAMS.datasetIndex];
+      const timeMs =
+        (ds.dimensions.time.min ?? 0) +
+        PARAMS.timeIndex * (ds.dimensions.time.step ?? 21600000);
+      const state: HashState = {
+        d: PARAMS.datasetIndex,
+        t: timeMs,
+        v: PARAMS.vertical,
+        p: currentPaletteId,
+        rm: currentRenderMode,
+        pd: PARAMS.particleDensity,
+        sm: PARAMS.speedMin,
+        sx: PARAMS.speedMax,
+        fm: PARAMS.fadeMin,
+        fx: PARAMS.fadeMax,
+        dr: PARAMS.dropRate,
+        db: PARAMS.dropRateBump,
+        op: PARAMS.opacity,
+        ls: PARAMS.logScale,
+        vb: PARAMS.vibrance,
+      };
+      const hash = btoa(JSON.stringify(state));
+      const url = `${window.location.origin}${window.location.pathname}#${hash}`;
+      navigator.clipboard.writeText(url).then(() => showToast("URL copied!"));
+    });
 
-    const legendMinLabel = document.createElement("span");
-    legendMinLabel.className = "legend-min";
-    legendMinLabel.textContent = "0";
+    // ── Wire legend ────────────────────────────────────────────────
 
-    const legendUnitLabel = document.createElement("span");
-    legendUnitLabel.className = "legend-unit";
-    legendUnitLabel.textContent = "m/s";
-
-    const legendMaxLabel = document.createElement("span");
-    legendMaxLabel.className = "legend-max";
-    legendMaxLabel.textContent = "";
-
-    legendMetaRow.appendChild(legendMinLabel);
-    legendMetaRow.appendChild(legendUnitLabel);
-    legendMetaRow.appendChild(legendMaxLabel);
-
-    standaloneLegend.appendChild(legendGradientBar);
-    standaloneLegend.appendChild(legendMetaRow);
-    document.body.appendChild(standaloneLegend);
-
-    function updateStandaloneLegendGradient() {
-      const palette = palettes.find((p) => p.id === currentPaletteId);
-      if (palette) {
-        legendGradientBar.style.background = `linear-gradient(to right, ${palette.colors.join(", ")})`;
-      }
-    }
-
-    function updateStandaloneLegendMeta(meta: FieldMeta) {
-      legendMinLabel.textContent = meta.min.toFixed(2);
-      legendMaxLabel.textContent = meta.max.toFixed(2);
-      legendUnitLabel.textContent = meta.unit;
-    }
-
-    // Register handler so switchDataset (defined earlier) attaches it on each new layer.
     layerEventHandlers.onLoaded = updateStandaloneLegendMeta;
-    // Also attach to the already-created first layer (switchDataset was called above).
-    layer.on('loaded', updateStandaloneLegendMeta);
-
+    layer.on("loaded", updateStandaloneLegendMeta);
     updateStandaloneLegendGradient();
 
   } catch (err) {

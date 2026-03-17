@@ -2,9 +2,10 @@
 """
 Generate catalog.json from the Copernicus Marine STAC catalog.
 
-Queries `copernicusmarine describe` for target datasets and writes
-a catalog file with ARCO Zarr S3 URLs, chunk layouts, and available
-time/depth ranges for browser-side consumption.
+Reads dataset IDs from base_catalog.yaml, auto-detects type (vector/scalar)
+and variables from the Copernicus Marine API, and writes a catalog file with
+ARCO Zarr S3 URLs, chunk layouts, and available time/depth ranges for
+browser-side consumption.
 
 Usage:
     cd scripts/
@@ -16,77 +17,123 @@ Output: ../public/data/catalog.json
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import copernicusmarine
+import yaml
 
 OUTPUT = Path(__file__).resolve().parent.parent / "public" / "data" / "catalog.json"
+BASE_CONFIG = Path(__file__).resolve().parent / "base_catalog.yaml"
 
-# Datasets to include — add more entries here to grow the catalog.
-TARGETS = [
-    {
-        "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
-        "label": "Global Ocean Currents (analysis+forecast)",
-        "variables": ["uo", "vo"],
-        # Prefer the timeChunked variant (large spatial chunks, 1 time step)
-        "preferred_service": "arco-geo-series",
-        "vertical_label": "depth",
-        "default_speed_factor": 2.0,  # ocean currents ~0–2 m/s
-    },
-    {
-        "dataset_id": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
-        "label": "Global Surface Wind L4 NRT (0.125°)",
-        "variables": ["eastward_wind", "northward_wind"],
-        "preferred_service": "arco-geo-series",
-        # Surface-only dataset — no vertical coordinate
-        "default_speed_factor": 0.2,  # wind up to 30 m/s → needs ~15× slower
-    },
-]
+VISUAL_DEFAULTS_VECTOR = {
+    "palette": "rdylbu",
+    "renderMode": "raster+particles",
+    "particleDensity": 0.05,
+    "speedMin": 0.01,
+    "speedMax": 1.0,
+    "fadeMin": 0.9,
+    "fadeMax": 0.96,
+    "dropRate": 0.003,
+    "dropRateBump": 0.01,
+    "opacity": 1.0,
+    "logScale": False,
+    "vibrance": 0.0,
+}
+
+VISUAL_DEFAULTS_SCALAR = {
+    "palette": "viridis",
+    "renderMode": "raster",
+    "opacity": 1.0,
+    "logScale": False,
+    "vibrance": 0.0,
+}
 
 
-def build_entry(target: dict) -> dict | None:
-    dataset_id = target["dataset_id"]
-    print(f"  Querying {dataset_id} ...")
+def load_base_config(path: Path) -> list[dict]:
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict) or "datasets" not in data:
+        raise ValueError(
+            f"{path}: expected a mapping with a 'datasets' key, got: {type(data).__name__}"
+        )
+    datasets = data["datasets"]
+    if not isinstance(datasets, list):
+        raise ValueError(
+            f"{path}: 'datasets' must be a list, got: {type(datasets).__name__}"
+        )
+    for i, item in enumerate(datasets):
+        if not isinstance(item, dict) or "id" not in item:
+            raise ValueError(
+                f"{path}: datasets[{i}] must be a mapping with an 'id' key"
+            )
+    return datasets
 
-    cat = copernicusmarine.describe(
-        dataset_id=dataset_id,
-        disable_progress_bar=True,
-    )
 
-    if not cat.products:
-        print(f"    ⚠ No products found")
-        return None
+def select_service(part):
+    """Prefer arco-geo-series zarr; fall back to any zarr service."""
+    zarr_services = [s for s in part.services if s.service_format == "zarr"]
+    for s in zarr_services:
+        if s.service_name == "arco-geo-series":
+            return s
+    return zarr_services[0] if zarr_services else None
 
-    prod = cat.products[0]
-    ds = prod.datasets[0]
-    ver = ds.versions[0]
-    part = ver.parts[0]
 
-    # Find the preferred ARCO service
-    svc = None
-    for s in part.services:
-        if s.service_name == target["preferred_service"]:
-            svc = s
-            break
+def detect_type_and_variables(svc) -> tuple[str, list[str]]:
+    """
+    Detect whether this dataset is a vector or scalar field.
 
-    if svc is None or svc.service_format != "zarr":
-        print(f"    ⚠ No ARCO Zarr service found")
-        return None
+    Vector: exactly one variable with 'eastward' in standard_name
+            and exactly one with 'northward' in standard_name.
+    Scalar: everything else.
 
-    print(f"    URL: {svc.uri}")
+    Returns ("vector", [u_name, v_name]) or ("scalar", [all_var_names]).
+    """
+    u_candidates = []
+    v_candidates = []
+    all_names = []
 
-    # Build variable info
-    variables = {}
     for v in svc.variables:
-        if v.short_name in target["variables"]:
-            variables[v.short_name] = {
-                "standard_name": v.standard_name,
-                "units": v.units,
-            }
+        all_names.append(v.short_name)
+        sn = (v.standard_name or "").lower()
+        if "eastward" in sn:
+            u_candidates.append(v.short_name)
+        elif "northward" in sn:
+            v_candidates.append(v.short_name)
 
-    # Build dimension info from coordinates of first variable
-    ref_var = svc.variables[0]
+    if len(u_candidates) == 1 and len(v_candidates) == 1:
+        return "vector", [u_candidates[0], v_candidates[0]]
+
+    return "scalar", all_names
+
+
+def detect_vertical_label(dimensions: dict) -> str | None:
+    for dim in dimensions.values():
+        if dim.get("axis") != "z":
+            continue
+        units = dim.get("units", "")
+        if units == "m":
+            return "depth"
+        if any(p in units.lower() for p in ("pa", "bar", "dbar")):
+            return "pressure"
+        return "depth"
+    return None
+
+
+def extract_api_label(prod, ds) -> str | None:
+    for attr in ("title", "short_description"):
+        val = getattr(prod, attr, None)
+        if val and isinstance(val, str):
+            return val
+    for attr in ("title", "short_description"):
+        val = getattr(ds, attr, None)
+        if val and isinstance(val, str):
+            return val
+    return None
+
+
+def build_dimensions(ref_var) -> dict:
     dimensions = {}
     for coord in ref_var.coordinates:
         dim: dict = {"axis": coord.axis}
@@ -113,28 +160,99 @@ def build_entry(target: dict) -> dict | None:
             dim["units"] = coord.coordinate_unit
 
         dimensions[coord.coordinate_id] = dim
+    return dimensions
+
+
+def build_entry(entry_cfg: dict) -> dict | None:
+    dataset_id = entry_cfg["id"]
+    yaml_overrides = {k: v for k, v in entry_cfg.items() if k != "id"}
+    print(f"  Querying {dataset_id} ...")
+
+    try:
+        cat = copernicusmarine.describe(
+            dataset_id=dataset_id,
+            disable_progress_bar=True,
+        )
+    except Exception as e:
+        print(f"    ⚠ Network/API error: {e}")
+        return None
+
+    if not cat.products:
+        print(f"    ⚠ No products found — skipping")
+        return None
+
+    prod = cat.products[0]
+    ds = prod.datasets[0]
+    ver = ds.versions[0]
+    part = ver.parts[0]
+
+    svc = select_service(part)
+    if svc is None:
+        print(f"    ⚠ No ARCO Zarr service found — skipping")
+        return None
+
+    if not svc.variables:
+        print(f"    ⚠ No variables in service — skipping")
+        return None
+
+    print(f"    URL: {svc.uri}")
+
+    dtype, var_names = detect_type_and_variables(svc)
+    print(f"    Type: {dtype}, variables: {var_names}")
+
+    variables = {}
+    for v in svc.variables:
+        if v.short_name in var_names:
+            variables[v.short_name] = {
+                "standard_name": v.standard_name,
+                "units": v.units,
+            }
+
+    dimensions = build_dimensions(svc.variables[0])
+    vertical_label = detect_vertical_label(dimensions)
+
+    label = yaml_overrides.pop("label", None) or extract_api_label(prod, ds) or dataset_id
+
+    fallback = VISUAL_DEFAULTS_VECTOR if dtype == "vector" else VISUAL_DEFAULTS_SCALAR
+    defaults = {**fallback, **yaml_overrides}
+
+    if dtype == "scalar" and "selectedVariable" not in defaults:
+        defaults["selectedVariable"] = var_names[0]
 
     entry: dict = {
         "id": dataset_id,
+        "type": dtype,
         "product": prod.product_id,
-        "label": target["label"],
+        "label": label,
         "zarr_url": svc.uri,
         "variables": variables,
         "dimensions": dimensions,
     }
-    if "vertical_label" in target:
-        entry["vertical_label"] = target["vertical_label"]
-    if "default_speed_factor" in target:
-        entry["default_speed_factor"] = target["default_speed_factor"]
+    if vertical_label is not None:
+        entry["vertical_label"] = vertical_label
+    entry["defaults"] = defaults
+
     return entry
 
 
 def main():
     print("Building catalog from Copernicus Marine ...")
 
+    if not BASE_CONFIG.exists():
+        print(f"  ⚠ {BASE_CONFIG.name} not found — nothing to build")
+        return
+
+    try:
+        dataset_configs = load_base_config(BASE_CONFIG)
+    except (yaml.YAMLError, ValueError) as e:
+        print(f"  ✗ Bad YAML in {BASE_CONFIG.name}: {e}")
+        sys.exit(1)
+
+    print(f"  Loaded base config: {len(dataset_configs)} dataset(s)")
+
     entries = []
-    for target in TARGETS:
-        entry = build_entry(target)
+    for cfg in dataset_configs:
+        entry = build_entry(cfg)
         if entry:
             entries.append(entry)
 

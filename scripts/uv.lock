@@ -831,7 +831,11 @@ version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
     { name = "copernicusmarine" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "copernicusmarine", specifier = ">=2.0" }]
+requires-dist = [
+    { name = "copernicusmarine", specifier = ">=2.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+]

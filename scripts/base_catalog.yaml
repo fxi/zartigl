@@ -1,0 +1,31 @@
+# Add a dataset_id to include it. All other fields are optional visual overrides.
+# Run: npm run catalog
+
+datasets:
+  - id: cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i
+    palette: rdylbu
+    renderMode: raster+particles
+    particleDensity: 0.069
+    speedMin: 0.07
+    speedMax: 2.0
+    fadeMin: 0.9
+    fadeMax: 0.975
+    dropRate: 0.1
+    dropRateBump: 0.0
+    opacity: 1.0
+    logScale: false
+    vibrance: 0.39
+
+  - id: cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H
+    palette: rdylbu
+    renderMode: particles
+    particleDensity: 0.001
+    speedMin: 0.01
+    speedMax: 0.51
+    fadeMin: 0.9
+    fadeMax: 0.9272
+    dropRate: 0.005
+    dropRateBump: 0.0
+    opacity: 0.96
+    logScale: true
+    vibrance: 0.76

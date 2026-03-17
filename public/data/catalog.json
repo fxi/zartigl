@@ -1,10 +1,11 @@
 {
-  "generated": "2026-03-15T18:18:22.945037+00:00",
+  "generated": "2026-03-17T11:40:45.718274+00:00",
   "datasets": [
     {
       "id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+      "type": "vector",
       "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
-      "label": "Global Ocean Currents (analysis+forecast)",
+      "label": "Global Ocean Physics Analysis and Forecast",
       "zarr_url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/timeChunked.zarr",
       "variables": {
         "uo": {
@@ -95,38 +96,152 @@
         },
         "time": {
           "axis": "t",
-          "size": 5573,
+          "size": 5581,
           "min": 1654041600000.0,
-          "max": 1774396800000.0,
+          "max": 1774569600000.0,
           "step": 21600000.0,
           "chunk_size": 1,
           "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
         }
       },
       "vertical_label": "depth",
-      "default_speed_factor": 2.0
+      "defaults": {
+        "palette": "rdylbu",
+        "renderMode": "raster+particles",
+        "particleDensity": 0.069,
+        "speedMin": 0.07,
+        "speedMax": 2.0,
+        "fadeMin": 0.9,
+        "fadeMax": 0.975,
+        "dropRate": 0.1,
+        "dropRateBump": 0.0,
+        "opacity": 1.0,
+        "logScale": false,
+        "vibrance": 0.39
+      }
     },
     {
       "id": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
+      "type": "scalar",
       "product": "WIND_GLO_PHY_L4_NRT_012_004",
-      "label": "Global Surface Wind L4 NRT (0.125\u00b0)",
+      "label": "Global Ocean Hourly Sea Surface Wind and Stress from Scatterometer and Model",
       "zarr_url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr",
       "variables": {
+        "air_density": {
+          "standard_name": "air_density",
+          "units": "kg m-3"
+        },
+        "eastward_stress": {
+          "standard_name": "surface_downward_eastward_stress",
+          "units": "N m-2"
+        },
+        "eastward_stress_bias": {
+          "standard_name": "surface_downward_eastward_stress_bias",
+          "units": "N m-2"
+        },
+        "eastward_stress_sdd": {
+          "standard_name": "surface_downward_eastward_stress_standard_deviation_of_differences",
+          "units": "N m-2"
+        },
         "eastward_wind": {
           "standard_name": "eastward_wind",
           "units": "m s-1"
         },
+        "eastward_wind_bias": {
+          "standard_name": "eastward_wind_bias",
+          "units": "m s-1"
+        },
+        "eastward_wind_sdd": {
+          "standard_name": "eastward_wind_standard_deviation_of_differences",
+          "units": "m s-1"
+        },
+        "northward_stress": {
+          "standard_name": "surface_downward_northward_stress",
+          "units": "N m-2"
+        },
+        "northward_stress_bias": {
+          "standard_name": "surface_downward_northward_stress_bias",
+          "units": "N m-2"
+        },
+        "northward_stress_sdd": {
+          "standard_name": "surface_downward_northward_stress_standard_deviation_of_differences",
+          "units": "N m-2"
+        },
         "northward_wind": {
           "standard_name": "northward_wind",
           "units": "m s-1"
+        },
+        "northward_wind_bias": {
+          "standard_name": "northward_wind_bias",
+          "units": "m s-1"
+        },
+        "northward_wind_sdd": {
+          "standard_name": "northward_wind_standard_deviation_of_differences",
+          "units": "m s-1"
+        },
+        "number_of_observations": {
+          "standard_name": "number_of_observations",
+          "units": "1"
+        },
+        "number_of_observations_divcurl": {
+          "standard_name": "number_of_observations",
+          "units": "1"
+        },
+        "stress_curl": {
+          "standard_name": "vertical_component_of_surface_downward_stress_curl",
+          "units": "N m-3"
+        },
+        "stress_curl_bias": {
+          "standard_name": "vertical_component_of_surface_downward_stress_curl_bias",
+          "units": "N m-3"
+        },
+        "stress_curl_dv": {
+          "standard_name": "vertical_component_of_surface_downward_stress_curl_difference_of_variances",
+          "units": "N2 m-6"
+        },
+        "stress_divergence": {
+          "standard_name": "divergence_of_surface_downward_stress",
+          "units": "N m-3"
+        },
+        "stress_divergence_bias": {
+          "standard_name": "divergence_of_surface_downward_stress_bias",
+          "units": "N m-3"
+        },
+        "stress_divergence_dv": {
+          "standard_name": "divergence_of_surface_downward_stress_difference_of_variances",
+          "units": "N2 m-6"
+        },
+        "wind_curl": {
+          "standard_name": "atmosphere_relative_vorticity",
+          "units": "s-1"
+        },
+        "wind_curl_bias": {
+          "standard_name": "atmosphere_relative_vorticity_bias",
+          "units": "s-1"
+        },
+        "wind_curl_dv": {
+          "standard_name": "atmosphere_relative_vorticity_difference_of_variances",
+          "units": "s-2"
+        },
+        "wind_divergence": {
+          "standard_name": "divergence_of_wind",
+          "units": "s-1"
+        },
+        "wind_divergence_bias": {
+          "standard_name": "divergence_of_wind_bias",
+          "units": "s-1"
+        },
+        "wind_divergence_dv": {
+          "standard_name": "divergence_of_wind_difference_of_variances",
+          "units": "s-2"
         }
       },
       "dimensions": {
         "time": {
           "axis": "t",
-          "size": 20304,
+          "size": 20352,
           "min": 1700438400000.0,
-          "max": 1773529200000.0,
+          "max": 1773702000000.0,
           "step": 3600000.0,
           "chunk_size": 1,
           "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
@@ -150,7 +265,21 @@
           "units": "degrees_east"
         }
       },
-      "default_speed_factor": 0.2
+      "defaults": {
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "opacity": 0.96,
+        "logScale": true,
+        "vibrance": 0.76,
+        "particleDensity": 0.001,
+        "speedMin": 0.01,
+        "speedMax": 0.51,
+        "fadeMin": 0.9,
+        "fadeMax": 0.9272,
+        "dropRate": 0.005,
+        "dropRateBump": 0.0,
+        "selectedVariable": "air_density"
+      }
     }
   ]
 }
