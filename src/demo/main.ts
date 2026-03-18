@@ -292,7 +292,7 @@ map.on("load", async () => {
 
     // ── Tweakpane ─────────────────────────────────────────────────
 
-    const pane = new Pane({ title: "zartigl" });
+    const pane = new Pane({ title: "zartigl", expanded: false });
 
     // View selector — grouped by category using optgroup
     if (catalog.views.length > 1) {
