@@ -1,12 +1,8 @@
 [project]
 name = "zartigl-scripts"
-version = "0.2.0"
-description = "Data preparation scripts for zartigl"
+version = "0.3.0"
+description = "Catalog builder skills for zartigl"
 requires-python = ">=3.12"
 dependencies = [
     "copernicusmarine>=2.0",
-    "pyyaml>=6.0",
 ]
-
-[project.scripts]
-build-catalog = "build_catalog:main"

@@ -197,56 +197,31 @@ export class ParticleLayer implements CustomLayerInterface {
     const latDim = dims.indexOf("latitude");
     const lonDim = dims.indexOf("longitude");
 
-    // Fetch all U and V chunks in parallel
-    const uPromises = uChunkInfos.map(async (info) => {
-      const indices: number[] = [];
-      indices[timeDim] = info.timeIdx;
-      indices[depthDim] = info.depthIdx;
-      indices[latDim] = info.latIdx;
-      indices[lonDim] = info.lonIdx;
-      const data = await this.zarrSource.fetchChunk(
-        this.variableU,
-        indices,
-      );
-      const lonChunkSize = this.zarrSource.getChunkShape(this.variableU)[lonDim];
-      return {
-        data,
-        latStart:
-          info.latIdx * this.zarrSource.getChunkShape(this.variableU)[latDim],
-        lonStart:
-          info.lonIdx * lonChunkSize,
-        latSize: info.latSize,
-        lonSize: info.lonSize,
-        lonChunkSize,
-      };
-    });
+    // Fetch U and V chunks in parallel
+    const makeChunkFetch = (variable: string) =>
+      uChunkInfos.map(async (info) => {
+        const indices: number[] = [];
+        indices[timeDim] = info.timeIdx;
+        indices[depthDim] = info.depthIdx;
+        indices[latDim] = info.latIdx;
+        indices[lonDim] = info.lonIdx;
+        const data = await this.zarrSource.fetchChunk(variable, indices);
+        const chunkShape = this.zarrSource.getChunkShape(variable);
+        const lonChunkSize = chunkShape[lonDim];
+        return {
+          data,
+          latStart: info.latIdx * chunkShape[latDim],
+          lonStart: info.lonIdx * lonChunkSize,
+          latSize: info.latSize,
+          lonSize: info.lonSize,
+          lonChunkSize,
+        };
+      });
 
-    const uChunks = await Promise.all(uPromises);
-
-    const vChunks = this.scalarMode
-      ? []
-      : await Promise.all(uChunkInfos.map(async (info) => {
-          const indices: number[] = [];
-          indices[timeDim] = info.timeIdx;
-          indices[depthDim] = info.depthIdx;
-          indices[latDim] = info.latIdx;
-          indices[lonDim] = info.lonIdx;
-          const data = await this.zarrSource.fetchChunk(
-            this.variableV,
-            indices,
-          );
-          const lonChunkSize = this.zarrSource.getChunkShape(this.variableV)[lonDim];
-          return {
-            data,
-            latStart:
-              info.latIdx * this.zarrSource.getChunkShape(this.variableV)[latDim],
-            lonStart:
-              info.lonIdx * lonChunkSize,
-            latSize: info.latSize,
-            lonSize: info.lonSize,
-            lonChunkSize,
-          };
-        }));
+    const [uChunks, vChunks] = await Promise.all([
+      Promise.all(makeChunkFetch(this.variableU)),
+      this.scalarMode ? Promise.resolve([]) : Promise.all(makeChunkFetch(this.variableV)),
+    ]);
 
     const latPixMin = Math.min(...uChunks.map(c => c.latStart));
     const latPixMax = Math.max(...uChunks.map(c => c.latStart + c.latSize));
@@ -518,6 +493,9 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setRenderMode(mode: RenderMode): void {
     this.simulation.setRenderMode(mode);
+    // Raster-only: nearest-neighbour shows the actual grid resolution.
+    // Particles need linear interpolation for smooth velocity sampling mid-cell.
+    this.velocityField.setFilter(mode !== "raster");
   }
 
   setOpacity(v: number): void {

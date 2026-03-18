@@ -28,6 +28,8 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+        env:
+          MAPTILER_TOKEN: ${{ secrets.MAPTILER_TOKEN }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

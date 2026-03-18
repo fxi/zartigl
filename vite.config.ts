@@ -6,6 +6,8 @@ export default defineConfig({
   base: "/zartigl/",
   root: "src/demo",
   publicDir: "../../public",
+  envDir: "../..",
+  envPrefix: ["VITE_", "MAPTILER_", "PROTOMAPS_"],
   build: {
     outDir: "../../dist-demo",
     emptyOutDir: true,

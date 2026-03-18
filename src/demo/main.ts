@@ -32,16 +32,21 @@ interface LayerDefaults {
   opacity?: number;
   logScale?: boolean;
   vibrance?: number;
-  selectedVariable?: string;
 }
 
-interface CatalogDataset {
+interface CatalogView {
   id: string;
-  type: "vector" | "scalar";
-  product: string;
   label: string;
-  zarr_url: string;
-  variables: Record<string, { standard_name: string; units: string }>;
+  description?: string;
+  category?: string;
+  type: "vector" | "scalar";
+  source_dataset: string;
+  zarr_url_geo: string;
+  zarr_url_time?: string;
+  variable?: string;
+  variable_u?: string;
+  variable_v?: string;
+  variable_meta?: { standard_name: string; units: string };
   dimensions: Record<string, CatalogDimension>;
   vertical_label?: string;
   defaults?: LayerDefaults;
@@ -49,13 +54,13 @@ interface CatalogDataset {
 
 interface Catalog {
   generated: string;
-  datasets: CatalogDataset[];
+  views: CatalogView[];
 }
 
 // ── Hash state ───────────────────────────────────────────────────────
 
 interface HashState {
-  d: number;    // dataset index
+  d: number;    // view index
   t: number;    // time ms
   v: number;    // vertical value
   p: string;    // palette id
@@ -105,9 +110,9 @@ function formatVertical(v: number, label: string): string {
 
 /** Return the [key, dim] entry for the z-axis dimension, if any. */
 function getVerticalDim(
-  dataset: CatalogDataset,
+  view: CatalogView,
 ): [string, CatalogDimension] | undefined {
-  return Object.entries(dataset.dimensions).find(([, d]) => d.axis === "z");
+  return Object.entries(view.dimensions).find(([, d]) => d.axis === "z");
 }
 
 function showToast(msg: string) {
@@ -122,49 +127,27 @@ function showToast(msg: string) {
 
 const map = new maplibregl.Map({
   container: "map",
-  style: {
-    version: 8,
-    sources: {
-      "carto-dark": {
-        type: "raster",
-        tiles: [
-          "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-          "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        ],
-        tileSize: 256,
-        attribution:
-          '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-      },
-    },
-    layers: [
-      {
-        id: "carto-dark",
-        type: "raster",
-        source: "carto-dark",
-        minzoom: 0,
-        maxzoom: 19,
-      },
-    ],
-  },
+  style: `https://api.maptiler.com/maps/satellite-v4/style.json?key=${import.meta.env.MAPTILER_TOKEN}`,
   center: [0, 20],
   zoom: 2,
   maxZoom: 8,
 });
+window.map = map;
 
 // ── Init ─────────────────────────────────────────────────────────────
 
 map.on("load", async () => {
   try {
     const catalog = await loadCatalog();
-    if (!catalog.datasets.length) {
-      console.error("No datasets in catalog");
+    if (!catalog.views.length) {
+      console.error("No views in catalog");
       return;
     }
 
     // ── Shared mutable state ───────────────────────────────────────
 
     let layer: ParticleLayer = null!;
-    let currentDataset: CatalogDataset;
+    let currentView: CatalogView;
     let dataFolderChildren: { dispose(): void }[] = [];
     let currentPaletteId = "rdylbu";
     let currentRenderMode: RenderMode = "raster+particles";
@@ -179,15 +162,16 @@ map.on("load", async () => {
     // on programmatic refresh, so we suppress it during player frame advances.
     let suppressSliderChange = false;
 
-    // Pending hash state — consumed on first matching switchDataset call
+    // Pending hash state — consumed on first matching switchView call
     let pendingHashState = loadHashState();
 
     // DOM element refs — assigned when UI is built, used by refreshUI()
     let paletteSelectEl: HTMLSelectElement | null = null;
+    let viewSelectEl: HTMLSelectElement | null = null;
     let renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
 
     const PARAMS = {
-      datasetIndex: 0,
+      viewIndex: 0,
       timeIndex: 0,
       timeLabel: "",
       vertical: 0,
@@ -201,15 +185,11 @@ map.on("load", async () => {
       opacity: 1.0,
       logScale: false,
       vibrance: 0.0,
-      scalarVariable: "",
     };
 
     // ── Legend DOM (early init — needed by refreshUI) ──────────────
 
     const palettes = getPalettes();
-
-    const standaloneLegend = document.createElement("div");
-    standaloneLegend.id = "standalone-legend";
 
     const legendGradientBar = document.createElement("div");
     legendGradientBar.className = "legend-gradient-bar";
@@ -232,9 +212,11 @@ map.on("load", async () => {
     legendMetaRow.appendChild(legendMinLabel);
     legendMetaRow.appendChild(legendUnitLabel);
     legendMetaRow.appendChild(legendMaxLabel);
-    standaloneLegend.appendChild(legendGradientBar);
-    standaloneLegend.appendChild(legendMetaRow);
-    document.body.appendChild(standaloneLegend);
+
+    const legendContainer = document.createElement("div");
+    legendContainer.className = "pane-legend";
+    legendContainer.appendChild(legendGradientBar);
+    legendContainer.appendChild(legendMetaRow);
 
     function updateStandaloneLegendGradient() {
       const palette = palettes.find((p) => p.id === currentPaletteId);
@@ -251,8 +233,8 @@ map.on("load", async () => {
 
     // ── Defaults / state helpers ───────────────────────────────────
 
-    function applyDefaults(dataset: CatalogDataset) {
-      const d = dataset.defaults ?? {};
+    function applyDefaults(view: CatalogView) {
+      const d = view.defaults ?? {};
       PARAMS.particleDensity = d.particleDensity ?? 0.05;
       PARAMS.speedMin = d.speedMin ?? 0.07;
       PARAMS.speedMax = d.speedMax ?? 0.27;
@@ -284,7 +266,8 @@ map.on("load", async () => {
 
     function refreshUI() {
       if (paletteSelectEl) paletteSelectEl.value = currentPaletteId;
-      const isScalar = currentDataset?.type === "scalar";
+      if (viewSelectEl) viewSelectEl.value = String(PARAMS.viewIndex);
+      const isScalar = currentView?.type === "scalar";
       for (const { mode, btn } of renderModeButtons) {
         btn.classList.toggle("active", mode === currentRenderMode);
         btn.disabled = isScalar && mode !== "raster";
@@ -293,55 +276,85 @@ map.on("load", async () => {
       updateStandaloneLegendGradient();
     }
 
-    // ── Info panel ─────────────────────────────────────────────────
+    // ── View meta element (assigned when View folder is built) ─────
 
-    const infoEl = document.getElementById("info")!;
+    let viewMetaEl: HTMLDivElement = null!;
 
     function updateInfo() {
-      const ds = currentDataset;
-      const vars = Object.entries(ds.variables)
-        .map(([k, v]) => `${k} (${v.standard_name.replace(/_/g, " ")})`)
-        .join(" + ");
-      const units = Object.values(ds.variables)[0]?.units ?? "";
-      const vertEntry = getVerticalDim(ds);
-      const vertLabel = ds.vertical_label ?? "depth";
-      const vertPart = vertEntry
-        ? `  ${vertLabel[0].toUpperCase() + vertLabel.slice(1)}: ${formatVertical(PARAMS.vertical, vertLabel)}`
+      if (!viewMetaEl) return;
+      const v = currentView;
+      const meta = v.variable_meta;
+      const metaStr = meta
+        ? `${meta.standard_name.replace(/_/g, " ")} — ${meta.units}`
         : "";
-      infoEl.textContent =
-        `${ds.product}\n` +
-        `${ds.label}\n` +
-        `${vars} — ${units}\n` +
-        `Time: ${PARAMS.timeLabel}${vertPart}`;
+      viewMetaEl.textContent = [v.description, metaStr].filter(Boolean).join("\n");
     }
 
     // ── Tweakpane ─────────────────────────────────────────────────
 
     const pane = new Pane({ title: "zartigl" });
 
-    // Dataset selector (top-level, before Data folder)
-    const datasetOptions = catalog.datasets.map((ds, i) => ({
-      text: ds.label,
-      value: i,
-    }));
-    if (datasetOptions.length > 1) {
-      pane
-        .addBinding(PARAMS, "datasetIndex", {
-          options: datasetOptions,
-          label: "dataset",
-        })
-        .on("change", (ev) => switchDataset(catalog.datasets[ev.value]));
+    // View selector — grouped by category using optgroup
+    if (catalog.views.length > 1) {
+      const viewFolder = pane.addFolder({ title: "View" }) as FolderApi;
+
+      const viewSelect = document.createElement("select");
+      viewSelect.className = "view-select";
+
+      // Collect categories in order of first appearance
+      const seen = new Set<string>();
+      const cats: string[] = [];
+      for (const v of catalog.views) {
+        const cat = v.category ?? "Other";
+        if (!seen.has(cat)) { seen.add(cat); cats.push(cat); }
+      }
+
+      if (cats.length > 1) {
+        for (const cat of cats) {
+          const grp = document.createElement("optgroup");
+          grp.label = cat;
+          catalog.views.forEach((v, i) => {
+            if ((v.category ?? "Other") !== cat) return;
+            const opt = document.createElement("option");
+            opt.value = String(i);
+            opt.textContent = v.label;
+            grp.appendChild(opt);
+          });
+          viewSelect.appendChild(grp);
+        }
+      } else {
+        catalog.views.forEach((v, i) => {
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = v.label;
+          viewSelect.appendChild(opt);
+        });
+      }
+
+      viewSelect.value = String(PARAMS.viewIndex);
+      viewSelect.addEventListener("change", () => {
+        PARAMS.viewIndex = Number(viewSelect.value);
+        switchView(catalog.views[PARAMS.viewIndex]);
+      });
+
+      viewFolder.element.appendChild(viewSelect);
+      viewSelectEl = viewSelect;
+
+      const viewMetaDiv = document.createElement("div");
+      viewMetaDiv.className = "view-meta";
+      viewFolder.element.appendChild(viewMetaDiv);
+      viewMetaEl = viewMetaDiv;
     }
 
-    // ── Data folder (rebuilt on dataset switch) ────────────────────
+    // ── Data folder (rebuilt on view switch) ────────────────────────
 
     const dataFolder = pane.addFolder({ title: "Data" }) as FolderApi;
 
-    function rebuildDataFolder(dataset: CatalogDataset) {
+    function rebuildDataFolder(view: CatalogView) {
       for (const c of dataFolderChildren) c.dispose();
       dataFolderChildren = [];
 
-      const timeDim = dataset.dimensions.time;
+      const timeDim = view.dimensions.time;
       const timeMin = timeDim.min ?? 0;
       const timeStep = timeDim.step ?? 21600000;
       const timeSize = timeDim.size ?? 1;
@@ -370,9 +383,7 @@ map.on("load", async () => {
 
       dataFolderChildren.push(timeSliderBinding, timeLabelBinding);
 
-      // Play button only makes sense for scalar datasets — vector fields have
-      // continuous particle animation and don't benefit from time stepping.
-      if (dataset.type !== "vector") {
+      {
         const playerContainer = document.createElement("div");
         playerContainer.className = "player-btns";
         const btn = document.createElement("button");
@@ -380,10 +391,18 @@ map.on("load", async () => {
         btn.textContent = "▶ play";
         playBtn = btn;
 
+        // Scalar datasets animate at 5 fps for smooth transitions.
+        // Vector datasets update the velocity field at 0.5 fps so the particle
+        // animation continues uninterrupted between time steps.
+        const isVector = view.type === "vector";
+        const frameMs = isVector ? 2000 : 200;
+        // Vector has 2× the data per frame (U+V); buffer less to avoid heavy prefetch.
+        const bufferAhead = isVector ? 2 : 10;
+
         const player = new TimelinePlayer(layer, PARAMS.timeIndex, {
           timeMin, timeStep, timeSize,
-          bufferAhead: 10,
-          frameMs: 200,
+          bufferAhead,
+          frameMs,
         });
         currentPlayer = player;
 
@@ -421,10 +440,10 @@ map.on("load", async () => {
         });
       }
 
-      const vertEntry = getVerticalDim(dataset);
+      const vertEntry = getVerticalDim(view);
       if (vertEntry) {
         const [, vertDim] = vertEntry;
-        const vertLabel = dataset.vertical_label ?? "depth";
+        const vertLabel = view.vertical_label ?? "depth";
         const vertValues = [...(vertDim.values ?? [])].sort((a, b) => a - b);
         const vertOptions = vertValues.map((v) => ({
           text: formatVertical(v, vertLabel),
@@ -443,47 +462,32 @@ map.on("load", async () => {
 
         dataFolderChildren.push(vertBinding);
       }
-
-      if (dataset.type === "scalar") {
-        const varKeys = Object.keys(dataset.variables);
-        if (varKeys.length > 1) {
-          const varOptions = varKeys.map(k => ({ text: k, value: k }));
-          const varBinding = dataFolder
-            .addBinding(PARAMS, "scalarVariable", { options: varOptions, label: "variable" })
-            .on("change", (ev) => { layer.setScalarVariable(ev.value); updateInfo(); });
-          dataFolderChildren.push(varBinding);
-        }
-      }
     }
 
-    // ── switchDataset ──────────────────────────────────────────────
+    // ── switchView ────────────────────────────────────────────────
 
     const layerEventHandlers: { onLoaded?: (meta: FieldMeta) => void } = {};
 
-    function switchDataset(dataset: CatalogDataset) {
+    function switchView(view: CatalogView) {
       currentPlayer?.pause();
       if (map.getLayer("particles")) map.removeLayer("particles");
 
-      currentDataset = dataset;
+      currentView = view;
 
-      const isScalar = dataset.type === "scalar";
-      const varKeys = Object.keys(dataset.variables);
-      const uVar = isScalar
-        ? (dataset.defaults?.selectedVariable ?? varKeys[0] ?? "scalar")
-        : (varKeys[0] ?? "uo");
-      const vVar = isScalar ? undefined : (varKeys[1] ?? "vo");
-      if (isScalar) PARAMS.scalarVariable = uVar;
+      const isScalar = view.type === "scalar";
+      const uVar = isScalar ? (view.variable ?? "scalar") : (view.variable_u ?? "uo");
+      const vVar = isScalar ? undefined : view.variable_v;
 
-      const timeDim = dataset.dimensions.time;
+      const timeDim = view.dimensions.time;
       const timeMin = timeDim.min ?? 0;
       const timeStep = timeDim.step ?? 21600000;
-      const vertEntry = getVerticalDim(dataset);
+      const vertEntry = getVerticalDim(view);
       const vertValues = [...(vertEntry?.[1].values ?? [0])].sort(
         (a, b) => a - b,
       );
 
-      const dsIdx = catalog.datasets.indexOf(dataset);
-      if (pendingHashState && pendingHashState.d === dsIdx) {
+      const viewIdx = catalog.views.indexOf(view);
+      if (pendingHashState && pendingHashState.d === viewIdx) {
         const hs = pendingHashState;
         applyHashState(hs);
         PARAMS.timeIndex = Math.max(
@@ -499,9 +503,9 @@ map.on("load", async () => {
           : (vertValues[0] ?? 0);
         pendingHashState = null;
       } else {
-        applyDefaults(dataset);
-        PARAMS.timeIndex = 0;
-        PARAMS.timeLabel = formatTime(timeMin);
+        applyDefaults(view);
+        PARAMS.timeIndex = (timeDim.size ?? 1) - 1;
+        PARAMS.timeLabel = formatTime(timeMin + PARAMS.timeIndex * timeStep);
         PARAMS.vertical = vertValues[0] ?? 0;
       }
 
@@ -509,7 +513,7 @@ map.on("load", async () => {
 
       layer = new ParticleLayer({
         id: "particles",
-        source: dataset.zarr_url,
+        source: view.zarr_url_geo,
         variableU: uVar,
         variableV: vVar,
         time: timeMin + PARAMS.timeIndex * timeStep,
@@ -523,7 +527,7 @@ map.on("load", async () => {
         logScale: PARAMS.logScale,
         vibrance: PARAMS.vibrance,
         scalarMode: isScalar,
-        scalarUnit: isScalar ? (dataset.variables[uVar]?.units ?? "") : undefined,
+        scalarUnit: isScalar ? (view.variable_meta?.units ?? "") : undefined,
       });
 
       if (layerEventHandlers.onLoaded) {
@@ -533,7 +537,7 @@ map.on("load", async () => {
       map.addLayer(layer);
       layer.setColorRamp(currentPaletteId);
       layer.setRenderMode(currentRenderMode);
-      rebuildDataFolder(dataset);
+      rebuildDataFolder(view);
 
       const hide = isScalar ? "none" : "";
       particlesFolder.element.style.display = hide;
@@ -620,14 +624,14 @@ map.on("load", async () => {
         layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
       );
 
-    // ── Initial dataset (from hash or first) ───────────────────────
+    // ── Initial view (from hash or first) ─────────────────────────
 
     const initialIdx = Math.min(
       Math.max(pendingHashState?.d ?? 0, 0),
-      catalog.datasets.length - 1,
+      catalog.views.length - 1,
     );
-    PARAMS.datasetIndex = initialIdx;
-    switchDataset(catalog.datasets[initialIdx]);
+    PARAMS.viewIndex = initialIdx;
+    switchView(catalog.views[initialIdx]);
 
     // ── Render Mode folder ────────────────────────────────────────
 
@@ -676,6 +680,7 @@ map.on("load", async () => {
     });
 
     paletteFolder.element.appendChild(paletteSelect);
+    paletteFolder.element.appendChild(legendContainer);
     paletteSelectEl = paletteSelect;
 
     paletteFolder
@@ -693,13 +698,13 @@ map.on("load", async () => {
     const exportFolder = pane.addFolder({ title: "Export", expanded: false });
 
     exportFolder.addButton({ title: "Copy settings" }).on("click", () => {
-      const isScalarDs = currentDataset.type === "scalar";
+      const isScalarV = currentView.type === "scalar";
       const lines = [
-        `  - id: ${currentDataset.id}`,
+        `  - id: ${currentView.id}`,
         `    palette: ${currentPaletteId}`,
         `    renderMode: ${currentRenderMode}`,
       ];
-      if (!isScalarDs) {
+      if (!isScalarV) {
         lines.push(
           `    particleDensity: ${PARAMS.particleDensity}`,
           `    speedMin: ${PARAMS.speedMin}`,
@@ -719,12 +724,12 @@ map.on("load", async () => {
     });
 
     exportFolder.addButton({ title: "Share view" }).on("click", () => {
-      const ds = catalog.datasets[PARAMS.datasetIndex];
+      const v = catalog.views[PARAMS.viewIndex];
       const timeMs =
-        (ds.dimensions.time.min ?? 0) +
-        PARAMS.timeIndex * (ds.dimensions.time.step ?? 21600000);
+        (v.dimensions.time.min ?? 0) +
+        PARAMS.timeIndex * (v.dimensions.time.step ?? 21600000);
       const state: HashState = {
-        d: PARAMS.datasetIndex,
+        d: PARAMS.viewIndex,
         t: timeMs,
         v: PARAMS.vertical,
         p: currentPaletteId,

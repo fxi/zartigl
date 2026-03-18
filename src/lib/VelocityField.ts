@@ -16,6 +16,7 @@ export class VelocityField {
   vMax = 0;
   geoBounds = { west: -180, south: -90, east: 180, north: 90 };
   public scalarMode = false;
+  private linearFilter = true;
 
   init(gl: WebGLRenderingContext): void {
     this.gl = gl;
@@ -112,11 +113,12 @@ export class VelocityField {
       this.texture = gl.createTexture();
     }
 
+    const filter = this.linearFilter ? gl.LINEAR : gl.NEAREST;
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);        // seamless date-line wrap
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // poles must not wrap
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -130,6 +132,17 @@ export class VelocityField {
       pixels,
     );
     gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+
+  /** Switch between bilinear (particles) and nearest-neighbour (raster) sampling. */
+  setFilter(linear: boolean): void {
+    this.linearFilter = linear;
+    if (!this.gl || !this.texture) return;
+    const filter = linear ? this.gl.LINEAR : this.gl.NEAREST;
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, filter);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filter);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
   }
 
   bind(unit: number): void {

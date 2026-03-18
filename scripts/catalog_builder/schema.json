@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Zartigl Catalog",
+  "type": "object",
+  "required": ["generated", "views"],
+  "additionalProperties": false,
+  "properties": {
+    "generated": { "type": "string" },
+    "views": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/View" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "View": {
+      "type": "object",
+      "required": ["id", "label", "category", "type", "source_dataset", "zarr_url_geo", "variable_meta", "dimensions", "defaults"],
+      "additionalProperties": false,
+      "properties": {
+        "id":              { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "label":           { "type": "string", "minLength": 1 },
+        "description":     { "type": "string" },
+        "category":        { "type": "string", "minLength": 1 },
+        "type":            { "type": "string", "enum": ["vector", "scalar"] },
+        "source_dataset":  { "type": "string", "minLength": 1 },
+        "zarr_url_geo":    { "type": "string", "pattern": "^https?://" },
+        "zarr_url_time":   { "type": "string", "pattern": "^https?://" },
+        "variable":        { "type": "string" },
+        "variable_u":      { "type": "string" },
+        "variable_v":      { "type": "string" },
+        "variable_meta": {
+          "type": "object",
+          "required": ["standard_name", "units"],
+          "additionalProperties": false,
+          "properties": {
+            "standard_name": { "type": "string" },
+            "units":         { "type": "string" }
+          }
+        },
+        "dimensions": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/Dimension" }
+        },
+        "vertical_label": { "type": "string", "enum": ["depth", "pressure"] },
+        "defaults":        { "$ref": "#/$defs/Defaults" }
+      },
+      "if":   { "properties": { "type": { "const": "vector" } } },
+      "then": { "required": ["variable_u", "variable_v"] },
+      "else": { "required": ["variable"] }
+    },
+    "Dimension": {
+      "type": "object",
+      "required": ["axis"],
+      "properties": {
+        "axis":       { "type": "string", "enum": ["x", "y", "z", "t"] },
+        "size":       { "type": "integer", "minimum": 1 },
+        "min":        { "type": "number" },
+        "max":        { "type": "number" },
+        "step":       { "type": "number" },
+        "values":     { "type": "array", "items": { "type": "number" } },
+        "chunk_size": { "type": "integer", "minimum": 1 },
+        "units":      { "type": "string" }
+      }
+    },
+    "Defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "palette":         { "type": "string" },
+        "renderMode":      { "type": "string", "enum": ["raster", "particles", "raster+particles"] },
+        "particleDensity": { "type": "number", "exclusiveMinimum": 0 },
+        "speedMin":        { "type": "number", "exclusiveMinimum": 0 },
+        "speedMax":        { "type": "number", "exclusiveMinimum": 0 },
+        "fadeMin":         { "type": "number", "minimum": 0, "maximum": 1 },
+        "fadeMax":         { "type": "number", "minimum": 0, "maximum": 1 },
+        "dropRate":        { "type": "number", "minimum": 0 },
+        "dropRateBump":    { "type": "number", "minimum": 0 },
+        "opacity":         { "type": "number", "minimum": 0, "maximum": 1 },
+        "logScale":        { "type": "boolean" },
+        "vibrance":        { "type": "number", "minimum": -1, "maximum": 1 }
+      }
+    }
+  }
+}
