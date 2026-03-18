@@ -3,7 +3,7 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { ParticleLayerOptions, ZoomWeighted, FieldMeta } from "./types.js";
+import type { ParticleLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types.js";
 import { saveGLState, restoreGLState } from "./gl-util.js";
 import type { ColorRampInput } from "./gl-util.js";
 import { ParticleSimulation } from "./ParticleSimulation.js";
@@ -17,6 +17,10 @@ type LayerEventMap = {
   loading: () => void;
   loaded: (meta: FieldMeta) => void;
   error: (err: Error) => void;
+  /** Fired when a time step has been pre-fetched and is ready for instant swap. */
+  frameBuffered: (ms: number) => void;
+  /** Fired when the frame cache is wiped (viewport changed). */
+  cacheInvalidated: () => void;
 };
 
 /**
@@ -64,6 +68,12 @@ export class ParticleLayer implements CustomLayerInterface {
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveStartHandler: (() => void) | null = null;
+  private moveEndHandler: (() => void) | null = null;
+
+  /** Pre-fetched frames keyed by time-ms. Cleared when the viewport changes. */
+  private frameCache = new Map<number, VelocityData>();
+  /** Time-ms values currently being fetched in the background. */
+  private inflight = new Set<number>();
 
   private listeners: Map<string, Set<Function>> = new Map();
 
@@ -111,6 +121,15 @@ export class ParticleLayer implements CustomLayerInterface {
     this.moveStartHandler = () => this.simulation.clearState();
     map.on("movestart", this.moveStartHandler);
 
+    // Invalidate pre-fetched frame cache when the viewport changes,
+    // as cached chunks were fetched for the previous lat bounds.
+    this.moveEndHandler = () => {
+      this.zarrSource.cancelAll();   // abort stale fetches before clearing tracking
+      this.frameCache.clear();
+      this.inflight.clear();
+      this.emit("cacheInvalidated");
+    };
+    map.on("moveend", this.moveEndHandler);
   }
 
   private async initAsync(): Promise<void> {
@@ -124,173 +143,175 @@ export class ParticleLayer implements CustomLayerInterface {
     }
   }
 
+  // ── Core fetch / cache helpers ───────────────────────────────────────
+
+  private timeToMs(time: string | number): number {
+    return typeof time === "number" ? time : new Date(time).getTime();
+  }
+
+  private computeFieldMeta(data: VelocityData, time: string | number): FieldMeta {
+    const timeStr = typeof time === "string" ? time : new Date(time).toISOString();
+    if (this.scalarMode) {
+      return { min: data.uMin, max: data.uMax, unit: this.scalarUnit, time: timeStr, depth: this.depth };
+    }
+    const maxSpeed = Math.sqrt(
+      Math.max(data.uMin ** 2, data.uMax ** 2) +
+      Math.max(data.vMin ** 2, data.vMax ** 2),
+    );
+    return { min: 0, max: maxSpeed, unit: "m/s", time: timeStr, depth: this.depth };
+  }
+
+  /**
+   * Fetch and stitch velocity data for the given time without touching GL state.
+   * The map's current viewport is used to determine the lat bounds of the request.
+   */
+  private async fetchVelocityData(time: string | number): Promise<VelocityData> {
+    const bounds = this.map!.getBounds();
+    const geoBounds = {
+      west: -180,
+      east: 180,
+      south: Math.max(bounds.getSouth(), -85),
+      north: Math.min(bounds.getNorth(), 85),
+    };
+
+    const timeIdx = this.zarrSource.findTimeIndex(time);
+    const depthIdx = this.zarrSource.findDepthIndex(this.depth);
+
+    console.log(
+      `[zartigl] Loading velocity: depth=${this.depth} → depthIdx=${depthIdx}, ` +
+      `actual depth value=${this.zarrSource.getCoords().vertical[depthIdx]}, ` +
+      `timeIdx=${timeIdx}`
+    );
+
+    const uChunkInfos = this.zarrSource.getChunksForBounds(
+      this.variableU,
+      timeIdx,
+      depthIdx,
+      geoBounds,
+    );
+
+    const dims = this.zarrSource.getDimensions(this.variableU);
+    const timeDim = dims.indexOf("time");
+    const vertName = this.zarrSource.getVerticalDimName();
+    const depthDim = dims.indexOf(vertName);
+    const latDim = dims.indexOf("latitude");
+    const lonDim = dims.indexOf("longitude");
+
+    // Fetch all U and V chunks in parallel
+    const uPromises = uChunkInfos.map(async (info) => {
+      const indices: number[] = [];
+      indices[timeDim] = info.timeIdx;
+      indices[depthDim] = info.depthIdx;
+      indices[latDim] = info.latIdx;
+      indices[lonDim] = info.lonIdx;
+      const data = await this.zarrSource.fetchChunk(
+        this.variableU,
+        indices,
+      );
+      const lonChunkSize = this.zarrSource.getChunkShape(this.variableU)[lonDim];
+      return {
+        data,
+        latStart:
+          info.latIdx * this.zarrSource.getChunkShape(this.variableU)[latDim],
+        lonStart:
+          info.lonIdx * lonChunkSize,
+        latSize: info.latSize,
+        lonSize: info.lonSize,
+        lonChunkSize,
+      };
+    });
+
+    const uChunks = await Promise.all(uPromises);
+
+    const vChunks = this.scalarMode
+      ? []
+      : await Promise.all(uChunkInfos.map(async (info) => {
+          const indices: number[] = [];
+          indices[timeDim] = info.timeIdx;
+          indices[depthDim] = info.depthIdx;
+          indices[latDim] = info.latIdx;
+          indices[lonDim] = info.lonIdx;
+          const data = await this.zarrSource.fetchChunk(
+            this.variableV,
+            indices,
+          );
+          const lonChunkSize = this.zarrSource.getChunkShape(this.variableV)[lonDim];
+          return {
+            data,
+            latStart:
+              info.latIdx * this.zarrSource.getChunkShape(this.variableV)[latDim],
+            lonStart:
+              info.lonIdx * lonChunkSize,
+            latSize: info.latSize,
+            lonSize: info.lonSize,
+            lonChunkSize,
+          };
+        }));
+
+    const latPixMin = Math.min(...uChunks.map(c => c.latStart));
+    const latPixMax = Math.max(...uChunks.map(c => c.latStart + c.latSize));
+    const lonPixMin = Math.min(...uChunks.map(c => c.lonStart));
+    const lonPixMax = Math.max(...uChunks.map(c => c.lonStart + c.lonSize));
+    const fetchedHeight = latPixMax - latPixMin;
+    const fetchedWidth  = lonPixMax - lonPixMin;
+
+    const uChunksRel = uChunks.map(c => ({
+      ...c,
+      latStart: c.latStart - latPixMin,
+      lonStart: c.lonStart - lonPixMin,
+    }));
+    const vChunksRel = vChunks.map(c => ({
+      ...c,
+      latStart: c.latStart - latPixMin,
+      lonStart: c.lonStart - lonPixMin,
+    }));
+
+    const coords = this.zarrSource.getCoords();
+    const latLast = Math.min(latPixMax - 1, coords.latitude.length - 1);
+    const lonLast = Math.min(lonPixMax - 1, coords.longitude.length - 1);
+    const dataGeoBounds = {
+      west:  coords.longitude[lonPixMin],
+      east:  coords.longitude[lonLast],
+      south: Math.min(coords.latitude[latPixMin], coords.latitude[latLast]),
+      north: Math.max(coords.latitude[latPixMin], coords.latitude[latLast]),
+    };
+    const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
+
+    return stitchVelocityChunks(
+      uChunksRel,
+      vChunksRel,
+      fetchedHeight,
+      fetchedWidth,
+      dataGeoBounds,
+      latDescending,
+      this.scalarMode,
+    );
+  }
+
   private async loadViewportVelocity(): Promise<void> {
     if (this.loading || !this.map) return;
     this.loading = true;
-    this.emit('loading');
+    this.emit("loading");
 
     try {
-      const bounds = this.map.getBounds();
-      // Always load the full longitude range so the velocity texture covers
-      // [-180, 180] end-to-end. This makes the REPEAT wrap and fract(geoUV.x)
-      // in the update shader geometrically correct: the left and right edges of
-      // the texture correspond to the same geographic line (the date line), so
-      // bilinear interpolation and particle position wrapping are seamless.
-      const geoBounds = {
-        west: -180,
-        east: 180,
-        south: Math.max(bounds.getSouth(), -85),
-        north: Math.min(bounds.getNorth(), 85),
-      };
+      const ms = this.timeToMs(this.time);
+      let velocityData: VelocityData;
 
-      const timeIdx =
-        typeof this.time === "string" || typeof this.time === "number"
-          ? this.zarrSource.findTimeIndex(this.time)
-          : 0;
-      const depthIdx = this.zarrSource.findDepthIndex(this.depth);
-
-      const debugCoords = this.zarrSource.getCoords();
-      console.log(
-        `[zartigl] Loading velocity: depth=${this.depth} → depthIdx=${depthIdx}, ` +
-        `actual depth value=${debugCoords.vertical[depthIdx]}, ` +
-        `timeIdx=${timeIdx}`
-      );
-
-      const uChunkInfos = this.zarrSource.getChunksForBounds(
-        this.variableU,
-        timeIdx,
-        depthIdx,
-        geoBounds,
-      );
-
-      const dims = this.zarrSource.getDimensions(this.variableU);
-      const timeDim = dims.indexOf("time");
-      const vertName = this.zarrSource.getVerticalDimName();
-      const depthDim = dims.indexOf(vertName);
-      const latDim = dims.indexOf("latitude");
-      const lonDim = dims.indexOf("longitude");
-
-      // Fetch all U and V chunks in parallel
-      const uPromises = uChunkInfos.map(async (info) => {
-        const indices: number[] = [];
-        indices[timeDim] = info.timeIdx;
-        indices[depthDim] = info.depthIdx;
-        indices[latDim] = info.latIdx;
-        indices[lonDim] = info.lonIdx;
-        const data = await this.zarrSource.fetchChunk(
-          this.variableU,
-          indices,
-        );
-        const lonChunkSize = this.zarrSource.getChunkShape(this.variableU)[lonDim];
-        return {
-          data,
-          latStart:
-            info.latIdx * this.zarrSource.getChunkShape(this.variableU)[latDim],
-          lonStart:
-            info.lonIdx * lonChunkSize,
-          latSize: info.latSize,
-          lonSize: info.lonSize,
-          lonChunkSize,
-        };
-      });
-
-      const uChunks = await Promise.all(uPromises);
-
-      const vChunks = this.scalarMode
-        ? []
-        : await Promise.all(uChunkInfos.map(async (info) => {
-            const indices: number[] = [];
-            indices[timeDim] = info.timeIdx;
-            indices[depthDim] = info.depthIdx;
-            indices[latDim] = info.latIdx;
-            indices[lonDim] = info.lonIdx;
-            const data = await this.zarrSource.fetchChunk(
-              this.variableV,
-              indices,
-            );
-            const lonChunkSize = this.zarrSource.getChunkShape(this.variableV)[lonDim];
-            return {
-              data,
-              latStart:
-                info.latIdx * this.zarrSource.getChunkShape(this.variableV)[latDim],
-              lonStart:
-                info.lonIdx * lonChunkSize,
-              latSize: info.latSize,
-              lonSize: info.lonSize,
-              lonChunkSize,
-            };
-          }));
-
-      // Compute the pixel extent covered by the fetched chunks only.
-      // Using the full dataset shape would leave NaN holes outside the
-      // viewport, causing particles there to be dropped and re-spawned
-      // as stripe artifacts.
-      const latPixMin = Math.min(...uChunks.map(c => c.latStart));
-      const latPixMax = Math.max(...uChunks.map(c => c.latStart + c.latSize));
-      const lonPixMin = Math.min(...uChunks.map(c => c.lonStart));
-      const lonPixMax = Math.max(...uChunks.map(c => c.lonStart + c.lonSize));
-      const fetchedHeight = latPixMax - latPixMin;
-      const fetchedWidth  = lonPixMax - lonPixMin;
-
-      // Offset chunk positions to be relative to the fetched sub-region.
-      const uChunksRel = uChunks.map(c => ({
-        ...c,
-        latStart: c.latStart - latPixMin,
-        lonStart: c.lonStart - lonPixMin,
-      }));
-      const vChunksRel = vChunks.map(c => ({
-        ...c,
-        latStart: c.latStart - latPixMin,
-        lonStart: c.lonStart - lonPixMin,
-      }));
-
-      // Geographic bounds of the fetched sub-region.
-      const coords = this.zarrSource.getCoords();
-      const latLast = Math.min(latPixMax - 1, coords.latitude.length - 1);
-      const lonLast = Math.min(lonPixMax - 1, coords.longitude.length - 1);
-      const dataGeoBounds = {
-        west:  coords.longitude[lonPixMin],
-        east:  coords.longitude[lonLast],
-        south: Math.min(coords.latitude[latPixMin], coords.latitude[latLast]),
-        north: Math.max(coords.latitude[latPixMin], coords.latitude[latLast]),
-      };
-      // Detect north-to-south latitude storage (needs Y-flip in GL texture).
-      const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
-
-      const velocityData = stitchVelocityChunks(
-        uChunksRel,
-        vChunksRel,
-        fetchedHeight,
-        fetchedWidth,
-        dataGeoBounds,
-        latDescending,
-        this.scalarMode,
-      );
+      if (this.frameCache.has(ms)) {
+        velocityData = this.frameCache.get(ms)!;
+      } else {
+        velocityData = await this.fetchVelocityData(this.time);
+        this.frameCache.set(ms, velocityData);
+      }
 
       this.velocityField.update(velocityData);
       this.simulation.setScalarMode(velocityData.scalarMode ?? false);
-
-      // Compute field meta and emit 'loaded'
-      const timeStr =
-        typeof this.time === "string"
-          ? this.time
-          : new Date(this.time).toISOString();
-      const meta: FieldMeta = this.scalarMode
-        ? { min: velocityData.uMin, max: velocityData.uMax, unit: this.scalarUnit, time: timeStr, depth: this.depth }
-        : (() => {
-            const maxSpeed = Math.sqrt(
-              Math.max(velocityData.uMin ** 2, velocityData.uMax ** 2) +
-              Math.max(velocityData.vMin ** 2, velocityData.vMax ** 2),
-            );
-            return { min: 0, max: maxSpeed, unit: 'm/s', time: timeStr, depth: this.depth };
-          })();
-      this.emit('loaded', meta);
-
+      this.emit("loaded", this.computeFieldMeta(velocityData, this.time));
       this.map?.triggerRepaint();
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         console.error("[zartigl] Failed to load velocity:", err);
-        this.emit('error', err instanceof Error ? err : new Error(String(err)));
+        this.emit("error", err instanceof Error ? err : new Error(String(err)));
       }
     } finally {
       this.loading = false;
@@ -370,10 +391,13 @@ export class ParticleLayer implements CustomLayerInterface {
   onRemove(): void {
     if (this.map) {
       if (this.moveStartHandler) this.map.off("movestart", this.moveStartHandler);
+      if (this.moveEndHandler) this.map.off("moveend", this.moveEndHandler);
     }
     this.zarrSource.cancelAll();
     this.simulation.destroy();
     this.velocityField.destroy();
+    this.frameCache.clear();
+    this.inflight.clear();
     this.map = null;
     this.gl = null;
   }
@@ -402,11 +426,61 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setTime(time: string | number): void {
     this.time = time;
-    this.loadViewportVelocity();
+    const ms = this.timeToMs(time);
+
+    if (this.frameCache.has(ms)) {
+      // Instant swap — no network round-trip needed.
+      const data = this.frameCache.get(ms)!;
+      this.velocityField.update(data);
+      this.simulation.setScalarMode(data.scalarMode ?? false);
+      this.emit("loaded", this.computeFieldMeta(data, time));
+      this.map?.triggerRepaint();
+    } else {
+      this.loadViewportVelocity();
+    }
+  }
+
+  /**
+   * Pre-fetch velocity data for a future time step without swapping the active
+   * field. Fires `frameBuffered(ms)` when ready so playback can advance
+   * immediately without a loading gap.
+   */
+  async prefetchTime(ms: number): Promise<void> {
+    if (!this.map || !this.initialized) return;
+    if (this.frameCache.has(ms) || this.inflight.has(ms)) return;
+
+    this.inflight.add(ms);
+    try {
+      const data = await this.fetchVelocityData(ms);
+      // Guard against cache being cleared (e.g. viewport change) while we were fetching.
+      if (!this.frameCache.has(ms)) {
+        this.frameCache.set(ms, data);
+        this.emit("frameBuffered", ms);
+      }
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        console.warn("[zartigl] Prefetch failed for ms=" + ms, err);
+      }
+    } finally {
+      this.inflight.delete(ms);
+    }
+  }
+
+  /** True when the frame for the given time (ms) is already in the cache. */
+  isFrameCached(ms: number): boolean {
+    return this.frameCache.has(ms);
+  }
+
+  /** Abort all pending Zarr prefetch fetches and clear the inflight set. */
+  cancelPrefetches(): void {
+    this.zarrSource.cancelAll();
+    this.inflight.clear();
   }
 
   setDepth(depth: number): void {
     this.depth = depth;
+    this.frameCache.clear();
+    this.inflight.clear();
     this.loadViewportVelocity();
   }
 
@@ -460,6 +534,8 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setScalarVariable(varName: string): void {
     this.variableU = varName;
+    this.frameCache.clear();
+    this.inflight.clear();
     this.loadViewportVelocity();
   }
 

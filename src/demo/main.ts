@@ -4,6 +4,7 @@ import type { BindingApi, FolderApi } from "@tweakpane/core";
 import { ParticleLayer, getPalettes } from "../lib/index.js";
 import type { RenderMode } from "../lib/ParticleSimulation.js";
 import type { FieldMeta } from "../lib/index.js";
+import { TimelinePlayer } from "./TimelinePlayer.js";
 
 // ── Catalog types ────────────────────────────────────────────────────
 
@@ -168,39 +169,18 @@ map.on("load", async () => {
     let currentPaletteId = "rdylbu";
     let currentRenderMode: RenderMode = "raster+particles";
 
-    let playerInterval: ReturnType<typeof setInterval> | null = null;
-    let isPlaying = false;
+    let currentPlayer: TimelinePlayer | null = null;
     let playBtn: HTMLButtonElement | null = null;
     let timeLabelBinding: BindingApi;
     let timeSliderBinding: BindingApi;
+    // Prevents the slider onChange from pausing the player when we update
+    // PARAMS.timeIndex programmatically and call timeSliderBinding.refresh().
+    // Tweakpane fires the change event whenever the bound value changes, even
+    // on programmatic refresh, so we suppress it during player frame advances.
+    let suppressSliderChange = false;
 
     // Pending hash state — consumed on first matching switchDataset call
     let pendingHashState = loadHashState();
-
-    function stopPlayer() {
-      if (playerInterval !== null) { clearInterval(playerInterval); playerInterval = null; }
-      isPlaying = false;
-      if (playBtn) { playBtn.textContent = "▶ play"; playBtn.classList.remove("playing"); }
-    }
-
-    function startPlayer() {
-      if (isPlaying) return;
-      isPlaying = true;
-      if (playBtn) { playBtn.textContent = "⏸ pause"; playBtn.classList.add("playing"); }
-      const ds = currentDataset;
-      const timeMin = ds.dimensions.time.min ?? 0;
-      const timeStep = ds.dimensions.time.step ?? 21600000;
-      const timeSize = ds.dimensions.time.size ?? 1;
-      playerInterval = setInterval(() => {
-        PARAMS.timeIndex = (PARAMS.timeIndex + 1) % timeSize;
-        const ms = timeMin + PARAMS.timeIndex * timeStep;
-        PARAMS.timeLabel = formatTime(ms);
-        timeLabelBinding.refresh();
-        timeSliderBinding.refresh();
-        layer.setTime(ms);
-        updateInfo();
-      }, 500);
-    }
 
     // DOM element refs — assigned when UI is built, used by refreshUI()
     let paletteSelectEl: HTMLSelectElement | null = null;
@@ -374,7 +354,8 @@ map.on("load", async () => {
           label: "time",
         })
         .on("change", (ev) => {
-          stopPlayer();
+          if (suppressSliderChange) return;
+          currentPlayer?.pause();
           const ms = timeMin + ev.value * timeStep;
           PARAMS.timeLabel = formatTime(ms);
           timeLabelBinding.refresh();
@@ -389,16 +370,56 @@ map.on("load", async () => {
 
       dataFolderChildren.push(timeSliderBinding, timeLabelBinding);
 
-      const playerContainer = document.createElement("div");
-      playerContainer.className = "player-btns";
-      const btn = document.createElement("button");
-      btn.className = "player-btn";
-      btn.textContent = "▶ play";
-      btn.addEventListener("click", () => (isPlaying ? stopPlayer() : startPlayer()));
-      playBtn = btn;
-      playerContainer.appendChild(btn);
-      dataFolder.element.appendChild(playerContainer);
-      dataFolderChildren.push({ dispose() { stopPlayer(); playerContainer.remove(); playBtn = null; } });
+      // Play button only makes sense for scalar datasets — vector fields have
+      // continuous particle animation and don't benefit from time stepping.
+      if (dataset.type !== "vector") {
+        const playerContainer = document.createElement("div");
+        playerContainer.className = "player-btns";
+        const btn = document.createElement("button");
+        btn.className = "player-btn";
+        btn.textContent = "▶ play";
+        playBtn = btn;
+
+        const player = new TimelinePlayer(layer, PARAMS.timeIndex, {
+          timeMin, timeStep, timeSize,
+          bufferAhead: 10,
+          frameMs: 200,
+        });
+        currentPlayer = player;
+
+        player.onStateChange = (state) => {
+          if (!playBtn) return;
+          if (state === "playing")   { playBtn.textContent = "⏸ pause"; playBtn.classList.add("playing"); }
+          if (state === "paused")    { playBtn.textContent = "▶ play";  playBtn.classList.remove("playing"); }
+          if (state === "buffering") { playBtn.textContent = "⏳ buffering…"; }
+        };
+
+        player.onFrameChange = (index, ms) => {
+          PARAMS.timeIndex = index;
+          PARAMS.timeLabel = formatTime(ms);
+          suppressSliderChange = true;
+          timeLabelBinding.refresh();
+          timeSliderBinding.refresh();
+          suppressSliderChange = false;
+          updateInfo();
+        };
+
+        btn.addEventListener("click", () => {
+          if (player.state === "paused") player.play();
+          else player.pause();
+        });
+
+        playerContainer.appendChild(btn);
+        dataFolder.element.appendChild(playerContainer);
+        dataFolderChildren.push({
+          dispose() {
+            player.dispose();
+            currentPlayer = null;
+            playerContainer.remove();
+            playBtn = null;
+          }
+        });
+      }
 
       const vertEntry = getVerticalDim(dataset);
       if (vertEntry) {
@@ -440,7 +461,7 @@ map.on("load", async () => {
     const layerEventHandlers: { onLoaded?: (meta: FieldMeta) => void } = {};
 
     function switchDataset(dataset: CatalogDataset) {
-      stopPlayer();
+      currentPlayer?.pause();
       if (map.getLayer("particles")) map.removeLayer("particles");
 
       currentDataset = dataset;
