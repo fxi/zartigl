@@ -42,7 +42,7 @@ function lngToMercX(lng: number): number {
 export class ParticleLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
-  readonly renderingMode = "2d" as const;
+  readonly renderingMode = "3d" as const;
 
   private map: MaplibreMap | null = null;
   private gl: WebGLRenderingContext | null = null;
@@ -328,23 +328,31 @@ export class ParticleLayer implements CustomLayerInterface {
         maxY: latToMercY(Math.max(mapBounds.getSouth(), -85)),
       };
 
-      // Determine which world copies are visible (raw, unclamped bounds).
-      // offset 0 = primary, +1 = right copy, -1 = left copy, etc.
-      const rawMinX = (mapBounds.getWest() + 180) / 360;
-      const rawMaxX = (mapBounds.getEast() + 180) / 360;
-      const worldCopyOffsets: number[] = [];
-      for (let n = Math.floor(rawMinX); n <= Math.floor(rawMaxX); n++) {
-        worldCopyOffsets.push(n);
-      }
-
-      gl.disable(gl.DEPTH_TEST);
-      gl.disable(gl.STENCIL_TEST);
-
       // mapbox-gl matrix maps [0, 1] Mercator → clip space.
       // maplibre-gl matrix maps [0, worldSize] Mercator → clip space.
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
       // For mapbox-gl we must pass worldSize = 1.0 so pos stays in [0, 1].
       const isMapboxConvention = Array.isArray(options);
+      const isGlobe = !isMapboxConvention && this.map.getProjection?.()?.type === 'globe';
+
+      // Determine which world copies are visible (raw, unclamped bounds).
+      // offset 0 = primary, +1 = right copy, -1 = left copy, etc.
+      // Globe has no world copies — sphere wraps naturally.
+      let worldCopyOffsets: number[];
+      if (isGlobe) {
+        worldCopyOffsets = [0];
+      } else {
+        const rawMinX = (mapBounds.getWest() + 180) / 360;
+        const rawMaxX = (mapBounds.getEast() + 180) / 360;
+        worldCopyOffsets = [];
+        for (let n = Math.floor(rawMinX); n <= Math.floor(rawMaxX); n++) {
+          worldCopyOffsets.push(n);
+        }
+      }
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.STENCIL_TEST);
+
       const worldSize = isMapboxConvention ? 1.0 : 512 * Math.pow(2, this.map.getZoom());
       this.simulation.render(
         this.velocityTexUnit,
@@ -355,6 +363,7 @@ export class ParticleLayer implements CustomLayerInterface {
         worldSize,
         worldCopyOffsets,
         this.velocityField.geoBounds,
+        isGlobe,
       );
     } finally {
       restoreGLState(gl, saved);

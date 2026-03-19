@@ -169,6 +169,8 @@ map.on("load", async () => {
     let paletteSelectEl: HTMLSelectElement | null = null;
     let viewSelectEl: HTMLSelectElement | null = null;
     let renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
+    let projectionButtons: { proj: string; btn: HTMLButtonElement }[] = [];
+    let currentProjection: "mercator" | "globe" = "mercator";
 
     const PARAMS = {
       viewIndex: 0,
@@ -271,6 +273,9 @@ map.on("load", async () => {
       for (const { mode, btn } of renderModeButtons) {
         btn.classList.toggle("active", mode === currentRenderMode);
         btn.disabled = isScalar && mode !== "raster";
+      }
+      for (const { proj, btn } of projectionButtons) {
+        btn.classList.toggle("active", proj === currentProjection);
       }
       pane.refresh();
       updateStandaloneLegendGradient();
@@ -658,6 +663,29 @@ map.on("load", async () => {
     }
 
     renderModeFolder.element.appendChild(renderModeBtnContainer);
+
+    // ── Projection row (globe / mercator) ─────────────────────────
+
+    const projBtnContainer = document.createElement("div");
+    projBtnContainer.className = "render-mode-btns";
+
+    for (const proj of ["mercator", "globe"] as const) {
+      const btn = document.createElement("button");
+      btn.textContent = proj;
+      btn.className =
+        "render-mode-btn" + (proj === currentProjection ? " active" : "");
+      btn.addEventListener("click", () => {
+        currentProjection = proj;
+        map.setProjection({ type: proj });
+        for (const entry of projectionButtons) {
+          entry.btn.classList.toggle("active", entry.proj === proj);
+        }
+      });
+      projectionButtons.push({ proj, btn });
+      projBtnContainer.appendChild(btn);
+    }
+
+    renderModeFolder.element.appendChild(projBtnContainer);
 
     // ── Palette folder ────────────────────────────────────────────
 

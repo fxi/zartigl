@@ -130,6 +130,7 @@ export class ParticleSimulation {
       "u_opacity",
       "u_log_scale",
       "u_vibrance",
+      "u_is_globe",
     ]);
     this.fadeLocs = this.getUniforms(this.fadeProgram, [
       "u_screen",
@@ -256,6 +257,7 @@ export class ParticleSimulation {
     worldSize: number,
     worldCopyOffsets: number[],
     geoBounds?: { west: number; south: number; east: number; north: number },
+    isGlobe = false,
   ): void {
     const gl = this.gl;
 
@@ -310,7 +312,9 @@ export class ParticleSimulation {
     this.drawQuad();
 
     // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
-    if (runGrid && geoBounds) {
+    // Skip on globe: the fullscreen-quad screen-UV→Mercator mapping is invalid
+    // for a 3D sphere projection; geo-mesh raster support can be added later.
+    if (runGrid && geoBounds && !isGlobe) {
       gl.useProgram(this.gridProgram);
       gl.disable(gl.BLEND);
 
@@ -398,6 +402,7 @@ export class ParticleSimulation {
       gl.uniform1f(this.drawLocs["u_opacity"], this.params.opacity);
       gl.uniform1f(this.drawLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
       gl.uniform1f(this.drawLocs["u_vibrance"], this.params.vibrance);
+      gl.uniform1f(this.drawLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
 
       gl.uniformMatrix4fv(
         this.drawLocs["u_matrix"],

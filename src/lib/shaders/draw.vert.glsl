@@ -13,6 +13,7 @@ uniform float u_world_size;   // 512 * 2^zoom
 uniform float u_world_offset; // integer world copy offset (0 = primary, ±1 = copies)
 uniform float u_speed_factor;
 uniform vec4 u_geo_bounds;   // west, south, east, north in degrees
+uniform float u_is_globe;    // 1.0 = globe projection, 0.0 = mercator
 
 varying float v_speed;
 varying float v_valid;
@@ -63,6 +64,21 @@ void main() {
     // a_is_curr=0 → tail of the segment (one step back), a_is_curr=1 → head (current)
     vec2 pos = currPos - offset * (1.0 - a_is_curr);
 
-    vec2 worldPos = vec2((pos.x + u_world_offset) * u_world_size, pos.y * u_world_size);
-    gl_Position = u_matrix * vec4(worldPos, 0.0, 1.0);
+    if (u_is_globe > 0.5) {
+        // MapLibre globe matrix maps from a unit sphere (radius=1) to clip space.
+        // Axis convention (from MapLibre's angularCoordinatesRadiansToVector):
+        //   x = sin(lng) * cos(lat),  y = sin(lat),  z = cos(lng) * cos(lat)
+        float lngRad = radians(mercToLng(pos.x));
+        float latRad = radians(mercToLat(pos.y));
+        float cosLat = cos(latRad);
+        vec3 ecef = vec3(
+            sin(lngRad) * cosLat,
+            sin(latRad),
+            cos(lngRad) * cosLat
+        );
+        gl_Position = u_matrix * vec4(ecef, 1.0);
+    } else {
+        vec2 worldPos = vec2((pos.x + u_world_offset) * u_world_size, pos.y * u_world_size);
+        gl_Position = u_matrix * vec4(worldPos, 0.0, 1.0);
+    }
 }
