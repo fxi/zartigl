@@ -5,6 +5,7 @@ node_modules/
 plan.md
 .claude
 
+.playwright-mcp/
 # Build output
 dist/
 dist-demo/

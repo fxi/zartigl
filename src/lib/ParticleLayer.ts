@@ -298,8 +298,10 @@ export class ParticleLayer implements CustomLayerInterface {
     options: CustomRenderMethodInput | number[],
   ): void {
     // maplibre-gl passes { modelViewProjectionMatrix, ... }; mapbox-gl passes the matrix directly
-    const matrix = Array.isArray(options)
-      ? options
+    const isMapboxArr = Array.isArray(options);
+    const isTypedArr = ArrayBuffer.isView(options);
+    const matrix = (isMapboxArr || isTypedArr)
+      ? options as number[]
       : (options as CustomRenderMethodInput).modelViewProjectionMatrix;
     if (!this.initialized || !this.velocityField.hasData() || !this.map) return;
 

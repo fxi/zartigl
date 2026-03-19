@@ -4,58 +4,9 @@ import type { BindingApi, FolderApi } from "@tweakpane/core";
 import { ParticleLayer, getPalettes } from "../lib/index.js";
 import type { RenderMode } from "../lib/ParticleSimulation.js";
 import type { FieldMeta } from "../lib/index.js";
-import { TimelinePlayer } from "./TimelinePlayer.js";
-
-// ── Catalog types ────────────────────────────────────────────────────
-
-interface CatalogDimension {
-  axis: string;
-  size: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  values?: number[];
-  chunk_size: number;
-  units: string;
-}
-
-interface LayerDefaults {
-  palette?: string;
-  renderMode?: string;
-  particleDensity?: number;
-  speedMin?: number;
-  speedMax?: number;
-  fadeMin?: number;
-  fadeMax?: number;
-  dropRate?: number;
-  dropRateBump?: number;
-  opacity?: number;
-  logScale?: boolean;
-  vibrance?: number;
-}
-
-interface CatalogView {
-  id: string;
-  label: string;
-  description?: string;
-  category?: string;
-  type: "vector" | "scalar";
-  source_dataset: string;
-  zarr_url_geo: string;
-  zarr_url_time?: string;
-  variable?: string;
-  variable_u?: string;
-  variable_v?: string;
-  variable_meta?: { standard_name: string; units: string };
-  dimensions: Record<string, CatalogDimension>;
-  vertical_label?: string;
-  defaults?: LayerDefaults;
-}
-
-interface Catalog {
-  generated: string;
-  views: CatalogView[];
-}
+import { TimelinePlayer } from "../demo-shared/TimelinePlayer.js";
+import type { CatalogView, Catalog } from "../demo-shared/catalog.js";
+import { formatTime, formatVertical, getVerticalDim } from "../demo-shared/catalog.js";
 
 // ── Hash state ───────────────────────────────────────────────────────
 
@@ -94,26 +45,6 @@ async function loadCatalog(): Promise<Catalog> {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
-
-function formatTime(ms: number): string {
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
-}
-
-function formatVertical(v: number, label: string): string {
-  if (label === "pressure") return `${Math.round(v)} hPa`;
-  if (v < 10) return `${v.toFixed(2)} m`;
-  if (v < 100) return `${v.toFixed(1)} m`;
-  return `${Math.round(v)} m`;
-}
-
-/** Return the [key, dim] entry for the z-axis dimension, if any. */
-function getVerticalDim(
-  view: CatalogView,
-): [string, CatalogDimension] | undefined {
-  return Object.entries(view.dimensions).find(([, d]) => d.axis === "z");
-}
 
 function showToast(msg: string) {
   const t = document.createElement("div");

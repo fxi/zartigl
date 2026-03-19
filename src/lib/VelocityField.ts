@@ -115,8 +115,10 @@ export class VelocityField {
 
     const filter = this.linearFilter ? gl.LINEAR : gl.NEAREST;
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);        // seamless date-line wrap
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // poles must not wrap
+    // CLAMP_TO_EDGE for both axes: the geoUV fract() in shaders already handles date-line wrap,
+    // and NPOT textures with REPEAT are incomplete in WebGL1 (vertex texture2D returns vec4(0,0,0,1)).
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
