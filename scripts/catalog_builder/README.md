@@ -2,39 +2,10 @@
 
 Agentic toolkit for maintaining `public/data/catalog.json`.
 
-## Structure
-
-```
-catalog_builder/
-  PROMPT.md            ← Full schema reference + agentic workflow rules (start here)
-  schema.json          ← JSON Schema for catalog validation
-  README.md            ← This file
-  skills/
-    list_views.py      ← Print summary of current views
-    search_products.py ← Search Copernicus Marine by keyword
-    query_dataset.py   ← Describe one dataset, emit structured JSON
-    validate_catalog.py← Validate catalog.json against schema.json
-```
-
-## Quick start
-
-```bash
-# See what's already in the catalog
-uv run scripts/catalog_builder/skills/list_views.py
-
-# Validate the current catalog
-uv run scripts/catalog_builder/skills/validate_catalog.py
-
-# Find datasets for a topic
-uv run scripts/catalog_builder/skills/search_products.py wave swell
-
-# Inspect a specific dataset
-uv run scripts/catalog_builder/skills/query_dataset.py cmems_mod_glo_wav_anfc_0.083deg_PT3H-i
-```
-
 ## Agentic usage (Claude Code)
 
-To add a new view, open Claude Code and say:
+To add a new view/layer, open Claude Code and invoque the prompt. Example to 
+add a layer / view  in the catalog
 
 > Read `scripts/catalog_builder/PROMPT.md` and add a waves view to the catalog.
 
