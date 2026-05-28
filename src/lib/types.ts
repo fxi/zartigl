@@ -107,3 +107,18 @@ export interface FieldMeta {
   time: string;
   depth?: number;
 }
+
+export interface ZarrPointSample {
+  axisValue: number;
+  time?: number;
+  depth?: number;
+  values: Record<string, number>;
+}
+
+export interface ZarrPointSeriesResult {
+  longitude: number;
+  latitude: number;
+  depth?: number;
+  time?: number;
+  points: ZarrPointSample[];
+}

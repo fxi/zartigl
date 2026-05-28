@@ -18,11 +18,15 @@
   "scripts": {
     "dev": "vite",
     "dev:mapbox": "vite --config vite.config.demo-mapbox.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "build": "vite build",
     "build:mapbox": "vite build --config vite.config.demo-mapbox.ts",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
     "catalog": "cd scripts && uv run build_catalog.py",
+    "smoke:sample": "npm run build:lib && node scripts/smoke-sample-point.mjs",
+    "release:check": "npm run test && npm run build && npm run build:lib && npm run smoke:sample",
     "prepublishOnly": "npm run build:lib"
   },
   "publishConfig": {
@@ -43,7 +47,9 @@
   },
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",
+    "@types/d3": "^7.4.3",
     "@types/pako": "^2.0.4",
+    "d3": "^7.9.0",
     "mapbox-gl": "^2.15.0",
     "maplibre-gl": "^5.17.0",
     "numcodecs": "^0.3.2",
@@ -52,6 +58,7 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",
-    "vite-plugin-glsl": "^1.5.5"
+    "vite-plugin-glsl": "^1.5.5",
+    "vitest": "^4.1.7"
   }
 }

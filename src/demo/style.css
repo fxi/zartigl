@@ -176,3 +176,126 @@ body {
   pointer-events: none;
   z-index: 100;
 }
+
+/* Point time/depth popup */
+.maplibregl-popup-content {
+  background: rgba(12, 12, 12, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
+  color: #ddd;
+  padding: 0;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: rgba(12, 12, 12, 0.94) !important;
+  border-bottom-color: rgba(12, 12, 12, 0.94) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #888;
+  font-size: 16px;
+  padding: 4px 7px;
+}
+
+.timeseries-popup {
+  width: 340px;
+  padding: 10px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+}
+
+.timeseries-header {
+  padding-right: 18px;
+}
+
+.timeseries-title {
+  color: #f0f0f0;
+  font-size: 12px;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+
+.timeseries-coord,
+.timeseries-meta {
+  color: #888;
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.timeseries-mode-row {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.timeseries-mode-row button {
+  flex: 1;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #999;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.timeseries-mode-row button.active {
+  background: rgba(100, 180, 100, 0.2);
+  border-color: rgba(100, 180, 100, 0.5);
+  color: #8d8;
+}
+
+.timeseries-mode-row button:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.timeseries-body {
+  min-height: 170px;
+  margin-top: 6px;
+}
+
+.timeseries-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.timeseries-line {
+  fill: none;
+  stroke: #8d8;
+  stroke-width: 1.6;
+}
+
+.timeseries-axis path,
+.timeseries-axis line {
+  stroke: rgba(255, 255, 255, 0.18);
+}
+
+.timeseries-axis text,
+.timeseries-unit-label {
+  fill: #888;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 9px;
+}
+
+.timeseries-loading,
+.timeseries-empty,
+.timeseries-error {
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.timeseries-error {
+  color: #d88;
+}

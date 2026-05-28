@@ -6,6 +6,7 @@ import type {
   ZarrArrayMeta,
   ZarrAttrs,
   DecodedChunk,
+  ZarrPointSeriesResult,
 } from "./types.js";
 
 interface CoordArrays {
@@ -17,6 +18,18 @@ interface CoordArrays {
 
 /** Names that may represent the vertical coordinate. */
 const VERTICAL_NAMES = ["depth", "elevation", "level", "altitude", "pressure_level"] as const;
+
+class ZarrChunkFetchError extends Error {
+  readonly status: number;
+  readonly url: string;
+
+  constructor(status: number, url: string) {
+    super(`Chunk fetch failed: ${status} ${url}`);
+    this.name = "ZarrChunkFetchError";
+    this.status = status;
+    this.url = url;
+  }
+}
 
 export class ZarrSource {
   private root: string;
@@ -137,8 +150,220 @@ export class ZarrSource {
     return (ms - ref) / 86400000;
   }
 
+  private zarrTimeToMs(value: number): number {
+    const units = this.timeUnits;
+    const m = units.match(
+      /^(milliseconds?|seconds?|hours?|days?)\s+since\s+(\S+)/i,
+    );
+    if (m) {
+      const refMs = new Date(m[2]).getTime();
+      const u = m[1].toLowerCase();
+      if (u.startsWith("ms") || u.startsWith("milli")) return refMs + value;
+      if (u.startsWith("s")) return refMs + value * 1000;
+      if (u.startsWith("h")) return refMs + value * 3600000;
+      if (u.startsWith("d")) return refMs + value * 86400000;
+    }
+    if (value > 1e12) return value;
+    if (value > 1e9) return value * 1000;
+    const ref = new Date("1950-01-01T00:00:00Z").getTime();
+    return ref + value * 86400000;
+  }
+
+  private findNearestLongitudeIndex(longitude: number): number {
+    const lon = this.getCoords().longitude;
+    const first = lon[0];
+    const last = lon[lon.length - 1];
+    let normalized = longitude;
+
+    if (first >= 0 && last > 180) {
+      normalized = ((longitude % 360) + 360) % 360;
+    } else {
+      normalized = ((((longitude + 180) % 360) + 360) % 360) - 180;
+    }
+
+    return this.findNearestIndex(lon, normalized);
+  }
+
+  private async sampleVariableAt(
+    variable: string,
+    indices: {
+      timeIdx: number;
+      depthIdx: number;
+      latIdx: number;
+      lonIdx: number;
+    },
+  ): Promise<number> {
+    const dims = this.getDimensions(variable);
+    const chunkShape = this.getChunkShape(variable);
+    const shape = this.getShape(variable);
+    const chunkIndices = new Array(dims.length).fill(0);
+    const localIndices = new Array(dims.length).fill(0);
+
+    for (let dimIdx = 0; dimIdx < dims.length; dimIdx++) {
+      const dim = dims[dimIdx];
+      let globalIdx = 0;
+      if (dim === "time") {
+        globalIdx = indices.timeIdx;
+      } else if (dim === "latitude") {
+        globalIdx = indices.latIdx;
+      } else if (dim === "longitude") {
+        globalIdx = indices.lonIdx;
+      } else if (dim === this.verticalName || VERTICAL_NAMES.includes(dim as typeof VERTICAL_NAMES[number])) {
+        globalIdx = indices.depthIdx;
+      }
+
+      globalIdx = Math.max(0, Math.min(shape[dimIdx] - 1, globalIdx));
+      chunkIndices[dimIdx] = Math.floor(globalIdx / chunkShape[dimIdx]);
+      localIndices[dimIdx] = globalIdx - chunkIndices[dimIdx] * chunkShape[dimIdx];
+    }
+
+    let chunk: Float32Array;
+    try {
+      chunk = await this.fetchChunk(variable, chunkIndices);
+    } catch (err) {
+      if (
+        err instanceof ZarrChunkFetchError &&
+        (err.status === 403 || err.status === 404)
+      ) {
+        return NaN;
+      }
+      throw err;
+    }
+
+    const offset = this.getFlatOffset(variable, localIndices);
+    return offset < chunk.length ? chunk[offset] : NaN;
+  }
+
+  private getFlatOffset(variable: string, localIndices: number[]): number {
+    const meta = this.getArrayMeta(variable);
+    const chunkShape = meta.chunks;
+
+    if (meta.order === "F") {
+      let offset = 0;
+      let stride = 1;
+      for (let i = 0; i < localIndices.length; i++) {
+        offset += localIndices[i] * stride;
+        stride *= chunkShape[i];
+      }
+      return offset;
+    }
+
+    let offset = 0;
+    for (let i = 0; i < localIndices.length; i++) {
+      offset = offset * chunkShape[i] + localIndices[i];
+    }
+    return offset;
+  }
+
   findDepthIndex(depth: number): number {
     return this.findNearestIndex(this.getCoords().vertical, depth);
+  }
+
+  async sampleTimeSeries(options: {
+    variables: string[];
+    longitude: number;
+    latitude: number;
+    depth?: number;
+    timeStartIndex?: number;
+    timeEndIndex?: number;
+    stride?: number;
+    stopAfterMissingSamples?: number;
+  }): Promise<ZarrPointSeriesResult> {
+    await this.init();
+    const coords = this.getCoords();
+    const lonIdx = this.findNearestLongitudeIndex(options.longitude);
+    const latIdx = this.findNearestIndex(coords.latitude, options.latitude);
+    const depthIdx = this.findDepthIndex(options.depth ?? 0);
+    const start = Math.max(0, options.timeStartIndex ?? 0);
+    const end = Math.min(
+      coords.time.length - 1,
+      options.timeEndIndex ?? coords.time.length - 1,
+    );
+    const stride = Math.max(1, Math.floor(options.stride ?? 1));
+    const stopAfterMissing = Math.max(0, Math.floor(options.stopAfterMissingSamples ?? 0));
+    let missingRun = 0;
+    const points: ZarrPointSeriesResult["points"] = [];
+
+    for (let timeIdx = start; timeIdx <= end; timeIdx += stride) {
+      const values: Record<string, number> = {};
+      for (const variable of options.variables) {
+        values[variable] = await this.sampleVariableAt(variable, {
+          timeIdx,
+          depthIdx,
+          latIdx,
+          lonIdx,
+        });
+      }
+      const time = this.zarrTimeToMs(coords.time[timeIdx]);
+      points.push({ axisValue: time, time, depth: coords.vertical[depthIdx], values });
+
+      const allMissing = options.variables.every(
+        (variable) => !Number.isFinite(values[variable]),
+      );
+      missingRun = allMissing ? missingRun + 1 : 0;
+      if (stopAfterMissing > 0 && missingRun >= stopAfterMissing) break;
+    }
+
+    return {
+      longitude: coords.longitude[lonIdx],
+      latitude: coords.latitude[latIdx],
+      depth: coords.vertical[depthIdx],
+      points,
+    };
+  }
+
+  async sampleVerticalProfile(options: {
+    variables: string[];
+    longitude: number;
+    latitude: number;
+    time: string | number;
+    stopAfterMissingSamples?: number;
+  }): Promise<ZarrPointSeriesResult> {
+    await this.init();
+    const coords = this.getCoords();
+    const lonIdx = this.findNearestLongitudeIndex(options.longitude);
+    const latIdx = this.findNearestIndex(coords.latitude, options.latitude);
+    const timeIdx = this.findTimeIndex(options.time);
+    const stopAfterMissing = Math.max(0, Math.floor(options.stopAfterMissingSamples ?? 0));
+    let missingRun = 0;
+    const points: ZarrPointSeriesResult["points"] = [];
+
+    const depthOrder = Array.from(
+      { length: coords.vertical.length },
+      (_, index) => index,
+    ).sort((a, b) => coords.vertical[a] - coords.vertical[b]);
+
+    for (const depthIdx of depthOrder) {
+      const values: Record<string, number> = {};
+      for (const variable of options.variables) {
+        values[variable] = await this.sampleVariableAt(variable, {
+          timeIdx,
+          depthIdx,
+          latIdx,
+          lonIdx,
+        });
+      }
+      const depth = coords.vertical[depthIdx];
+      points.push({
+        axisValue: depth,
+        time: this.zarrTimeToMs(coords.time[timeIdx]),
+        depth,
+        values,
+      });
+
+      const allMissing = options.variables.every(
+        (variable) => !Number.isFinite(values[variable]),
+      );
+      missingRun = allMissing ? missingRun + 1 : 0;
+      if (stopAfterMissing > 0 && missingRun >= stopAfterMissing) break;
+    }
+
+    return {
+      longitude: coords.longitude[lonIdx],
+      latitude: coords.latitude[latIdx],
+      time: this.zarrTimeToMs(coords.time[timeIdx]),
+      points,
+    };
   }
 
   /** Return the actual name of the vertical dimension ("depth" or "elevation"). */
@@ -248,7 +473,8 @@ export class ZarrSource {
     const url = `${this.root}/${variable}/${key}`;
     const resp = await fetch(url, { signal: controller.signal });
     if (!resp.ok) {
-      throw new Error(`Chunk fetch failed: ${resp.status} ${url}`);
+      this.abortControllers.delete(cacheKey);
+      throw new ZarrChunkFetchError(resp.status, url);
     }
 
     const raw = new Uint8Array(await resp.arrayBuffer());

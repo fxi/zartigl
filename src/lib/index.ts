@@ -10,5 +10,7 @@ export type {
   ZarrConsolidatedMeta,
   ZarrArrayMeta,
   FieldMeta,
+  ZarrPointSample,
+  ZarrPointSeriesResult,
 } from "./types.js";
 export type { ColorRampInput, PaletteMeta } from "./gl-util.js";

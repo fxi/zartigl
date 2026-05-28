@@ -1,9 +1,10 @@
 import maplibregl from "maplibre-gl";
+import * as d3 from "d3";
 import { Pane } from "tweakpane";
 import type { BindingApi, FolderApi } from "@tweakpane/core";
-import { ParticleLayer, getPalettes } from "../lib/index.js";
+import { ParticleLayer, ZarrSource, getPalettes } from "../lib/index.js";
 import type { RenderMode } from "../lib/ParticleSimulation.js";
-import type { FieldMeta } from "../lib/index.js";
+import type { FieldMeta, ZarrPointSeriesResult } from "../lib/index.js";
 import { TimelinePlayer } from "../demo-shared/TimelinePlayer.js";
 import type { CatalogView, Catalog } from "../demo-shared/catalog.js";
 import { formatTime, formatVertical, getVerticalDim } from "../demo-shared/catalog.js";
@@ -63,7 +64,7 @@ const map = new maplibregl.Map({
   zoom: 2,
   maxZoom: 8,
 });
-window.map = map;
+(window as Window & { map?: maplibregl.Map }).map = map;
 
 // ── Init ─────────────────────────────────────────────────────────────
 
@@ -102,6 +103,10 @@ map.on("load", async () => {
     let renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
     let projectionButtons: { proj: string; btn: HTMLButtonElement }[] = [];
     let currentProjection: "mercator" | "globe" = "mercator";
+    let pointSource: ZarrSource | null = null;
+    let pointSourceUrl = "";
+    let activePointPopup: maplibregl.Popup | null = null;
+    let pointQuerySeq = 0;
 
     const PARAMS = {
       viewIndex: 0,
@@ -224,6 +229,299 @@ map.on("load", async () => {
         ? `${meta.standard_name.replace(/_/g, " ")} — ${meta.units}`
         : "";
       viewMetaEl.textContent = [v.description, metaStr].filter(Boolean).join("\n");
+    }
+
+    // ── Point popup time/depth charts ─────────────────────────────
+
+    type PopupMode = "time" | "depth";
+    type ChartDatum = {
+      axis: number;
+      value: number;
+      time?: number;
+      depth?: number;
+      u?: number;
+      v?: number;
+    };
+
+    function getCurrentTimeMs(): number {
+      const timeDim = currentView.dimensions.time;
+      return (timeDim.min ?? 0) + PARAMS.timeIndex * (timeDim.step ?? 21600000);
+    }
+
+    function getPointVariables(view: CatalogView): string[] {
+      if (view.type === "scalar") return [view.variable ?? "scalar"];
+      return [view.variable_u ?? "uo", view.variable_v ?? "vo"];
+    }
+
+    function hasDepthProfile(view: CatalogView): boolean {
+      const vert = getVerticalDim(view)?.[1];
+      return (vert?.size ?? vert?.values?.length ?? 0) > 1;
+    }
+
+    function getPointSource(view: CatalogView): ZarrSource | null {
+      if (!view.zarr_url_time) return null;
+      if (!pointSource || pointSourceUrl !== view.zarr_url_time) {
+        pointSource = new ZarrSource(view.zarr_url_time, 80);
+        pointSourceUrl = view.zarr_url_time;
+      }
+      return pointSource;
+    }
+
+    function getTimeSampleWindow(view: CatalogView, maxPoints = 96) {
+      const timeDim = view.dimensions.time;
+      const size = timeDim.size ?? 1;
+      const active = Math.max(0, Math.min(PARAMS.timeIndex, size - 1));
+      const count = Math.min(maxPoints, size);
+      let start = Math.max(0, active - Math.floor(count / 2));
+      let end = Math.min(size - 1, start + count - 1);
+      start = Math.max(0, end - count + 1);
+      const stride = Math.max(1, Math.ceil((end - start + 1) / maxPoints));
+      return { start, end, stride };
+    }
+
+    function pointResultToData(
+      result: ZarrPointSeriesResult,
+      view: CatalogView,
+    ): ChartDatum[] {
+      const variables = getPointVariables(view);
+      const isVector = view.type === "vector";
+      return result.points.map((point) => {
+        const u = point.values[variables[0]];
+        const v = isVector ? point.values[variables[1]] : undefined;
+        const value = isVector
+          ? (Number.isFinite(u) && Number.isFinite(v) ? Math.hypot(u, v!) : NaN)
+          : u;
+        return {
+          axis: point.axisValue,
+          value,
+          time: point.time,
+          depth: point.depth,
+          u,
+          v,
+        };
+      });
+    }
+
+    function nearestDatum(data: ChartDatum[], mode: PopupMode): ChartDatum | null {
+      const target = mode === "time" ? getCurrentTimeMs() : PARAMS.vertical;
+      let best: ChartDatum | null = null;
+      let bestDist = Infinity;
+      for (const d of data) {
+        const axis = mode === "time" ? (d.time ?? d.axis) : (d.depth ?? d.axis);
+        const dist = Math.abs(axis - target);
+        if (dist < bestDist) {
+          best = d;
+          bestDist = dist;
+        }
+      }
+      return best;
+    }
+
+    function formatValue(v: number, unit: string): string {
+      if (!Number.isFinite(v)) return "nodata";
+      const abs = Math.abs(v);
+      const text = abs >= 100 ? v.toFixed(1) : abs >= 10 ? v.toFixed(2) : v.toFixed(3);
+      return unit ? `${text} ${unit}` : text;
+    }
+
+    function renderPointChart(
+      host: HTMLElement,
+      data: ChartDatum[],
+      mode: PopupMode,
+      unit: string,
+    ) {
+      host.replaceChildren();
+      const finite = data.filter((d) => Number.isFinite(d.value));
+      if (!finite.length) {
+        const empty = document.createElement("div");
+        empty.className = "timeseries-empty";
+        empty.textContent = "No valid samples at this point.";
+        host.appendChild(empty);
+        return;
+      }
+
+      const width = 320;
+      const height = 170;
+      const margin = { top: 12, right: 14, bottom: 30, left: 44 };
+      const innerW = width - margin.left - margin.right;
+      const innerH = height - margin.top - margin.bottom;
+
+      const svg = d3
+        .select(host)
+        .append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("class", "timeseries-chart");
+
+      const g = svg
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const valueExtent = d3.extent(finite, (d) => d.value) as [number, number];
+      if (valueExtent[0] === valueExtent[1]) {
+        valueExtent[0] -= 1;
+        valueExtent[1] += 1;
+      }
+
+      if (mode === "time") {
+        const xExtent = d3.extent(finite, (d) => d.time ?? d.axis) as [number, number];
+        const x = d3.scaleTime()
+          .domain([new Date(xExtent[0]), new Date(xExtent[1])])
+          .range([0, innerW]);
+        const y = d3.scaleLinear().domain(valueExtent).nice().range([innerH, 0]);
+        const line = d3.line<ChartDatum>()
+          .defined((d) => Number.isFinite(d.value))
+          .x((d) => x(new Date(d.time ?? d.axis)))
+          .y((d) => y(d.value));
+
+        g.append("path").datum(data).attr("class", "timeseries-line").attr("d", line);
+        g.append("g").attr("class", "timeseries-axis").attr("transform", `translate(0,${innerH})`)
+          .call(d3.axisBottom(x).ticks(4).tickSizeOuter(0));
+        g.append("g").attr("class", "timeseries-axis").call(d3.axisLeft(y).ticks(4).tickSizeOuter(0));
+      } else {
+        const depthExtent = d3.extent(finite, (d) => d.depth ?? d.axis) as [number, number];
+        const x = d3.scaleLinear().domain(valueExtent).nice().range([0, innerW]);
+        const y = d3.scaleLinear().domain(depthExtent).nice().range([0, innerH]);
+        const line = d3.line<ChartDatum>()
+          .defined((d) => Number.isFinite(d.value))
+          .x((d) => x(d.value))
+          .y((d) => y(d.depth ?? d.axis));
+
+        g.append("path")
+          .datum([...data].sort((a, b) => (a.depth ?? a.axis) - (b.depth ?? b.axis)))
+          .attr("class", "timeseries-line")
+          .attr("d", line);
+        g.append("g").attr("class", "timeseries-axis").attr("transform", `translate(0,${innerH})`)
+          .call(d3.axisBottom(x).ticks(4).tickSizeOuter(0));
+        g.append("g").attr("class", "timeseries-axis").call(d3.axisLeft(y).ticks(5).tickSizeOuter(0));
+      }
+
+      if (unit) {
+        svg.append("text")
+          .attr("class", "timeseries-unit-label")
+          .attr("x", margin.left)
+          .attr("y", height - 4)
+          .text(unit);
+      }
+    }
+
+    function setPopupStatus(body: HTMLElement, message: string, cls = "timeseries-loading") {
+      body.replaceChildren();
+      const status = document.createElement("div");
+      status.className = cls;
+      status.textContent = message;
+      body.appendChild(status);
+    }
+
+    async function openPointPopup(lngLat: maplibregl.LngLat, initialMode: PopupMode = "time") {
+      const source = getPointSource(currentView);
+      if (!source) {
+        showToast("No point time-series store for this view");
+        return;
+      }
+
+      currentPlayer?.pause();
+      activePointPopup?.remove();
+
+      const root = document.createElement("div");
+      root.className = "timeseries-popup";
+
+      const header = document.createElement("div");
+      header.className = "timeseries-header";
+      const title = document.createElement("div");
+      title.className = "timeseries-title";
+      title.textContent = currentView.label;
+      const coord = document.createElement("div");
+      coord.className = "timeseries-coord";
+      coord.textContent = `${lngLat.lng.toFixed(3)}, ${lngLat.lat.toFixed(3)}`;
+      header.append(title, coord);
+
+      const modeRow = document.createElement("div");
+      modeRow.className = "timeseries-mode-row";
+      const timeBtn = document.createElement("button");
+      timeBtn.type = "button";
+      timeBtn.textContent = "time";
+      const depthBtn = document.createElement("button");
+      depthBtn.type = "button";
+      depthBtn.textContent = "depth";
+      const depthAvailable = hasDepthProfile(currentView);
+      depthBtn.disabled = !depthAvailable;
+      modeRow.append(timeBtn, depthBtn);
+
+      const meta = document.createElement("div");
+      meta.className = "timeseries-meta";
+      const body = document.createElement("div");
+      body.className = "timeseries-body";
+      root.append(header, modeRow, meta, body);
+
+      activePointPopup = new maplibregl.Popup({
+        closeOnClick: false,
+        maxWidth: "360px",
+      })
+        .setLngLat(lngLat)
+        .setDOMContent(root)
+        .addTo(map);
+
+      const run = async (mode: PopupMode) => {
+        const seq = ++pointQuerySeq;
+        timeBtn.classList.toggle("active", mode === "time");
+        depthBtn.classList.toggle("active", mode === "depth");
+        setPopupStatus(body, "Loading samples...");
+
+        try {
+          const variables = getPointVariables(currentView);
+          const timeMs = getCurrentTimeMs();
+          const result = mode === "time"
+            ? await source.sampleTimeSeries({
+                variables,
+                longitude: lngLat.lng,
+                latitude: lngLat.lat,
+                depth: PARAMS.vertical,
+                ...(() => {
+                  const window = getTimeSampleWindow(currentView);
+                  return {
+                    timeStartIndex: window.start,
+                    timeEndIndex: window.end,
+                    stride: window.stride,
+                    stopAfterMissingSamples: 12,
+                  };
+                })(),
+              })
+            : await source.sampleVerticalProfile({
+                variables,
+                longitude: lngLat.lng,
+                latitude: lngLat.lat,
+                time: timeMs,
+                stopAfterMissingSamples: 8,
+              });
+
+          if (seq !== pointQuerySeq || !activePointPopup?.isOpen()) return;
+
+          const unit = currentView.variable_meta?.units ?? "";
+          const data = pointResultToData(result, currentView);
+          const current = nearestDatum(data, mode);
+          const valueText = current ? formatValue(current.value, unit) : "nodata";
+          const vectorText = currentView.type === "vector" && current
+            ? ` | u ${formatValue(current.u ?? NaN, unit)} / v ${formatValue(current.v ?? NaN, unit)}`
+            : "";
+          const depthText = result.depth != null ? ` | ${formatVertical(result.depth, currentView.vertical_label ?? "depth")}` : "";
+          const timeText = mode === "depth" && result.time != null ? ` | ${formatTime(result.time)}` : "";
+          meta.textContent =
+            `grid ${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
+            `value ${valueText}${vectorText}`;
+          renderPointChart(body, data, mode, unit);
+        } catch (err) {
+          if (seq !== pointQuerySeq) return;
+          const message = err instanceof Error ? err.message : String(err);
+          setPopupStatus(body, message, "timeseries-error");
+        }
+      };
+
+      timeBtn.addEventListener("click", () => run("time"));
+      depthBtn.addEventListener("click", () => {
+        if (depthAvailable) run("depth");
+      });
+
+      run(depthAvailable ? initialMode : "time");
     }
 
     // ── Tweakpane ─────────────────────────────────────────────────
@@ -406,6 +704,9 @@ map.on("load", async () => {
 
     function switchView(view: CatalogView) {
       currentPlayer?.pause();
+      pointQuerySeq++;
+      activePointPopup?.remove();
+      activePointPopup = null;
       if (map.getLayer("particles")) map.removeLayer("particles");
 
       currentView = view;
@@ -568,6 +869,10 @@ map.on("load", async () => {
     );
     PARAMS.viewIndex = initialIdx;
     switchView(catalog.views[initialIdx]);
+
+    map.on("click", (ev) => {
+      openPointPopup(ev.lngLat, "time");
+    });
 
     // ── Render Mode folder ────────────────────────────────────────
 
