@@ -295,14 +295,9 @@ export class ParticleLayer implements CustomLayerInterface {
 
   render(
     gl: WebGLRenderingContext,
-    options: CustomRenderMethodInput | number[],
+    options: CustomRenderMethodInput,
   ): void {
-    // maplibre-gl passes { modelViewProjectionMatrix, ... }; mapbox-gl passes the matrix directly
-    const isMapboxArr = Array.isArray(options);
-    const isTypedArr = ArrayBuffer.isView(options);
-    const matrix = (isMapboxArr || isTypedArr)
-      ? options as number[]
-      : (options as CustomRenderMethodInput).modelViewProjectionMatrix;
+    const matrix = options.modelViewProjectionMatrix;
     if (!this.initialized || !this.velocityField.hasData() || !this.map) return;
 
     // Apply zoom-weighted params each frame
@@ -314,7 +309,7 @@ export class ParticleLayer implements CustomLayerInterface {
       const canvas = gl.canvas as HTMLCanvasElement;
       this.simulation.resize(canvas.width, canvas.height);
       // createFramebuffer (called inside resize) resets the FBO to null;
-      // restore mapbox's active render target before simulation captures it.
+      // restore MapLibre's active render target before simulation captures it.
       gl.bindFramebuffer(gl.FRAMEBUFFER, saved.framebuffer);
 
       // Bind velocity texture
@@ -330,12 +325,9 @@ export class ParticleLayer implements CustomLayerInterface {
         maxY: latToMercY(Math.max(mapBounds.getSouth(), -85)),
       };
 
-      // mapbox-gl matrix maps [0, 1] Mercator → clip space.
-      // maplibre-gl matrix maps [0, worldSize] Mercator → clip space.
+      // MapLibre's matrix maps [0, worldSize] Mercator → clip space.
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
-      // For mapbox-gl we must pass worldSize = 1.0 so pos stays in [0, 1].
-      const isMapboxConvention = Array.isArray(options);
-      const isGlobe = !isMapboxConvention && this.map.getProjection?.()?.type === 'globe';
+      const isGlobe = this.map.getProjection?.()?.type === 'globe';
 
       // Determine which world copies are visible (raw, unclamped bounds).
       // offset 0 = primary, +1 = right copy, -1 = left copy, etc.
@@ -355,7 +347,7 @@ export class ParticleLayer implements CustomLayerInterface {
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.STENCIL_TEST);
 
-      const worldSize = isMapboxConvention ? 1.0 : 512 * Math.pow(2, this.map.getZoom());
+      const worldSize = 512 * Math.pow(2, this.map.getZoom());
       this.simulation.render(
         this.velocityTexUnit,
         [this.velocityField.uMin, this.velocityField.vMin],
