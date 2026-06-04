@@ -122,3 +122,11 @@ export interface ZarrPointSeriesResult {
   time?: number;
   points: ZarrPointSample[];
 }
+
+export interface ZarrTimeDimension {
+  min: number;
+  max: number;
+  step?: number;
+  size: number;
+  units: string;
+}

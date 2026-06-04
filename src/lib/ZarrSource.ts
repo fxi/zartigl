@@ -7,7 +7,8 @@ import type {
   ZarrAttrs,
   DecodedChunk,
   ZarrPointSeriesResult,
-} from "./types.js";
+  ZarrTimeDimension,
+} from "./types";
 
 interface CoordArrays {
   time: Float64Array | Float32Array;
@@ -15,6 +16,8 @@ interface CoordArrays {
   latitude: Float32Array;
   longitude: Float32Array;
 }
+
+type NumericArray = Float32Array | Float64Array;
 
 /** Names that may represent the vertical coordinate. */
 const VERTICAL_NAMES = ["depth", "elevation", "level", "altitude", "pressure_level"] as const;
@@ -87,6 +90,24 @@ export class ZarrSource {
   getCoords(): CoordArrays {
     if (!this.coords) throw new Error("Call init() first");
     return this.coords;
+  }
+
+  getTimeDimension(): ZarrTimeDimension {
+    const time = this.getCoords().time;
+    const size = time.length;
+    const min = size ? this.zarrTimeToMs(time[0]) : NaN;
+    const max = size ? this.zarrTimeToMs(time[size - 1]) : NaN;
+    const rawStep =
+      size > 1 ? this.zarrTimeToMs(time[1]) - this.zarrTimeToMs(time[0]) : undefined;
+    const step = normalizeTimeStep(rawStep);
+
+    return {
+      min,
+      max,
+      step,
+      size,
+      units: this.timeUnits,
+    };
   }
 
   getDimensions(variable: string): string[] {
@@ -471,22 +492,25 @@ export class ZarrSource {
     this.abortControllers.set(cacheKey, controller);
 
     const url = `${this.root}/${variable}/${key}`;
+    const meta = this.getArrayMeta(variable);
     const resp = await fetch(url, { signal: controller.signal });
     if (!resp.ok) {
+      if (resp.status === 403 || resp.status === 404) {
+        const missing = createMissingChunk(meta);
+        this.cacheChunk(cacheKey, missing);
+        this.abortControllers.delete(cacheKey);
+        return missing;
+      }
       this.abortControllers.delete(cacheKey);
       throw new ZarrChunkFetchError(resp.status, url);
     }
 
     const raw = new Uint8Array(await resp.arrayBuffer());
-    const meta = this.getArrayMeta(variable);
-    const decompressed = await this.decompress(raw, meta, variable);
+    const decompressed = toFloat32Array(
+      await this.decompress(raw, meta, variable),
+    );
 
-    // Evict old entries if cache is full
-    if (this.cache.size >= this.maxCacheSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) this.cache.delete(firstKey);
-    }
-    this.cache.set(cacheKey, decompressed);
+    this.cacheChunk(cacheKey, decompressed);
     this.abortControllers.delete(cacheKey);
 
     return decompressed;
@@ -497,6 +521,15 @@ export class ZarrSource {
       ctrl.abort();
     }
     this.abortControllers.clear();
+  }
+
+  private cacheChunk(key: string, data: Float32Array): void {
+    // Evict old entries if cache is full
+    if (this.cache.size >= this.maxCacheSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, data);
   }
 
   private getBloscCodec(meta: ZarrArrayMeta): Codec {
@@ -520,7 +553,7 @@ export class ZarrSource {
     raw: Uint8Array,
     meta: ZarrArrayMeta,
     variable?: string,
-  ): Promise<Float32Array> {
+  ): Promise<NumericArray> {
     let bytes: Uint8Array;
 
     if (meta.compressor) {
@@ -542,7 +575,7 @@ export class ZarrSource {
     }
 
     // Parse dtype
-    let result: Float32Array;
+    let result: NumericArray;
     const dtype = meta.dtype;
     if (dtype === "<f4" || dtype === "|f4") {
       result = new Float32Array(
@@ -551,12 +584,11 @@ export class ZarrSource {
         bytes.byteLength / 4,
       );
     } else if (dtype === "<f8" || dtype === "|f8") {
-      const f64 = new Float64Array(
+      result = new Float64Array(
         bytes.buffer,
         bytes.byteOffset,
         bytes.byteLength / 8,
       );
-      result = Float32Array.from(f64);
     } else if (dtype === "<i2" || dtype === "|i2") {
       const i16 = new Int16Array(
         bytes.buffer,
@@ -578,7 +610,7 @@ export class ZarrSource {
         bytes.byteLength,
       );
       const count = bytes.byteLength / 8;
-      result = new Float32Array(count);
+      result = new Float64Array(count);
       for (let i = 0; i < count; i++) {
         result[i] = Number(view.getBigInt64(i * 8, true));
       }
@@ -618,7 +650,7 @@ export class ZarrSource {
       const meta = this.getArrayMeta(name);
       const actualSize = meta.shape[0];
       const chunkCount = Math.ceil(actualSize / meta.chunks[0]);
-      const arrays: Float32Array[] = [];
+      const arrays: NumericArray[] = [];
 
       for (let i = 0; i < chunkCount; i++) {
         const url = `${this.root}/${name}/${i}`;
@@ -636,7 +668,10 @@ export class ZarrSource {
           ? arrays[0].subarray(0, actualSize)
           : arrays[0];
       }
-      const merged = new Float32Array(actualSize);
+      const ArrayCtor = arrays.some((arr) => arr instanceof Float64Array)
+        ? Float64Array
+        : Float32Array;
+      const merged = new ArrayCtor(actualSize);
       let offset = 0;
       for (const arr of arrays) {
         const toCopy = Math.min(arr.length, actualSize - offset);
@@ -691,4 +726,44 @@ export class ZarrSource {
       longitude: longitude as Float32Array,
     };
   }
+}
+
+function toFloat32Array(array: NumericArray): Float32Array {
+  return array instanceof Float32Array ? array : Float32Array.from(array);
+}
+
+function createMissingChunk(meta: ZarrArrayMeta): Float32Array {
+  const size = meta.chunks.reduce((total, chunkSize) => total * chunkSize, 1);
+  const data = new Float32Array(size);
+  data.fill(NaN);
+  return data;
+}
+
+function normalizeTimeStep(step?: number): number | undefined {
+  if (typeof step !== "number" || !Number.isFinite(step) || step <= 0) {
+    return step;
+  }
+
+  const commonSteps = [
+    60 * 1000,
+    3 * 60 * 1000,
+    5 * 60 * 1000,
+    10 * 60 * 1000,
+    15 * 60 * 1000,
+    30 * 60 * 1000,
+    60 * 60 * 1000,
+    3 * 60 * 60 * 1000,
+    6 * 60 * 60 * 1000,
+    12 * 60 * 60 * 1000,
+    24 * 60 * 60 * 1000,
+    7 * 24 * 60 * 60 * 1000,
+  ];
+
+  for (const candidate of commonSteps) {
+    if (Math.abs(step - candidate) <= Math.max(1000, candidate * 0.02)) {
+      return candidate;
+    }
+  }
+
+  return Math.round(step);
 }

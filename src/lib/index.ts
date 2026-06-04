@@ -1,8 +1,8 @@
-export { ParticleLayer } from "./ParticleLayer.js";
-export { ZarrSource } from "./ZarrSource.js";
-export { VelocityField, stitchVelocityChunks } from "./VelocityField.js";
-export { ParticleSimulation } from "./ParticleSimulation.js";
-export { getPalettes } from "./gl-util.js";
+export { ParticleLayer } from "./ParticleLayer";
+export { ZarrSource } from "./ZarrSource";
+export { VelocityField, stitchVelocityChunks } from "./VelocityField";
+export { ParticleSimulation } from "./ParticleSimulation";
+export { getPalettes } from "./gl-util";
 export type {
   ParticleLayerOptions,
   ZoomWeighted,
@@ -12,5 +12,6 @@ export type {
   FieldMeta,
   ZarrPointSample,
   ZarrPointSeriesResult,
-} from "./types.js";
-export type { ColorRampInput, PaletteMeta } from "./gl-util.js";
+  ZarrTimeDimension,
+} from "./types";
+export type { ColorRampInput, PaletteMeta } from "./gl-util";

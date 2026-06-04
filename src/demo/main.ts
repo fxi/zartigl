@@ -2,12 +2,12 @@ import maplibregl from "maplibre-gl";
 import * as d3 from "d3";
 import { Pane } from "tweakpane";
 import type { BindingApi, FolderApi } from "@tweakpane/core";
-import { ParticleLayer, ZarrSource, getPalettes } from "../lib/index.js";
-import type { RenderMode } from "../lib/ParticleSimulation.js";
-import type { FieldMeta, ZarrPointSeriesResult } from "../lib/index.js";
-import { TimelinePlayer } from "../demo-shared/TimelinePlayer.js";
-import type { CatalogView, Catalog } from "../demo-shared/catalog.js";
-import { formatTime, formatVertical, getVerticalDim } from "../demo-shared/catalog.js";
+import { ParticleLayer, ZarrSource, getPalettes } from "../lib";
+import type { RenderMode } from "../lib/ParticleSimulation";
+import type { FieldMeta, ZarrPointSeriesResult } from "../lib";
+import { TimelinePlayer } from "../demo-shared/TimelinePlayer";
+import { catalog, formatTime, formatVertical, getVerticalDim } from "../catalog";
+import type { CatalogView, Catalog } from "../catalog";
 
 // ── Hash state ───────────────────────────────────────────────────────
 
@@ -40,9 +40,7 @@ function loadHashState(): HashState | null {
 }
 
 async function loadCatalog(): Promise<Catalog> {
-  const resp = await fetch(`${import.meta.env.BASE_URL}data/catalog.json`);
-  if (!resp.ok) throw new Error(`Failed to load catalog: ${resp.status}`);
-  return resp.json();
+  return catalog;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

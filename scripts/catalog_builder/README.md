@@ -1,6 +1,6 @@
 # catalog_builder
 
-Agentic toolkit for maintaining `public/data/catalog.json`.
+Agentic toolkit for maintaining `src/catalog/catalog.json`.
 
 ## Agentic usage (Claude Code)
 

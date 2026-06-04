@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZarrSource } from "./ZarrSource.js";
+import { ZarrSource } from "./ZarrSource";
 
 const root = "https://example.test/zarr";
 
-function zarray(shape: number[], chunks: number[], order = "C") {
+function zarray(shape: number[], chunks: number[], order = "C", dtype = "<f4") {
   return {
     zarr_format: 2,
     shape,
     chunks,
-    dtype: "<f4",
+    dtype,
     compressor: null,
     fill_value: null,
     order,
@@ -25,6 +25,11 @@ function attrs(dimensions: string[], extra: Record<string, unknown> = {}) {
 
 function chunk(values: number[]) {
   const bytes = new Float32Array(values);
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
+function chunkFloat64(values: number[]) {
+  const bytes = new Float64Array(values);
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
@@ -98,6 +103,59 @@ afterEach(() => {
 });
 
 describe("ZarrSource point sampling", () => {
+  it("exposes time dimension metadata in Unix milliseconds", async () => {
+    installFetch(baseRoutes());
+
+    const source = new ZarrSource(root);
+    await source.init();
+
+    expect(source.getTimeDimension()).toEqual({
+      min: Date.UTC(2020, 0, 1, 0),
+      max: Date.UTC(2020, 0, 1, 18),
+      step: 6 * 60 * 60 * 1000,
+      size: 4,
+      units: "hours since 2020-01-01T00:00:00Z",
+    });
+  });
+
+  it("preserves epoch-millisecond f8 time coordinate precision", async () => {
+    const start = Date.UTC(2026, 5, 1, 0);
+    const metadata = {
+      zarr_consolidated_format: 1,
+      metadata: {
+        "time/.zarray": zarray([3], [3], "C", "<f8"),
+        "time/.zattrs": attrs(["time"], {
+          units: "milliseconds since 1970-01-01T00:00:00Z",
+        }),
+        "latitude/.zarray": zarray([1], [1]),
+        "latitude/.zattrs": attrs(["latitude"]),
+        "longitude/.zarray": zarray([1], [1]),
+        "longitude/.zattrs": attrs(["longitude"]),
+      },
+    };
+
+    installFetch({
+      [`${root}/.zmetadata`]: response(metadata),
+      [`${root}/time/0`]: response(
+        chunkFloat64([start, start + 3600000, start + 7200000]),
+      ),
+      [`${root}/latitude/0`]: response(chunk([0])),
+      [`${root}/longitude/0`]: response(chunk([0])),
+    });
+
+    const source = new ZarrSource(root);
+    await source.init();
+
+    expect(source.getCoords().time).toBeInstanceOf(Float64Array);
+    expect(source.getTimeDimension()).toEqual({
+      min: start,
+      max: start + 7200000,
+      step: 3600000,
+      size: 3,
+      units: "milliseconds since 1970-01-01T00:00:00Z",
+    });
+  });
+
   it("samples a time series at the nearest lon/lat/depth grid point", async () => {
     installFetch(baseRoutes({
       [`${root}/u/0.1.0.0`]: dataChunk(0, 1),

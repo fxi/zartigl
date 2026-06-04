@@ -1,0 +1,351 @@
+{
+  "generated": "2026-03-18T12:00:00.000000+00:00",
+  "views": [
+    {
+      "id": "ocean-current-velocity",
+      "label": "Ocean Current Velocity",
+      "description": "Surface ocean currents — global analysis/forecast, 6-hourly",
+      "category": "Ocean",
+      "type": "vector",
+      "source_dataset": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+      "zarr_url_geo": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/timeChunked.zarr",
+      "zarr_url_time": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/geoChunked.zarr",
+      "variable_u": "uo",
+      "variable_v": "vo",
+      "variable_meta": {
+        "standard_name": "sea_water_velocity",
+        "units": "m s-1"
+      },
+      "dimensions": {
+        "depth": {
+          "axis": "z",
+          "values": [
+            5727.9169921875,
+            5274.7841796875,
+            4833.291015625,
+            4405.22412109375,
+            3992.48388671875,
+            3597.031982421875,
+            3220.820068359375,
+            2865.702880859375,
+            2533.3359375,
+            2225.077880859375,
+            1941.8929443359375,
+            1684.2840576171875,
+            1452.2509765625,
+            1245.291015625,
+            1062.43994140625,
+            902.3392944335938,
+            763.3331298828125,
+            643.5667724609375,
+            541.0889282226562,
+            453.9377136230469,
+            380.2130126953125,
+            318.1274108886719,
+            266.0403137207031,
+            222.47520446777344,
+            186.12559509277344,
+            155.85069274902344,
+            130.66600036621094,
+            109.72930145263672,
+            92.3260726928711,
+            77.85385131835938,
+            65.80726623535156,
+            55.76428985595703,
+            47.37369155883789,
+            40.344051361083984,
+            34.43415069580078,
+            29.444730758666992,
+            25.211410522460938,
+            21.598819732666016,
+            18.495559692382812,
+            15.810070037841797,
+            13.467140197753906,
+            11.404999732971191,
+            9.572997093200684,
+            7.92956018447876,
+            6.440614223480225,
+            5.078224182128906,
+            3.8194949626922607,
+            2.6456689834594727,
+            1.5413750410079956,
+            0.49402499198913574
+          ],
+          "size": 50,
+          "chunk_size": 1,
+          "units": "m"
+        },
+        "latitude": {
+          "axis": "y",
+          "size": 2041,
+          "min": -80.0,
+          "max": 90.0,
+          "step": 0.08333333333333333,
+          "chunk_size": 512,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "axis": "x",
+          "size": 4320,
+          "min": -180.0,
+          "max": 179.91668701171875,
+          "step": 0.08333333804392655,
+          "chunk_size": 2048,
+          "units": "degrees_east"
+        },
+        "time": {
+          "axis": "t",
+          "size": 5585,
+          "min": 1654041600000.0,
+          "max": 1774656000000.0,
+          "step": 21600000.0,
+          "chunk_size": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        }
+      },
+      "vertical_label": "depth",
+      "defaults": {
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particleDensity": 0.033,
+        "speedMin": 0.14,
+        "speedMax": 1.11,
+        "fadeMin": 0.9,
+        "fadeMax": 0.9913000000000001,
+        "dropRate": 0.003,
+        "dropRateBump": 0,
+        "opacity": 1,
+        "logScale": true,
+        "vibrance": 0.39
+      }
+    },
+    {
+      "id": "surface-wind",
+      "label": "Surface Wind",
+      "description": "Global hourly sea surface wind from scatterometer and model",
+      "category": "Atmosphere",
+      "type": "vector",
+      "source_dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
+      "zarr_url_geo": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr",
+      "zarr_url_time": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/geoChunked.zarr",
+      "variable_u": "eastward_wind",
+      "variable_v": "northward_wind",
+      "variable_meta": {
+        "standard_name": "wind_velocity",
+        "units": "m s-1"
+      },
+      "dimensions": {
+        "time": {
+          "axis": "t",
+          "size": 20352,
+          "min": 1700438400000.0,
+          "max": 1773702000000.0,
+          "step": 3600000.0,
+          "chunk_size": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        },
+        "latitude": {
+          "axis": "y",
+          "size": 1440,
+          "min": -89.9375,
+          "max": 89.9375,
+          "step": 0.125,
+          "chunk_size": 512,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "axis": "x",
+          "size": 2880,
+          "min": -179.9375,
+          "max": 179.9375,
+          "step": 0.125,
+          "chunk_size": 1024,
+          "units": "degrees_east"
+        }
+      },
+      "defaults": {
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particleDensity": 0.004000000000000002,
+        "speedMin": 0.010000000000000005,
+        "speedMax": 0.07000000000000002,
+        "fadeMin": 0.9174,
+        "fadeMax": 0.9793000000000001,
+        "dropRate": 0.005,
+        "dropRateBump": 0,
+        "opacity": 0.9,
+        "logScale": true,
+        "vibrance": 1
+      }
+    },
+    {
+      "id": "phytoplankton-chlorophyll",
+      "label": "Phytoplankton (Chlorophyll-a)",
+      "description": "Daily surface chlorophyll-a concentration",
+      "category": "Biology",
+      "type": "scalar",
+      "source_dataset": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+      "zarr_url_geo": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+      "zarr_url_time": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
+      "variable": "chl",
+      "variable_meta": {
+        "standard_name": "mass_concentration_of_chlorophyll_a_in_sea_water",
+        "units": "mg m-3"
+      },
+      "dimensions": {
+        "time": {
+          "axis": "t",
+          "size": 1608,
+          "min": 1635724800000.0,
+          "max": 1774569600000.0,
+          "step": 86400000.0,
+          "chunk_size": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        },
+        "depth": {
+          "axis": "z",
+          "values": [
+            5727.91650390625,
+            5274.7841796875,
+            4833.29052734375,
+            4405.22412109375,
+            3992.48388671875,
+            3597.031982421875,
+            3220.8203125,
+            2865.70263671875,
+            2533.336181640625,
+            2225.077880859375,
+            1941.8934326171875,
+            1684.284423828125,
+            1452.2509765625,
+            1245.2911376953125,
+            1062.439697265625,
+            902.3392944335938,
+            763.3330688476562,
+            643.5668334960938,
+            541.0889282226562,
+            453.937744140625,
+            380.2130126953125,
+            318.12744140625,
+            266.0402526855469,
+            222.4751739501953,
+            186.1255645751953,
+            155.85072326660156,
+            130.66598510742188,
+            109.72927856445312,
+            92.3260726928711,
+            77.85385131835938,
+            65.8072738647461,
+            55.76428985595703,
+            47.373687744140625,
+            40.344051361083984,
+            34.43415451049805,
+            29.44472885131836,
+            25.211408615112305,
+            21.59881591796875,
+            18.495559692382812,
+            15.810072898864746,
+            13.467138290405273,
+            11.40500259399414,
+            9.572997093200684,
+            7.92956018447876,
+            6.440614223480225,
+            5.078223705291748,
+            3.8194947242736816,
+            2.6456685066223145,
+            1.5413753986358643,
+            0.4940253794193268
+          ],
+          "size": 50,
+          "chunk_size": 1,
+          "units": "m"
+        },
+        "latitude": {
+          "axis": "y",
+          "size": 681,
+          "min": -80.0,
+          "max": 90.0,
+          "step": 0.25,
+          "chunk_size": 681,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "axis": "x",
+          "size": 1440,
+          "min": -180.0,
+          "max": 179.75,
+          "step": 0.25,
+          "chunk_size": 1440,
+          "units": "degrees_east"
+        }
+      },
+      "vertical_label": "depth",
+      "defaults": {
+        "palette": "matter",
+        "renderMode": "raster",
+        "opacity": 0.9,
+        "logScale": true,
+        "vibrance": 0.2
+      }
+    }
+    ,{
+      "id": "wave-stokes-drift",
+      "label": "Wave Stokes Drift",
+      "description": "Net horizontal wave-driven transport (Stokes drift) from global 3-hourly wave analysis — visualises wave energy propagation direction.",
+      "category": "Ocean",
+      "type": "vector",
+      "source_dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
+      "zarr_url_geo": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
+      "zarr_url_time": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr",
+      "variable_u": "VSDX",
+      "variable_v": "VSDY",
+      "variable_meta": {
+        "standard_name": "sea_surface_wave_stokes_drift_velocity",
+        "units": "m s-1"
+      },
+      "dimensions": {
+        "time": {
+          "axis": "t",
+          "size": 9944,
+          "min": 1667271600000,
+          "max": 1774656000000,
+          "step": 10800000,
+          "chunk_size": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        },
+        "latitude": {
+          "axis": "y",
+          "size": 2041,
+          "min": -80.0,
+          "max": 90.0,
+          "step": 0.08333333333333333,
+          "chunk_size": 512,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "axis": "x",
+          "size": 4320,
+          "min": -180.0,
+          "max": 179.91666666666663,
+          "step": 0.08333333333333333,
+          "chunk_size": 2048,
+          "units": "degrees_east"
+        }
+      },
+      "defaults": {
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particleDensity": 0.024,
+        "speedMin": 0.010000000000000005,
+        "speedMax": 1.59,
+        "fadeMin": 0.975,
+        "fadeMax": 0.9935,
+        "dropRate": 0.003,
+        "dropRateBump": 0,
+        "opacity": 1,
+        "logScale": true,
+        "vibrance": 1
+      }
+    }
+  ]
+}

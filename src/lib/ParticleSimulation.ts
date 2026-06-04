@@ -5,7 +5,7 @@ import {
   createQuadBuffer,
   createColorRampTexture,
   bindTexture,
-} from "./gl-util.js";
+} from "./gl-util";
 
 import quadVert from "./shaders/quad.vert.glsl";
 import updateFrag from "./shaders/update.frag.glsl";

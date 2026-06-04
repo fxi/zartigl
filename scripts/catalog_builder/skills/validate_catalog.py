@@ -4,7 +4,7 @@
 # dependencies = ["jsonschema>=4.0"]
 # ///
 """
-Validate public/data/catalog.json against scripts/catalog_builder/schema.json.
+Validate src/catalog/catalog.json against scripts/catalog_builder/schema.json.
 
 Usage:
     uv run scripts/catalog_builder/skills/validate_catalog.py
@@ -20,7 +20,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 SCHEMA_PATH = SCRIPT_DIR.parent / "schema.json"
-CATALOG_PATH = SCRIPT_DIR.parent.parent.parent / "public" / "data" / "catalog.json"
+CATALOG_PATH = SCRIPT_DIR.parent.parent.parent / "src" / "catalog" / "catalog.json"
 
 
 def main():

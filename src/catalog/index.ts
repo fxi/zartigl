@@ -1,4 +1,4 @@
-// ── Shared catalog types & helpers ───────────────────────────────────
+import catalogJson from "./catalog.json";
 
 export interface CatalogDimension {
   axis: string;
@@ -49,6 +49,20 @@ export interface Catalog {
   views: CatalogView[];
 }
 
+export const catalog = catalogJson as Catalog;
+
+export function getCatalogView(id: string, data: Catalog = catalog): CatalogView | undefined {
+  return data.views.find((view) => view.id === id);
+}
+
+export function requireCatalogView(id: string, data: Catalog = catalog): CatalogView {
+  const view = getCatalogView(id, data);
+  if (!view) {
+    throw new Error(`Unknown zartigl catalog view: ${id}`);
+  }
+  return view;
+}
+
 export function formatTime(ms: number): string {
   const d = new Date(ms);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -62,9 +76,8 @@ export function formatVertical(v: number, label: string): string {
   return `${Math.round(v)} m`;
 }
 
-/** Return the [key, dim] entry for the z-axis dimension, if any. */
 export function getVerticalDim(
   view: CatalogView,
 ): [string, CatalogDimension] | undefined {
-  return Object.entries(view.dimensions).find(([, d]) => d.axis === "z");
+  return Object.entries(view.dimensions).find(([, dim]) => dim.axis === "z");
 }

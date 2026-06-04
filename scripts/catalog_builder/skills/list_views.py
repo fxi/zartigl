@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Print a summary table of all views in public/data/catalog.json.
+Print a summary table of all views in src/catalog/catalog.json.
 
 Usage:
     uv run scripts/catalog_builder/skills/list_views.py
@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-CATALOG_PATH = Path(__file__).resolve().parent.parent.parent.parent / "public" / "data" / "catalog.json"
+CATALOG_PATH = Path(__file__).resolve().parent.parent.parent.parent / "src" / "catalog" / "catalog.json"
 
 
 def main():

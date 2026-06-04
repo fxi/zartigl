@@ -3,13 +3,13 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { ParticleLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types.js";
-import { saveGLState, restoreGLState } from "./gl-util.js";
-import type { ColorRampInput } from "./gl-util.js";
-import { ParticleSimulation } from "./ParticleSimulation.js";
-import type { RenderMode } from "./ParticleSimulation.js";
-import { VelocityField, stitchVelocityChunks } from "./VelocityField.js";
-import { ZarrSource } from "./ZarrSource.js";
+import type { ParticleLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types";
+import { saveGLState, restoreGLState } from "./gl-util";
+import type { ColorRampInput } from "./gl-util";
+import { ParticleSimulation } from "./ParticleSimulation";
+import type { RenderMode } from "./ParticleSimulation";
+import { VelocityField, stitchVelocityChunks } from "./VelocityField";
+import { ZarrSource } from "./ZarrSource";
 
 // ── Minimal event emitter ────────────────────────────────────────────
 
@@ -65,6 +65,7 @@ export class ParticleLayer implements CustomLayerInterface {
 
   private initialized = false;
   private loading = false;
+  private reloadQueued = false;
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveStartHandler: (() => void) | null = null;
@@ -264,7 +265,11 @@ export class ParticleLayer implements CustomLayerInterface {
   }
 
   private async loadViewportVelocity(): Promise<void> {
-    if (this.loading || !this.map) return;
+    if (!this.map) return;
+    if (this.loading) {
+      this.reloadQueued = true;
+      return;
+    }
     this.loading = true;
     this.emit("loading");
 
@@ -290,6 +295,10 @@ export class ParticleLayer implements CustomLayerInterface {
       }
     } finally {
       this.loading = false;
+      if (this.reloadQueued) {
+        this.reloadQueued = false;
+        this.loadViewportVelocity();
+      }
     }
   }
 
@@ -416,6 +425,29 @@ export class ParticleLayer implements CustomLayerInterface {
     } else {
       this.loadViewportVelocity();
     }
+  }
+
+  setTimeAndDepth(time: string | number, depth: number): void {
+    const depthChanged = this.depth !== depth;
+    this.time = time;
+    this.depth = depth;
+
+    if (depthChanged) {
+      this.frameCache.clear();
+      this.inflight.clear();
+    }
+
+    const ms = this.timeToMs(time);
+    if (!depthChanged && this.frameCache.has(ms)) {
+      const data = this.frameCache.get(ms)!;
+      this.velocityField.update(data);
+      this.simulation.setScalarMode(data.scalarMode ?? false);
+      this.emit("loaded", this.computeFieldMeta(data, time));
+      this.map?.triggerRepaint();
+      return;
+    }
+
+    this.loadViewportVelocity();
   }
 
   /**

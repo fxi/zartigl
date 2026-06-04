@@ -1,12 +1,5 @@
 #!/usr/bin/env node
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-import { ZarrSource } from "../dist/zartigl.js";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(here, "..");
-const catalogPath = resolve(repoRoot, "public/data/catalog.json");
+import { catalog, ZarrSource } from "../dist/zartigl.js";
 
 const scenarios = [
   {
@@ -202,7 +195,6 @@ async function runScenario(catalog, scenario) {
 }
 
 const selected = parseArgs(process.argv.slice(2)) ?? scenarios;
-const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
 const summaries = [];
 let failed = false;
 

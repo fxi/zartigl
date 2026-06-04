@@ -1,5 +1,5 @@
-import type { VelocityData } from "./types.js";
-import { bindTexture } from "./gl-util.js";
+import type { VelocityData } from "./types";
+import { bindTexture } from "./gl-util";
 
 /**
  * Manages a WebGL texture that holds stitched U/V velocity data

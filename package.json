@@ -5,11 +5,15 @@
   "type": "module",
   "main": "./dist/zartigl.js",
   "module": "./dist/zartigl.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/zartigl.d.ts",
   "exports": {
     ".": {
       "import": "./dist/zartigl.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/zartigl.d.ts"
+    },
+    "./catalog": {
+      "import": "./dist/catalog.js",
+      "types": "./dist/catalog.d.ts"
     }
   },
   "files": [
@@ -43,14 +47,16 @@
   "peerDependencies": {
     "maplibre-gl": ">=4.0.0"
   },
+  "dependencies": {
+    "numcodecs": "^0.3.2",
+    "pako": "^2.1.0"
+  },
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",
     "@types/d3": "^7.4.3",
     "@types/pako": "^2.0.4",
     "d3": "^7.9.0",
     "maplibre-gl": "^5.17.0",
-    "numcodecs": "^0.3.2",
-    "pako": "^2.1.0",
     "tweakpane": "^4.0.5",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",

@@ -1,4 +1,4 @@
-import type { ParticleLayer } from "../lib/index.js";
+import type { ParticleLayer } from "../lib";
 
 export interface TimelineConfig {
   timeMin: number;

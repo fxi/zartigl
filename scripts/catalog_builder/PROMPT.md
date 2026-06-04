@@ -1,6 +1,6 @@
 # Catalog Builder — Agentic Prompt
 
-You are adding or updating views in `public/data/catalog.json` for the zartigl map visualization app.
+You are adding or updating views in `src/catalog/catalog.json` for the zartigl map visualization app.
 Read this document fully before doing anything else.
 
 ---
@@ -170,7 +170,7 @@ When asked to add a new view (e.g., "add waves"):
    Show the proposed entry to the user and ask for approval or adjustments.
 
 5. **Append to catalog.json**
-   After approval, append the new view to the `views` array in `public/data/catalog.json`.
+   After approval, append the new view to the `views` array in `src/catalog/catalog.json`.
    Update `"generated"` to current ISO timestamp.
 
 6. **Validate**
