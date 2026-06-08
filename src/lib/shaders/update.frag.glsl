@@ -58,6 +58,7 @@ void main() {
         fract((lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x)),
         (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
     );
+    float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
 
     // Sample velocity and decode from normalized [0,1] back to physical
     vec2 velNorm = texture2D(u_velocity, geoUV).rg;
@@ -106,7 +107,7 @@ void main() {
     float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
 
     // Drop if on land / no data (alpha channel = validity mask)
-    float valid = texture2D(u_velocity, geoUV).a;
+    float valid = texture2D(u_velocity, geoUV).a * inDataY;
     float outOfData = 1.0 - step(0.5, valid);
 
     // Also drop if out of viewport bounds

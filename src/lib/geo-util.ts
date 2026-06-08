@@ -1,7 +1,25 @@
 const MAX_MERCATOR_LAT = 85;
 
+export interface GeographicBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+interface BoundsLike {
+  getWest(): number;
+  getEast(): number;
+  getNorth(): number;
+  getSouth(): number;
+}
+
+function clampLatitude(lat: number): number {
+  return Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, lat));
+}
+
 export function latToMercY(lat: number): number {
-  const clamped = Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, lat));
+  const clamped = clampLatitude(lat);
   const sinLat = Math.sin((clamped * Math.PI) / 180);
   return 0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI);
 }
@@ -26,12 +44,7 @@ export function globeCenterVector(lng: number, lat: number): [number, number, nu
 }
 
 export function viewportMercatorBounds(
-  bounds: {
-    getWest(): number;
-    getEast(): number;
-    getNorth(): number;
-    getSouth(): number;
-  },
+  bounds: BoundsLike,
   options: { wrapX?: boolean } = {},
 ): { minX: number; minY: number; maxX: number; maxY: number } {
   const west = options.wrapX ? Math.max(bounds.getWest(), -180) : bounds.getWest();
@@ -44,13 +57,44 @@ export function viewportMercatorBounds(
   };
 }
 
+export function viewportGeoBounds(bounds: BoundsLike): GeographicBounds {
+  return {
+    west: -180,
+    east: 180,
+    south: clampLatitude(bounds.getSouth()),
+    north: clampLatitude(bounds.getNorth()),
+  };
+}
+
+export function paddedViewportGeoBounds(
+  bounds: BoundsLike,
+  paddingFactor = 1,
+): GeographicBounds {
+  const south = clampLatitude(bounds.getSouth());
+  const north = clampLatitude(bounds.getNorth());
+  const height = Math.max(0, north - south);
+  const padding = height * Math.max(0, paddingFactor);
+  return {
+    west: -180,
+    east: 180,
+    south: clampLatitude(south - padding),
+    north: clampLatitude(north + padding),
+  };
+}
+
+export function coversViewportLatitude(
+  coverage: GeographicBounds,
+  viewport: GeographicBounds,
+  epsilon = 1e-6,
+): boolean {
+  return (
+    coverage.south <= viewport.south + epsilon &&
+    coverage.north >= viewport.north - epsilon
+  );
+}
+
 export function particleUpdateBounds(
-  bounds: {
-    getWest(): number;
-    getEast(): number;
-    getNorth(): number;
-    getSouth(): number;
-  },
+  bounds: BoundsLike,
 ): { minX: number; minY: number; maxX: number; maxY: number } {
   const west = bounds.getWest();
   const east = bounds.getEast();

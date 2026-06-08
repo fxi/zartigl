@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  coversViewportLatitude,
   globeCenterVector,
   normalizeLongitude,
+  paddedViewportGeoBounds,
   particleUpdateBounds,
+  viewportGeoBounds,
   viewportMercatorBounds,
 } from "./geo-util";
 
@@ -48,6 +51,32 @@ describe("geo utilities", () => {
 
     expect(result.minX).toBeCloseTo(10 / 360);
     expect(result.maxX).toBeCloseTo(40 / 360);
+  });
+
+  it("pads vector fetch latitude by one viewport height by default", () => {
+    const result = paddedViewportGeoBounds(bounds(-30, -10, 30, 20));
+
+    expect(result).toEqual({
+      west: -180,
+      east: 180,
+      south: -40,
+      north: 50,
+    });
+  });
+
+  it("clamps padded vector fetch latitude to mercator limits", () => {
+    const result = paddedViewportGeoBounds(bounds(-30, 70, 30, 84));
+
+    expect(result.south).toBe(56);
+    expect(result.north).toBe(85);
+  });
+
+  it("detects whether active data covers the current viewport latitude", () => {
+    const coverage = paddedViewportGeoBounds(bounds(-30, -10, 30, 20));
+
+    expect(coversViewportLatitude(coverage, viewportGeoBounds(bounds(0, -5, 10, 15)))).toBe(true);
+    expect(coversViewportLatitude(coverage, viewportGeoBounds(bounds(0, 45, 10, 55)))).toBe(false);
+    expect(coversViewportLatitude(coverage, viewportGeoBounds(bounds(0, -45, 10, -35)))).toBe(false);
   });
 
   it("returns maplibre-compatible globe center vectors", () => {

@@ -45,9 +45,10 @@ void main() {
         fract((lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x)),
         (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
     );
+    float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
 
     vec4 velSample = texture2D(u_velocity, geoUV);
-    v_valid = velSample.a;
+    v_valid = velSample.a * inDataY;
     vec2 velocity = mix(u_velocity_min, u_velocity_max, velSample.rg);
     float speed = length(velocity);
     float maxSpeed = length(max(abs(u_velocity_min), abs(u_velocity_max)));

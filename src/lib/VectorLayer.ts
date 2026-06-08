@@ -6,7 +6,13 @@ import type {
 import type { VectorLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types";
 import { saveGLState, restoreGLState } from "./gl-util";
 import type { ColorRampInput } from "./gl-util";
-import { globeCenterVector, particleUpdateBounds } from "./geo-util";
+import {
+  coversViewportLatitude,
+  globeCenterVector,
+  paddedViewportGeoBounds,
+  particleUpdateBounds,
+  viewportGeoBounds,
+} from "./geo-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { RenderMode } from "./ParticleSimulation";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
@@ -48,6 +54,8 @@ export class VectorLayer implements CustomLayerInterface {
   private initialized = false;
   private loading = false;
   private reloadQueued = false;
+  private reloadQueuedResetParticles = false;
+  private generation = 0;
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveStartHandler: (() => void) | null = null;
@@ -102,13 +110,8 @@ export class VectorLayer implements CustomLayerInterface {
     this.moveStartHandler = () => this.simulation.clearState();
     map.on("movestart", this.moveStartHandler);
 
-    // Invalidate pre-fetched frame cache when the viewport changes,
-    // as cached chunks were fetched for the previous lat bounds.
     this.moveEndHandler = () => {
-      this.zarrSource.cancelAll();   // abort stale fetches before clearing tracking
-      this.frameCache.clear();
-      this.inflight.clear();
-      this.emit("cacheInvalidated");
+      this.reloadIfViewportUncovered();
     };
     map.on("moveend", this.moveEndHandler);
   }
@@ -118,6 +121,7 @@ export class VectorLayer implements CustomLayerInterface {
       await this.zarrSource.init();
       await this.loadViewportVelocity();
       this.initialized = true;
+      this.reloadIfViewportUncovered();
       this.map?.triggerRepaint();
     } catch (err) {
       console.error("[zartigl] Failed to initialize:", err);
@@ -139,18 +143,33 @@ export class VectorLayer implements CustomLayerInterface {
     return { min: 0, max: maxSpeed, unit: "m/s", time: timeStr, depth: this.depth };
   }
 
+  private isViewportCovered(): boolean {
+    if (!this.map || !this.velocityField.hasData()) return false;
+    return coversViewportLatitude(
+      this.velocityField.geoBounds,
+      viewportGeoBounds(this.map.getBounds()),
+    );
+  }
+
+  private reloadIfViewportUncovered(): void {
+    if (!this.map || !this.initialized) return;
+    if (this.isViewportCovered()) return;
+
+    this.generation++;
+    this.zarrSource.cancelAll();
+    this.frameCache.clear();
+    this.inflight.clear();
+    this.emit("cacheInvalidated");
+    this.loadViewportVelocity({ resetParticles: true });
+  }
+
   /**
    * Fetch and stitch velocity data for the given time without touching GL state.
    * The map's current viewport is used to determine the lat bounds of the request.
    */
   private async fetchVelocityData(time: string | number): Promise<VelocityData> {
     const bounds = this.map!.getBounds();
-    const geoBounds = {
-      west: -180,
-      east: 180,
-      south: Math.max(bounds.getSouth(), -85),
-      north: Math.min(bounds.getNorth(), 85),
-    };
+    const geoBounds = paddedViewportGeoBounds(bounds);
 
     const timeIdx = this.zarrSource.findTimeIndex(time);
     const depthIdx = this.zarrSource.findDepthIndex(this.depth);
@@ -240,14 +259,16 @@ export class VectorLayer implements CustomLayerInterface {
     );
   }
 
-  private async loadViewportVelocity(): Promise<void> {
+  private async loadViewportVelocity(options: { resetParticles?: boolean } = {}): Promise<void> {
     if (!this.map) return;
     if (this.loading) {
       this.reloadQueued = true;
+      this.reloadQueuedResetParticles ||= options.resetParticles ?? false;
       return;
     }
     this.loading = true;
     this.emit("loading");
+    const generation = this.generation;
 
     try {
       const ms = this.timeToMs(this.time);
@@ -256,11 +277,15 @@ export class VectorLayer implements CustomLayerInterface {
       if (this.frameCache.has(ms)) {
         velocityData = this.frameCache.get(ms)!;
       } else {
-        velocityData = await this.fetchVelocityData(this.time);
-        this.frameCache.set(ms, velocityData);
+        const fetched = await this.fetchVelocityData(this.time);
+        if (generation !== this.generation) return;
+        this.frameCache.set(ms, fetched);
+        velocityData = fetched;
       }
 
+      if (generation !== this.generation) return;
       this.velocityField.update(velocityData);
+      if (options.resetParticles) this.simulation.resetParticles();
       this.emit("loaded", this.computeFieldMeta(velocityData, this.time));
       this.map?.triggerRepaint();
     } catch (err) {
@@ -271,8 +296,10 @@ export class VectorLayer implements CustomLayerInterface {
     } finally {
       this.loading = false;
       if (this.reloadQueued) {
+        const resetParticles = this.reloadQueuedResetParticles;
         this.reloadQueued = false;
-        this.loadViewportVelocity();
+        this.reloadQueuedResetParticles = false;
+        this.loadViewportVelocity({ resetParticles });
       }
     }
   }
@@ -404,6 +431,8 @@ export class VectorLayer implements CustomLayerInterface {
     this.depth = depth;
 
     if (depthChanged) {
+      this.generation++;
+      this.zarrSource.cancelAll();
       this.frameCache.clear();
       this.inflight.clear();
     }
@@ -430,10 +459,11 @@ export class VectorLayer implements CustomLayerInterface {
     if (this.frameCache.has(ms) || this.inflight.has(ms)) return;
 
     this.inflight.add(ms);
+    const generation = this.generation;
     try {
       const data = await this.fetchVelocityData(ms);
       // Guard against cache being cleared (e.g. viewport change) while we were fetching.
-      if (!this.frameCache.has(ms)) {
+      if (generation === this.generation && !this.frameCache.has(ms)) {
         this.frameCache.set(ms, data);
         this.emit("frameBuffered", ms);
       }
@@ -459,6 +489,8 @@ export class VectorLayer implements CustomLayerInterface {
 
   setDepth(depth: number): void {
     this.depth = depth;
+    this.generation++;
+    this.zarrSource.cancelAll();
     this.frameCache.clear();
     this.inflight.clear();
     this.loadViewportVelocity();
