@@ -2,7 +2,13 @@ import maplibregl from "maplibre-gl";
 import * as d3 from "d3";
 import { Pane } from "tweakpane";
 import type { BindingApi, FolderApi } from "@tweakpane/core";
-import { ArcoLayer, ZarrSource, getPalettes } from "../lib";
+import {
+  ArcoLayer,
+  ZarrSource,
+  deriveDirectionMagnitudeComponents,
+  getPalettes,
+  getVectorDerivationVariables,
+} from "../lib";
 import type { FieldMeta, ZarrPointSeriesResult } from "../lib";
 import { TimelinePlayer } from "../demo-shared/TimelinePlayer";
 import { catalog, formatTime, formatVertical, getVerticalDim } from "../catalog";
@@ -260,6 +266,7 @@ map.on("load", async () => {
 
     function getPointVariables(view: CatalogView): string[] {
       if (view.type === "scalar") return [view.variable ?? "scalar"];
+      if (view.vector_derivation) return getVectorDerivationVariables(view.vector_derivation);
       return [view.variable_u ?? "uo", view.variable_v ?? "vo"];
     }
 
@@ -296,8 +303,17 @@ map.on("load", async () => {
       const variables = getPointVariables(view);
       const isVector = view.type === "vector";
       return result.points.map((point) => {
-        const u = point.values[variables[0]];
-        const v = isVector ? point.values[variables[1]] : undefined;
+        let u = point.values[variables[0]];
+        let v = isVector ? point.values[variables[1]] : undefined;
+        if (view.vector_derivation) {
+          const components = deriveDirectionMagnitudeComponents(
+            point.values[view.vector_derivation.direction_variable],
+            point.values[view.vector_derivation.magnitude_variable],
+            view.vector_derivation,
+          );
+          u = components.u;
+          v = components.v;
+        }
         const value = isVector
           ? (Number.isFinite(u) && Number.isFinite(v) ? Math.hypot(u, v!) : NaN)
           : u;

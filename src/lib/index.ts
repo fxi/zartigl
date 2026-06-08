@@ -5,6 +5,10 @@ export { ZarrSource } from "./ZarrSource";
 export { VelocityField, stitchVelocityChunks } from "./VelocityField";
 export { ParticleSimulation } from "./ParticleSimulation";
 export { getPalettes } from "./gl-util";
+export {
+  deriveDirectionMagnitudeComponents,
+  getVectorDerivationVariables,
+} from "./vector-derivation";
 export type {
   VectorLayerOptions,
   ScalarLayerOptions,
@@ -12,6 +16,8 @@ export type {
   ArcoLayerView,
   ArcoLayerBackend,
   ArcoLayerBackendPreference,
+  VectorDerivation,
+  DirectionMagnitudeVectorDerivation,
   ZoomWeighted,
   VelocityData,
   ZarrConsolidatedMeta,

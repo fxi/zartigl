@@ -53,11 +53,29 @@ def main():
         print(f"✗ Duplicate view ids: {set(dupes)}", file=sys.stderr)
         sys.exit(1)
 
-    # Check for duplicate source_datasets
-    sources = [v["source_dataset"] for v in views]
-    dupe_sources = [s for s in sources if sources.count(s) > 1]
-    if dupe_sources:
-        print(f"✗ Duplicate source_datasets: {set(dupe_sources)}", file=sys.stderr)
+    # Check for duplicate data views. A single Copernicus dataset can expose
+    # several catalog views when they target different variables.
+    data_keys = []
+    for v in views:
+        if v.get("type") == "vector":
+            derivation = v.get("vector_derivation")
+            if derivation:
+                key = (
+                    v["source_dataset"],
+                    derivation.get("kind"),
+                    derivation.get("direction_variable"),
+                    derivation.get("magnitude_variable"),
+                    derivation.get("direction_convention"),
+                    derivation.get("output_direction"),
+                )
+            else:
+                key = (v["source_dataset"], v.get("variable_u"), v.get("variable_v"))
+        else:
+            key = (v["source_dataset"], v.get("variable"))
+        data_keys.append(key)
+    dupe_data = [k for k in data_keys if data_keys.count(k) > 1]
+    if dupe_data:
+        print(f"✗ Duplicate data views: {set(dupe_data)}", file=sys.stderr)
         sys.exit(1)
 
     print(f"✓ catalog.json is valid ({len(views)} view(s))")

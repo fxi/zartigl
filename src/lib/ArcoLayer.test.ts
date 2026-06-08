@@ -108,6 +108,20 @@ describe("selectArcoLayerBackend", () => {
     }))).toBe("vector");
   });
 
+  it("uses vector rendering for derived vector views", () => {
+    expect(selectArcoLayerBackend(layerOptions({
+      type: "vector",
+      zarr_url_geo: "https://example.test/vector.zarr",
+      vector_derivation: {
+        kind: "direction_magnitude",
+        direction_variable: "VMDR_SW1",
+        magnitude_variable: "VHM0_SW1",
+        direction_convention: "from",
+        output_direction: "toward",
+      },
+    }))).toBe("vector");
+  });
+
   it("uses WMTS only when explicitly requested", () => {
     expect(selectArcoLayerBackend(layerOptions(scalarWmtsView, { backend: "wmts" }))).toBe("scalar-wmts");
   });

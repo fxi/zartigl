@@ -17,6 +17,7 @@ import { ParticleSimulation } from "./ParticleSimulation";
 import type { RenderMode } from "./ParticleSimulation";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
+import { deriveDirectionMagnitudeComponents } from "./vector-derivation";
 
 // ── Minimal event emitter ────────────────────────────────────────────
 
@@ -49,6 +50,8 @@ export class VectorLayer implements CustomLayerInterface {
 
   private variableU: string;
   private variableV: string;
+  private vectorDerivation: VectorLayerOptions["vectorDerivation"];
+  private unit: string;
   private time: string | number;
   private depth: number;
   private initialized = false;
@@ -73,6 +76,8 @@ export class VectorLayer implements CustomLayerInterface {
 
     this.variableU = options.variableU ?? "uo";
     this.variableV = options.variableV ?? "vo";
+    this.vectorDerivation = options.vectorDerivation;
+    this.unit = options.unit ?? "m/s";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
     this.speedFactorParam = options.speedFactor ?? 0.25;
@@ -140,7 +145,7 @@ export class VectorLayer implements CustomLayerInterface {
       Math.max(data.uMin ** 2, data.uMax ** 2) +
       Math.max(data.vMin ** 2, data.vMax ** 2),
     );
-    return { min: 0, max: maxSpeed, unit: "m/s", time: timeStr, depth: this.depth };
+    return { min: 0, max: maxSpeed, unit: this.unit, time: timeStr, depth: this.depth };
   }
 
   private isViewportCovered(): boolean {
@@ -180,14 +185,15 @@ export class VectorLayer implements CustomLayerInterface {
       `timeIdx=${timeIdx}`
     );
 
+    const baseVariable = this.vectorDerivation?.direction_variable ?? this.variableU;
     const uChunkInfos = this.zarrSource.getChunksForBounds(
-      this.variableU,
+      baseVariable,
       timeIdx,
       depthIdx,
       geoBounds,
     );
 
-    const dims = this.zarrSource.getDimensions(this.variableU);
+    const dims = this.zarrSource.getDimensions(baseVariable);
     const timeDim = dims.indexOf("time");
     const vertName = this.zarrSource.getVerticalDimName();
     const depthDim = dims.indexOf(vertName);
@@ -215,10 +221,16 @@ export class VectorLayer implements CustomLayerInterface {
         };
       });
 
-    const [uChunks, vChunks] = await Promise.all([
-      Promise.all(makeChunkFetch(this.variableU)),
-      Promise.all(makeChunkFetch(this.variableV)),
-    ]);
+    const [uChunks, vChunks] = this.vectorDerivation
+      ? deriveVectorChunks(
+          await Promise.all(makeChunkFetch(this.vectorDerivation.direction_variable)),
+          await Promise.all(makeChunkFetch(this.vectorDerivation.magnitude_variable)),
+          this.vectorDerivation,
+        )
+      : await Promise.all([
+          Promise.all(makeChunkFetch(this.variableU)),
+          Promise.all(makeChunkFetch(this.variableV)),
+        ]);
 
     const latPixMin = Math.min(...uChunks.map(c => c.latStart));
     const latPixMax = Math.max(...uChunks.map(c => c.latStart + c.latSize));
@@ -569,4 +581,44 @@ export class VectorLayer implements CustomLayerInterface {
       }
     }
   }
+}
+
+type FetchedChunk = {
+  data: Float32Array;
+  latStart: number;
+  lonStart: number;
+  latSize: number;
+  lonSize: number;
+  lonChunkSize: number;
+};
+
+function deriveVectorChunks(
+  directionChunks: FetchedChunk[],
+  magnitudeChunks: FetchedChunk[],
+  derivation: NonNullable<VectorLayerOptions["vectorDerivation"]>,
+): [FetchedChunk[], FetchedChunk[]] {
+  const uChunks: FetchedChunk[] = [];
+  const vChunks: FetchedChunk[] = [];
+
+  for (let chunkIndex = 0; chunkIndex < directionChunks.length; chunkIndex++) {
+    const directionChunk = directionChunks[chunkIndex];
+    const magnitudeChunk = magnitudeChunks[chunkIndex];
+    const u = new Float32Array(directionChunk.data.length);
+    const v = new Float32Array(directionChunk.data.length);
+
+    for (let i = 0; i < directionChunk.data.length; i++) {
+      const components = deriveDirectionMagnitudeComponents(
+        directionChunk.data[i],
+        magnitudeChunk.data[i],
+        derivation,
+      );
+      u[i] = components.u;
+      v[i] = components.v;
+    }
+
+    uChunks.push({ ...directionChunk, data: u });
+    vChunks.push({ ...directionChunk, data: v });
+  }
+
+  return [uChunks, vChunks];
 }

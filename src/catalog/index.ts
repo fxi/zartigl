@@ -34,6 +34,14 @@ export interface CatalogWmts {
   style?: string;
 }
 
+export interface CatalogVectorDerivation {
+  kind: "direction_magnitude";
+  direction_variable: string;
+  magnitude_variable: string;
+  direction_convention: "from" | "toward";
+  output_direction: "from" | "toward";
+}
+
 export interface CatalogView {
   id: string;
   label: string;
@@ -47,6 +55,7 @@ export interface CatalogView {
   variable?: string;
   variable_u?: string;
   variable_v?: string;
+  vector_derivation?: CatalogVectorDerivation;
   variable_meta?: { standard_name: string; units: string };
   dimensions: Record<string, CatalogDimension>;
   vertical_label?: string;

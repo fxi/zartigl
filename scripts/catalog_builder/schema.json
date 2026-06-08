@@ -30,6 +30,7 @@
         "variable":        { "type": "string" },
         "variable_u":      { "type": "string" },
         "variable_v":      { "type": "string" },
+        "vector_derivation": { "$ref": "#/$defs/VectorDerivation" },
         "variable_meta": {
           "type": "object",
           "required": ["standard_name", "units"],
@@ -48,8 +49,25 @@
         "defaults":        { "$ref": "#/$defs/Defaults" }
       },
       "if":   { "properties": { "type": { "const": "vector" } } },
-      "then": { "required": ["variable_u", "variable_v"] },
+      "then": {
+        "oneOf": [
+          { "required": ["variable_u", "variable_v"] },
+          { "required": ["vector_derivation"] }
+        ]
+      },
       "else": { "required": ["variable"] }
+    },
+    "VectorDerivation": {
+      "type": "object",
+      "required": ["kind", "direction_variable", "magnitude_variable", "direction_convention", "output_direction"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["direction_magnitude"] },
+        "direction_variable": { "type": "string", "minLength": 1 },
+        "magnitude_variable": { "type": "string", "minLength": 1 },
+        "direction_convention": { "type": "string", "enum": ["from", "toward"] },
+        "output_direction": { "type": "string", "enum": ["from", "toward"] }
+      }
     },
     "Wmts": {
       "type": "object",

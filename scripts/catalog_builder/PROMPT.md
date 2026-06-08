@@ -50,7 +50,7 @@ Each entry in `catalog.json["views"]` must follow this structure:
 |-------|-------|
 | `id` | Lowercase kebab-case, unique across all views. Descriptive, not the Copernicus dataset ID. |
 | `category` | Must be one of: `Ocean`, `Atmosphere`, `Biology`, `Waves`, `Ice`. Add new categories only if none fit. |
-| `source_dataset` | Must be unique — no two views from the same dataset. |
+| `source_dataset` | Copernicus dataset id without the trailing version suffix when possible. Multiple views may share a dataset when they expose different variables. |
 | `zarr_url_geo` | Use `arco-geo-series` / `timeChunked.zarr` URL from `query_dataset.py` output. |
 | `zarr_url_time` | Use `arco-time-series` / `geoChunked.zarr` URL. Omit if unavailable. |
 | `wmts` | For scalar datasets, copy the `wmts` object from `query_dataset.py` when present. |
@@ -150,7 +150,7 @@ When asked to add a new view (e.g., "add waves"):
    ```bash
    uv run scripts/catalog_builder/skills/list_views.py
    ```
-   Confirm no existing view covers the requested topic.
+   Confirm no existing view already exposes the same dataset and variable or vector variable pair.
 
 2. **Search for candidates**
    ```bash

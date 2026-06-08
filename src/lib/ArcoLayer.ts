@@ -122,6 +122,8 @@ export class ArcoLayer implements CustomLayerInterface {
         source: view.zarr_url_geo,
         variableU: view.variable_u ?? "uo",
         variableV: view.variable_v ?? "vo",
+        vectorDerivation: view.vector_derivation,
+        unit: view.variable_meta?.units ?? "",
       });
     } else if (this.backend === "scalar-zarr") {
       const view = options.view;

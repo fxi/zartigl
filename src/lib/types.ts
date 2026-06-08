@@ -8,11 +8,22 @@
  */
 export type ZoomWeighted = number | [min: number, max: number];
 
+export interface DirectionMagnitudeVectorDerivation {
+  kind: "direction_magnitude";
+  direction_variable: string;
+  magnitude_variable: string;
+  direction_convention: "from" | "toward";
+  output_direction: "from" | "toward";
+}
+
+export type VectorDerivation = DirectionMagnitudeVectorDerivation;
+
 export interface VectorLayerOptions {
   id: string;
   source: string;
   variableU?: string;
   variableV?: string;
+  vectorDerivation?: VectorDerivation;
   /** Particles per screen pixel. Count = clamp(w × h × density, 1, 262144). Default 0.05. */
   particleDensity?: number;
   /** Fixed speed or [atHighZoom, atLowZoom]. */
@@ -32,6 +43,7 @@ export interface VectorLayerOptions {
   logScale?: boolean;
   /** Vibrance adjustment [-1, 1]. Default 0.0. */
   vibrance?: number;
+  unit?: string;
 }
 
 export interface ArcoLayerView {
@@ -40,6 +52,7 @@ export interface ArcoLayerView {
   variable?: string;
   variable_u?: string;
   variable_v?: string;
+  vector_derivation?: VectorDerivation;
   variable_meta?: { standard_name: string; units: string };
   vertical_label?: string;
   wmts?: {
