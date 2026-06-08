@@ -3,7 +3,7 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { ParticleLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types";
+import type { VectorLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types";
 import { saveGLState, restoreGLState } from "./gl-util";
 import type { ColorRampInput } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
@@ -39,7 +39,7 @@ function lngToMercX(lng: number): number {
 }
 
 
-export class ParticleLayer implements CustomLayerInterface {
+export class VectorLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
   readonly renderingMode = "3d" as const;
@@ -60,9 +60,6 @@ export class ParticleLayer implements CustomLayerInterface {
   private variableV: string;
   private time: string | number;
   private depth: number;
-  private scalarMode: boolean;
-  private scalarUnit: string;
-
   private initialized = false;
   private loading = false;
   private reloadQueued = false;
@@ -78,16 +75,13 @@ export class ParticleLayer implements CustomLayerInterface {
 
   private listeners: Map<string, Set<Function>> = new Map();
 
-  constructor(options: ParticleLayerOptions) {
+  constructor(options: VectorLayerOptions) {
     this.id = options.id;
 
     this.variableU = options.variableU ?? "uo";
     this.variableV = options.variableV ?? "vo";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
-    this.scalarMode = options.scalarMode ?? false;
-    this.scalarUnit = options.scalarUnit ?? "m/s";
-
     this.speedFactorParam = options.speedFactor ?? 0.25;
     this.fadeOpacityParam = options.fadeOpacity ?? 0.996;
     this.zoomRange = options.zoomRange ?? [2, 12];
@@ -105,6 +99,7 @@ export class ParticleLayer implements CustomLayerInterface {
       logScale: options.logScale ?? false,
       vibrance: options.vibrance ?? 0.0,
     });
+    this.simulation.setRenderMode("particles");
   }
 
   async onAdd(map: MaplibreMap, gl: WebGLRenderingContext): Promise<void> {
@@ -152,9 +147,6 @@ export class ParticleLayer implements CustomLayerInterface {
 
   private computeFieldMeta(data: VelocityData, time: string | number): FieldMeta {
     const timeStr = typeof time === "string" ? time : new Date(time).toISOString();
-    if (this.scalarMode) {
-      return { min: data.uMin, max: data.uMax, unit: this.scalarUnit, time: timeStr, depth: this.depth };
-    }
     const maxSpeed = Math.sqrt(
       Math.max(data.uMin ** 2, data.uMax ** 2) +
       Math.max(data.vMin ** 2, data.vMax ** 2),
@@ -221,7 +213,7 @@ export class ParticleLayer implements CustomLayerInterface {
 
     const [uChunks, vChunks] = await Promise.all([
       Promise.all(makeChunkFetch(this.variableU)),
-      this.scalarMode ? Promise.resolve([]) : Promise.all(makeChunkFetch(this.variableV)),
+      Promise.all(makeChunkFetch(this.variableV)),
     ]);
 
     const latPixMin = Math.min(...uChunks.map(c => c.latStart));
@@ -260,7 +252,6 @@ export class ParticleLayer implements CustomLayerInterface {
       fetchedWidth,
       dataGeoBounds,
       latDescending,
-      this.scalarMode,
     );
   }
 
@@ -285,7 +276,6 @@ export class ParticleLayer implements CustomLayerInterface {
       }
 
       this.velocityField.update(velocityData);
-      this.simulation.setScalarMode(velocityData.scalarMode ?? false);
       this.emit("loaded", this.computeFieldMeta(velocityData, this.time));
       this.map?.triggerRepaint();
     } catch (err) {
@@ -419,7 +409,6 @@ export class ParticleLayer implements CustomLayerInterface {
       // Instant swap — no network round-trip needed.
       const data = this.frameCache.get(ms)!;
       this.velocityField.update(data);
-      this.simulation.setScalarMode(data.scalarMode ?? false);
       this.emit("loaded", this.computeFieldMeta(data, time));
       this.map?.triggerRepaint();
     } else {
@@ -441,7 +430,6 @@ export class ParticleLayer implements CustomLayerInterface {
     if (!depthChanged && this.frameCache.has(ms)) {
       const data = this.frameCache.get(ms)!;
       this.velocityField.update(data);
-      this.simulation.setScalarMode(data.scalarMode ?? false);
       this.emit("loaded", this.computeFieldMeta(data, time));
       this.map?.triggerRepaint();
       return;
@@ -543,13 +531,6 @@ export class ParticleLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.simulation.setVibrance(v);
-  }
-
-  setScalarVariable(varName: string): void {
-    this.variableU = varName;
-    this.frameCache.clear();
-    this.inflight.clear();
-    this.loadViewportVelocity();
   }
 
   on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {

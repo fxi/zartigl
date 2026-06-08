@@ -1,0 +1,320 @@
+import type {
+  CustomLayerInterface,
+  CustomRenderMethodInput,
+  Map as MaplibreMap,
+} from "maplibre-gl";
+import { ScalarLayer } from "./ScalarLayer";
+import { VectorLayer } from "./VectorLayer";
+import type {
+  ArcoLayerBackend,
+  ArcoLayerOptions,
+  FieldMeta,
+  ZoomWeighted,
+} from "./types";
+import type { ColorRampInput } from "./gl-util";
+
+type LayerEventMap = {
+  loading: () => void;
+  loaded: (meta: FieldMeta) => void;
+  error: (err: Error) => void;
+  frameBuffered: (ms: number) => void;
+  cacheInvalidated: () => void;
+};
+
+function toIsoTime(time: string | number): string {
+  return typeof time === "string" ? time : new Date(time).toISOString();
+}
+
+function encodeParam(value: string | number): string {
+  return encodeURIComponent(String(value));
+}
+
+function wmtsElevation(depth: number, verticalLabel?: string): number {
+  return verticalLabel === "depth" ? -Math.abs(depth) : depth;
+}
+
+export function buildWmtsTileUrl(options: {
+  baseUrl: string;
+  layer: string;
+  tileMatrixSet: string;
+  format: string;
+  style?: string;
+  time?: string | number;
+  depth?: number;
+  verticalLabel?: string;
+}): string {
+  const params = [
+    ["SERVICE", "WMTS"],
+    ["VERSION", "1.0.0"],
+    ["REQUEST", "GetTile"],
+    ["LAYER", options.layer],
+    ["FORMAT", options.format],
+    ["TILEMATRIXSET", options.tileMatrixSet],
+    ["TILEMATRIX", "{z}"],
+    ["TILEROW", "{y}"],
+    ["TILECOL", "{x}"],
+  ];
+
+  if (options.style) params.push(["STYLE", options.style]);
+  if (options.time != null) params.push(["time", toIsoTime(options.time)]);
+  if (options.depth != null) {
+    params.push(["elevation", String(wmtsElevation(options.depth, options.verticalLabel))]);
+  }
+
+  const query = params
+    .map(([key, value]) => `${key}=${value.startsWith("{") ? value : encodeParam(value)}`)
+    .join("&");
+  return `${options.baseUrl}?${query}`;
+}
+
+export function buildWmtsLegendUrl(options: {
+  baseUrl: string;
+  layer: string;
+  format?: string;
+  style?: string;
+}): string {
+  const params = [
+    ["SERVICE", "WMTS"],
+    ["REQUEST", "GetLegend"],
+    ["LAYER", options.layer],
+    ["FORMAT", options.format ?? "image/svg+xml"],
+  ];
+  if (options.style) params.push(["STYLE", options.style]);
+  return `${options.baseUrl}?${params.map(([key, value]) => `${key}=${encodeParam(value)}`).join("&")}`;
+}
+
+export function selectArcoLayerBackend(options: ArcoLayerOptions): ArcoLayerBackend {
+  if (options.view.type === "vector") return "vector";
+  if (options.backend === "wmts" && options.view.wmts) return "scalar-wmts";
+  return "scalar-zarr";
+}
+
+export class ArcoLayer implements CustomLayerInterface {
+  readonly id: string;
+  readonly type = "custom" as const;
+  readonly renderingMode = "3d" as const;
+
+  private readonly options: ArcoLayerOptions;
+  private readonly backend: ArcoLayerBackend;
+  private delegate: ScalarLayer | VectorLayer | null = null;
+  private map: MaplibreMap | null = null;
+  private rasterSourceId: string;
+  private rasterLayerId: string;
+  private time: string | number;
+  private depth: number;
+  private opacity: number;
+  private listeners: Map<string, Set<Function>> = new Map();
+
+  constructor(options: ArcoLayerOptions) {
+    this.options = options;
+    this.id = options.id;
+    this.backend = selectArcoLayerBackend(options);
+    this.rasterSourceId = `${options.id}-wmts-source`;
+    this.rasterLayerId = `${options.id}-wmts`;
+    this.time = options.time ?? 0;
+    this.depth = options.depth ?? 0;
+    this.opacity = options.opacity ?? 1;
+
+    if (this.backend === "vector") {
+      const view = options.view;
+      this.delegate = new VectorLayer({
+        ...options,
+        source: view.zarr_url_geo,
+        variableU: view.variable_u ?? "uo",
+        variableV: view.variable_v ?? "vo",
+      });
+    } else if (this.backend === "scalar-zarr") {
+      const view = options.view;
+      this.delegate = new ScalarLayer({
+        id: options.id,
+        source: view.zarr_url_geo,
+        variable: view.variable ?? "scalar",
+        time: options.time,
+        depth: options.depth,
+        colorRamp: options.colorRamp,
+        opacity: options.opacity,
+        logScale: options.logScale,
+        vibrance: options.vibrance,
+        unit: view.variable_meta?.units ?? "",
+      });
+    }
+  }
+
+  getBackend(): ArcoLayerBackend {
+    return this.backend;
+  }
+
+  onAdd(map: MaplibreMap, gl: WebGLRenderingContext): void | Promise<void> {
+    this.map = map;
+    if (this.delegate) return this.delegate.onAdd(map, gl);
+    this.addOrUpdateWmts();
+    this.emitLoaded();
+  }
+
+  render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
+    this.delegate?.render(gl, options);
+  }
+
+  onRemove(): void {
+    this.delegate?.onRemove();
+    this.removeWmts();
+    this.map = null;
+  }
+
+  setTime(time: string | number): void {
+    this.time = time;
+    if (this.delegate) {
+      this.delegate.setTime(time);
+      return;
+    }
+    this.addOrUpdateWmts();
+    this.emitLoaded();
+  }
+
+  setTimeAndDepth(time: string | number, depth: number): void {
+    this.time = time;
+    this.depth = depth;
+    if (this.delegate) {
+      this.delegate.setTimeAndDepth(time, depth);
+      return;
+    }
+    this.addOrUpdateWmts();
+    this.emitLoaded();
+  }
+
+  setDepth(depth: number): void {
+    this.depth = depth;
+    if (this.delegate) {
+      this.delegate.setDepth(depth);
+      return;
+    }
+    this.addOrUpdateWmts();
+    this.emitLoaded();
+  }
+
+  async prefetchTime(ms: number): Promise<void> {
+    await this.delegate?.prefetchTime(ms);
+  }
+
+  isFrameCached(ms: number): boolean {
+    return this.delegate?.isFrameCached(ms) ?? false;
+  }
+
+  cancelPrefetches(): void {
+    this.delegate?.cancelPrefetches();
+  }
+
+  setSpeedFactor(v: ZoomWeighted): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setSpeedFactor(v);
+  }
+
+  setFadeOpacity(v: ZoomWeighted): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setFadeOpacity(v);
+  }
+
+  setDropRate(v: number): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setDropRate(v);
+  }
+
+  setDropRateBump(v: number): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setDropRateBump(v);
+  }
+
+  setParticleDensity(density: number): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setParticleDensity(density);
+  }
+
+  setColorRamp(ramp: ColorRampInput): void {
+    this.delegate?.setColorRamp(ramp);
+  }
+
+  setOpacity(v: number): void {
+    this.opacity = v;
+    if (this.delegate) {
+      this.delegate.setOpacity(v);
+      return;
+    }
+    if (this.map?.getLayer(this.rasterLayerId)) {
+      this.map.setPaintProperty(this.rasterLayerId, "raster-opacity", v);
+    }
+  }
+
+  setLogScale(v: boolean): void {
+    if (this.delegate instanceof ScalarLayer) this.delegate.setLogScale(v);
+    if (this.delegate instanceof VectorLayer) this.delegate.setLogScale(v);
+  }
+
+  setVibrance(v: number): void {
+    this.delegate?.setVibrance(v);
+  }
+
+  async samplePoint(options: { longitude: number; latitude: number; time?: string | number; depth?: number }) {
+    if (this.delegate instanceof ScalarLayer) return this.delegate.samplePoint(options);
+    return undefined;
+  }
+
+  on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
+    this.delegate?.on(event, handler);
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event)!.add(handler);
+    return this;
+  }
+
+  off<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
+    this.delegate?.off(event, handler);
+    this.listeners.get(event)?.delete(handler);
+    return this;
+  }
+
+  private addOrUpdateWmts(): void {
+    if (!this.map || !this.options.view.wmts) return;
+    this.removeWmts();
+    const wmts = this.options.view.wmts;
+    this.map.addSource(this.rasterSourceId, {
+      type: "raster",
+      tiles: [buildWmtsTileUrl({
+        baseUrl: wmts.base_url,
+        layer: wmts.layer,
+        tileMatrixSet: wmts.tileMatrixSet,
+        format: wmts.format,
+        style: wmts.style,
+        time: this.time,
+        depth: this.depth,
+        verticalLabel: this.options.view.vertical_label,
+      })],
+      tileSize: 256,
+    });
+    this.map.addLayer({
+      id: this.rasterLayerId,
+      type: "raster",
+      source: this.rasterSourceId,
+      paint: { "raster-opacity": this.opacity },
+    });
+  }
+
+  private removeWmts(): void {
+    if (!this.map) return;
+    if (this.map.getLayer(this.rasterLayerId)) this.map.removeLayer(this.rasterLayerId);
+    if (this.map.getSource(this.rasterSourceId)) this.map.removeSource(this.rasterSourceId);
+  }
+
+  private emitLoaded(): void {
+    this.emit("loaded", {
+      min: 0,
+      max: 0,
+      unit: this.options.view.variable_meta?.units ?? "",
+      time: toIsoTime(this.time),
+      depth: this.depth,
+    });
+  }
+
+  private emit<K extends keyof LayerEventMap>(
+    event: K,
+    ...args: Parameters<LayerEventMap[K]>
+  ): void {
+    const handlers = this.listeners.get(event);
+    if (handlers) {
+      for (const h of handlers) (h as Function)(...args);
+    }
+  }
+}

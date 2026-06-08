@@ -21,13 +21,13 @@ npm install zartigl maplibre-gl
 
 ```ts
 import maplibregl from "maplibre-gl";
-import { ParticleLayer } from "zartigl";
+import { VectorLayer } from "zartigl";
 
 const map = new maplibregl.Map({ container: "map", style: "..." });
 
 map.on("load", () => {
   map.addLayer(
-    new ParticleLayer({
+    new VectorLayer({
       id: "currents",
       source: "https://your-zarr-store/",
       variableU: "uo",

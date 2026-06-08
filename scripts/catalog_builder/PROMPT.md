@@ -19,6 +19,7 @@ Each entry in `catalog.json["views"]` must follow this structure:
   "source_dataset": "<copernicus_dataset_id>",
   "zarr_url_geo":   "https://...timeChunked.zarr",
   "zarr_url_time":  "https://...geoChunked.zarr",
+  "wmts": { ... },  // optional, scalar rendering shortcut when available
 
   // vector only:
   "variable_u": "<eastward_component_short_name>",
@@ -52,6 +53,7 @@ Each entry in `catalog.json["views"]` must follow this structure:
 | `source_dataset` | Must be unique — no two views from the same dataset. |
 | `zarr_url_geo` | Use `arco-geo-series` / `timeChunked.zarr` URL from `query_dataset.py` output. |
 | `zarr_url_time` | Use `arco-time-series` / `geoChunked.zarr` URL. Omit if unavailable. |
+| `wmts` | For scalar datasets, copy the `wmts` object from `query_dataset.py` when present. |
 | `variable_u/v` | For vectors: the eastward and northward component short names. |
 | `variable` | For scalars: the single variable to display (pick the primary one if multiple exist). |
 | `variable_meta` | Provide a human-intelligible `standard_name`. For vectors, use a combined name like `"sea_water_velocity"`. |
@@ -75,13 +77,13 @@ Note this in the description and confirm decomposition is not already provided a
 
 Use these as starting defaults — tune after visual inspection:
 
-| Category | renderMode | logScale | palette | Notes |
-|----------|-----------|----------|---------|-------|
-| Ocean | `raster+particles` | false | `rdylbu` | Particles trace currents |
-| Atmosphere | `particles` | true | `rdylbu` | Wind streaks dominant |
-| Biology | `raster` | true | `balance` | Log scale essential for chl-a |
-| Waves | `raster+particles` | false | `rdylbu` | Raster = height, particles = direction |
-| Ice | `raster` | false | `blues` | No particles needed |
+| Category | logScale | palette | Notes |
+|----------|----------|---------|-------|
+| Ocean | false | `rdylbu` | Particles trace currents |
+| Atmosphere | true | `rdylbu` | Wind streaks dominant |
+| Biology | true | `balance` | Log scale essential for chl-a |
+| Waves | false | `rdylbu` | Use vector components when available |
+| Ice | false | `blues` | Scalar raster |
 
 ---
 
@@ -92,7 +94,6 @@ All fields are optional but recommended for vector views:
 ```json
 {
   "palette":         "rdylbu",
-  "renderMode":      "raster+particles",
   "particleDensity": 0.05,
   "speedMin":        0.01,
   "speedMax":        1.0,
@@ -106,7 +107,7 @@ All fields are optional but recommended for vector views:
 }
 ```
 
-Scalar views only need: `palette`, `renderMode`, `opacity`, `logScale`, `vibrance`.
+Scalar views only need: `palette`, `opacity`, `logScale`, `vibrance`.
 
 ---
 

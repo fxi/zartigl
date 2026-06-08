@@ -16,7 +16,7 @@ function handler() {
       /**
        * Import zartigl as ESM from jsDelivr CDN
        */
-      const { ParticleLayer } = await import(
+      const { VectorLayer } = await import(
         "https://cdn.jsdelivr.net/npm/@fxi/zartigl@0.1.4/dist/zartigl.js"
       );
 
@@ -35,7 +35,7 @@ function handler() {
 
       const LAYER_ID = cc.idView;
 
-      const layer = new ParticleLayer({
+      const layer = new VectorLayer({
         id: LAYER_ID,
         source: ZARR_URL,
         variableU: "eastward_wind",
@@ -51,7 +51,6 @@ function handler() {
       });
 
       cc.map.addLayer(layer, "mxlayers");
-      layer.setRenderMode("particles");
 
       cc.setLegend(`
           <div style="font-family:sans-serif;padding:6px 10px;font-size:12px">

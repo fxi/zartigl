@@ -106,7 +106,6 @@
       "vertical_label": "depth",
       "defaults": {
         "palette": "rdylbu",
-        "renderMode": "particles",
         "particleDensity": 0.033,
         "speedMin": 0.14,
         "speedMax": 1.11,
@@ -165,7 +164,6 @@
       },
       "defaults": {
         "palette": "rdylbu",
-        "renderMode": "particles",
         "particleDensity": 0.004000000000000002,
         "speedMin": 0.010000000000000005,
         "speedMax": 0.07000000000000002,
@@ -187,6 +185,14 @@
       "source_dataset": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
       "zarr_url_geo": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
       "zarr_url_time": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
+      "wmts": {
+        "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+        "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/chl",
+        "tileMatrixSet": "EPSG:3857",
+        "format": "image/png",
+        "style": "cmap:algae,logScale"
+      },
       "variable": "chl",
       "variable_meta": {
         "standard_name": "mass_concentration_of_chlorophyll_a_in_sea_water",
@@ -281,8 +287,7 @@
       },
       "vertical_label": "depth",
       "defaults": {
-        "palette": "matter",
-        "renderMode": "raster",
+        "palette": "algae",
         "opacity": 0.9,
         "logScale": true,
         "vibrance": 0.2
@@ -334,7 +339,6 @@
       },
       "defaults": {
         "palette": "rdylbu",
-        "renderMode": "particles",
         "particleDensity": 0.024,
         "speedMin": 0.010000000000000005,
         "speedMax": 1.59,

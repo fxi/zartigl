@@ -8,7 +8,7 @@
  */
 export type ZoomWeighted = number | [min: number, max: number];
 
-export interface ParticleLayerOptions {
+export interface VectorLayerOptions {
   id: string;
   source: string;
   variableU?: string;
@@ -32,8 +32,46 @@ export interface ParticleLayerOptions {
   logScale?: boolean;
   /** Vibrance adjustment [-1, 1]. Default 0.0. */
   vibrance?: number;
-  scalarMode?: boolean;
-  scalarUnit?: string;
+}
+
+export interface ArcoLayerView {
+  type: "vector" | "scalar";
+  zarr_url_geo: string;
+  variable?: string;
+  variable_u?: string;
+  variable_v?: string;
+  variable_meta?: { standard_name: string; units: string };
+  vertical_label?: string;
+  wmts?: {
+    capabilities_url: string;
+    base_url: string;
+    layer: string;
+    tileMatrixSet: string;
+    format: string;
+    style?: string;
+  };
+}
+
+export type ArcoLayerBackendPreference = "auto" | "wmts" | "zarr";
+export type ArcoLayerBackend = "vector" | "scalar-zarr" | "scalar-wmts";
+
+export interface ArcoLayerOptions
+  extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
+  view: ArcoLayerView;
+  backend?: ArcoLayerBackendPreference;
+}
+
+export interface ScalarLayerOptions {
+  id: string;
+  source: string;
+  variable: string;
+  colorRamp?: Record<number, string>;
+  time?: string | number;
+  depth?: number;
+  opacity?: number;
+  logScale?: boolean;
+  vibrance?: number;
+  unit?: string;
 }
 
 export interface ZarrArrayMeta {

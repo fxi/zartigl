@@ -1,4 +1,4 @@
-import type { ParticleLayer } from "../lib";
+import type { ArcoLayer } from "../lib";
 
 export interface TimelineConfig {
   timeMin: number;
@@ -6,18 +6,20 @@ export interface TimelineConfig {
   timeSize: number;
   bufferAhead?: number; // default 10
   frameMs?: number;     // default 200 (5fps)
+  bufferTimeoutMs?: number;
 }
 
 export type PlayerState = "playing" | "paused" | "buffering";
 
 export class TimelinePlayer {
-  private layer: ParticleLayer;
+  private layer: ArcoLayer;
   private cfg: Required<TimelineConfig>;
   private currentIndex: number;
   private _state: PlayerState = "paused";
   private frameTimer: ReturnType<typeof setTimeout> | null = null;
   private frameStartTime = 0;
   private bufferWaitHandler: ((ms: number) => void) | null = null;
+  private bufferTimeout: ReturnType<typeof setTimeout> | null = null;
   private cacheInvalidatedHandler: () => void;
 
   onStateChange?: (state: PlayerState) => void;
@@ -27,12 +29,13 @@ export class TimelinePlayer {
     return this._state;
   }
 
-  constructor(layer: ParticleLayer, startIndex: number, cfg: TimelineConfig) {
+  constructor(layer: ArcoLayer, startIndex: number, cfg: TimelineConfig) {
     this.layer = layer;
     this.currentIndex = startIndex;
     this.cfg = {
       bufferAhead: cfg.bufferAhead ?? 10,
       frameMs: cfg.frameMs ?? 200,
+      bufferTimeoutMs: cfg.bufferTimeoutMs ?? 2000,
       timeMin: cfg.timeMin,
       timeStep: cfg.timeStep,
       timeSize: cfg.timeSize,
@@ -67,6 +70,10 @@ export class TimelinePlayer {
       this.layer.off("frameBuffered", this.bufferWaitHandler);
       this.bufferWaitHandler = null;
     }
+    if (this.bufferTimeout !== null) {
+      clearTimeout(this.bufferTimeout);
+      this.bufferTimeout = null;
+    }
     this.layer.cancelPrefetches();
     this.setState("paused");
   }
@@ -90,6 +97,10 @@ export class TimelinePlayer {
       if (bufferedMs !== nextMs) return;
       this.layer.off("frameBuffered", handler);
       this.bufferWaitHandler = null;
+      if (this.bufferTimeout !== null) {
+        clearTimeout(this.bufferTimeout);
+        this.bufferTimeout = null;
+      }
       if (this._state === "paused") return;
       this.setState("playing");
       this.applyFrame(nextIndex, nextMs);
@@ -99,11 +110,25 @@ export class TimelinePlayer {
     };
     this.bufferWaitHandler = handler;
     this.layer.on("frameBuffered", handler);
+    this.bufferTimeout = setTimeout(() => {
+      this.layer.off("frameBuffered", handler);
+      this.bufferWaitHandler = null;
+      this.bufferTimeout = null;
+      if (this._state === "paused") return;
+      this.setState("playing");
+      this.prefetchAhead(this.currentIndex);
+      this.frameStartTime = Date.now();
+      this.scheduleNext();
+    }, this.cfg.bufferTimeoutMs);
 
     // Race-condition fix: re-check after registering handler
     if (this.layer.isFrameCached(nextMs)) {
       this.layer.off("frameBuffered", handler);
       this.bufferWaitHandler = null;
+      if (this.bufferTimeout !== null) {
+        clearTimeout(this.bufferTimeout);
+        this.bufferTimeout = null;
+      }
       this.setState("playing");
       this.applyFrame(nextIndex, nextMs);
       this.prefetchAhead(nextIndex);

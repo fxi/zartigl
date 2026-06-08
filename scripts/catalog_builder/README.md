@@ -28,6 +28,6 @@ Each view has:
 - `variable` (scalar) or `variable_u` + `variable_v` (vector)
 - `variable_meta` — `standard_name` + `units`
 - `dimensions` — time, lat, lon, depth (if applicable)
-- `defaults` — palette, renderMode, particle/raster parameters
+- `defaults` — palette and particle/raster parameters
 
 See `PROMPT.md` Section 1 for the full field reference.

@@ -177,6 +177,24 @@ body {
   z-index: 100;
 }
 
+.hover-readout {
+  position: fixed;
+  z-index: 12;
+  min-width: 180px;
+  max-width: 220px;
+  padding: 6px 8px;
+  background: rgba(12, 12, 12, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  color: #d8d8d8;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre;
+  pointer-events: none;
+}
+
 /* Point time/depth popup */
 .maplibregl-popup-content {
   background: rgba(12, 12, 12, 0.94);

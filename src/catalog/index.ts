@@ -13,7 +13,6 @@ export interface CatalogDimension {
 
 export interface LayerDefaults {
   palette?: string;
-  renderMode?: string;
   particleDensity?: number;
   speedMin?: number;
   speedMax?: number;
@@ -26,6 +25,15 @@ export interface LayerDefaults {
   vibrance?: number;
 }
 
+export interface CatalogWmts {
+  capabilities_url: string;
+  base_url: string;
+  layer: string;
+  tileMatrixSet: string;
+  format: string;
+  style?: string;
+}
+
 export interface CatalogView {
   id: string;
   label: string;
@@ -35,6 +43,7 @@ export interface CatalogView {
   source_dataset: string;
   zarr_url_geo: string;
   zarr_url_time?: string;
+  wmts?: CatalogWmts;
   variable?: string;
   variable_u?: string;
   variable_v?: string;

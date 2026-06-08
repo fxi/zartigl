@@ -26,6 +26,7 @@
         "source_dataset":  { "type": "string", "minLength": 1 },
         "zarr_url_geo":    { "type": "string", "pattern": "^https?://" },
         "zarr_url_time":   { "type": "string", "pattern": "^https?://" },
+        "wmts":            { "$ref": "#/$defs/Wmts" },
         "variable":        { "type": "string" },
         "variable_u":      { "type": "string" },
         "variable_v":      { "type": "string" },
@@ -50,6 +51,19 @@
       "then": { "required": ["variable_u", "variable_v"] },
       "else": { "required": ["variable"] }
     },
+    "Wmts": {
+      "type": "object",
+      "required": ["capabilities_url", "base_url", "layer", "tileMatrixSet", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "capabilities_url": { "type": "string", "pattern": "^https?://" },
+        "base_url":         { "type": "string", "pattern": "^https?://" },
+        "layer":            { "type": "string", "minLength": 1 },
+        "tileMatrixSet":    { "type": "string", "minLength": 1 },
+        "format":           { "type": "string", "minLength": 1 },
+        "style":            { "type": "string", "minLength": 1 }
+      }
+    },
     "Dimension": {
       "type": "object",
       "required": ["axis"],
@@ -69,7 +83,6 @@
       "additionalProperties": false,
       "properties": {
         "palette":         { "type": "string" },
-        "renderMode":      { "type": "string", "enum": ["raster", "particles", "raster+particles"] },
         "particleDensity": { "type": "number", "exclusiveMinimum": 0 },
         "speedMin":        { "type": "number", "exclusiveMinimum": 0 },
         "speedMax":        { "type": "number", "exclusiveMinimum": 0 },

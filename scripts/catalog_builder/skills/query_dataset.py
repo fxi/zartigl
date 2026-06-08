@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
+from urllib.parse import urlparse
 
 
 def select_geo_service(part):
@@ -33,6 +34,37 @@ def select_time_service(part):
         if s.service_name == "arco-time-series" and s.service_format == "zarr":
             return s
     return None
+
+
+def select_wmts_service(part):
+    """Return WMTS service metadata, or None."""
+    for s in part.services:
+        if s.service_name == "wmts":
+            return s
+    return None
+
+
+def wmts_base_url(capabilities_url: str) -> str:
+    parsed = urlparse(capabilities_url)
+    parts = [p for p in parsed.path.split("/") if p]
+    if parts:
+        path = "/" + parts[0]
+    else:
+        path = parsed.path
+    return f"{parsed.scheme}://{parsed.netloc}{path}"
+
+
+def build_wmts_metadata(svc, product_id: str, variable: str | None) -> dict | None:
+    if svc is None or variable is None:
+        return None
+    dataset_tag = svc.uri.split("?")[0].rstrip("/").split("/")[-1]
+    return {
+        "capabilities_url": svc.uri,
+        "base_url": wmts_base_url(svc.uri),
+        "layer": f"{product_id}/{dataset_tag}/{variable}",
+        "tileMatrixSet": "EPSG:3857",
+        "format": "image/png",
+    }
 
 
 def detect_vector_vars(svc) -> tuple[str, str] | None:
@@ -104,6 +136,7 @@ def main():
 
     svc_geo = select_geo_service(part)
     svc_time = select_time_service(part)
+    svc_wmts = select_wmts_service(part)
 
     if svc_geo is None:
         print(json.dumps({"error": "no ARCO Zarr service found"}))
@@ -122,6 +155,7 @@ def main():
     suggested_variable_u = vec[0] if vec else None
     suggested_variable_v = vec[1] if vec else None
     suggested_variable = list(variables.keys())[0] if not vec else None
+    wmts = build_wmts_metadata(svc_wmts, prod.product_id, suggested_variable)
 
     dimensions = build_dimensions(svc_geo.variables[0]) if svc_geo.variables else {}
 
@@ -139,6 +173,7 @@ def main():
         "title": getattr(prod, "title", None) or getattr(ds, "title", None) or dataset_id,
         "zarr_url_geo": svc_geo.uri,
         "zarr_url_time": svc_time.uri if svc_time else None,
+        "wmts": wmts,
         "all_variables": variables,
         "suggested_type": suggested_type,
         "suggested_variable_u": suggested_variable_u,

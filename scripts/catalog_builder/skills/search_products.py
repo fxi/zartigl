@@ -51,16 +51,19 @@ def main():
                 for part in ver.parts:
                     if not has_zarr(part):
                         continue
-                    services = [
+                    zarr_services = [
                         s.service_name
                         for s in part.services
                         if s.service_format == "zarr"
                     ]
+                    services = [s.service_name for s in part.services]
                     candidates.append({
                         "dataset_id": ds.dataset_id,
                         "product_id": prod.product_id,
                         "title": getattr(prod, "title", None) or getattr(ds, "title", None) or ds.dataset_id,
-                        "zarr_services": services,
+                        "services": services,
+                        "zarr_services": zarr_services,
+                        "has_wmts": "wmts" in services,
                         "variables": [v.short_name for v in part.services[0].variables] if part.services else [],
                     })
                     break  # one part per dataset is enough for discovery

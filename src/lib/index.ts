@@ -1,10 +1,17 @@
-export { ParticleLayer } from "./ParticleLayer";
+export { ScalarLayer } from "./ScalarLayer";
+export { VectorLayer } from "./VectorLayer";
+export { ArcoLayer, buildWmtsLegendUrl, buildWmtsTileUrl, selectArcoLayerBackend } from "./ArcoLayer";
 export { ZarrSource } from "./ZarrSource";
 export { VelocityField, stitchVelocityChunks } from "./VelocityField";
 export { ParticleSimulation } from "./ParticleSimulation";
 export { getPalettes } from "./gl-util";
 export type {
-  ParticleLayerOptions,
+  VectorLayerOptions,
+  ScalarLayerOptions,
+  ArcoLayerOptions,
+  ArcoLayerView,
+  ArcoLayerBackend,
+  ArcoLayerBackendPreference,
   ZoomWeighted,
   VelocityData,
   ZarrConsolidatedMeta,

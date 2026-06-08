@@ -450,6 +450,58 @@ export class ParticleSimulation {
     this.screenFramebuffers.reverse();
   }
 
+  renderGrid(
+    velocityTexUnit: number,
+    velocityMin: [number, number],
+    velocityMax: [number, number],
+    bounds: { minX: number; minY: number; maxX: number; maxY: number },
+    geoBounds: { west: number; south: number; east: number; north: number },
+    opacityScale = 1,
+  ): void {
+    const gl = this.gl;
+    gl.useProgram(this.gridProgram);
+    gl.disable(gl.BLEND);
+
+    gl.uniform1i(this.gridLocs["u_field"], velocityTexUnit);
+
+    bindTexture(gl, this.colorRampTexture, 2);
+    gl.uniform1i(this.gridLocs["u_color_ramp"], 2);
+
+    const PI = Math.PI;
+    const mercWest  = (bounds.minX * 2.0 - 1.0) * PI;
+    const mercEast  = (bounds.maxX * 2.0 - 1.0) * PI;
+    const mercSouth = (1.0 - bounds.maxY * 2.0) * PI;
+    const mercNorth = (1.0 - bounds.minY * 2.0) * PI;
+    gl.uniform4f(this.gridLocs["u_bounds"], mercWest, mercSouth, mercEast, mercNorth);
+
+    gl.uniform4f(
+      this.gridLocs["u_geo_bounds"],
+      geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+    );
+
+    const maxSpeed = Math.sqrt(
+      Math.max(Math.abs(velocityMin[0]), Math.abs(velocityMax[0])) ** 2 +
+      Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
+    );
+    gl.uniform1f(this.gridLocs["u_field_min"], 0.0);
+    gl.uniform1f(this.gridLocs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
+
+    gl.uniform1f(this.gridLocs["u_u_min"], velocityMin[0]);
+    gl.uniform1f(this.gridLocs["u_u_max"], velocityMax[0]);
+    gl.uniform1f(this.gridLocs["u_v_min"], velocityMin[1]);
+    gl.uniform1f(this.gridLocs["u_v_max"], velocityMax[1]);
+
+    gl.uniform1f(this.gridLocs["u_opacity"], this.params.opacity * opacityScale);
+    gl.uniform1f(this.gridLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
+    gl.uniform1f(this.gridLocs["u_vibrance"], this.params.vibrance);
+    gl.uniform1f(this.gridLocs["u_scalar_mode"], this.params.scalarMode ? 1.0 : 0.0);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.drawQuad();
+    gl.disable(gl.BLEND);
+  }
+
   private drawQuad(): void {
     const gl = this.gl;
     const aPos = gl.getAttribLocation(

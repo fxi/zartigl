@@ -2,8 +2,7 @@ import maplibregl from "maplibre-gl";
 import * as d3 from "d3";
 import { Pane } from "tweakpane";
 import type { BindingApi, FolderApi } from "@tweakpane/core";
-import { ParticleLayer, ZarrSource, getPalettes } from "../lib";
-import type { RenderMode } from "../lib/ParticleSimulation";
+import { ArcoLayer, ZarrSource, getPalettes } from "../lib";
 import type { FieldMeta, ZarrPointSeriesResult } from "../lib";
 import { TimelinePlayer } from "../demo-shared/TimelinePlayer";
 import { catalog, formatTime, formatVertical, getVerticalDim } from "../catalog";
@@ -16,7 +15,7 @@ interface HashState {
   t: number;    // time ms
   v: number;    // vertical value
   p: string;    // palette id
-  rm: string;   // render mode
+  s?: "zarr" | "wmts"; // scalar source
   pd: number;   // particleDensity
   sm: number;   // speedMin
   sx: number;   // speedMax
@@ -76,11 +75,11 @@ map.on("load", async () => {
 
     // ── Shared mutable state ───────────────────────────────────────
 
-    let layer: ParticleLayer = null!;
+    let layer: ArcoLayer = null!;
     let currentView: CatalogView;
     let dataFolderChildren: { dispose(): void }[] = [];
     let currentPaletteId = "rdylbu";
-    let currentRenderMode: RenderMode = "raster+particles";
+    let currentScalarSource: "zarr" | "wmts" = "zarr";
 
     let currentPlayer: TimelinePlayer | null = null;
     let playBtn: HTMLButtonElement | null = null;
@@ -98,13 +97,16 @@ map.on("load", async () => {
     // DOM element refs — assigned when UI is built, used by refreshUI()
     let paletteSelectEl: HTMLSelectElement | null = null;
     let viewSelectEl: HTMLSelectElement | null = null;
-    let renderModeButtons: { mode: RenderMode; btn: HTMLButtonElement }[] = [];
+    let sourceBtnContainer: HTMLDivElement | null = null;
+    let sourceButtons: { source: "zarr" | "wmts"; btn: HTMLButtonElement }[] = [];
     let projectionButtons: { proj: string; btn: HTMLButtonElement }[] = [];
     let currentProjection: "mercator" | "globe" = "mercator";
     let pointSource: ZarrSource | null = null;
     let pointSourceUrl = "";
     let activePointPopup: maplibregl.Popup | null = null;
     let pointQuerySeq = 0;
+    let hoverQuerySeq = 0;
+    let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
     const PARAMS = {
       viewIndex: 0,
@@ -122,6 +124,11 @@ map.on("load", async () => {
       logScale: false,
       vibrance: 0.0,
     };
+
+    const hoverReadout = document.createElement("div");
+    hoverReadout.className = "hover-readout";
+    hoverReadout.hidden = true;
+    document.body.appendChild(hoverReadout);
 
     // ── Legend DOM (early init — needed by refreshUI) ──────────────
 
@@ -155,6 +162,10 @@ map.on("load", async () => {
     legendContainer.appendChild(legendMetaRow);
 
     function updateStandaloneLegendGradient() {
+      const isWmts = currentView?.type === "scalar" && currentScalarSource === "wmts";
+      legendGradientBar.hidden = isWmts;
+      legendMetaRow.hidden = isWmts;
+      if (isWmts) return;
       const palette = palettes.find((p) => p.id === currentPaletteId);
       if (palette) {
         legendGradientBar.style.background = `linear-gradient(to right, ${palette.colors.join(", ")})`;
@@ -182,7 +193,6 @@ map.on("load", async () => {
       PARAMS.logScale = d.logScale ?? false;
       PARAMS.vibrance = d.vibrance ?? 0.0;
       currentPaletteId = d.palette ?? "rdylbu";
-      currentRenderMode = (d.renderMode as RenderMode) ?? "raster+particles";
     }
 
     function applyHashState(state: HashState) {
@@ -197,16 +207,18 @@ map.on("load", async () => {
       PARAMS.logScale = state.ls;
       PARAMS.vibrance = state.vb;
       currentPaletteId = state.p;
-      currentRenderMode = state.rm as RenderMode;
+      if (state.s) currentScalarSource = state.s;
     }
 
     function refreshUI() {
       if (paletteSelectEl) paletteSelectEl.value = currentPaletteId;
+      if (paletteSelectEl) paletteSelectEl.disabled = currentView?.type === "scalar" && currentScalarSource === "wmts";
       if (viewSelectEl) viewSelectEl.value = String(PARAMS.viewIndex);
-      const isScalar = currentView?.type === "scalar";
-      for (const { mode, btn } of renderModeButtons) {
-        btn.classList.toggle("active", mode === currentRenderMode);
-        btn.disabled = isScalar && mode !== "raster";
+      const canUseWmts = currentView?.type === "scalar" && !!currentView.wmts;
+      if (sourceBtnContainer) sourceBtnContainer.style.display = canUseWmts ? "" : "none";
+      for (const { source, btn } of sourceButtons) {
+        btn.classList.toggle("active", source === currentScalarSource);
+        btn.disabled = source === "wmts" && !canUseWmts;
       }
       for (const { proj, btn } of projectionButtons) {
         btn.classList.toggle("active", proj === currentProjection);
@@ -320,6 +332,45 @@ map.on("load", async () => {
       const abs = Math.abs(v);
       const text = abs >= 100 ? v.toFixed(1) : abs >= 10 ? v.toFixed(2) : v.toFixed(3);
       return unit ? `${text} ${unit}` : text;
+    }
+
+    function scheduleHoverReadout(lngLat: maplibregl.LngLat, point: maplibregl.Point) {
+      if (hoverTimer !== null) clearTimeout(hoverTimer);
+      if (currentView.type !== "scalar") {
+        hoverReadout.hidden = true;
+        return;
+      }
+      hoverReadout.hidden = false;
+      hoverReadout.style.left = `${Math.min(point.x + 14, window.innerWidth - 230)}px`;
+      hoverReadout.style.top = `${Math.min(point.y + 14, window.innerHeight - 72)}px`;
+      const seq = ++hoverQuerySeq;
+      hoverTimer = setTimeout(async () => {
+        if (!layer) {
+          hoverReadout.hidden = true;
+          return;
+        }
+        try {
+          const result = await layer.samplePoint({
+            longitude: lngLat.lng,
+            latitude: lngLat.lat,
+          });
+          if (seq !== hoverQuerySeq || currentView.type !== "scalar") return;
+          if (!result) {
+            hoverReadout.hidden = true;
+            return;
+          }
+          const value = result.value;
+          const unit = currentView.variable_meta?.units ?? "";
+          const depthText = result.depth != null
+            ? ` | ${formatVertical(result.depth, currentView.vertical_label ?? "depth")}`
+            : "";
+          hoverReadout.textContent =
+            `${formatValue(value, unit)}\n` +
+            `${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}`;
+        } catch {
+          if (seq === hoverQuerySeq) hoverReadout.textContent = "nodata";
+        }
+      }, 80);
     }
 
     function renderPointChart(
@@ -615,7 +666,7 @@ map.on("load", async () => {
 
       dataFolderChildren.push(timeSliderBinding, timeLabelBinding);
 
-      {
+      if (!(view.type === "scalar" && currentScalarSource === "wmts")) {
         const playerContainer = document.createElement("div");
         playerContainer.className = "player-btns";
         const btn = document.createElement("button");
@@ -623,18 +674,20 @@ map.on("load", async () => {
         btn.textContent = "▶ play";
         playBtn = btn;
 
-        // Scalar datasets animate at 5 fps for smooth transitions.
+        // WMTS playback waits for the next visible tile set and crossfades it in.
+        // Zarr scalar datasets can animate faster because frames are buffered as
+        // decoded arrays instead of independent map tiles.
         // Vector datasets update the velocity field at 0.5 fps so the particle
         // animation continues uninterrupted between time steps.
         const isVector = view.type === "vector";
-        const frameMs = isVector ? 2000 : 200;
-        // Vector has 2× the data per frame (U+V); buffer less to avoid heavy prefetch.
-        const bufferAhead = isVector ? 2 : 10;
+        const frameMs = isVector ? 2000 : 500;
+        const bufferAhead = isVector ? 2 : 6;
 
         const player = new TimelinePlayer(layer, PARAMS.timeIndex, {
           timeMin, timeStep, timeSize,
           bufferAhead,
           frameMs,
+          bufferTimeoutMs: isVector ? 4000 : 1500,
         });
         currentPlayer = player;
 
@@ -707,12 +760,13 @@ map.on("load", async () => {
       activePointPopup = null;
       if (map.getLayer("particles")) map.removeLayer("particles");
 
+      const previousView = currentView;
       currentView = view;
+      if (!previousView || previousView.id !== view.id || view.type !== "scalar" || !view.wmts) {
+        currentScalarSource = "zarr";
+      }
 
       const isScalar = view.type === "scalar";
-      const uVar = isScalar ? (view.variable ?? "scalar") : (view.variable_u ?? "uo");
-      const vVar = isScalar ? undefined : view.variable_v;
-
       const timeDim = view.dimensions.time;
       const timeMin = timeDim.min ?? 0;
       const timeStep = timeDim.step ?? 21600000;
@@ -744,13 +798,10 @@ map.on("load", async () => {
         PARAMS.vertical = vertValues[0] ?? 0;
       }
 
-      if (isScalar) currentRenderMode = "raster";
-
-      layer = new ParticleLayer({
+      layer = new ArcoLayer({
         id: "particles",
-        source: view.zarr_url_geo,
-        variableU: uVar,
-        variableV: vVar,
+        view,
+        backend: isScalar && currentScalarSource === "wmts" ? "wmts" : "zarr",
         time: timeMin + PARAMS.timeIndex * timeStep,
         depth: PARAMS.vertical,
         particleDensity: PARAMS.particleDensity,
@@ -761,8 +812,6 @@ map.on("load", async () => {
         opacity: PARAMS.opacity,
         logScale: PARAMS.logScale,
         vibrance: PARAMS.vibrance,
-        scalarMode: isScalar,
-        scalarUnit: isScalar ? (view.variable_meta?.units ?? "") : undefined,
       });
 
       if (layerEventHandlers.onLoaded) {
@@ -771,7 +820,6 @@ map.on("load", async () => {
 
       map.addLayer(layer);
       layer.setColorRamp(currentPaletteId);
-      layer.setRenderMode(currentRenderMode);
       rebuildDataFolder(view);
 
       const hide = isScalar ? "none" : "";
@@ -871,32 +919,36 @@ map.on("load", async () => {
     map.on("click", (ev) => {
       openPointPopup(ev.lngLat, "time");
     });
+    map.on("mousemove", (ev) => {
+      scheduleHoverReadout(ev.lngLat, ev.point);
+    });
+    map.on("mouseout", () => {
+      hoverQuerySeq++;
+      hoverReadout.hidden = true;
+    });
 
-    // ── Render Mode folder ────────────────────────────────────────
+    // ── Source / projection folder ────────────────────────────────
 
-    const renderModeFolder = pane.addFolder({ title: "Render Mode" });
-    const renderModes: RenderMode[] = ["raster", "particles", "raster+particles"];
+    const sourceFolder = pane.addFolder({ title: "Source" });
 
-    const renderModeBtnContainer = document.createElement("div");
-    renderModeBtnContainer.className = "render-mode-btns";
+    sourceBtnContainer = document.createElement("div");
+    sourceBtnContainer.className = "render-mode-btns";
 
-    for (const mode of renderModes) {
+    for (const source of ["zarr", "wmts"] as const) {
       const btn = document.createElement("button");
-      btn.textContent = mode;
+      btn.textContent = source;
       btn.className =
-        "render-mode-btn" + (mode === currentRenderMode ? " active" : "");
+        "render-mode-btn" + (source === currentScalarSource ? " active" : "");
       btn.addEventListener("click", () => {
-        currentRenderMode = mode;
-        layer.setRenderMode(mode);
-        for (const entry of renderModeButtons) {
-          entry.btn.classList.toggle("active", entry.mode === mode);
-        }
+        if (source === "wmts" && !currentView.wmts) return;
+        currentScalarSource = source;
+        switchView(currentView);
       });
-      renderModeButtons.push({ mode, btn });
-      renderModeBtnContainer.appendChild(btn);
+      sourceButtons.push({ source, btn });
+      sourceBtnContainer.appendChild(btn);
     }
 
-    renderModeFolder.element.appendChild(renderModeBtnContainer);
+    sourceFolder.element.appendChild(sourceBtnContainer);
 
     // ── Projection row (globe / mercator) ─────────────────────────
 
@@ -919,7 +971,7 @@ map.on("load", async () => {
       projBtnContainer.appendChild(btn);
     }
 
-    renderModeFolder.element.appendChild(projBtnContainer);
+    sourceFolder.element.appendChild(projBtnContainer);
 
     // ── Palette folder ────────────────────────────────────────────
 
@@ -964,8 +1016,10 @@ map.on("load", async () => {
       const lines = [
         `  - id: ${currentView.id}`,
         `    palette: ${currentPaletteId}`,
-        `    renderMode: ${currentRenderMode}`,
       ];
+      if (isScalarV && currentView.wmts) {
+        lines.push(`    source: ${currentScalarSource}`);
+      }
       if (!isScalarV) {
         lines.push(
           `    particleDensity: ${PARAMS.particleDensity}`,
@@ -995,7 +1049,7 @@ map.on("load", async () => {
         t: timeMs,
         v: PARAMS.vertical,
         p: currentPaletteId,
-        rm: currentRenderMode,
+        s: currentScalarSource,
         pd: PARAMS.particleDensity,
         sm: PARAMS.speedMin,
         sx: PARAMS.speedMax,
@@ -1016,6 +1070,7 @@ map.on("load", async () => {
 
     layerEventHandlers.onLoaded = updateStandaloneLegendMeta;
     layer.on("loaded", updateStandaloneLegendMeta);
+    refreshUI();
     updateStandaloneLegendGradient();
 
   } catch (err) {
