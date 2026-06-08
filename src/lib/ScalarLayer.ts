@@ -4,6 +4,7 @@ import type {
   Map as MaplibreMap,
 } from "maplibre-gl";
 import type { ColorRampInput } from "./gl-util";
+import { globeCenterVector, viewportMercatorBounds } from "./geo-util";
 import { restoreGLState, saveGLState } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { FieldMeta, ScalarLayerOptions, VelocityData } from "./types";
@@ -17,15 +18,6 @@ type LayerEventMap = {
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
 };
-
-function latToMercY(lat: number): number {
-  const sinLat = Math.sin((lat * Math.PI) / 180);
-  return 0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI);
-}
-
-function lngToMercX(lng: number): number {
-  return (lng + 180) / 360;
-}
 
 export class ScalarLayer implements CustomLayerInterface {
   readonly id: string;
@@ -106,7 +98,6 @@ export class ScalarLayer implements CustomLayerInterface {
 
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
     if (!this.map || !this.activeData || !this.activeField.hasData()) return;
-    if (this.map.getProjection?.()?.type === "globe") return;
 
     const saved = saveGLState(gl);
     try {
@@ -116,22 +107,30 @@ export class ScalarLayer implements CustomLayerInterface {
       gl.viewport(0, 0, canvas.width, canvas.height);
 
       const bounds = this.map.getBounds();
-      const mercBounds = {
-        minX: lngToMercX(Math.max(bounds.getWest(), -180)),
-        minY: latToMercY(Math.min(bounds.getNorth(), 85)),
-        maxX: lngToMercX(Math.min(bounds.getEast(), 180)),
-        maxY: latToMercY(Math.max(bounds.getSouth(), -85)),
-      };
+      const isGlobe = this.map.getProjection?.()?.type === "globe";
 
       this.activeField.bind(this.textureUnit);
-      this.simulation.renderGrid(
-        this.textureUnit,
-        [this.activeData.uMin, this.activeData.vMin],
-        [this.activeData.uMax, this.activeData.vMax],
-        mercBounds,
-        this.activeField.geoBounds,
-        1,
-      );
+      if (isGlobe) {
+        const center = this.map.getCenter();
+        this.simulation.renderGridGlobe(
+          this.textureUnit,
+          [this.activeData.uMin, this.activeData.vMin],
+          [this.activeData.uMax, this.activeData.vMax],
+          options.modelViewProjectionMatrix,
+          this.activeField.geoBounds,
+          globeCenterVector(center.lng, center.lat),
+          1,
+        );
+      } else {
+        this.simulation.renderGrid(
+          this.textureUnit,
+          [this.activeData.uMin, this.activeData.vMin],
+          [this.activeData.uMax, this.activeData.vMax],
+          viewportMercatorBounds(bounds),
+          this.activeField.geoBounds,
+          1,
+        );
+      }
     } finally {
       restoreGLState(gl, saved);
     }

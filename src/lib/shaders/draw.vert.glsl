@@ -14,6 +14,7 @@ uniform float u_world_offset; // integer world copy offset (0 = primary, ±1 = c
 uniform float u_speed_factor;
 uniform vec4 u_geo_bounds;   // west, south, east, north in degrees
 uniform float u_is_globe;    // 1.0 = globe projection, 0.0 = mercator
+uniform vec3 u_globe_center; // visible hemisphere center in unit-sphere coords
 
 varying float v_speed;
 varying float v_valid;
@@ -76,6 +77,9 @@ void main() {
             sin(latRad),
             cos(lngRad) * cosLat
         );
+        if (dot(ecef, u_globe_center) <= 0.0) {
+            v_valid = 0.0;
+        }
         gl_Position = u_matrix * vec4(ecef, 1.0);
     } else {
         vec2 worldPos = vec2((pos.x + u_world_offset) * u_world_size, pos.y * u_world_size);

@@ -33,12 +33,21 @@ vec3 applyVibrance(vec3 c, float v) {
     return mix(vec3(luma), c, 1.0 + boost);
 }
 
+float wrapLongitudeToField(float lng) {
+    float west = u_geo_bounds.x;
+    float span = u_geo_bounds.z - u_geo_bounds.x;
+    if (span > 350.0) {
+        return west + mod(lng - west, span);
+    }
+    return lng;
+}
+
 void main() {
     // screen UV -> mercator position
     vec2 mercPos = mix(u_bounds.xy, u_bounds.zw, v_tex_coord);
 
     // mercator -> geographic degrees
-    float lng = mercPos.x * DEG;
+    float lng = wrapLongitudeToField(mercPos.x * DEG);
     float lat = mercToLat(mercPos.y);
 
     // geographic -> field texture UV

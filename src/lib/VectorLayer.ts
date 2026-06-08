@@ -6,6 +6,7 @@ import type {
 import type { VectorLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types";
 import { saveGLState, restoreGLState } from "./gl-util";
 import type { ColorRampInput } from "./gl-util";
+import { globeCenterVector, particleUpdateBounds } from "./geo-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { RenderMode } from "./ParticleSimulation";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
@@ -22,22 +23,6 @@ type LayerEventMap = {
   /** Fired when the frame cache is wiped (viewport changed). */
   cacheInvalidated: () => void;
 };
-
-/**
- * Convert latitude to Mercator Y in [0,1] range.
- */
-function latToMercY(lat: number): number {
-  const sinLat = Math.sin((lat * Math.PI) / 180);
-  return 0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI);
-}
-
-/**
- * Convert longitude to Mercator X in [0,1] range.
- */
-function lngToMercX(lng: number): number {
-  return (lng + 180) / 360;
-}
-
 
 export class VectorLayer implements CustomLayerInterface {
   readonly id: string;
@@ -314,15 +299,10 @@ export class VectorLayer implements CustomLayerInterface {
       // Bind velocity texture
       this.velocityField.bind(this.velocityTexUnit);
 
-      // Viewport bounds — clamped to primary world for the update pass
-      // (particle positions always live in [0,1] Mercator)
+      // Particle positions live in [0,1] Mercator; wrapped world-copy viewports
+      // are folded back into primary-world update bounds.
       const mapBounds = this.map.getBounds();
-      const mercBounds = {
-        minX: lngToMercX(Math.max(mapBounds.getWest(), -180)),
-        minY: latToMercY(Math.min(mapBounds.getNorth(), 85)),
-        maxX: lngToMercX(Math.min(mapBounds.getEast(), 180)),
-        maxY: latToMercY(Math.max(mapBounds.getSouth(), -85)),
-      };
+      const mercBounds = particleUpdateBounds(mapBounds);
 
       // MapLibre's matrix maps [0, worldSize] Mercator → clip space.
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
@@ -347,6 +327,7 @@ export class VectorLayer implements CustomLayerInterface {
       gl.disable(gl.STENCIL_TEST);
 
       const worldSize = 512 * Math.pow(2, this.map.getZoom());
+      const center = this.map.getCenter();
       this.simulation.render(
         this.velocityTexUnit,
         [this.velocityField.uMin, this.velocityField.vMin],
@@ -357,6 +338,7 @@ export class VectorLayer implements CustomLayerInterface {
         worldCopyOffsets,
         this.velocityField.geoBounds,
         isGlobe,
+        globeCenterVector(center.lng, center.lat),
       );
     } finally {
       restoreGLState(gl, saved);
