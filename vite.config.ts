@@ -4,17 +4,13 @@ import glsl from "vite-plugin-glsl";
 export default defineConfig({
   plugins: [glsl()],
   base: "/zartigl/",
-  root: "src/demo",
-  publicDir: "../../public",
+  root: "src/demo-prod",
+  publicDir: false,
   envDir: "../..",
   envPrefix: ["VITE_", "MAPTILER_", "PROTOMAPS_"],
   build: {
     outDir: "../../dist-demo",
     emptyOutDir: true,
-  },
-  resolve: {
-    alias: {
-      zartigl: "/src/lib",
-    },
+    chunkSizeWarningLimit: 2500,
   },
 });

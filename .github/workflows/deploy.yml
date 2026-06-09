@@ -27,7 +27,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
+      - run: npm run build:prod
         env:
           MAPTILER_TOKEN: ${{ secrets.MAPTILER_TOKEN }}
 
