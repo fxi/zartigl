@@ -2,60 +2,105 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Zartigl Catalog",
   "type": "object",
-  "required": ["generated", "views"],
+  "required": ["schemaVersion", "generatedAt", "layers"],
   "additionalProperties": false,
   "properties": {
-    "generated": { "type": "string" },
-    "views": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "generatedAt": { "type": "string" },
+    "layers": {
       "type": "array",
-      "items": { "$ref": "#/$defs/View" },
+      "items": { "$ref": "#/$defs/Layer" },
       "minItems": 1
     }
   },
   "$defs": {
-    "View": {
+    "Layer": {
       "type": "object",
-      "required": ["id", "label", "category", "type", "source_dataset", "zarr_url_geo", "variable_meta", "dimensions", "defaults"],
+      "required": ["id", "label", "category", "kind", "dataset", "stores", "variables", "dimensions", "defaults"],
       "additionalProperties": false,
       "properties": {
-        "id":              { "type": "string", "pattern": "^[a-z0-9-]+$" },
-        "label":           { "type": "string", "minLength": 1 },
-        "description":     { "type": "string" },
-        "category":        { "type": "string", "minLength": 1 },
-        "type":            { "type": "string", "enum": ["vector", "scalar"] },
-        "source_dataset":  { "type": "string", "minLength": 1 },
-        "zarr_url_geo":    { "type": "string", "pattern": "^https?://" },
-        "zarr_url_time":   { "type": "string", "pattern": "^https?://" },
-        "wmts":            { "$ref": "#/$defs/Wmts" },
-        "variable":        { "type": "string" },
-        "variable_u":      { "type": "string" },
-        "variable_v":      { "type": "string" },
-        "vector_derivation": { "$ref": "#/$defs/VectorDerivation" },
-        "variable_meta": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "category": { "type": "string", "minLength": 1 },
+        "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "kind": { "type": "string", "enum": ["vector", "scalar"] },
+        "dataset": { "$ref": "#/$defs/Dataset" },
+        "stores": { "$ref": "#/$defs/Stores" },
+        "variables": { "$ref": "#/$defs/Variables" },
+        "dimensions": { "$ref": "#/$defs/Dimensions" },
+        "defaults": { "$ref": "#/$defs/Defaults" }
+      }
+    },
+    "Dataset": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "productId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "Stores": {
+      "type": "object",
+      "required": ["field"],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
           "type": "object",
-          "required": ["standard_name", "units"],
+          "required": ["type", "url", "layout"],
           "additionalProperties": false,
           "properties": {
-            "standard_name": { "type": "string" },
-            "units":         { "type": "string" }
+            "type": { "type": "string", "const": "zarr" },
+            "url": { "type": "string", "pattern": "^https?://" },
+            "layout": { "type": "string", "const": "time-chunked" }
           }
         },
-        "dimensions": {
+        "pointSeries": {
           "type": "object",
-          "minProperties": 1,
-          "additionalProperties": { "$ref": "#/$defs/Dimension" }
+          "required": ["type", "url", "layout"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "const": "zarr" },
+            "url": { "type": "string", "pattern": "^https?://" },
+            "layout": { "type": "string", "const": "geo-chunked" }
+          }
         },
-        "vertical_label": { "type": "string", "enum": ["depth", "pressure"] },
-        "defaults":        { "$ref": "#/$defs/Defaults" }
-      },
-      "if":   { "properties": { "type": { "const": "vector" } } },
-      "then": {
-        "oneOf": [
-          { "required": ["variable_u", "variable_v"] },
-          { "required": ["vector_derivation"] }
-        ]
-      },
-      "else": { "required": ["variable"] }
+        "wmts": { "$ref": "#/$defs/Wmts" }
+      }
+    },
+    "Variables": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "type": "string", "const": "scalar" },
+            "value": { "type": "string", "minLength": 1 },
+            "standardName": { "type": "string" },
+            "units": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "type": "string", "const": "vector" },
+            "u": { "type": "string", "minLength": 1 },
+            "v": { "type": "string", "minLength": 1 },
+            "derivation": { "$ref": "#/$defs/VectorDerivation" },
+            "standardName": { "type": "string" },
+            "units": { "type": "string" }
+          },
+          "oneOf": [
+            { "required": ["u", "v"] },
+            { "required": ["derivation"] }
+          ]
+        }
+      ]
     },
     "VectorDerivation": {
       "type": "object",
@@ -75,43 +120,104 @@
       "additionalProperties": false,
       "properties": {
         "capabilities_url": { "type": "string", "pattern": "^https?://" },
-        "base_url":         { "type": "string", "pattern": "^https?://" },
-        "layer":            { "type": "string", "minLength": 1 },
-        "tileMatrixSet":    { "type": "string", "minLength": 1 },
-        "format":           { "type": "string", "minLength": 1 },
-        "style":            { "type": "string", "minLength": 1 }
+        "base_url": { "type": "string", "pattern": "^https?://" },
+        "layer": { "type": "string", "minLength": 1 },
+        "tileMatrixSet": { "type": "string", "minLength": 1 },
+        "format": { "type": "string", "minLength": 1 },
+        "style": { "type": "string", "minLength": 1 }
       }
     },
-    "Dimension": {
+    "Dimensions": {
       "type": "object",
-      "required": ["axis"],
+      "required": ["time"],
+      "additionalProperties": false,
       "properties": {
-        "axis":       { "type": "string", "enum": ["x", "y", "z", "t"] },
-        "size":       { "type": "integer", "minimum": 1 },
-        "min":        { "type": "number" },
-        "max":        { "type": "number" },
-        "step":       { "type": "number" },
-        "values":     { "type": "array", "items": { "type": "number" } },
-        "chunk_size": { "type": "integer", "minimum": 1 },
-        "units":      { "type": "string" }
+        "time": { "$ref": "#/$defs/TimeDimension" },
+        "vertical": { "$ref": "#/$defs/VerticalDimension" },
+        "latitude": { "$ref": "#/$defs/SpatialDimension" },
+        "longitude": { "$ref": "#/$defs/SpatialDimension" }
+      }
+    },
+    "TimeDimension": {
+      "type": "object",
+      "required": ["size"],
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "values": { "type": "array", "items": { "type": "number" } },
+        "size": { "type": "integer", "minimum": 1 },
+        "chunkSize": { "type": "integer", "minimum": 1 },
+        "units": { "type": "string" }
+      }
+    },
+    "VerticalDimension": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" },
+        "values": { "type": "array", "items": { "type": "number" } },
+        "size": { "type": "integer", "minimum": 1 },
+        "chunkSize": { "type": "integer", "minimum": 1 },
+        "units": { "type": "string" }
+      }
+    },
+    "SpatialDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" },
+        "values": { "type": "array", "items": { "type": "number" } },
+        "size": { "type": "integer", "minimum": 1 },
+        "chunkSize": { "type": "integer", "minimum": 1 },
+        "units": { "type": "string" }
       }
     },
     "Defaults": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "palette":         { "type": "string" },
-        "particleDensity": { "type": "number", "exclusiveMinimum": 0 },
-        "speedMin":        { "type": "number", "exclusiveMinimum": 0 },
-        "speedMax":        { "type": "number", "exclusiveMinimum": 0 },
-        "fadeMin":         { "type": "number", "minimum": 0, "maximum": 1 },
-        "fadeMax":         { "type": "number", "minimum": 0, "maximum": 1 },
-        "dropRate":        { "type": "number", "minimum": 0 },
-        "dropRateBump":    { "type": "number", "minimum": 0 },
-        "opacity":         { "type": "number", "minimum": 0, "maximum": 1 },
-        "logScale":        { "type": "boolean" },
-        "vibrance":        { "type": "number", "minimum": -1, "maximum": 1 }
+        "backend": { "type": "string", "enum": ["zarr", "wmts"] },
+        "palette": { "type": "string" },
+        "particles": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "density": { "type": "number", "exclusiveMinimum": 0 },
+            "speedFactor": { "$ref": "#/$defs/ZoomWeighted" },
+            "fadeOpacity": { "$ref": "#/$defs/ZoomWeighted" },
+            "dropRate": { "type": "number", "minimum": 0 },
+            "dropRateBump": { "type": "number", "minimum": 0 }
+          }
+        },
+        "raster": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "logScale": { "type": "boolean" },
+            "vibrance": { "type": "number", "minimum": -1, "maximum": 1 }
+          }
+        }
       }
+    },
+    "ZoomWeighted": {
+      "oneOf": [
+        { "type": "number" },
+        {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
     }
   }
 }

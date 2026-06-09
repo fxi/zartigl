@@ -9,7 +9,7 @@ Query a Copernicus Marine dataset and emit a structured JSON summary.
 Usage:
     uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
 
-Output: JSON with zarr URLs, variables, dimensions, and suggested view fields.
+Output: JSON with zarr URLs, variables, dimensions, and suggested layer fields.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 
 
 def select_geo_service(part):
-    """Prefer arco-geo-series zarr (geoChunked, optimal for map display); fall back to any zarr."""
+    """Prefer arco-geo-series zarr (timeChunked, optimal for map display); fall back to any zarr."""
     zarr = [s for s in part.services if s.service_format == "zarr"]
     for s in zarr:
         if s.service_name == "arco-geo-series":
@@ -29,7 +29,7 @@ def select_geo_service(part):
 
 
 def select_time_service(part):
-    """Return arco-time-series zarr (timeChunked), or None."""
+    """Return arco-time-series zarr (geoChunked, optimal for point queries), or None."""
     for s in part.services:
         if s.service_name == "arco-time-series" and s.service_format == "zarr":
             return s
@@ -90,7 +90,7 @@ def detect_vector_vars(svc) -> tuple[str, str] | None:
 def build_dimensions(ref_var) -> dict:
     dims = {}
     for coord in ref_var.coordinates:
-        d: dict = {"axis": coord.axis}
+        d: dict = {}
         if coord.values is not None:
             d["values"] = list(coord.values)
             d["size"] = len(coord.values)
@@ -104,10 +104,18 @@ def build_dimensions(ref_var) -> dict:
                 if coord.minimum_value is not None and coord.maximum_value is not None:
                     d["size"] = int((coord.maximum_value - coord.minimum_value) / coord.step) + 1
         if coord.chunking_length is not None:
-            d["chunk_size"] = coord.chunking_length
+            d["chunkSize"] = coord.chunking_length
         if coord.coordinate_unit:
             d["units"] = coord.coordinate_unit
-        dims[coord.coordinate_id] = d
+
+        if coord.axis == "t":
+            dims["time"] = d
+        elif coord.axis == "z":
+            dims["vertical"] = d
+        elif coord.axis == "y":
+            dims["latitude"] = d
+        elif coord.axis == "x":
+            dims["longitude"] = d
     return dims
 
 
@@ -161,26 +169,53 @@ def main():
 
     # Detect vertical label
     vertical_label = None
-    for dim in dimensions.values():
-        if dim.get("axis") == "z":
-            units = dim.get("units", "")
-            vertical_label = "pressure" if any(p in units.lower() for p in ("pa", "bar", "dbar")) else "depth"
-            break
+    if dimensions.get("vertical"):
+        units = dimensions["vertical"].get("units", "")
+        vertical_label = "pressure" if any(p in units.lower() for p in ("pa", "bar", "dbar")) else "depth"
+        dimensions["vertical"]["label"] = vertical_label
+
+    variables_meta = {}
+    if suggested_type == "scalar":
+        meta = variables.get(suggested_variable, {})
+        variables_meta = {
+            "kind": "scalar",
+            "value": suggested_variable,
+            "standardName": meta.get("standard_name"),
+            "units": meta.get("units"),
+        }
+    elif vec:
+        meta = variables.get(suggested_variable_u, {})
+        variables_meta = {
+            "kind": "vector",
+            "u": suggested_variable_u,
+            "v": suggested_variable_v,
+            "standardName": meta.get("standard_name"),
+            "units": meta.get("units"),
+        }
 
     result = {
         "dataset_id": dataset_id,
         "product_id": prod.product_id,
         "title": getattr(prod, "title", None) or getattr(ds, "title", None) or dataset_id,
-        "zarr_url_geo": svc_geo.uri,
-        "zarr_url_time": svc_time.uri if svc_time else None,
-        "wmts": wmts,
+        "stores": {
+            "field": {
+                "type": "zarr",
+                "url": svc_geo.uri,
+                "layout": "time-chunked",
+            },
+            **({
+                "pointSeries": {
+                    "type": "zarr",
+                    "url": svc_time.uri,
+                    "layout": "geo-chunked",
+                }
+            } if svc_time else {}),
+            **({"wmts": wmts} if wmts else {}),
+        },
         "all_variables": variables,
-        "suggested_type": suggested_type,
-        "suggested_variable_u": suggested_variable_u,
-        "suggested_variable_v": suggested_variable_v,
-        "suggested_variable": suggested_variable,
+        "suggested_kind": suggested_type,
+        "suggested_variables": variables_meta,
         "dimensions": dimensions,
-        "vertical_label": vertical_label,
     }
     print(json.dumps(result, indent=2))
 

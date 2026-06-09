@@ -21,14 +21,17 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:minimal": "vite --config vite.config.minimal.ts",
     "test": "vitest run",
     "test:unit": "vitest run",
     "build": "vite build",
+    "build:minimal": "vite build --config vite.config.minimal.ts",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
-    "catalog": "cd scripts && uv run build_catalog.py",
+    "catalog": "npm run catalog:validate",
+    "catalog:validate": "uv run scripts/catalog_builder/skills/validate_catalog.py",
     "smoke:sample": "npm run build:lib && node scripts/smoke-sample-point.mjs",
-    "release:check": "npm run test && npm run build && npm run build:lib && npm run smoke:sample",
+    "release:check": "npm run test && npm run catalog:validate && npm run build && npm run build:lib && npm run smoke:sample",
     "prepublishOnly": "npm run build:lib"
   },
   "publishConfig": {

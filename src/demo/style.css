@@ -28,8 +28,8 @@ body {
     "Consolas", monospace !important;
 }
 
-/* View meta text (inside View folder) */
-.view-meta {
+/* Layer meta text (inside Layer folder) */
+.layer-meta {
   padding: 4px 8px 6px;
   font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
     "Consolas", monospace;
@@ -79,9 +79,9 @@ body {
   cursor: not-allowed;
 }
 
-/* Palette / View selects (inside Tweakpane folder) */
+/* Palette / Layer selects (inside Tweakpane folder) */
 .palette-select,
-.view-select {
+.layer-select {
   width: 100%;
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.06);
@@ -98,7 +98,7 @@ body {
 }
 
 .palette-select:focus,
-.view-select:focus {
+.layer-select:focus {
   outline: none;
   border-color: rgba(100, 180, 100, 0.5);
 }

@@ -6,29 +6,44 @@ import {
 } from "./ArcoLayer";
 import type { ArcoLayerOptions } from "./types";
 
-const scalarWmtsView: ArcoLayerOptions["view"] = {
-  type: "scalar",
-  zarr_url_geo: "https://example.test/scalar.zarr",
-  variable: "chl",
-  variable_meta: {
-    standard_name: "mass_concentration_of_chlorophyll_a_in_sea_water",
+const scalarWmtsLayer: ArcoLayerOptions["layer"] = {
+  id: "scalar",
+  label: "Scalar",
+  category: "Test",
+  kind: "scalar",
+  dataset: { id: "dataset" },
+  stores: {
+    field: {
+      type: "zarr",
+      url: "https://example.test/scalar.zarr",
+      layout: "time-chunked",
+    },
+    wmts: {
+      capabilities_url: "https://example.test/wmts?service=WMTS&request=GetCapabilities",
+      base_url: "https://example.test/wmts",
+      layer: "PRODUCT/DATASET/chl",
+      tileMatrixSet: "EPSG:3857",
+      format: "image/png",
+      style: "cmap:algae,logScale",
+    },
+  },
+  variables: {
+    kind: "scalar",
+    value: "chl",
+    standardName: "mass_concentration_of_chlorophyll_a_in_sea_water",
     units: "mg m-3",
   },
-  vertical_label: "depth",
-  wmts: {
-    capabilities_url: "https://example.test/wmts?service=WMTS&request=GetCapabilities",
-    base_url: "https://example.test/wmts",
-    layer: "PRODUCT/DATASET/chl",
-    tileMatrixSet: "EPSG:3857",
-    format: "image/png",
-    style: "cmap:algae,logScale",
+  dimensions: {
+    time: { size: 1 },
+    vertical: { label: "depth", values: [0], size: 1 },
   },
+  defaults: {},
 };
 
-function layerOptions(view: ArcoLayerOptions["view"], extra: Partial<ArcoLayerOptions> = {}): ArcoLayerOptions {
+function layerOptions(layer: ArcoLayerOptions["layer"], extra: Partial<ArcoLayerOptions> = {}): ArcoLayerOptions {
   return {
     id: "layer",
-    view,
+    layer,
     ...extra,
   };
 }
@@ -88,41 +103,67 @@ describe("buildWmtsLegendUrl", () => {
 });
 
 describe("selectArcoLayerBackend", () => {
-  it("uses Zarr for scalar views by default even when WMTS metadata exists", () => {
-    expect(selectArcoLayerBackend(layerOptions(scalarWmtsView))).toBe("scalar-zarr");
+  it("uses Zarr for scalar layers by default even when WMTS metadata exists", () => {
+    expect(selectArcoLayerBackend(layerOptions(scalarWmtsLayer))).toBe("scalar-zarr");
   });
 
-  it("uses Zarr for scalar views when WMTS is unavailable", () => {
+  it("uses Zarr for scalar layers when WMTS is unavailable", () => {
     expect(selectArcoLayerBackend(layerOptions({
-      ...scalarWmtsView,
-      wmts: undefined,
+      ...scalarWmtsLayer,
+      stores: { field: scalarWmtsLayer.stores.field },
     }))).toBe("scalar-zarr");
   });
 
-  it("uses vector rendering for vector views", () => {
+  it("uses vector rendering for vector layers", () => {
     expect(selectArcoLayerBackend(layerOptions({
-      type: "vector",
-      zarr_url_geo: "https://example.test/vector.zarr",
-      variable_u: "uo",
-      variable_v: "vo",
+      id: "vector",
+      label: "Vector",
+      category: "Test",
+      kind: "vector",
+      dataset: { id: "dataset" },
+      stores: {
+        field: {
+          type: "zarr",
+          url: "https://example.test/vector.zarr",
+          layout: "time-chunked",
+        },
+      },
+      variables: { kind: "vector", u: "uo", v: "vo" },
+      dimensions: { time: { size: 1 } },
+      defaults: {},
     }))).toBe("vector");
   });
 
-  it("uses vector rendering for derived vector views", () => {
+  it("uses vector rendering for derived vector layers", () => {
     expect(selectArcoLayerBackend(layerOptions({
-      type: "vector",
-      zarr_url_geo: "https://example.test/vector.zarr",
-      vector_derivation: {
-        kind: "direction_magnitude",
-        direction_variable: "VMDR_SW1",
-        magnitude_variable: "VHM0_SW1",
-        direction_convention: "from",
-        output_direction: "toward",
+      id: "derived-vector",
+      label: "Derived Vector",
+      category: "Test",
+      kind: "vector",
+      dataset: { id: "dataset" },
+      stores: {
+        field: {
+          type: "zarr",
+          url: "https://example.test/vector.zarr",
+          layout: "time-chunked",
+        },
       },
+      variables: {
+        kind: "vector",
+        derivation: {
+          kind: "direction_magnitude",
+          direction_variable: "VMDR_SW1",
+          magnitude_variable: "VHM0_SW1",
+          direction_convention: "from",
+          output_direction: "toward",
+        },
+      },
+      dimensions: { time: { size: 1 } },
+      defaults: {},
     }))).toBe("vector");
   });
 
   it("uses WMTS only when explicitly requested", () => {
-    expect(selectArcoLayerBackend(layerOptions(scalarWmtsView, { backend: "wmts" }))).toBe("scalar-wmts");
+    expect(selectArcoLayerBackend(layerOptions(scalarWmtsLayer, { backend: "wmts" }))).toBe("scalar-wmts");
   });
 });

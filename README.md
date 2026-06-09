@@ -16,26 +16,30 @@ A MapLibre GL JS plugin for rendering animated particle flow from Zarr-based oce
 ## Quick start
 
 ```bash
-npm install zartigl maplibre-gl
+npm install @fxi/zartigl maplibre-gl
 ```
 
 ```ts
 import maplibregl from "maplibre-gl";
-import { VectorLayer } from "zartigl";
+import { Zartigl } from "@fxi/zartigl";
+import { catalog } from "@fxi/zartigl/catalog";
 
 const map = new maplibregl.Map({ container: "map", style: "..." });
 
-map.on("load", () => {
-  map.addLayer(
-    new VectorLayer({
-      id: "currents",
-      source: "https://your-zarr-store/",
-      variableU: "uo",
-      variableV: "vo",
-    }),
-  );
+const z = new Zartigl({
+  id: "ocean",
+  map,
+  catalog,
+  backend: "auto",
 });
+
+await z.setLayer("ocean-current-velocity");
+z.setTime(new Date());
+z.updateSettings({ palette: "rdylbu", opacity: 0.9 });
 ```
+
+The root import does not bundle the catalog presets. Import catalog data from
+`@fxi/zartigl/catalog` only when you want the built-in catalog.
 
 ## Demo
 
@@ -44,16 +48,36 @@ npm install
 npm run dev
 ```
 
-The demo reads a catalog (`public/data/catalog.json`) that points to the [Copernicus Marine ARCO Zarr store](https://help.marine.copernicus.eu/en/articles/12332770-introduction-to-the-arco-format) on S3. No local data download is needed — chunks are fetched directly from Copernicus (public, CORS enabled).
+For the smaller public API demo:
+
+```bash
+npm run dev:minimal
+```
+
+The demos read the built-in catalog that points to the [Copernicus Marine ARCO Zarr store](https://help.marine.copernicus.eu/en/articles/12332770-introduction-to-the-arco-format) on S3. No local data download is needed — chunks are fetched directly from Copernicus (public, CORS enabled).
 
 To update the catalog metadata:
 
 ```bash
-cd scripts
-uv run build_catalog.py
+uv run scripts/catalog_builder/skills/list_layers.py
+uv run scripts/catalog_builder/skills/search_products.py wave
+uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
+uv run scripts/catalog_builder/skills/validate_catalog.py
 ```
 
 This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Copernicus Marine](https://data.marine.copernicus.eu/register) account.
+
+Catalog entries are validated with:
+
+```bash
+npm run catalog:validate
+```
+
+## Advanced API
+
+`VectorLayer`, `ScalarLayer`, `ArcoLayer`, and `ZarrSource` remain exported for
+advanced use cases that need direct control over renderer internals. Ordinary
+MapLibre integrations should prefer the catalog-backed `Zartigl` facade.
 
 ## Dataset
 

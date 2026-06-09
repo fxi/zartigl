@@ -1,2 +1,11 @@
 export * from "./lib";
-export * from "./catalog";
+export type {
+  Catalog,
+  CatalogLayer,
+  CatalogVariables,
+  CatalogVectorDerivation,
+  CatalogWmts,
+  SpatialDimension,
+  TimeDimension,
+  VerticalDimension,
+} from "./catalog/types";

@@ -1,84 +1,29 @@
 import catalogJson from "./catalog.json";
+import type { Catalog, CatalogLayer, VerticalDimension } from "./types";
 
-export interface CatalogDimension {
-  axis: string;
-  size: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  values?: number[];
-  chunk_size: number;
-  units: string;
-}
-
-export interface LayerDefaults {
-  palette?: string;
-  particleDensity?: number;
-  speedMin?: number;
-  speedMax?: number;
-  fadeMin?: number;
-  fadeMax?: number;
-  dropRate?: number;
-  dropRateBump?: number;
-  opacity?: number;
-  logScale?: boolean;
-  vibrance?: number;
-}
-
-export interface CatalogWmts {
-  capabilities_url: string;
-  base_url: string;
-  layer: string;
-  tileMatrixSet: string;
-  format: string;
-  style?: string;
-}
-
-export interface CatalogVectorDerivation {
-  kind: "direction_magnitude";
-  direction_variable: string;
-  magnitude_variable: string;
-  direction_convention: "from" | "toward";
-  output_direction: "from" | "toward";
-}
-
-export interface CatalogView {
-  id: string;
-  label: string;
-  description?: string;
-  category?: string;
-  type: "vector" | "scalar";
-  source_dataset: string;
-  zarr_url_geo: string;
-  zarr_url_time?: string;
-  wmts?: CatalogWmts;
-  variable?: string;
-  variable_u?: string;
-  variable_v?: string;
-  vector_derivation?: CatalogVectorDerivation;
-  variable_meta?: { standard_name: string; units: string };
-  dimensions: Record<string, CatalogDimension>;
-  vertical_label?: string;
-  defaults?: LayerDefaults;
-}
-
-export interface Catalog {
-  generated: string;
-  views: CatalogView[];
-}
+export type {
+  Catalog,
+  CatalogLayer,
+  CatalogVariables,
+  CatalogVectorDerivation,
+  CatalogWmts,
+  SpatialDimension,
+  TimeDimension,
+  VerticalDimension,
+} from "./types";
 
 export const catalog = catalogJson as Catalog;
 
-export function getCatalogView(id: string, data: Catalog = catalog): CatalogView | undefined {
-  return data.views.find((view) => view.id === id);
+export function getCatalogLayer(id: string, data: Catalog = catalog): CatalogLayer | undefined {
+  return data.layers.find((layer) => layer.id === id);
 }
 
-export function requireCatalogView(id: string, data: Catalog = catalog): CatalogView {
-  const view = getCatalogView(id, data);
-  if (!view) {
-    throw new Error(`Unknown zartigl catalog view: ${id}`);
+export function requireCatalogLayer(id: string, data: Catalog = catalog): CatalogLayer {
+  const layer = getCatalogLayer(id, data);
+  if (!layer) {
+    throw new Error(`Unknown zartigl catalog layer: ${id}`);
   }
-  return view;
+  return layer;
 }
 
 export function formatTime(ms: number): string {
@@ -95,7 +40,7 @@ export function formatVertical(v: number, label: string): string {
 }
 
 export function getVerticalDim(
-  view: CatalogView,
-): [string, CatalogDimension] | undefined {
-  return Object.entries(view.dimensions).find(([, dim]) => dim.axis === "z");
+  layer: CatalogLayer,
+): ["vertical", VerticalDimension] | undefined {
+  return layer.dimensions.vertical ? ["vertical", layer.dimensions.vertical] : undefined;
 }

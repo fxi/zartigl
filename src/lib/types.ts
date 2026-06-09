@@ -46,31 +46,14 @@ export interface VectorLayerOptions {
   unit?: string;
 }
 
-export interface ArcoLayerView {
-  type: "vector" | "scalar";
-  zarr_url_geo: string;
-  variable?: string;
-  variable_u?: string;
-  variable_v?: string;
-  vector_derivation?: VectorDerivation;
-  variable_meta?: { standard_name: string; units: string };
-  vertical_label?: string;
-  wmts?: {
-    capabilities_url: string;
-    base_url: string;
-    layer: string;
-    tileMatrixSet: string;
-    format: string;
-    style?: string;
-  };
-}
+export type ArcoLayerCatalogLayer = CatalogLayer;
 
 export type ArcoLayerBackendPreference = "auto" | "wmts" | "zarr";
 export type ArcoLayerBackend = "vector" | "scalar-zarr" | "scalar-wmts";
 
 export interface ArcoLayerOptions
   extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
-  view: ArcoLayerView;
+  layer: ArcoLayerCatalogLayer;
   backend?: ArcoLayerBackendPreference;
 }
 
@@ -181,3 +164,4 @@ export interface ZarrTimeDimension {
   size: number;
   units: string;
 }
+import type { CatalogLayer } from "../catalog/types";

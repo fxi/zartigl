@@ -9,6 +9,7 @@ plan.md
 # Build output
 dist/
 dist-demo/
+dist-demo-minimal/
 dist-demo-mapbox/
 
 # Vite

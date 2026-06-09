@@ -338,6 +338,8 @@ export class ZarrSource {
     longitude: number;
     latitude: number;
     time: string | number;
+    maxDepths?: number;
+    stride?: number;
     stopAfterMissingSamples?: number;
   }): Promise<ZarrPointSeriesResult> {
     await this.init();
@@ -349,10 +351,16 @@ export class ZarrSource {
     let missingRun = 0;
     const points: ZarrPointSeriesResult["points"] = [];
 
-    const depthOrder = Array.from(
+    let depthOrder = Array.from(
       { length: coords.vertical.length },
       (_, index) => index,
     ).sort((a, b) => coords.vertical[a] - coords.vertical[b]);
+    const maxDepths = Math.max(1, Math.floor(options.maxDepths ?? depthOrder.length));
+    const stride = Math.max(
+      1,
+      Math.floor(options.stride ?? Math.ceil(depthOrder.length / maxDepths)),
+    );
+    depthOrder = depthOrder.filter((_, index) => index % stride === 0).slice(0, maxDepths);
 
     for (const depthIdx of depthOrder) {
       const values: Record<string, number> = {};

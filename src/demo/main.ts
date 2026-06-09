@@ -12,12 +12,12 @@ import {
 import type { FieldMeta, ZarrPointSeriesResult } from "../lib";
 import { TimelinePlayer } from "../demo-shared/TimelinePlayer";
 import { catalog, formatTime, formatVertical, getVerticalDim } from "../catalog";
-import type { CatalogView, Catalog } from "../catalog";
+import type { CatalogLayer, Catalog } from "../catalog";
 
 // ── Hash state ───────────────────────────────────────────────────────
 
 interface HashState {
-  d: number;    // view index
+  d: number;    // layer index
   t: number;    // time ms
   v: number;    // vertical value
   p: string;    // palette id
@@ -74,15 +74,15 @@ const map = new maplibregl.Map({
 map.on("load", async () => {
   try {
     const catalog = await loadCatalog();
-    if (!catalog.views.length) {
-      console.error("No views in catalog");
+    if (!catalog.layers.length) {
+      console.error("No layers in catalog");
       return;
     }
 
     // ── Shared mutable state ───────────────────────────────────────
 
-    let layer: ArcoLayer = null!;
-    let currentView: CatalogView;
+    let renderLayer: ArcoLayer = null!;
+    let currentLayer: CatalogLayer;
     let dataFolderChildren: { dispose(): void }[] = [];
     let currentPaletteId = "rdylbu";
     let currentScalarSource: "zarr" | "wmts" = "zarr";
@@ -97,12 +97,12 @@ map.on("load", async () => {
     // on programmatic refresh, so we suppress it during player frame advances.
     let suppressSliderChange = false;
 
-    // Pending hash state — consumed on first matching switchView call
+    // Pending hash state — consumed on first matching switchLayer call
     let pendingHashState = loadHashState();
 
     // DOM element refs — assigned when UI is built, used by refreshUI()
     let paletteSelectEl: HTMLSelectElement | null = null;
-    let viewSelectEl: HTMLSelectElement | null = null;
+    let layerSelectEl: HTMLSelectElement | null = null;
     let sourceBtnContainer: HTMLDivElement | null = null;
     let sourceButtons: { source: "zarr" | "wmts"; btn: HTMLButtonElement }[] = [];
     let projectionButtons: { proj: string; btn: HTMLButtonElement }[] = [];
@@ -115,7 +115,7 @@ map.on("load", async () => {
     let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
     const PARAMS = {
-      viewIndex: 0,
+      layerIndex: 0,
       timeIndex: 0,
       timeLabel: "",
       vertical: 0,
@@ -168,7 +168,7 @@ map.on("load", async () => {
     legendContainer.appendChild(legendMetaRow);
 
     function updateStandaloneLegendGradient() {
-      const isWmts = currentView?.type === "scalar" && currentScalarSource === "wmts";
+      const isWmts = currentLayer?.kind === "scalar" && currentScalarSource === "wmts";
       legendGradientBar.hidden = isWmts;
       legendMetaRow.hidden = isWmts;
       if (isWmts) return;
@@ -186,18 +186,20 @@ map.on("load", async () => {
 
     // ── Defaults / state helpers ───────────────────────────────────
 
-    function applyDefaults(view: CatalogView) {
-      const d = view.defaults ?? {};
-      PARAMS.particleDensity = d.particleDensity ?? 0.05;
-      PARAMS.speedMin = d.speedMin ?? 0.07;
-      PARAMS.speedMax = d.speedMax ?? 0.27;
-      PARAMS.fadeMin = d.fadeMin ?? 0.9;
-      PARAMS.fadeMax = d.fadeMax ?? 0.9315;
-      PARAMS.dropRate = d.dropRate ?? 0.003;
-      PARAMS.dropRateBump = d.dropRateBump ?? 0.01;
-      PARAMS.opacity = d.opacity ?? 1.0;
-      PARAMS.logScale = d.logScale ?? false;
-      PARAMS.vibrance = d.vibrance ?? 0.0;
+    function applyDefaults(layer: CatalogLayer) {
+      const d = layer.defaults ?? {};
+      const speed = d.particles?.speedFactor;
+      const fade = d.particles?.fadeOpacity;
+      PARAMS.particleDensity = d.particles?.density ?? 0.05;
+      PARAMS.speedMin = Array.isArray(speed) ? speed[0] : (speed ?? 0.07);
+      PARAMS.speedMax = Array.isArray(speed) ? speed[1] : (speed ?? 0.27);
+      PARAMS.fadeMin = Array.isArray(fade) ? fade[0] : (fade ?? 0.9);
+      PARAMS.fadeMax = Array.isArray(fade) ? fade[1] : (fade ?? 0.9315);
+      PARAMS.dropRate = d.particles?.dropRate ?? 0.003;
+      PARAMS.dropRateBump = d.particles?.dropRateBump ?? 0.01;
+      PARAMS.opacity = d.raster?.opacity ?? 1.0;
+      PARAMS.logScale = d.raster?.logScale ?? false;
+      PARAMS.vibrance = d.raster?.vibrance ?? 0.0;
       currentPaletteId = d.palette ?? "rdylbu";
     }
 
@@ -218,9 +220,9 @@ map.on("load", async () => {
 
     function refreshUI() {
       if (paletteSelectEl) paletteSelectEl.value = currentPaletteId;
-      if (paletteSelectEl) paletteSelectEl.disabled = currentView?.type === "scalar" && currentScalarSource === "wmts";
-      if (viewSelectEl) viewSelectEl.value = String(PARAMS.viewIndex);
-      const canUseWmts = currentView?.type === "scalar" && !!currentView.wmts;
+      if (paletteSelectEl) paletteSelectEl.disabled = currentLayer?.kind === "scalar" && currentScalarSource === "wmts";
+      if (layerSelectEl) layerSelectEl.value = String(PARAMS.layerIndex);
+      const canUseWmts = currentLayer?.kind === "scalar" && !!currentLayer.stores.wmts;
       if (sourceBtnContainer) sourceBtnContainer.style.display = canUseWmts ? "" : "none";
       for (const { source, btn } of sourceButtons) {
         btn.classList.toggle("active", source === currentScalarSource);
@@ -233,18 +235,17 @@ map.on("load", async () => {
       updateStandaloneLegendGradient();
     }
 
-    // ── View meta element (assigned when View folder is built) ─────
+    // ── Layer meta element (assigned when Layer folder is built) ─────
 
-    let viewMetaEl: HTMLDivElement = null!;
+    let layerMetaEl: HTMLDivElement = null!;
 
     function updateInfo() {
-      if (!viewMetaEl) return;
-      const v = currentView;
-      const meta = v.variable_meta;
-      const metaStr = meta
-        ? `${meta.standard_name.replace(/_/g, " ")} — ${meta.units}`
+      if (!layerMetaEl) return;
+      const v = currentLayer;
+      const metaStr = v.variables.standardName
+        ? `${v.variables.standardName.replace(/_/g, " ")} — ${v.variables.units ?? ""}`
         : "";
-      viewMetaEl.textContent = [v.description, metaStr].filter(Boolean).join("\n");
+      layerMetaEl.textContent = [v.description, metaStr].filter(Boolean).join("\n");
     }
 
     // ── Point popup time/depth charts ─────────────────────────────
@@ -260,32 +261,41 @@ map.on("load", async () => {
     };
 
     function getCurrentTimeMs(): number {
-      const timeDim = currentView.dimensions.time;
+      const timeDim = currentLayer.dimensions.time;
       return (timeDim.min ?? 0) + PARAMS.timeIndex * (timeDim.step ?? 21600000);
     }
 
-    function getPointVariables(view: CatalogView): string[] {
-      if (view.type === "scalar") return [view.variable ?? "scalar"];
-      if (view.vector_derivation) return getVectorDerivationVariables(view.vector_derivation);
-      return [view.variable_u ?? "uo", view.variable_v ?? "vo"];
+    function getPointVariables(layer: CatalogLayer): string[] {
+      if (layer.kind === "scalar") return [layer.variables.value ?? "scalar"];
+      if (layer.variables.derivation) return getVectorDerivationVariables(layer.variables.derivation);
+      return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
     }
 
-    function hasDepthProfile(view: CatalogView): boolean {
-      const vert = getVerticalDim(view)?.[1];
+    function hasDepthProfile(layer: CatalogLayer): boolean {
+      const vert = getVerticalDim(layer)?.[1];
       return (vert?.size ?? vert?.values?.length ?? 0) > 1;
     }
 
-    function getPointSource(view: CatalogView): ZarrSource | null {
-      if (!view.zarr_url_time) return null;
-      if (!pointSource || pointSourceUrl !== view.zarr_url_time) {
-        pointSource = new ZarrSource(view.zarr_url_time, 80);
-        pointSourceUrl = view.zarr_url_time;
+    function surfaceFirstDepthValues(values: number[]): number[] {
+      return [...values].sort((a, b) => {
+        const da = Math.abs(a);
+        const db = Math.abs(b);
+        if (da !== db) return da - db;
+        return b - a;
+      });
+    }
+
+    function getPointSource(layer: CatalogLayer): ZarrSource | null {
+      if (!layer.stores.pointSeries?.url) return null;
+      if (!pointSource || pointSourceUrl !== layer.stores.pointSeries?.url) {
+        pointSource = new ZarrSource(layer.stores.pointSeries.url, 80);
+        pointSourceUrl = layer.stores.pointSeries.url;
       }
       return pointSource;
     }
 
-    function getTimeSampleWindow(view: CatalogView, maxPoints = 96) {
-      const timeDim = view.dimensions.time;
+    function getTimeSampleWindow(layer: CatalogLayer, maxPoints = 96) {
+      const timeDim = layer.dimensions.time;
       const size = timeDim.size ?? 1;
       const active = Math.max(0, Math.min(PARAMS.timeIndex, size - 1));
       const count = Math.min(maxPoints, size);
@@ -298,18 +308,18 @@ map.on("load", async () => {
 
     function pointResultToData(
       result: ZarrPointSeriesResult,
-      view: CatalogView,
+      layer: CatalogLayer,
     ): ChartDatum[] {
-      const variables = getPointVariables(view);
-      const isVector = view.type === "vector";
+      const variables = getPointVariables(layer);
+      const isVector = layer.kind === "vector";
       return result.points.map((point) => {
         let u = point.values[variables[0]];
         let v = isVector ? point.values[variables[1]] : undefined;
-        if (view.vector_derivation) {
+        if (layer.variables.kind === "vector" && layer.variables.derivation) {
           const components = deriveDirectionMagnitudeComponents(
-            point.values[view.vector_derivation.direction_variable],
-            point.values[view.vector_derivation.magnitude_variable],
-            view.vector_derivation,
+            point.values[layer.variables.derivation.direction_variable],
+            point.values[layer.variables.derivation.magnitude_variable],
+            layer.variables.derivation,
           );
           u = components.u;
           v = components.v;
@@ -352,7 +362,7 @@ map.on("load", async () => {
 
     function scheduleHoverReadout(lngLat: maplibregl.LngLat, point: maplibregl.Point) {
       if (hoverTimer !== null) clearTimeout(hoverTimer);
-      if (currentView.type !== "scalar") {
+      if (currentLayer.kind !== "scalar") {
         hoverReadout.hidden = true;
         return;
       }
@@ -361,24 +371,24 @@ map.on("load", async () => {
       hoverReadout.style.top = `${Math.min(point.y + 14, window.innerHeight - 72)}px`;
       const seq = ++hoverQuerySeq;
       hoverTimer = setTimeout(async () => {
-        if (!layer) {
+        if (!renderLayer) {
           hoverReadout.hidden = true;
           return;
         }
         try {
-          const result = await layer.samplePoint({
+          const result = await renderLayer.samplePoint({
             longitude: lngLat.lng,
             latitude: lngLat.lat,
           });
-          if (seq !== hoverQuerySeq || currentView.type !== "scalar") return;
+          if (seq !== hoverQuerySeq || currentLayer.kind !== "scalar") return;
           if (!result) {
             hoverReadout.hidden = true;
             return;
           }
           const value = result.value;
-          const unit = currentView.variable_meta?.units ?? "";
+          const unit = currentLayer.variables.units ?? "";
           const depthText = result.depth != null
-            ? ` | ${formatVertical(result.depth, currentView.vertical_label ?? "depth")}`
+            ? ` | ${formatVertical(result.depth, currentLayer.dimensions.vertical?.label ?? "depth")}`
             : "";
           hoverReadout.textContent =
             `${formatValue(value, unit)}\n` +
@@ -478,9 +488,9 @@ map.on("load", async () => {
     }
 
     async function openPointPopup(lngLat: maplibregl.LngLat, initialMode: PopupMode = "time") {
-      const source = getPointSource(currentView);
+      const source = getPointSource(currentLayer);
       if (!source) {
-        showToast("No point time-series store for this view");
+        showToast("No point time-series store for this layer");
         return;
       }
 
@@ -494,7 +504,7 @@ map.on("load", async () => {
       header.className = "timeseries-header";
       const title = document.createElement("div");
       title.className = "timeseries-title";
-      title.textContent = currentView.label;
+      title.textContent = currentLayer.label;
       const coord = document.createElement("div");
       coord.className = "timeseries-coord";
       coord.textContent = `${lngLat.lng.toFixed(3)}, ${lngLat.lat.toFixed(3)}`;
@@ -508,7 +518,7 @@ map.on("load", async () => {
       const depthBtn = document.createElement("button");
       depthBtn.type = "button";
       depthBtn.textContent = "depth";
-      const depthAvailable = hasDepthProfile(currentView);
+      const depthAvailable = hasDepthProfile(currentLayer);
       depthBtn.disabled = !depthAvailable;
       modeRow.append(timeBtn, depthBtn);
 
@@ -533,7 +543,7 @@ map.on("load", async () => {
         setPopupStatus(body, "Loading samples...");
 
         try {
-          const variables = getPointVariables(currentView);
+          const variables = getPointVariables(currentLayer);
           const timeMs = getCurrentTimeMs();
           const result = mode === "time"
             ? await source.sampleTimeSeries({
@@ -542,7 +552,7 @@ map.on("load", async () => {
                 latitude: lngLat.lat,
                 depth: PARAMS.vertical,
                 ...(() => {
-                  const window = getTimeSampleWindow(currentView);
+                  const window = getTimeSampleWindow(currentLayer);
                   return {
                     timeStartIndex: window.start,
                     timeEndIndex: window.end,
@@ -561,14 +571,14 @@ map.on("load", async () => {
 
           if (seq !== pointQuerySeq || !activePointPopup?.isOpen()) return;
 
-          const unit = currentView.variable_meta?.units ?? "";
-          const data = pointResultToData(result, currentView);
+          const unit = currentLayer.variables.units ?? "";
+          const data = pointResultToData(result, currentLayer);
           const current = nearestDatum(data, mode);
           const valueText = current ? formatValue(current.value, unit) : "nodata";
-          const vectorText = currentView.type === "vector" && current
+          const vectorText = currentLayer.kind === "vector" && current
             ? ` | u ${formatValue(current.u ?? NaN, unit)} / v ${formatValue(current.v ?? NaN, unit)}`
             : "";
-          const depthText = result.depth != null ? ` | ${formatVertical(result.depth, currentView.vertical_label ?? "depth")}` : "";
+          const depthText = result.depth != null ? ` | ${formatVertical(result.depth, currentLayer.dimensions.vertical?.label ?? "depth")}` : "";
           const timeText = mode === "depth" && result.time != null ? ` | ${formatTime(result.time)}` : "";
           meta.textContent =
             `grid ${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
@@ -593,17 +603,17 @@ map.on("load", async () => {
 
     const pane = new Pane({ title: "zartigl", expanded: false });
 
-    // View selector — grouped by category using optgroup
-    if (catalog.views.length > 1) {
-      const viewFolder = pane.addFolder({ title: "View" }) as FolderApi;
+    // Layer selector — grouped by category using optgroup
+    if (catalog.layers.length > 1) {
+      const layerFolder = pane.addFolder({ title: "Layer" }) as FolderApi;
 
-      const viewSelect = document.createElement("select");
-      viewSelect.className = "view-select";
+      const layerSelect = document.createElement("select");
+      layerSelect.className = "layer-select";
 
       // Collect categories in order of first appearance
       const seen = new Set<string>();
       const cats: string[] = [];
-      for (const v of catalog.views) {
+      for (const v of catalog.layers) {
         const cat = v.category ?? "Other";
         if (!seen.has(cat)) { seen.add(cat); cats.push(cat); }
       }
@@ -612,48 +622,48 @@ map.on("load", async () => {
         for (const cat of cats) {
           const grp = document.createElement("optgroup");
           grp.label = cat;
-          catalog.views.forEach((v, i) => {
+          catalog.layers.forEach((v, i) => {
             if ((v.category ?? "Other") !== cat) return;
             const opt = document.createElement("option");
             opt.value = String(i);
             opt.textContent = v.label;
             grp.appendChild(opt);
           });
-          viewSelect.appendChild(grp);
+          layerSelect.appendChild(grp);
         }
       } else {
-        catalog.views.forEach((v, i) => {
+        catalog.layers.forEach((v, i) => {
           const opt = document.createElement("option");
           opt.value = String(i);
           opt.textContent = v.label;
-          viewSelect.appendChild(opt);
+          layerSelect.appendChild(opt);
         });
       }
 
-      viewSelect.value = String(PARAMS.viewIndex);
-      viewSelect.addEventListener("change", () => {
-        PARAMS.viewIndex = Number(viewSelect.value);
-        switchView(catalog.views[PARAMS.viewIndex]);
+      layerSelect.value = String(PARAMS.layerIndex);
+      layerSelect.addEventListener("change", () => {
+        PARAMS.layerIndex = Number(layerSelect.value);
+        switchLayer(catalog.layers[PARAMS.layerIndex]);
       });
 
-      viewFolder.element.appendChild(viewSelect);
-      viewSelectEl = viewSelect;
+      layerFolder.element.appendChild(layerSelect);
+      layerSelectEl = layerSelect;
 
-      const viewMetaDiv = document.createElement("div");
-      viewMetaDiv.className = "view-meta";
-      viewFolder.element.appendChild(viewMetaDiv);
-      viewMetaEl = viewMetaDiv;
+      const layerMetaDiv = document.createElement("div");
+      layerMetaDiv.className = "layer-meta";
+      layerFolder.element.appendChild(layerMetaDiv);
+      layerMetaEl = layerMetaDiv;
     }
 
-    // ── Data folder (rebuilt on view switch) ────────────────────────
+    // ── Data folder (rebuilt on layer switch) ────────────────────────
 
     const dataFolder = pane.addFolder({ title: "Data" }) as FolderApi;
 
-    function rebuildDataFolder(view: CatalogView) {
+    function rebuildDataFolder(catalogLayer: CatalogLayer) {
       for (const c of dataFolderChildren) c.dispose();
       dataFolderChildren = [];
 
-      const timeDim = view.dimensions.time;
+      const timeDim = catalogLayer.dimensions.time;
       const timeMin = timeDim.min ?? 0;
       const timeStep = timeDim.step ?? 21600000;
       const timeSize = timeDim.size ?? 1;
@@ -671,7 +681,7 @@ map.on("load", async () => {
           const ms = timeMin + ev.value * timeStep;
           PARAMS.timeLabel = formatTime(ms);
           timeLabelBinding.refresh();
-          layer.setTime(ms);
+          renderLayer.setTime(ms);
           updateInfo();
         });
 
@@ -682,7 +692,7 @@ map.on("load", async () => {
 
       dataFolderChildren.push(timeSliderBinding, timeLabelBinding);
 
-      if (!(view.type === "scalar" && currentScalarSource === "wmts")) {
+      if (!(catalogLayer.kind === "scalar" && currentScalarSource === "wmts")) {
         const playerContainer = document.createElement("div");
         playerContainer.className = "player-btns";
         const btn = document.createElement("button");
@@ -695,11 +705,11 @@ map.on("load", async () => {
         // decoded arrays instead of independent map tiles.
         // Vector datasets update the velocity field at 0.5 fps so the particle
         // animation continues uninterrupted between time steps.
-        const isVector = view.type === "vector";
+        const isVector = catalogLayer.kind === "vector";
         const frameMs = isVector ? 2000 : 500;
         const bufferAhead = isVector ? 2 : 6;
 
-        const player = new TimelinePlayer(layer, PARAMS.timeIndex, {
+        const player = new TimelinePlayer(renderLayer, PARAMS.timeIndex, {
           timeMin, timeStep, timeSize,
           bufferAhead,
           frameMs,
@@ -741,11 +751,11 @@ map.on("load", async () => {
         });
       }
 
-      const vertEntry = getVerticalDim(view);
+      const vertEntry = getVerticalDim(catalogLayer);
       if (vertEntry) {
         const [, vertDim] = vertEntry;
-        const vertLabel = view.vertical_label ?? "depth";
-        const vertValues = [...(vertDim.values ?? [])].sort((a, b) => a - b);
+        const vertLabel = catalogLayer.dimensions.vertical?.label ?? "depth";
+        const vertValues = surfaceFirstDepthValues(vertDim.values ?? []);
         const vertOptions = vertValues.map((v) => ({
           text: formatVertical(v, vertLabel),
           value: v,
@@ -757,7 +767,7 @@ map.on("load", async () => {
             label: vertLabel,
           })
           .on("change", (ev) => {
-            layer.setDepth(ev.value);
+            renderLayer.setDepth(ev.value);
             updateInfo();
           });
 
@@ -765,34 +775,34 @@ map.on("load", async () => {
       }
     }
 
-    // ── switchView ────────────────────────────────────────────────
+    // ── switchLayer ────────────────────────────────────────────────
 
     const layerEventHandlers: { onLoaded?: (meta: FieldMeta) => void } = {};
 
-    function switchView(view: CatalogView) {
+    function switchLayer(catalogLayer: CatalogLayer) {
       currentPlayer?.pause();
       pointQuerySeq++;
       activePointPopup?.remove();
       activePointPopup = null;
       if (map.getLayer("particles")) map.removeLayer("particles");
 
-      const previousView = currentView;
-      currentView = view;
-      if (!previousView || previousView.id !== view.id || view.type !== "scalar" || !view.wmts) {
+      const previousLayer = currentLayer;
+      currentLayer = catalogLayer;
+      if (!previousLayer || previousLayer.id !== catalogLayer.id || catalogLayer.kind !== "scalar" || !catalogLayer.stores.wmts) {
         currentScalarSource = "zarr";
       }
 
-      const isScalar = view.type === "scalar";
-      const timeDim = view.dimensions.time;
+      const isScalar = catalogLayer.kind === "scalar";
+      const timeDim = catalogLayer.dimensions.time;
       const timeMin = timeDim.min ?? 0;
       const timeStep = timeDim.step ?? 21600000;
-      const vertEntry = getVerticalDim(view);
+      const vertEntry = getVerticalDim(catalogLayer);
       const vertValues = [...(vertEntry?.[1].values ?? [0])].sort(
         (a, b) => a - b,
       );
 
-      const viewIdx = catalog.views.indexOf(view);
-      if (pendingHashState && pendingHashState.d === viewIdx) {
+      const layerIdx = catalog.layers.indexOf(catalogLayer);
+      if (pendingHashState && pendingHashState.d === layerIdx) {
         const hs = pendingHashState;
         applyHashState(hs);
         PARAMS.timeIndex = Math.max(
@@ -808,15 +818,15 @@ map.on("load", async () => {
           : (vertValues[0] ?? 0);
         pendingHashState = null;
       } else {
-        applyDefaults(view);
+        applyDefaults(catalogLayer);
         PARAMS.timeIndex = (timeDim.size ?? 1) - 1;
         PARAMS.timeLabel = formatTime(timeMin + PARAMS.timeIndex * timeStep);
         PARAMS.vertical = vertValues[0] ?? 0;
       }
 
-      layer = new ArcoLayer({
+      renderLayer = new ArcoLayer({
         id: "particles",
-        view,
+        layer: catalogLayer,
         backend: isScalar && currentScalarSource === "wmts" ? "wmts" : "zarr",
         time: timeMin + PARAMS.timeIndex * timeStep,
         depth: PARAMS.vertical,
@@ -831,12 +841,12 @@ map.on("load", async () => {
       });
 
       if (layerEventHandlers.onLoaded) {
-        layer.on("loaded", layerEventHandlers.onLoaded);
+        renderLayer.on("loaded", layerEventHandlers.onLoaded);
       }
 
-      map.addLayer(layer);
-      layer.setColorRamp(currentPaletteId);
-      rebuildDataFolder(view);
+      map.addLayer(renderLayer);
+      renderLayer.setColorRamp(currentPaletteId);
+      rebuildDataFolder(catalogLayer);
 
       const hide = isScalar ? "none" : "";
       particlesFolder.element.style.display = hide;
@@ -857,7 +867,7 @@ map.on("load", async () => {
         step: 0.001,
         label: "density",
       })
-      .on("change", (ev) => layer.setParticleDensity(ev.value));
+      .on("change", (ev) => renderLayer.setParticleDensity(ev.value));
 
     // ── Motion folder ─────────────────────────────────────────────
 
@@ -870,7 +880,7 @@ map.on("load", async () => {
         label: "speed (local)",
       })
       .on("change", () =>
-        layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]),
+        renderLayer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]),
       );
     motionFolder
       .addBinding(PARAMS, "speedMax", {
@@ -880,7 +890,7 @@ map.on("load", async () => {
         label: "speed (global)",
       })
       .on("change", () =>
-        layer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]),
+        renderLayer.setSpeedFactor([PARAMS.speedMin, PARAMS.speedMax]),
       );
     motionFolder
       .addBinding(PARAMS, "dropRate", {
@@ -889,7 +899,7 @@ map.on("load", async () => {
         step: 0.001,
         label: "drop rate",
       })
-      .on("change", (ev) => layer.setDropRate(ev.value));
+      .on("change", (ev) => renderLayer.setDropRate(ev.value));
     motionFolder
       .addBinding(PARAMS, "dropRateBump", {
         min: 0,
@@ -897,7 +907,7 @@ map.on("load", async () => {
         step: 0.001,
         label: "drop bump",
       })
-      .on("change", (ev) => layer.setDropRateBump(ev.value));
+      .on("change", (ev) => renderLayer.setDropRateBump(ev.value));
 
     // ── Trail folder ──────────────────────────────────────────────
 
@@ -910,7 +920,7 @@ map.on("load", async () => {
         label: "fade (local)",
       })
       .on("change", () =>
-        layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
+        renderLayer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
       );
     trailFolder
       .addBinding(PARAMS, "fadeMax", {
@@ -920,17 +930,17 @@ map.on("load", async () => {
         label: "fade (global)",
       })
       .on("change", () =>
-        layer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
+        renderLayer.setFadeOpacity([PARAMS.fadeMin, PARAMS.fadeMax]),
       );
 
-    // ── Initial view (from hash or first) ─────────────────────────
+    // ── Initial layer (from hash or first) ─────────────────────────
 
     const initialIdx = Math.min(
       Math.max(pendingHashState?.d ?? 0, 0),
-      catalog.views.length - 1,
+      catalog.layers.length - 1,
     );
-    PARAMS.viewIndex = initialIdx;
-    switchView(catalog.views[initialIdx]);
+    PARAMS.layerIndex = initialIdx;
+    switchLayer(catalog.layers[initialIdx]);
 
     map.on("click", (ev) => {
       openPointPopup(ev.lngLat, "time");
@@ -956,9 +966,9 @@ map.on("load", async () => {
       btn.className =
         "render-mode-btn" + (source === currentScalarSource ? " active" : "");
       btn.addEventListener("click", () => {
-        if (source === "wmts" && !currentView.wmts) return;
+        if (source === "wmts" && !currentLayer.stores.wmts) return;
         currentScalarSource = source;
-        switchView(currentView);
+        switchLayer(currentLayer);
       });
       sourceButtons.push({ source, btn });
       sourceBtnContainer.appendChild(btn);
@@ -1005,7 +1015,7 @@ map.on("load", async () => {
 
     paletteSelect.addEventListener("change", () => {
       currentPaletteId = paletteSelect.value;
-      layer.setColorRamp(currentPaletteId);
+      renderLayer.setColorRamp(currentPaletteId);
       updateStandaloneLegendGradient();
     });
 
@@ -1015,25 +1025,25 @@ map.on("load", async () => {
 
     paletteFolder
       .addBinding(PARAMS, "opacity", { min: 0, max: 1, step: 0.01, label: "opacity" })
-      .on("change", (ev) => layer.setOpacity(ev.value));
+      .on("change", (ev) => renderLayer.setOpacity(ev.value));
     paletteFolder
       .addBinding(PARAMS, "vibrance", { min: -1, max: 1, step: 0.01, label: "vibrance" })
-      .on("change", (ev) => layer.setVibrance(ev.value));
+      .on("change", (ev) => renderLayer.setVibrance(ev.value));
     paletteFolder
       .addBinding(PARAMS, "logScale", { label: "log scale" })
-      .on("change", (ev) => layer.setLogScale(ev.value));
+      .on("change", (ev) => renderLayer.setLogScale(ev.value));
 
     // ── Export folder ─────────────────────────────────────────────
 
     const exportFolder = pane.addFolder({ title: "Export", expanded: false });
 
     exportFolder.addButton({ title: "Copy settings" }).on("click", () => {
-      const isScalarV = currentView.type === "scalar";
+      const isScalarV = currentLayer.kind === "scalar";
       const lines = [
-        `  - id: ${currentView.id}`,
+        `  - id: ${currentLayer.id}`,
         `    palette: ${currentPaletteId}`,
       ];
-      if (isScalarV && currentView.wmts) {
+      if (isScalarV && currentLayer.stores.wmts) {
         lines.push(`    source: ${currentScalarSource}`);
       }
       if (!isScalarV) {
@@ -1055,13 +1065,13 @@ map.on("load", async () => {
       navigator.clipboard.writeText(lines.join("\n")).then(() => showToast("Copied!"));
     });
 
-    exportFolder.addButton({ title: "Share view" }).on("click", () => {
-      const v = catalog.views[PARAMS.viewIndex];
+    exportFolder.addButton({ title: "Share layer" }).on("click", () => {
+      const v = catalog.layers[PARAMS.layerIndex];
       const timeMs =
         (v.dimensions.time.min ?? 0) +
         PARAMS.timeIndex * (v.dimensions.time.step ?? 21600000);
       const state: HashState = {
-        d: PARAMS.viewIndex,
+        d: PARAMS.layerIndex,
         t: timeMs,
         v: PARAMS.vertical,
         p: currentPaletteId,
@@ -1085,7 +1095,7 @@ map.on("load", async () => {
     // ── Wire legend ────────────────────────────────────────────────
 
     layerEventHandlers.onLoaded = updateStandaloneLegendMeta;
-    layer.on("loaded", updateStandaloneLegendMeta);
+    renderLayer.on("loaded", updateStandaloneLegendMeta);
     refreshUI();
     updateStandaloneLegendGradient();
 

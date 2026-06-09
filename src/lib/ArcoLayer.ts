@@ -12,6 +12,7 @@ import type {
   ZoomWeighted,
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
+import type { CatalogLayer } from "../catalog/types";
 
 type LayerEventMap = {
   loading: () => void;
@@ -84,9 +85,29 @@ export function buildWmtsLegendUrl(options: {
 }
 
 export function selectArcoLayerBackend(options: ArcoLayerOptions): ArcoLayerBackend {
-  if (options.view.type === "vector") return "vector";
-  if (options.backend === "wmts" && options.view.wmts) return "scalar-wmts";
+  if (options.layer.kind === "vector") return "vector";
+  if (options.backend === "wmts" && options.layer.stores.wmts) return "scalar-wmts";
   return "scalar-zarr";
+}
+
+function layerUnit(catalogLayer: CatalogLayer): string {
+  return catalogLayer.variables.units ?? "";
+}
+
+function scalarLayerVariable(catalogLayer: CatalogLayer): string {
+  return catalogLayer.variables.kind === "scalar" ? catalogLayer.variables.value : "scalar";
+}
+
+function vectorLayerU(catalogLayer: CatalogLayer): string {
+  return catalogLayer.variables.kind === "vector" ? (catalogLayer.variables.u ?? "uo") : "uo";
+}
+
+function vectorLayerV(catalogLayer: CatalogLayer): string {
+  return catalogLayer.variables.kind === "vector" ? (catalogLayer.variables.v ?? "vo") : "vo";
+}
+
+function vectorLayerDerivation(catalogLayer: CatalogLayer) {
+  return catalogLayer.variables.kind === "vector" ? catalogLayer.variables.derivation : undefined;
 }
 
 export class ArcoLayer implements CustomLayerInterface {
@@ -116,28 +137,28 @@ export class ArcoLayer implements CustomLayerInterface {
     this.opacity = options.opacity ?? 1;
 
     if (this.backend === "vector") {
-      const view = options.view;
+      const catalogLayer = options.layer;
       this.delegate = new VectorLayer({
         ...options,
-        source: view.zarr_url_geo,
-        variableU: view.variable_u ?? "uo",
-        variableV: view.variable_v ?? "vo",
-        vectorDerivation: view.vector_derivation,
-        unit: view.variable_meta?.units ?? "",
+        source: catalogLayer.stores.field.url,
+        variableU: vectorLayerU(catalogLayer),
+        variableV: vectorLayerV(catalogLayer),
+        vectorDerivation: vectorLayerDerivation(catalogLayer),
+        unit: layerUnit(catalogLayer),
       });
     } else if (this.backend === "scalar-zarr") {
-      const view = options.view;
+      const catalogLayer = options.layer;
       this.delegate = new ScalarLayer({
         id: options.id,
-        source: view.zarr_url_geo,
-        variable: view.variable ?? "scalar",
+        source: catalogLayer.stores.field.url,
+        variable: scalarLayerVariable(catalogLayer),
         time: options.time,
         depth: options.depth,
         colorRamp: options.colorRamp,
         opacity: options.opacity,
         logScale: options.logScale,
         vibrance: options.vibrance,
-        unit: view.variable_meta?.units ?? "",
+        unit: layerUnit(catalogLayer),
       });
     }
   }
@@ -269,9 +290,9 @@ export class ArcoLayer implements CustomLayerInterface {
   }
 
   private addOrUpdateWmts(): void {
-    if (!this.map || !this.options.view.wmts) return;
+    if (!this.map || !this.options.layer.stores.wmts) return;
     this.removeWmts();
-    const wmts = this.options.view.wmts;
+    const wmts = this.options.layer.stores.wmts;
     this.map.addSource(this.rasterSourceId, {
       type: "raster",
       tiles: [buildWmtsTileUrl({
@@ -282,7 +303,7 @@ export class ArcoLayer implements CustomLayerInterface {
         style: wmts.style,
         time: this.time,
         depth: this.depth,
-        verticalLabel: this.options.view.vertical_label,
+        verticalLabel: this.options.layer.dimensions.vertical?.label,
       })],
       tileSize: 256,
     });
@@ -304,7 +325,7 @@ export class ArcoLayer implements CustomLayerInterface {
     this.emit("loaded", {
       min: 0,
       max: 0,
-      unit: this.options.view.variable_meta?.units ?? "",
+      unit: layerUnit(this.options.layer),
       time: toIsoTime(this.time),
       depth: this.depth,
     });

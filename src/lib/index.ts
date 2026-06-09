@@ -1,3 +1,4 @@
+export { Zartigl } from "./Zartigl";
 export { ScalarLayer } from "./ScalarLayer";
 export { VectorLayer } from "./VectorLayer";
 export { ArcoLayer, buildWmtsLegendUrl, buildWmtsTileUrl, selectArcoLayerBackend } from "./ArcoLayer";
@@ -13,7 +14,7 @@ export type {
   VectorLayerOptions,
   ScalarLayerOptions,
   ArcoLayerOptions,
-  ArcoLayerView,
+  ArcoLayerCatalogLayer,
   ArcoLayerBackend,
   ArcoLayerBackendPreference,
   VectorDerivation,
@@ -28,3 +29,12 @@ export type {
   ZarrTimeDimension,
 } from "./types";
 export type { ColorRampInput, PaletteMeta } from "./gl-util";
+export type {
+  DepthMeta,
+  Legend,
+  QueryDepthProfileOptions,
+  QueryPointOptions,
+  TimeMeta,
+  ZartiglOptions,
+  ZartiglSettings,
+} from "./Zartigl";

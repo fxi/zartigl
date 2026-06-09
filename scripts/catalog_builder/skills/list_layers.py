@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Print a summary table of all views in src/catalog/catalog.json.
+Print a summary table of all layers in src/catalog/catalog.json.
 
 Usage:
-    uv run scripts/catalog_builder/skills/list_views.py
+    uv run scripts/catalog_builder/skills/list_layers.py
 
 No external dependencies — uses stdlib only.
 """
@@ -22,17 +22,17 @@ def main():
         return
 
     catalog = json.loads(CATALOG_PATH.read_text())
-    views = catalog.get("views", [])
+    layers = catalog.get("layers", [])
 
-    if not views:
-        print("No views in catalog.")
+    if not layers:
+        print("No layers in catalog.")
         return
 
-    col_id       = max(len(v["id"])                for v in views)
-    col_label    = max(len(v.get("label", ""))     for v in views)
-    col_category = max(len(v.get("category", ""))  for v in views)
-    col_type     = max(len(v.get("type", ""))       for v in views)
-    col_src      = max(len(v.get("source_dataset", "")) for v in views)
+    col_id       = max(len(v["id"])                for v in layers)
+    col_label    = max(len(v.get("label", ""))     for v in layers)
+    col_category = max(len(v.get("category", ""))  for v in layers)
+    col_type     = max(len(v.get("kind", ""))       for v in layers)
+    col_src      = max(len(v.get("dataset", {}).get("id", "")) for v in layers)
 
     col_id       = max(col_id, 2)
     col_label    = max(col_label, 5)
@@ -44,18 +44,18 @@ def main():
     fmt = f"| {{:<{col_id}}} | {{:<{col_label}}} | {{:<{col_category}}} | {{:<{col_type}}} | {{:<{col_src}}} |"
 
     print(sep)
-    print(fmt.format("id", "label", "category", "type", "source_dataset"))
+    print(fmt.format("id", "label", "category", "kind", "dataset"))
     print(sep)
-    for v in views:
+    for v in layers:
         print(fmt.format(
             v["id"],
             v.get("label", ""),
             v.get("category", ""),
-            v.get("type", ""),
-            v.get("source_dataset", ""),
+            v.get("kind", ""),
+            v.get("dataset", {}).get("id", ""),
         ))
     print(sep)
-    print(f"\n{len(views)} view(s)  ·  generated: {catalog.get('generated', 'unknown')}")
+    print(f"\n{len(layers)} layer(s)  ·  generated: {catalog.get('generatedAt', 'unknown')}")
 
 
 if __name__ == "__main__":

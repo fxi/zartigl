@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zartigl minimal API demo</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="map"></div>
+    <aside class="panel">
+      <select id="layer"></select>
+      <div class="row">
+        <select id="backend">
+          <option value="auto">auto</option>
+          <option value="zarr">zarr</option>
+          <option value="wmts">wmts</option>
+        </select>
+        <button id="visibility" type="button">hide</button>
+      </div>
+      <input id="time" type="datetime-local" />
+      <select id="depth"></select>
+      <div class="row">
+        <button id="mercator" type="button">mercator</button>
+        <button id="globe" type="button">globe</button>
+      </div>
+      <select id="palette"></select>
+      <input id="opacity" type="range" min="0" max="1" step="0.01" value="1" />
+      <div id="legend" class="legend"></div>
+      <pre id="query"></pre>
+    </aside>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

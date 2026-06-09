@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { catalog, ZarrSource } from "../dist/zartigl.js";
+import { ZarrSource } from "../dist/zartigl.js";
+import { catalog } from "../dist/catalog.js";
 
 const scenarios = [
   {
     name: "ocean-current-time",
-    view: "ocean-current-velocity",
+    layer: "ocean-current-velocity",
     mode: "time",
     lon: -2.594,
     lat: 35.986,
@@ -12,7 +13,7 @@ const scenarios = [
   },
   {
     name: "ocean-current-depth",
-    view: "ocean-current-velocity",
+    layer: "ocean-current-velocity",
     mode: "depth",
     lon: -2.594,
     lat: 35.986,
@@ -20,7 +21,7 @@ const scenarios = [
   },
   {
     name: "phytoplankton-time",
-    view: "phytoplankton-chlorophyll",
+    layer: "phytoplankton-chlorophyll",
     mode: "time",
     lon: -4.539,
     lat: 35.849,
@@ -28,7 +29,7 @@ const scenarios = [
   },
   {
     name: "surface-wind-missing",
-    view: "surface-wind",
+    layer: "surface-wind",
     mode: "time",
     lon: -6.609,
     lat: 35.976,
@@ -36,7 +37,7 @@ const scenarios = [
   },
   {
     name: "wave-stokes-time",
-    view: "wave-stokes-drift",
+    layer: "wave-stokes-drift",
     mode: "time",
     lon: 10.581,
     lat: 42.487,
@@ -49,7 +50,7 @@ function usage() {
     [
       "Usage:",
       "  node scripts/smoke-sample-point.mjs",
-      "  node scripts/smoke-sample-point.mjs --view <id> --mode <time|depth> --lon <n> --lat <n> [--expect valid|missing|any]",
+      "  node scripts/smoke-sample-point.mjs --layer <id> --mode <time|depth> --lon <n> --lat <n> [--expect valid|missing|any]",
     ].join("\n"),
   );
 }
@@ -71,15 +72,15 @@ function parseArgs(argv) {
     }
     args[key] = value;
   }
-  for (const key of ["view", "mode", "lon", "lat"]) {
+  for (const key of ["layer", "mode", "lon", "lat"]) {
     if (args[key] == null) {
       usage();
       process.exit(2);
     }
   }
   return [{
-    name: `${args.view}-${args.mode}`,
-    view: args.view,
+    name: `${args.layer}-${args.mode}`,
+    layer: args.layer,
     mode: args.mode,
     lon: Number(args.lon),
     lat: Number(args.lat),
@@ -87,18 +88,24 @@ function parseArgs(argv) {
   }];
 }
 
-function pointVariables(view) {
-  if (view.type === "scalar") return [view.variable ?? "scalar"];
-  return [view.variable_u ?? "uo", view.variable_v ?? "vo"];
+function pointVariables(layer) {
+  if (layer.kind === "scalar") return [layer.variables.value ?? "scalar"];
+  if (layer.variables.derivation) {
+    return [
+      layer.variables.derivation.direction_variable,
+      layer.variables.derivation.magnitude_variable,
+    ];
+  }
+  return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
 }
 
-function hasDepthProfile(view) {
-  const vertical = Object.values(view.dimensions).find((d) => d.axis === "z");
+function hasDepthProfile(layer) {
+  const vertical = layer.dimensions.vertical;
   return (vertical?.size ?? vertical?.values?.length ?? 0) > 1;
 }
 
-function sampleWindow(view, maxPoints = 24) {
-  const time = view.dimensions.time;
+function sampleWindow(layer, maxPoints = 24) {
+  const time = layer.dimensions.time;
   const size = time.size ?? 1;
   const end = size - 1;
   const start = Math.max(0, end - maxPoints + 1);
@@ -116,9 +123,9 @@ function valuesForPoint(point, variables, isVector) {
   ];
 }
 
-function summarize(result, view, scenario) {
-  const variables = pointVariables(view);
-  const isVector = view.type === "vector";
+function summarize(result, layer, scenario) {
+  const variables = pointVariables(layer);
+  const isVector = layer.kind === "vector";
   const samples = result.points.map((point) => valuesForPoint(point, variables, isVector)[0]);
   const valid = samples.filter(Number.isFinite);
   const firstValid = valid[0] ?? null;
@@ -127,7 +134,7 @@ function summarize(result, view, scenario) {
 
   return {
     scenario: scenario.name,
-    view: view.id,
+    layer: layer.id,
     mode: scenario.mode,
     requested: { longitude: scenario.lon, latitude: scenario.lat },
     nearest: { longitude: result.longitude, latitude: result.latitude },
@@ -138,29 +145,29 @@ function summarize(result, view, scenario) {
     min,
     max,
     variables,
-    unit: view.variable_meta?.units ?? "",
+    unit: layer.variables.units ?? "",
   };
 }
 
 async function runScenario(catalog, scenario) {
-  const view = catalog.views.find((candidate) => candidate.id === scenario.view);
-  if (!view) throw new Error(`Unknown view: ${scenario.view}`);
-  if (!view.zarr_url_time) throw new Error(`View has no zarr_url_time: ${view.id}`);
+  const layer = catalog.layers.find((candidate) => candidate.id === scenario.layer);
+  if (!layer) throw new Error(`Unknown layer: ${scenario.layer}`);
+  if (!layer.stores.pointSeries) throw new Error(`Layer has no point-series store: ${layer.id}`);
   if (scenario.mode !== "time" && scenario.mode !== "depth") {
     throw new Error(`Invalid mode: ${scenario.mode}`);
   }
-  if (scenario.mode === "depth" && !hasDepthProfile(view)) {
+  if (scenario.mode === "depth" && !hasDepthProfile(layer)) {
     return {
       scenario: scenario.name,
-      view: view.id,
+      layer: layer.id,
       mode: scenario.mode,
       skipped: true,
       reason: "no vertical axis",
     };
   }
 
-  const source = new ZarrSource(view.zarr_url_time, 80);
-  const variables = pointVariables(view);
+  const source = new ZarrSource(layer.stores.pointSeries.url, 80);
+  const variables = pointVariables(layer);
   const result = scenario.mode === "time"
     ? await source.sampleTimeSeries({
         variables,
@@ -168,7 +175,7 @@ async function runScenario(catalog, scenario) {
         latitude: scenario.lat,
         depth: 0,
         ...(() => {
-          const window = sampleWindow(view);
+          const window = sampleWindow(layer);
           return {
             timeStartIndex: window.start,
             timeEndIndex: window.end,
@@ -180,11 +187,11 @@ async function runScenario(catalog, scenario) {
         variables,
         longitude: scenario.lon,
         latitude: scenario.lat,
-        time: view.dimensions.time.max ?? Date.now(),
+        time: layer.dimensions.time.max ?? Date.now(),
         stopAfterMissingSamples: 8,
       });
 
-  const summary = summarize(result, view, scenario);
+  const summary = summarize(result, layer, scenario);
   if (scenario.expect === "valid" && summary.validCount === 0) {
     throw new Error(`${scenario.name}: expected valid samples, got none`);
   }

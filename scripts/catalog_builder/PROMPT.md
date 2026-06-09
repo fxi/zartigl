@@ -1,195 +1,156 @@
 # Catalog Builder — Agentic Prompt
 
-You are adding or updating views in `src/catalog/catalog.json` for the zartigl map visualization app.
-Read this document fully before doing anything else.
+You are adding or updating layers in `src/catalog/catalog.json` for the zartigl map visualization app. The catalog is a public API contract, not just demo data.
 
----
+## 1. Layer Schema
 
-## 1. View Schema
-
-Each entry in `catalog.json["views"]` must follow this structure:
+Each catalog must have:
 
 ```json
 {
-  "id":             "kebab-case-slug",
-  "label":          "Human Readable Name",
-  "description":    "One sentence describing what this view shows.",
-  "category":       "Ocean | Atmosphere | Biology | Waves | Ice",
-  "type":           "vector | scalar",
-  "source_dataset": "<copernicus_dataset_id>",
-  "zarr_url_geo":   "https://...timeChunked.zarr",
-  "zarr_url_time":  "https://...geoChunked.zarr",
-  "wmts": { ... },  // optional, scalar rendering shortcut when available
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-09T00:00:00.000Z",
+  "layers": []
+}
+```
 
-  // vector only:
-  "variable_u": "<eastward_component_short_name>",
-  "variable_v": "<northward_component_short_name>",
+Each layer must follow this shape:
 
-  // scalar only:
-  "variable": "<short_name>",
-
-  // always:
-  "variable_meta": {
-    "standard_name": "<CF standard name or descriptive string>",
-    "units": "<unit string>"
+```json
+{
+  "id": "kebab-case-slug",
+  "label": "Human Readable Name",
+  "description": "One sentence describing what this layer shows.",
+  "category": "Ocean | Atmosphere | Biology | Waves | Ice",
+  "kind": "vector",
+  "dataset": {
+    "id": "<copernicus_dataset_id>",
+    "provider": "copernicus",
+    "productId": "<copernicus_product_id>"
+  },
+  "stores": {
+    "field": {
+      "type": "zarr",
+      "url": "https://.../timeChunked.zarr",
+      "layout": "time-chunked"
+    },
+    "pointSeries": {
+      "type": "zarr",
+      "url": "https://.../geoChunked.zarr",
+      "layout": "geo-chunked"
+    },
+    "wmts": { "...": "optional scalar shortcut" }
+  },
+  "variables": {
+    "kind": "vector",
+    "u": "uo",
+    "v": "vo",
+    "standardName": "sea_water_velocity",
+    "units": "m s-1"
   },
   "dimensions": {
-    "time":      { "axis": "t", "size": N, "min": ms, "max": ms, "step": ms, "chunk_size": 1, "units": "..." },
-    "latitude":  { "axis": "y", "size": N, "min": ..., "max": ..., "step": ..., "chunk_size": ..., "units": "degrees_north" },
-    "longitude": { "axis": "x", "size": N, "min": ..., "max": ..., "step": ..., "chunk_size": ..., "units": "degrees_east" },
-    "depth":     { "axis": "z", "values": [...], "size": N, "chunk_size": 1, "units": "m" }  // if present
+    "time": { "size": 10, "min": 0, "max": 9, "step": 1, "chunkSize": 1, "units": "..." },
+    "vertical": { "label": "depth", "values": [0], "size": 1, "chunkSize": 1, "units": "m" },
+    "latitude": { "size": 100, "min": -90, "max": 90, "step": 1, "chunkSize": 100, "units": "degrees_north" },
+    "longitude": { "size": 100, "min": -180, "max": 180, "step": 1, "chunkSize": 100, "units": "degrees_east" }
   },
-  "vertical_label": "depth | pressure",  // only if a z-axis exists
-  "defaults": { ... }                     // see Section 4
+  "defaults": {
+    "backend": "zarr",
+    "palette": "rdylbu",
+    "particles": {
+      "density": 0.05,
+      "speedFactor": [0.01, 1],
+      "fadeOpacity": [0.9, 0.96],
+      "dropRate": 0.003,
+      "dropRateBump": 0
+    },
+    "raster": {
+      "opacity": 1,
+      "logScale": false,
+      "vibrance": 0
+    }
+  }
 }
 ```
 
-### Field rules
-
-| Field | Rules |
-|-------|-------|
-| `id` | Lowercase kebab-case, unique across all views. Descriptive, not the Copernicus dataset ID. |
-| `category` | Must be one of: `Ocean`, `Atmosphere`, `Biology`, `Waves`, `Ice`. Add new categories only if none fit. |
-| `source_dataset` | Copernicus dataset id without the trailing version suffix when possible. Multiple views may share a dataset when they expose different variables. |
-| `zarr_url_geo` | Use `arco-geo-series` / `timeChunked.zarr` URL from `query_dataset.py` output. |
-| `zarr_url_time` | Use `arco-time-series` / `geoChunked.zarr` URL. Omit if unavailable. |
-| `wmts` | For scalar datasets, copy the `wmts` object from `query_dataset.py` when present. |
-| `variable_u/v` | For vectors: the eastward and northward component short names. |
-| `variable` | For scalars: the single variable to display (pick the primary one if multiple exist). |
-| `variable_meta` | Provide a human-intelligible `standard_name`. For vectors, use a combined name like `"sea_water_velocity"`. |
-
----
-
-## 2. Vector vs Scalar Detection
-
-A dataset is **vector** if `query_dataset.py` reports `suggested_type: "vector"` (eastward + northward pair found).
-
-Exception: if only direction + magnitude are available (e.g., wave mean direction VMDR + significant height VHM0),
-decompose at catalog-build time:
-- u = magnitude × sin(direction_rad)
-- v = magnitude × cos(direction_rad)
-Note this in the description and confirm decomposition is not already provided as u/v components
-(always run `query_dataset.py` first to check).
-
----
-
-## 3. Per-Category Display Guidelines
-
-Use these as starting defaults — tune after visual inspection:
-
-| Category | logScale | palette | Notes |
-|----------|----------|---------|-------|
-| Ocean | false | `rdylbu` | Particles trace currents |
-| Atmosphere | true | `rdylbu` | Wind streaks dominant |
-| Biology | true | `balance` | Log scale essential for chl-a |
-| Waves | false | `rdylbu` | Use vector components when available |
-| Ice | false | `blues` | Scalar raster |
-
----
-
-## 4. Defaults Reference
-
-All fields are optional but recommended for vector views:
+For scalar layers, use:
 
 ```json
-{
-  "palette":         "rdylbu",
-  "particleDensity": 0.05,
-  "speedMin":        0.01,
-  "speedMax":        1.0,
-  "fadeMin":         0.9,
-  "fadeMax":         0.96,
-  "dropRate":        0.003,
-  "dropRateBump":    0.0,
-  "opacity":         1.0,
-  "logScale":        false,
-  "vibrance":        0.0
+"kind": "scalar",
+"variables": {
+  "kind": "scalar",
+  "value": "<short_name>",
+  "standardName": "<CF standard name or descriptive string>",
+  "units": "<unit string>"
 }
 ```
 
-Scalar views only need: `palette`, `opacity`, `logScale`, `vibrance`.
+For direction/magnitude vector derivation, use:
 
----
-
-## 5. Skills Reference
-
-Run these tools to gather information. All are in `scripts/catalog_builder/skills/`.
-
-### `list_views.py` — check existing views
-```bash
-uv run scripts/catalog_builder/skills/list_views.py
+```json
+"variables": {
+  "kind": "vector",
+  "derivation": {
+    "kind": "direction_magnitude",
+    "direction_variable": "VMDR_SW1",
+    "magnitude_variable": "VHM0_SW1",
+    "direction_convention": "from",
+    "output_direction": "toward"
+  },
+  "standardName": "sea_surface_primary_swell_wave_significant_height_vector",
+  "units": "m"
+}
 ```
-Use first to avoid duplicating `source_dataset`.
 
-### `search_products.py` — find candidate datasets
+## 2. Rules
+
+- `id` is lowercase kebab-case and unique.
+- `kind` and `variables.kind` must match.
+- `stores.field` is required and is the map-rendering Zarr store.
+- `stores.pointSeries` enables point time-series and depth-profile queries.
+- `stores.wmts` is only valid on scalar layers.
+- Use `stores.field.layout: "time-chunked"` for `timeChunked.zarr`.
+- Use `stores.pointSeries.layout: "geo-chunked"` for `geoChunked.zarr`.
+- `defaults.backend` can be `zarr` or `wmts`; omit it unless a scalar layer should prefer WMTS in `backend: "auto"`.
+- `defaults.palette` must exist in `src/lib/palettes.json`.
+
+## 3. Display Defaults
+
+Use these as starting points and tune visually:
+
+| Category | Palette | logScale | Notes |
+|---|---|---:|---|
+| Ocean | `rdylbu` | false | Particles trace currents |
+| Atmosphere | `rdylbu` | true | Wind streaks dominant |
+| Biology | `algae` or `balance` | true | Log scale often helps concentration fields |
+| Waves | `rdylbu` or `deep` | false | Prefer vector components or derivation |
+| Ice | `ice` | false | Scalar raster |
+
+## 4. Skills
+
+Run these from the repo root:
+
 ```bash
+uv run scripts/catalog_builder/skills/list_layers.py
 uv run scripts/catalog_builder/skills/search_products.py <keyword> [keyword2 ...]
-```
-Returns JSON array of candidates with dataset IDs, variables, and zarr service availability.
-Pick datasets that have both `arco-geo-series` and `arco-time-series` zarr services.
-
-### `query_dataset.py` — inspect a specific dataset
-```bash
 uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
-```
-Returns full metadata: zarr URLs, all variables with standard_names, dimensions, suggested type/variables.
-
-### `validate_catalog.py` — validate after editing
-```bash
 uv run scripts/catalog_builder/skills/validate_catalog.py
 ```
-Must pass (exit 0) before considering the work done.
 
----
+`query_dataset.py` emits candidate `stores`, `dimensions`, and `suggested_variables` in the current schema. Always run `validate_catalog.py` after editing.
 
-## 6. Agentic Workflow
+## 5. Workflow
 
-When asked to add a new view (e.g., "add waves"):
+1. Run `list_layers.py` and avoid duplicate dataset+variable layers.
+2. Run `search_products.py` to find candidate Copernicus datasets.
+3. Run `query_dataset.py <dataset_id>` for the chosen dataset.
+4. Compose a full layer entry using the schema above.
+5. Ask the user to approve the entry before appending it.
+6. Update `generatedAt` to the current ISO timestamp.
+7. Run `validate_catalog.py` and fix all failures.
 
-1. **Check existing views**
-   ```bash
-   uv run scripts/catalog_builder/skills/list_views.py
-   ```
-   Confirm no existing view already exposes the same dataset and variable or vector variable pair.
+## 6. Editing Existing Layers
 
-2. **Search for candidates**
-   ```bash
-   uv run scripts/catalog_builder/skills/search_products.py <topic keywords>
-   ```
-   Prefer ARCO datasets with both geo and time series zarr services.
-   Note any promising `dataset_id` values.
+For defaults, tune the app, copy settings, translate them into grouped `defaults.particles` and `defaults.raster`, then validate.
 
-3. **Query the chosen dataset**
-   ```bash
-   uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
-   ```
-   Extract: zarr URLs, type, variable names, dimensions.
-
-4. **Propose the view entry**
-   Compose the full JSON view object following Section 1 schema.
-   Apply category defaults from Section 3.
-   Show the proposed entry to the user and ask for approval or adjustments.
-
-5. **Append to catalog.json**
-   After approval, append the new view to the `views` array in `src/catalog/catalog.json`.
-   Update `"generated"` to current ISO timestamp.
-
-6. **Validate**
-   ```bash
-   uv run scripts/catalog_builder/skills/validate_catalog.py
-   ```
-   Fix any errors reported. Only finish when this passes.
-
----
-
-## 7. Editing Existing Views
-
-To update defaults for an existing view:
-1. Load the app, tune visual parameters using the Export > Copy settings button
-2. Paste the copied YAML values into the view's `defaults` block in `catalog.json`
-3. Run `validate_catalog.py`
-
-To update metadata (zarr URLs, variable names, dimensions):
-1. Run `query_dataset.py <source_dataset>` to get fresh metadata
-2. Update the relevant fields
-3. Run `validate_catalog.py`
+For metadata, rerun `query_dataset.py`, update `stores`, `variables`, or `dimensions`, then validate.
