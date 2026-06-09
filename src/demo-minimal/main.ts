@@ -21,6 +21,7 @@ const depthSelect = document.querySelector<HTMLSelectElement>("#depth")!;
 const mercatorBtn = document.querySelector<HTMLButtonElement>("#mercator")!;
 const globeBtn = document.querySelector<HTMLButtonElement>("#globe")!;
 const paletteSelect = document.querySelector<HTMLSelectElement>("#palette")!;
+const logScaleBtn = document.querySelector<HTMLButtonElement>("#logscale")!;
 const opacityInput = document.querySelector<HTMLInputElement>("#opacity")!;
 const legendEl = document.querySelector<HTMLDivElement>("#legend")!;
 const queryEl = document.querySelector<HTMLPreElement>("#query")!;
@@ -29,6 +30,7 @@ let z: Zartigl | null = null;
 let currentLayer = catalog.layers[0];
 let visible = true;
 let requestedProjection: "mercator" | "globe" = "mercator";
+let logScale = false;
 
 function datetimeValue(ms: number): string {
   return new Date(ms).toISOString().slice(0, 16);
@@ -128,6 +130,8 @@ async function createController(layer: CatalogLayer = currentLayer): Promise<voi
   await z.setLayer(layer.id);
   renderPaletteOptions();
   paletteSelect.value = typeof layer.defaults?.palette === "string" ? layer.defaults.palette : "rdylbu";
+  logScale = layer.defaults?.raster?.logScale ?? false;
+  logScaleBtn.classList.toggle("active", logScale);
   opacityInput.value = String(layer.defaults?.raster?.opacity ?? 1);
   renderTimeControl();
   renderDepthControl();
@@ -162,6 +166,13 @@ depthSelect.addEventListener("change", () => {
 
 paletteSelect.addEventListener("change", () => {
   z?.updateSettings({ palette: paletteSelect.value });
+  renderLegend();
+});
+
+logScaleBtn.addEventListener("click", () => {
+  logScale = !logScale;
+  logScaleBtn.classList.toggle("active", logScale);
+  z?.updateSettings({ logScale });
   renderLegend();
 });
 
