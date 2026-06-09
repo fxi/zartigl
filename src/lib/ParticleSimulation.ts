@@ -124,6 +124,7 @@ export class ParticleSimulation {
       "u_drop_rate_bump",
       "u_bounds",
       "u_geo_bounds",
+      "u_is_globe",
     ]);
     this.drawLocs = this.getUniforms(this.drawProgram, [
       "u_particles",
@@ -364,6 +365,7 @@ export class ParticleSimulation {
       this.updateLocs["u_bounds"],
       bounds.minX, bounds.minY, bounds.maxX, bounds.maxY,
     );
+    gl.uniform1f(this.updateLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
     if (geoBounds) {
       gl.uniform4f(
         this.updateLocs["u_geo_bounds"],

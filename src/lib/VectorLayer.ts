@@ -175,7 +175,8 @@ export class VectorLayer implements CustomLayerInterface {
    */
   private async fetchVelocityData(time: string | number): Promise<VelocityData> {
     const bounds = this.map!.getBounds();
-    const geoBounds = paddedViewportGeoBounds(bounds);
+    const isGlobe = this.map!.getProjection?.()?.type === 'globe';
+    const geoBounds = paddedViewportGeoBounds(bounds, 1, isGlobe);
 
     const timeIdx = this.zarrSource.findTimeIndex(time);
     const depthIdx = this.zarrSource.findDepthIndex(this.depth);
@@ -339,14 +340,13 @@ export class VectorLayer implements CustomLayerInterface {
       // Bind velocity texture
       this.velocityField.bind(this.velocityTexUnit);
 
-      // Particle positions live in [0,1] Mercator; wrapped world-copy viewports
-      // are folded back into primary-world update bounds.
-      const mapBounds = this.map.getBounds();
-      const mercBounds = particleUpdateBounds(mapBounds);
-
       // MapLibre's matrix maps [0, worldSize] Mercator → clip space.
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
       const isGlobe = this.map.getProjection?.()?.type === 'globe';
+
+      // In globe mode particle Y encodes latitude linearly; in Mercator mode it's Web Mercator.
+      const mapBounds = this.map.getBounds();
+      const mercBounds = particleUpdateBounds(mapBounds, isGlobe);
 
       const worldCopyOffsets = visibleWorldCopyOffsets(mapBounds, isGlobe);
 

@@ -1,4 +1,5 @@
 const MAX_MERCATOR_LAT = 85;
+const MAX_GLOBE_LAT = 89.9;
 
 export interface GeographicBounds {
   west: number;
@@ -69,16 +70,19 @@ export function viewportGeoBounds(bounds: BoundsLike): GeographicBounds {
 export function paddedViewportGeoBounds(
   bounds: BoundsLike,
   paddingFactor = 1,
+  isGlobe = false,
 ): GeographicBounds {
-  const south = clampLatitude(bounds.getSouth());
-  const north = clampLatitude(bounds.getNorth());
+  const maxLat = isGlobe ? MAX_GLOBE_LAT : MAX_MERCATOR_LAT;
+  const clamp = (lat: number) => Math.max(-maxLat, Math.min(maxLat, lat));
+  const south = clamp(bounds.getSouth());
+  const north = clamp(bounds.getNorth());
   const height = Math.max(0, north - south);
   const padding = height * Math.max(0, paddingFactor);
   return {
     west: -180,
     east: 180,
-    south: clampLatitude(south - padding),
-    north: clampLatitude(north + padding),
+    south: clamp(south - padding),
+    north: clamp(north + padding),
   };
 }
 
@@ -95,6 +99,7 @@ export function coversViewportLatitude(
 
 export function particleUpdateBounds(
   bounds: BoundsLike,
+  isGlobe = false,
 ): { minX: number; minY: number; maxX: number; maxY: number } {
   const west = bounds.getWest();
   const east = bounds.getEast();
@@ -108,6 +113,15 @@ export function particleUpdateBounds(
         minX: rawMinX - Math.floor(rawMinX),
         maxX: rawMaxX - Math.floor(rawMaxX),
       };
+
+  if (isGlobe) {
+    // Globe mode: particle Y encodes latitude as (lat+90)/180, covering full ±90°.
+    return {
+      ...xBounds,
+      minY: (Math.max(bounds.getSouth(), -90) + 90) / 180,
+      maxY: (Math.min(bounds.getNorth(),  90) + 90) / 180,
+    };
+  }
 
   return {
     ...xBounds,

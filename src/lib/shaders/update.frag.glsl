@@ -8,8 +8,9 @@ uniform float u_speed_factor;
 uniform float u_rand_seed;
 uniform float u_drop_rate;
 uniform float u_drop_rate_bump;
-uniform vec4 u_bounds; // minX, minY, maxX, maxY in mercator [0,1]
+uniform vec4 u_bounds; // minX, minY, maxX, maxY in mercator [0,1] or lat/lon [0,1] (globe)
 uniform vec4 u_geo_bounds; // west, south, east, north in degrees
+uniform float u_is_globe; // 1.0 = globe mode (lat/lon Y), 0.0 = mercator
 
 varying vec2 v_tex_coord;
 
@@ -49,9 +50,10 @@ void main() {
         encoded.b + encoded.a / 255.0
     );
 
-    // Convert mercator position to geographic for velocity lookup
+    // Convert position to geographic for velocity lookup.
+    // Globe mode: pos.y encodes lat as (lat+90)/180; Mercator mode: standard Web Mercator.
     float lng = mercToLng(pos.x);
-    float lat = mercToLat(pos.y);
+    float lat = u_is_globe > 0.5 ? (pos.y * 180.0 - 90.0) : mercToLat(pos.y);
 
     // Velocity texture UV from actual data geographic bounds
     vec2 geoUV = vec2(
@@ -69,10 +71,11 @@ void main() {
     float cosLat = cos(radians(lat));
     float distortion = max(cosLat, 0.01);
 
-    // Euler integration in mercator space
+    // Euler integration. In Mercator, Y decreases northward so V is negated.
+    // In globe lat/lon mode, Y increases northward so V keeps its sign.
     vec2 offset = vec2(
         velocity.x / distortion,
-        -velocity.y               // flip Y: positive V = northward = decreasing mercator Y
+        u_is_globe > 0.5 ? velocity.y : -velocity.y
     ) * u_speed_factor * 0.0001;
 
     // Random respawn logic

@@ -40,7 +40,7 @@ void main() {
     vec2 currPos = vec2(encoded.r + encoded.g / 255.0, encoded.b + encoded.a / 255.0);
 
     float lng = mercToLng(currPos.x);
-    float lat = mercToLat(currPos.y);
+    float lat = u_is_globe > 0.5 ? (currPos.y * 180.0 - 90.0) : mercToLat(currPos.y);
     vec2 geoUV = vec2(
         fract((lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x)),
         (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
@@ -71,7 +71,7 @@ void main() {
         // Axis convention (from MapLibre's angularCoordinatesRadiansToVector):
         //   x = sin(lng) * cos(lat),  y = sin(lat),  z = cos(lng) * cos(lat)
         float lngRad = radians(mercToLng(pos.x));
-        float latRad = radians(mercToLat(pos.y));
+        float latRad = radians(u_is_globe > 0.5 ? (pos.y * 180.0 - 90.0) : mercToLat(pos.y));
         float cosLat = cos(latRad);
         vec3 ecef = vec3(
             sin(lngRad) * cosLat,
