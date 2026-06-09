@@ -111,7 +111,7 @@ For direction/magnitude vector derivation, use:
 - `stores.wmts` is only valid on scalar layers.
 - Use `stores.field.layout: "time-chunked"` for `timeChunked.zarr`.
 - Use `stores.pointSeries.layout: "geo-chunked"` for `geoChunked.zarr`.
-- `defaults.backend` can be `zarr` or `wmts`; omit it unless a scalar layer should prefer WMTS in `backend: "auto"`.
+- `defaults.backend` can be `zarr` or `wmts`; omit it to let the app auto-detect, or set `"wmts"` explicitly when a scalar layer should prefer WMTS rendering.
 - `defaults.palette` must exist in `src/lib/palettes.json`.
 
 ## 3. Display Defaults
