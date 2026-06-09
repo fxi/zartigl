@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-08T16:48:41.699Z",
+  "generatedAt": "2026-06-09T00:00:00.000Z",
   "layers": [
     {
       "id": "ocean-current-velocity",
@@ -2077,6 +2077,79 @@
           "opacity": 1,
           "logScale": false,
           "vibrance": 0.45
+        }
+      }
+    },
+    {
+      "id": "sea-ice-drift",
+      "label": "Sea Ice Drift",
+      "description": "Daily eastward and northward velocity of sea ice, tracing polar ice floe motion.",
+      "category": "Ice",
+      "kind": "vector",
+      "dataset": {
+        "id": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+        "provider": "copernicus",
+        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+      },
+      "stores": {
+        "field": {
+          "type": "zarr",
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+          "layout": "time-chunked"
+        },
+        "pointSeries": {
+          "type": "zarr",
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
+          "layout": "geo-chunked"
+        }
+      },
+      "variables": {
+        "kind": "vector",
+        "u": "usi",
+        "v": "vsi",
+        "standardName": "sea_ice_velocity",
+        "units": "m s-1"
+      },
+      "dimensions": {
+        "time": {
+          "min": 1654041600000,
+          "max": 1781740800000,
+          "step": 86400000,
+          "size": 1479,
+          "chunkSize": 1,
+          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
+        },
+        "latitude": {
+          "min": -80,
+          "max": 90,
+          "step": 0.08333333333333333,
+          "size": 2041,
+          "chunkSize": 512,
+          "units": "degrees_north"
+        },
+        "longitude": {
+          "min": -180,
+          "max": 179.91668701171875,
+          "step": 0.08333333804392655,
+          "size": 4320,
+          "chunkSize": 2048,
+          "units": "degrees_east"
+        }
+      },
+      "defaults": {
+        "backend": "zarr",
+        "palette": "ice",
+        "particles": {
+          "density": 0.04,
+          "speedFactor": [0.05, 3],
+          "fadeOpacity": [0.93, 0.97],
+          "dropRate": 0.002,
+          "dropRateBump": 0
+        },
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0
         }
       }
     }
