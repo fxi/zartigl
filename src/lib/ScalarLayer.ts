@@ -4,7 +4,7 @@ import type {
   Map as MaplibreMap,
 } from "maplibre-gl";
 import type { ColorRampInput } from "./gl-util";
-import { globeCenterVector, viewportMercatorBounds } from "./geo-util";
+import { visibleWorldCopyOffsets } from "./geo-util";
 import { restoreGLState, saveGLState } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { FieldMeta, ScalarLayerOptions, VelocityData } from "./types";
@@ -108,17 +108,17 @@ export class ScalarLayer implements CustomLayerInterface {
 
       const bounds = this.map.getBounds();
       const isGlobe = this.map.getProjection?.()?.type === "globe";
+      const worldSize = 512 * Math.pow(2, this.map.getZoom());
 
       this.activeField.bind(this.textureUnit);
       if (isGlobe) {
-        const center = this.map.getCenter();
         this.simulation.renderGridGlobe(
           this.textureUnit,
           [this.activeData.uMin, this.activeData.vMin],
           [this.activeData.uMax, this.activeData.vMax],
           options.modelViewProjectionMatrix,
           this.activeField.geoBounds,
-          globeCenterVector(center.lng, center.lat),
+          options.defaultProjectionData.clippingPlane,
           1,
         );
       } else {
@@ -126,7 +126,9 @@ export class ScalarLayer implements CustomLayerInterface {
           this.textureUnit,
           [this.activeData.uMin, this.activeData.vMin],
           [this.activeData.uMax, this.activeData.vMax],
-          viewportMercatorBounds(bounds),
+          options.modelViewProjectionMatrix,
+          worldSize,
+          visibleWorldCopyOffsets(bounds, false),
           this.activeField.geoBounds,
           1,
         );

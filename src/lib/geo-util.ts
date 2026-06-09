@@ -115,3 +115,15 @@ export function particleUpdateBounds(
     maxY: latToMercY(bounds.getSouth()),
   };
 }
+
+export function visibleWorldCopyOffsets(bounds: BoundsLike, isGlobe: boolean): number[] {
+  if (isGlobe) return [0];
+
+  const rawMinX = lngToMercX(bounds.getWest());
+  const rawMaxX = lngToMercX(bounds.getEast());
+  const offsets: number[] = [];
+  for (let n = Math.floor(rawMinX); n <= Math.floor(rawMaxX); n++) {
+    offsets.push(n);
+  }
+  return offsets;
+}

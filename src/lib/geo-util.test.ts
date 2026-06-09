@@ -5,6 +5,7 @@ import {
   normalizeLongitude,
   paddedViewportGeoBounds,
   particleUpdateBounds,
+  visibleWorldCopyOffsets,
   viewportGeoBounds,
   viewportMercatorBounds,
 } from "./geo-util";
@@ -51,6 +52,16 @@ describe("geo utilities", () => {
 
     expect(result.minX).toBeCloseTo(10 / 360);
     expect(result.maxX).toBeCloseTo(40 / 360);
+  });
+
+  it("returns only the primary world for globe rendering", () => {
+    expect(visibleWorldCopyOffsets(bounds(-540, -10, 540, 10), true)).toEqual([0]);
+  });
+
+  it("returns all visible mercator world copies", () => {
+    expect(visibleWorldCopyOffsets(bounds(-20, -20, 20, 20), false)).toEqual([0]);
+    expect(visibleWorldCopyOffsets(bounds(170, -20, 190, 20), false)).toEqual([0, 1]);
+    expect(visibleWorldCopyOffsets(bounds(-540, -10, 540, 10), false)).toEqual([-1, 0, 1, 2]);
   });
 
   it("pads vector fetch latitude by one viewport height by default", () => {

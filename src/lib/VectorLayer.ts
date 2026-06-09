@@ -11,6 +11,7 @@ import {
   globeCenterVector,
   paddedViewportGeoBounds,
   particleUpdateBounds,
+  visibleWorldCopyOffsets,
   viewportGeoBounds,
 } from "./geo-util";
 import { ParticleSimulation } from "./ParticleSimulation";
@@ -347,20 +348,7 @@ export class VectorLayer implements CustomLayerInterface {
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
       const isGlobe = this.map.getProjection?.()?.type === 'globe';
 
-      // Determine which world copies are visible (raw, unclamped bounds).
-      // offset 0 = primary, +1 = right copy, -1 = left copy, etc.
-      // Globe has no world copies — sphere wraps naturally.
-      let worldCopyOffsets: number[];
-      if (isGlobe) {
-        worldCopyOffsets = [0];
-      } else {
-        const rawMinX = (mapBounds.getWest() + 180) / 360;
-        const rawMaxX = (mapBounds.getEast() + 180) / 360;
-        worldCopyOffsets = [];
-        for (let n = Math.floor(rawMinX); n <= Math.floor(rawMaxX); n++) {
-          worldCopyOffsets.push(n);
-        }
-      }
+      const worldCopyOffsets = visibleWorldCopyOffsets(mapBounds, isGlobe);
 
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.STENCIL_TEST);

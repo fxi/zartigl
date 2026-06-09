@@ -14,7 +14,6 @@ uniform float u_vibrance;
 uniform float u_scalar_mode;
 
 varying vec2 v_geo_uv;
-varying float v_front;
 
 vec3 applyVibrance(vec3 c, float v) {
     float mx = max(c.r, max(c.g, c.b));
@@ -26,10 +25,6 @@ vec3 applyVibrance(vec3 c, float v) {
 }
 
 void main() {
-    if (v_front <= 0.0) {
-        discard;
-    }
-
     vec4 sample = texture2D(u_field, v_geo_uv);
     if (sample.a < 0.5) {
         discard;

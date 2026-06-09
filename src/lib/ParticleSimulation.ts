@@ -12,6 +12,7 @@ import updateFrag from "./shaders/update.frag.glsl";
 import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
+import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridFrag from "./shaders/grid.frag.glsl?raw";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
@@ -25,8 +26,8 @@ export type RenderMode = 'raster' | 'particles' | 'raster+particles';
  */
 const MAX_PARTICLE_STATE_RES = 512;
 const MAX_PARTICLES = MAX_PARTICLE_STATE_RES * MAX_PARTICLE_STATE_RES;
-const GLOBE_GRID_LON_SEGMENTS = 128;
-const GLOBE_GRID_LAT_SEGMENTS = 64;
+const RASTER_GRID_LON_SEGMENTS = 128;
+const RASTER_GRID_LAT_SEGMENTS = 64;
 
 export interface SimulationParams {
   /** Particles per screen pixel. Active count = clamp(w * h * density, 1, MAX). */
@@ -82,9 +83,9 @@ export class ParticleSimulation {
 
   // Shared geometry
   private quadBuffer!: WebGLBuffer;
-  private globeGridBuffer!: WebGLBuffer;
-  private globeGridIndexBuffer!: WebGLBuffer;
-  private globeGridIndexCount = 0;
+  private rasterGridBuffer!: WebGLBuffer;
+  private rasterGridIndexBuffer!: WebGLBuffer;
+  private rasterGridIndexCount = 0;
   private colorRampTexture!: WebGLTexture;
 
   // Render mode
@@ -108,7 +109,7 @@ export class ParticleSimulation {
     this.updateProgram = createProgram(gl, quadVert, updateFrag);
     this.drawProgram = createProgram(gl, drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
-    this.gridProgram = createProgram(gl, quadVert, gridFrag);
+    this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
     this.gridGlobeProgram = createProgram(gl, gridGlobeVert, gridGlobeFrag);
 
     // Cache uniform locations
@@ -150,8 +151,10 @@ export class ParticleSimulation {
     this.gridLocs = this.getUniforms(this.gridProgram, [
       "u_field",
       "u_color_ramp",
-      "u_bounds",
+      "u_matrix",
       "u_geo_bounds",
+      "u_world_size",
+      "u_world_offset",
       "u_field_min",
       "u_field_max",
       "u_u_min",
@@ -168,7 +171,7 @@ export class ParticleSimulation {
       "u_color_ramp",
       "u_matrix",
       "u_geo_bounds",
-      "u_globe_center",
+      "u_clipping_plane",
       "u_field_min",
       "u_field_max",
       "u_u_min",
@@ -184,7 +187,7 @@ export class ParticleSimulation {
 
     // Shared resources
     this.quadBuffer = createQuadBuffer(gl);
-    this.initGlobeGrid();
+    this.initRasterGrid();
     this.colorRampTexture = createColorRampTexture(gl, this.params.colorRamp);
 
     // Allocate particle state at MAX size — never reallocated after this
@@ -239,24 +242,24 @@ export class ParticleSimulation {
     gl.bufferData(gl.ARRAY_BUFFER, isCurr, gl.STATIC_DRAW);
   }
 
-  private initGlobeGrid(): void {
+  private initRasterGrid(): void {
     const gl = this.gl;
     const vertices = new Float32Array(
-      (GLOBE_GRID_LON_SEGMENTS + 1) * (GLOBE_GRID_LAT_SEGMENTS + 1) * 2,
+      (RASTER_GRID_LON_SEGMENTS + 1) * (RASTER_GRID_LAT_SEGMENTS + 1) * 2,
     );
     let v = 0;
-    for (let y = 0; y <= GLOBE_GRID_LAT_SEGMENTS; y++) {
-      for (let x = 0; x <= GLOBE_GRID_LON_SEGMENTS; x++) {
-        vertices[v++] = x / GLOBE_GRID_LON_SEGMENTS;
-        vertices[v++] = y / GLOBE_GRID_LAT_SEGMENTS;
+    for (let y = 0; y <= RASTER_GRID_LAT_SEGMENTS; y++) {
+      for (let x = 0; x <= RASTER_GRID_LON_SEGMENTS; x++) {
+        vertices[v++] = x / RASTER_GRID_LON_SEGMENTS;
+        vertices[v++] = y / RASTER_GRID_LAT_SEGMENTS;
       }
     }
 
-    const indices = new Uint16Array(GLOBE_GRID_LON_SEGMENTS * GLOBE_GRID_LAT_SEGMENTS * 6);
+    const indices = new Uint16Array(RASTER_GRID_LON_SEGMENTS * RASTER_GRID_LAT_SEGMENTS * 6);
     let i = 0;
-    const rowStride = GLOBE_GRID_LON_SEGMENTS + 1;
-    for (let y = 0; y < GLOBE_GRID_LAT_SEGMENTS; y++) {
-      for (let x = 0; x < GLOBE_GRID_LON_SEGMENTS; x++) {
+    const rowStride = RASTER_GRID_LON_SEGMENTS + 1;
+    for (let y = 0; y < RASTER_GRID_LAT_SEGMENTS; y++) {
+      for (let x = 0; x < RASTER_GRID_LON_SEGMENTS; x++) {
         const a = y * rowStride + x;
         const b = a + 1;
         const c = a + rowStride;
@@ -270,14 +273,14 @@ export class ParticleSimulation {
       }
     }
 
-    this.globeGridBuffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.globeGridBuffer);
+    this.rasterGridBuffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.rasterGridBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    this.globeGridIndexBuffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.globeGridIndexBuffer);
+    this.rasterGridIndexBuffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.rasterGridIndexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-    this.globeGridIndexCount = indices.length;
+    this.rasterGridIndexCount = indices.length;
   }
 
   /**
@@ -383,58 +386,16 @@ export class ParticleSimulation {
     this.drawQuad();
 
     // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
-    // Skip on globe: the fullscreen-quad screen-UV→Mercator mapping is invalid
-    // for a 3D sphere projection; geo-mesh raster support can be added later.
     if (runGrid && geoBounds && !isGlobe) {
-      gl.useProgram(this.gridProgram);
-      gl.disable(gl.BLEND);
-
-      // velocity field texture is already bound to velocityTexUnit
-      gl.uniform1i(this.gridLocs["u_field"], velocityTexUnit);
-
-      bindTexture(gl, this.colorRampTexture, 2);
-      gl.uniform1i(this.gridLocs["u_color_ramp"], 2);
-
-      // u_bounds: mercator bounds in radians for the grid shader coordinate transform.
-      // The grid shader uses the same u_bounds as the update shader (mercator [0,1] space),
-      // but interprets it as radians — convert from [0,1] to radians here.
-      const PI = Math.PI;
-      const mercWest  = (bounds.minX * 2.0 - 1.0) * PI;
-      const mercEast  = (bounds.maxX * 2.0 - 1.0) * PI;
-      const mercSouth = (1.0 - bounds.maxY * 2.0) * PI;
-      const mercNorth = (1.0 - bounds.minY * 2.0) * PI;
-      gl.uniform4f(this.gridLocs["u_bounds"], mercWest, mercSouth, mercEast, mercNorth);
-
-      gl.uniform4f(
-        this.gridLocs["u_geo_bounds"],
-        geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+      this.renderGrid(
+        velocityTexUnit,
+        velocityMin,
+        velocityMax,
+        matrix,
+        worldSize,
+        worldCopyOffsets,
+        geoBounds,
       );
-
-      // Speed range: 0 to max possible speed from the velocity components
-      const maxSpeed = Math.sqrt(
-        Math.max(Math.abs(velocityMin[0]), Math.abs(velocityMax[0])) ** 2 +
-        Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
-      );
-      gl.uniform1f(this.gridLocs["u_field_min"], 0.0);
-      gl.uniform1f(this.gridLocs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
-
-      gl.uniform1f(this.gridLocs["u_u_min"], velocityMin[0]);
-      gl.uniform1f(this.gridLocs["u_u_max"], velocityMax[0]);
-      gl.uniform1f(this.gridLocs["u_v_min"], velocityMin[1]);
-      gl.uniform1f(this.gridLocs["u_v_max"], velocityMax[1]);
-
-      gl.uniform1f(this.gridLocs["u_opacity"], this.params.opacity);
-      gl.uniform1f(this.gridLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
-      gl.uniform1f(this.gridLocs["u_vibrance"], this.params.vibrance);
-      gl.uniform1f(this.gridLocs["u_scalar_mode"], this.params.scalarMode ? 1.0 : 0.0);
-
-      // Render grid blended on top of the faded trail screen buffer
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      this.drawQuad();
-      gl.disable(gl.BLEND);
-
- 
     }
 
     // --- 4. Draw pass: render particles on top of trails/grid ---
@@ -531,51 +492,38 @@ export class ParticleSimulation {
     velocityTexUnit: number,
     velocityMin: [number, number],
     velocityMax: [number, number],
-    bounds: { minX: number; minY: number; maxX: number; maxY: number },
+    matrix: Iterable<number>,
+    worldSize: number,
+    worldCopyOffsets: number[],
     geoBounds: { west: number; south: number; east: number; north: number },
     opacityScale = 1,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridProgram);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.STENCIL_TEST);
     gl.disable(gl.BLEND);
 
-    gl.uniform1i(this.gridLocs["u_field"], velocityTexUnit);
-
-    bindTexture(gl, this.colorRampTexture, 2);
-    gl.uniform1i(this.gridLocs["u_color_ramp"], 2);
-
-    const PI = Math.PI;
-    const mercWest  = (bounds.minX * 2.0 - 1.0) * PI;
-    const mercEast  = (bounds.maxX * 2.0 - 1.0) * PI;
-    const mercSouth = (1.0 - bounds.maxY * 2.0) * PI;
-    const mercNorth = (1.0 - bounds.minY * 2.0) * PI;
-    gl.uniform4f(this.gridLocs["u_bounds"], mercWest, mercSouth, mercEast, mercNorth);
-
+    this.setGridFieldUniforms(this.gridLocs, velocityTexUnit, velocityMin, velocityMax, opacityScale);
+    gl.uniformMatrix4fv(
+      this.gridLocs["u_matrix"],
+      false,
+      matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
+    );
     gl.uniform4f(
       this.gridLocs["u_geo_bounds"],
       geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
     );
-
-    const maxSpeed = Math.sqrt(
-      Math.max(Math.abs(velocityMin[0]), Math.abs(velocityMax[0])) ** 2 +
-      Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
-    );
-    gl.uniform1f(this.gridLocs["u_field_min"], 0.0);
-    gl.uniform1f(this.gridLocs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
-
-    gl.uniform1f(this.gridLocs["u_u_min"], velocityMin[0]);
-    gl.uniform1f(this.gridLocs["u_u_max"], velocityMax[0]);
-    gl.uniform1f(this.gridLocs["u_v_min"], velocityMin[1]);
-    gl.uniform1f(this.gridLocs["u_v_max"], velocityMax[1]);
-
-    gl.uniform1f(this.gridLocs["u_opacity"], this.params.opacity * opacityScale);
-    gl.uniform1f(this.gridLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
-    gl.uniform1f(this.gridLocs["u_vibrance"], this.params.vibrance);
-    gl.uniform1f(this.gridLocs["u_scalar_mode"], this.params.scalarMode ? 1.0 : 0.0);
+    gl.uniform1f(this.gridLocs["u_world_size"], worldSize);
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    this.drawQuad();
+    this.bindRasterGrid(this.gridProgram);
+    for (const offset of worldCopyOffsets) {
+      gl.uniform1f(this.gridLocs["u_world_offset"], offset);
+      gl.drawElements(gl.TRIANGLES, this.rasterGridIndexCount, gl.UNSIGNED_SHORT, 0);
+    }
+    this.unbindRasterGrid(this.gridProgram);
     gl.disable(gl.BLEND);
   }
 
@@ -585,19 +533,16 @@ export class ParticleSimulation {
     velocityMax: [number, number],
     matrix: Iterable<number>,
     geoBounds: { west: number; south: number; east: number; north: number },
-    globeCenter: [number, number, number],
+    clippingPlane: [number, number, number, number],
     opacityScale = 1,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridGlobeProgram);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.STENCIL_TEST);
+    gl.disable(gl.BLEND);
 
-    gl.uniform1i(this.gridGlobeLocs["u_field"], velocityTexUnit);
-
-    bindTexture(gl, this.colorRampTexture, 2);
-    gl.uniform1i(this.gridGlobeLocs["u_color_ramp"], 2);
-
+    this.setGridFieldUniforms(this.gridGlobeLocs, velocityTexUnit, velocityMin, velocityMax, opacityScale);
     gl.uniformMatrix4fv(
       this.gridGlobeLocs["u_matrix"],
       false,
@@ -610,39 +555,63 @@ export class ParticleSimulation {
       geoBounds.east,
       geoBounds.north,
     );
-    gl.uniform3f(
-      this.gridGlobeLocs["u_globe_center"],
-      globeCenter[0],
-      globeCenter[1],
-      globeCenter[2],
+    gl.uniform4f(
+      this.gridGlobeLocs["u_clipping_plane"],
+      clippingPlane[0],
+      clippingPlane[1],
+      clippingPlane[2],
+      clippingPlane[3],
     );
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.bindRasterGrid(this.gridGlobeProgram);
+    gl.drawElements(gl.TRIANGLES, this.rasterGridIndexCount, gl.UNSIGNED_SHORT, 0);
+    this.unbindRasterGrid(this.gridGlobeProgram);
+    gl.disable(gl.BLEND);
+  }
+
+  private setGridFieldUniforms(
+    locs: Record<string, WebGLUniformLocation | null>,
+    velocityTexUnit: number,
+    velocityMin: [number, number],
+    velocityMax: [number, number],
+    opacityScale: number,
+  ): void {
+    const gl = this.gl;
+    gl.uniform1i(locs["u_field"], velocityTexUnit);
+
+    bindTexture(gl, this.colorRampTexture, 2);
+    gl.uniform1i(locs["u_color_ramp"], 2);
 
     const maxSpeed = Math.sqrt(
       Math.max(Math.abs(velocityMin[0]), Math.abs(velocityMax[0])) ** 2 +
       Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
     );
-    gl.uniform1f(this.gridGlobeLocs["u_field_min"], 0.0);
-    gl.uniform1f(this.gridGlobeLocs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
-    gl.uniform1f(this.gridGlobeLocs["u_u_min"], velocityMin[0]);
-    gl.uniform1f(this.gridGlobeLocs["u_u_max"], velocityMax[0]);
-    gl.uniform1f(this.gridGlobeLocs["u_v_min"], velocityMin[1]);
-    gl.uniform1f(this.gridGlobeLocs["u_v_max"], velocityMax[1]);
-    gl.uniform1f(this.gridGlobeLocs["u_opacity"], this.params.opacity * opacityScale);
-    gl.uniform1f(this.gridGlobeLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
-    gl.uniform1f(this.gridGlobeLocs["u_vibrance"], this.params.vibrance);
-    gl.uniform1f(this.gridGlobeLocs["u_scalar_mode"], this.params.scalarMode ? 1.0 : 0.0);
+    gl.uniform1f(locs["u_field_min"], 0.0);
+    gl.uniform1f(locs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
+    gl.uniform1f(locs["u_u_min"], velocityMin[0]);
+    gl.uniform1f(locs["u_u_max"], velocityMax[0]);
+    gl.uniform1f(locs["u_v_min"], velocityMin[1]);
+    gl.uniform1f(locs["u_v_max"], velocityMax[1]);
+    gl.uniform1f(locs["u_opacity"], this.params.opacity * opacityScale);
+    gl.uniform1f(locs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
+    gl.uniform1f(locs["u_vibrance"], this.params.vibrance);
+    gl.uniform1f(locs["u_scalar_mode"], this.params.scalarMode ? 1.0 : 0.0);
+  }
 
-    const aGridUv = gl.getAttribLocation(this.gridGlobeProgram, "a_grid_uv");
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.globeGridBuffer);
+  private bindRasterGrid(program: WebGLProgram): void {
+    const gl = this.gl;
+    const aGridUv = gl.getAttribLocation(program, "a_grid_uv");
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.rasterGridBuffer);
     gl.enableVertexAttribArray(aGridUv);
     gl.vertexAttribPointer(aGridUv, 2, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.globeGridIndexBuffer);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.rasterGridIndexBuffer);
+  }
 
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.drawElements(gl.TRIANGLES, this.globeGridIndexCount, gl.UNSIGNED_SHORT, 0);
-    gl.disable(gl.BLEND);
-
+  private unbindRasterGrid(program: WebGLProgram): void {
+    const gl = this.gl;
+    const aGridUv = gl.getAttribLocation(program, "a_grid_uv");
     gl.disableVertexAttribArray(aGridUv);
   }
 
@@ -759,8 +728,8 @@ export class ParticleSimulation {
     gl.deleteProgram(this.gridGlobeProgram);
     for (const t of this.particleStateTextures) gl.deleteTexture(t);
     for (const f of this.particleFramebuffers) gl.deleteFramebuffer(f);
-    gl.deleteBuffer(this.globeGridBuffer);
-    gl.deleteBuffer(this.globeGridIndexBuffer);
+    gl.deleteBuffer(this.rasterGridBuffer);
+    gl.deleteBuffer(this.rasterGridIndexBuffer);
     if (this.screenTextures) {
       for (const t of this.screenTextures) gl.deleteTexture(t);
       for (const f of this.screenFramebuffers) gl.deleteFramebuffer(f);
