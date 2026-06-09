@@ -22,10 +22,12 @@
   "scripts": {
     "dev": "vite",
     "dev:minimal": "vite --config vite.config.minimal.ts",
+    "dev:prod": "vite --config vite.config.prod.ts",
     "test": "vitest run",
     "test:unit": "vitest run",
     "build": "vite build",
     "build:minimal": "vite build --config vite.config.minimal.ts",
+    "build:prod": "vite build --config vite.config.prod.ts",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
     "catalog": "npm run catalog:validate",

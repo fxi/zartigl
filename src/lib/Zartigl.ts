@@ -70,6 +70,14 @@ export interface QueryDepthProfileOptions {
 
 type PublicBackend = "auto" | "zarr" | "wmts";
 
+type ZartiglEventMap = {
+  loading: () => void;
+  loaded: (meta: FieldMeta) => void;
+  error: (err: Error) => void;
+  frameBuffered: (ms: number) => void;
+  cacheInvalidated: () => void;
+};
+
 function timeToMs(time: Date | string | number): number {
   return time instanceof Date ? time.getTime() : typeof time === "number" ? time : new Date(time).getTime();
 }
@@ -135,6 +143,7 @@ export class Zartigl {
   private destroyed = false;
   private attachQueued = false;
   private querySources = new Map<string, ZarrSource>();
+  private listeners: Map<keyof ZartiglEventMap, Set<Function>> = new Map();
 
   private readonly onMapLoad = () => this.attachWhenReady();
   private readonly onStyleData = () => this.attachWhenReady();
@@ -199,6 +208,26 @@ export class Zartigl {
     this.assertAlive();
     this.depth = depth;
     this.layer?.setDepth(depth);
+  }
+
+  setTimeAndDepth(time: Date | string | number, depth: number): void {
+    this.assertAlive();
+    this.time = timeToMs(time);
+    this.depth = depth;
+    this.layer?.setTimeAndDepth(this.time, depth);
+  }
+
+  on<K extends keyof ZartiglEventMap>(event: K, handler: ZartiglEventMap[K]): this {
+    this.assertAlive();
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event)!.add(handler);
+    return this;
+  }
+
+  off<K extends keyof ZartiglEventMap>(event: K, handler: ZartiglEventMap[K]): this {
+    this.assertAlive();
+    this.listeners.get(event)?.delete(handler);
+    return this;
   }
 
   getTimeMeta(): TimeMeta {
@@ -346,9 +375,14 @@ export class Zartigl {
       vibrance: this.settings.vibrance,
       colorRamp: this.settings.palette,
     });
+    layer.on("loading", () => this.emit("loading"));
     layer.on("loaded", (meta) => {
       this.lastMeta = meta;
+      this.emit("loaded", meta);
     });
+    layer.on("error", (err) => this.emit("error", err));
+    layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
+    layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
     this.layer = layer;
     this.map.addLayer(layer);
   }
@@ -402,6 +436,18 @@ export class Zartigl {
     if (this.attachQueued) {
       this.attachQueued = false;
       this.attachWhenReady();
+    }
+  }
+
+  private emit<K extends keyof ZartiglEventMap>(
+    event: K,
+    ...args: Parameters<ZartiglEventMap[K]>
+  ): void {
+    const handlers = this.listeners.get(event);
+    if (handlers) {
+      for (const handler of handlers) {
+        (handler as Function)(...args);
+      }
     }
   }
 }

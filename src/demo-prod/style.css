@@ -1,0 +1,290 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  overflow: hidden;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+/* Tweakpane monospace override */
+.tp-dfwv,
+.tp-lblv_l,
+.tp-txtv_i,
+.tp-lstv_s,
+.tp-sglv_i,
+.tp-mllv_i {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace !important;
+}
+
+/* Layer meta text (inside Layer folder) */
+.layer-meta {
+  padding: 4px 8px 6px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #888;
+  white-space: pre-wrap;
+}
+
+/* Render mode buttons (inside Tweakpane folder) */
+.render-mode-btns {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  flex-wrap: wrap;
+}
+
+.render-mode-btn {
+  flex: 1;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #999;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.render-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ccc;
+}
+
+.render-mode-btn.active {
+  background: rgba(100, 180, 100, 0.2);
+  border-color: rgba(100, 180, 100, 0.5);
+  color: #6a6;
+}
+
+.render-mode-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Palette / Layer selects (inside Tweakpane folder) */
+.palette-select,
+.layer-select {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #ccc;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 11px;
+  cursor: pointer;
+  margin: 6px 8px;
+  box-sizing: border-box;
+  width: calc(100% - 16px);
+}
+
+.palette-select:focus,
+.layer-select:focus {
+  outline: none;
+  border-color: rgba(100, 180, 100, 0.5);
+}
+
+.palette-select:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Legend (inside Appearance folder) */
+.pane-legend {
+  padding: 6px 8px 4px;
+}
+
+.legend-gradient-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 2px;
+  margin-bottom: 4px;
+  background: linear-gradient(to right, #3288bd, #fdae61, #d53e4f);
+}
+
+.legend-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+}
+
+.legend-min,
+.legend-max {
+  color: #888;
+}
+
+.legend-unit {
+  color: #6a6;
+}
+
+.legend-img {
+  max-width: calc(100% - 16px);
+  display: block;
+  margin: 4px 8px 0;
+}
+
+/* Copy / share toast notification */
+.copy-toast {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(100, 180, 100, 0.92);
+  color: #0a0a0a;
+  padding: 6px 16px;
+  border-radius: 3px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Query popup (on map click) */
+.maplibregl-popup-content {
+  background: rgba(12, 12, 12, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
+  color: #ddd;
+  padding: 0;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: rgba(12, 12, 12, 0.94) !important;
+  border-bottom-color: rgba(12, 12, 12, 0.94) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #888;
+  font-size: 16px;
+  padding: 4px 7px;
+}
+
+.query-popup {
+  width: 340px;
+  padding: 10px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #aaa;
+}
+
+.query-popup strong {
+  color: #e8e8e8;
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+}
+
+.query-coord,
+.query-meta {
+  color: #888;
+  white-space: pre-wrap;
+}
+
+.query-mode-row {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 7px;
+}
+
+.query-mode-row button {
+  flex: 1;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #999;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.query-mode-row button.active {
+  background: rgba(100, 180, 100, 0.2);
+  border-color: rgba(100, 180, 100, 0.5);
+  color: #8d8;
+}
+
+.query-mode-row button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.query-value {
+  color: #8d8;
+  font-size: 12px;
+}
+
+.query-chart-host {
+  min-height: 170px;
+  margin-top: 8px;
+}
+
+.query-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.query-chart-frame {
+  fill: rgba(255, 255, 255, 0.025);
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1;
+}
+
+.query-chart-line {
+  fill: none;
+  stroke: #8d8;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.query-chart-label,
+.query-chart-unit {
+  fill: #777;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono",
+    "Consolas", monospace;
+  font-size: 9px;
+}
+
+.query-chart-unit {
+  fill: #6a6;
+}
+
+.query-loading {
+  color: #666;
+}
+
+.query-empty {
+  color: #777;
+  padding-top: 52px;
+  text-align: center;
+}
+
+.query-error {
+  color: #d88;
+}

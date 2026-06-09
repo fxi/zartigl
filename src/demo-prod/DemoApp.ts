@@ -1,0 +1,1063 @@
+import type { Map as MaplibreMap, LngLat } from "maplibre-gl";
+import maplibregl from "maplibre-gl";
+import { Pane } from "tweakpane";
+import type { FolderApi, BindingApi } from "@tweakpane/core";
+import {
+  Zartigl,
+  deriveDirectionMagnitudeComponents,
+  getPalettes,
+} from "../lib";
+import type { ZarrPointSeriesResult, ZartiglSettings } from "../lib";
+import { formatTime, formatVertical } from "../catalog";
+import type { CatalogLayer, Catalog } from "../catalog";
+
+// ── Types ─────────────────────────────────────────────────────────────
+
+interface DemoParams {
+  timeIndex: number;
+  timeLabel: string;
+  depth: number;
+  particleDensity: number;
+  speedMin: number;
+  speedMax: number;
+  fadeMin: number;
+  fadeMax: number;
+  dropRate: number;
+  dropRateBump: number;
+  palette: string;
+  opacity: number;
+  logScale: boolean;
+  vibrance: number;
+}
+
+interface HashState {
+  d: number;
+  t: number;
+  v: number;
+  p: string;
+  s?: "zarr" | "wmts";
+  pr?: "mercator" | "globe";
+  c?: [number, number];
+  z?: number;
+  b?: number;
+  pi?: number;
+  pd: number;
+  sm: number;
+  sx: number;
+  fm: number;
+  fx: number;
+  dr: number;
+  db: number;
+  op: number;
+  ls: boolean;
+  vb: number;
+}
+
+type PopupMode = "time" | "depth";
+
+interface ChartDatum {
+  axis: number;
+  value: number;
+  time?: number;
+  depth?: number;
+  u?: number;
+  v?: number;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+function showToast(msg: string): void {
+  const el = document.createElement("div");
+  el.className = "copy-toast";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
+}
+
+function formatValue(v: number, unit: string): string {
+  if (!Number.isFinite(v)) return "nodata";
+  const abs = Math.abs(v);
+  const txt = abs >= 100 ? v.toFixed(1) : abs >= 10 ? v.toFixed(2) : v.toFixed(3);
+  return unit ? `${txt} ${unit}` : txt;
+}
+
+function codeNumber(value: number, digits = 6): string {
+  return String(Number(value.toFixed(digits)));
+}
+
+function getPointVariables(layer: CatalogLayer): string[] {
+  if (layer.kind === "scalar") return [layer.variables.value];
+  if (layer.variables.derivation) {
+    return [
+      layer.variables.derivation.direction_variable,
+      layer.variables.derivation.magnitude_variable,
+    ];
+  }
+  return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
+}
+
+function hasDepthProfile(layer: CatalogLayer): boolean {
+  const vertical = layer.dimensions.vertical;
+  return (vertical?.size ?? vertical?.values?.length ?? 0) > 1;
+}
+
+function pointResultToData(
+  result: ZarrPointSeriesResult,
+  layer: CatalogLayer,
+): ChartDatum[] {
+  const variables = getPointVariables(layer);
+  const isVector = layer.kind === "vector";
+
+  return result.points.map((point) => {
+    let u = point.values[variables[0]];
+    let v = isVector ? point.values[variables[1]] : undefined;
+
+    if (layer.variables.kind === "vector" && layer.variables.derivation) {
+      const components = deriveDirectionMagnitudeComponents(
+        point.values[layer.variables.derivation.direction_variable],
+        point.values[layer.variables.derivation.magnitude_variable],
+        layer.variables.derivation,
+      );
+      u = components.u;
+      v = components.v;
+    }
+
+    const value = isVector
+      ? (Number.isFinite(u) && Number.isFinite(v) ? Math.hypot(u, v!) : NaN)
+      : u;
+
+    return {
+      axis: point.axisValue,
+      value,
+      time: point.time,
+      depth: point.depth,
+      u,
+      v,
+    };
+  });
+}
+
+function nearestDatum(data: ChartDatum[], target: number, mode: PopupMode): ChartDatum | null {
+  let best: ChartDatum | null = null;
+  let bestDist = Infinity;
+  for (const datum of data) {
+    const axis = mode === "time"
+      ? (datum.time ?? datum.axis)
+      : (datum.depth ?? datum.axis);
+    const dist = Math.abs(axis - target);
+    if (dist < bestDist) {
+      best = datum;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function setPopupStatus(body: HTMLElement, message: string, cls = "query-loading"): void {
+  body.replaceChildren();
+  const status = document.createElement("div");
+  status.className = cls;
+  status.textContent = message;
+  body.appendChild(status);
+}
+
+function svgEl<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attrs: Record<string, string | number> = {},
+): SVGElementTagNameMap[K] {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    el.setAttribute(key, String(value));
+  }
+  return el;
+}
+
+function renderPointChart(
+  host: HTMLElement,
+  data: ChartDatum[],
+  mode: PopupMode,
+  unit: string,
+  verticalLabel = "depth",
+): void {
+  host.replaceChildren();
+  const finite = data.filter((datum) => Number.isFinite(datum.value));
+  if (!finite.length) {
+    setPopupStatus(host, "No valid samples at this point.", "query-empty");
+    return;
+  }
+
+  const width = 320;
+  const height = 170;
+  const margin = { top: 12, right: 14, bottom: 30, left: 44 };
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+  const valueMin = Math.min(...finite.map((datum) => datum.value));
+  const valueMax = Math.max(...finite.map((datum) => datum.value));
+  const valueSpan = valueMax - valueMin || 1;
+  const paddedMin = valueMin - valueSpan * 0.08;
+  const paddedMax = valueMax + valueSpan * 0.08;
+
+  const axisValue = (datum: ChartDatum) =>
+    mode === "time" ? (datum.time ?? datum.axis) : (datum.depth ?? datum.axis);
+  const axisMin = Math.min(...finite.map(axisValue));
+  const axisMax = Math.max(...finite.map(axisValue));
+  const axisSpan = axisMax - axisMin || 1;
+
+  const sx = (axis: number) => margin.left + ((axis - axisMin) / axisSpan) * innerW;
+  const sy = (value: number) =>
+    margin.top + innerH - ((value - paddedMin) / (paddedMax - paddedMin || 1)) * innerH;
+  const depthX = (value: number) =>
+    margin.left + ((value - paddedMin) / (paddedMax - paddedMin || 1)) * innerW;
+  const depthY = (axis: number) => margin.top + ((axis - axisMin) / axisSpan) * innerH;
+
+  const sorted = [...data].sort((a, b) => axisValue(a) - axisValue(b));
+  const path = sorted
+    .filter((datum) => Number.isFinite(datum.value))
+    .map((datum, index) => {
+      const x = mode === "time" ? sx(axisValue(datum)) : depthX(datum.value);
+      const y = mode === "time" ? sy(datum.value) : depthY(axisValue(datum));
+      return `${index === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+
+  const svg = svgEl("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    class: "query-chart",
+  });
+  const frame = svgEl("rect", {
+    x: margin.left,
+    y: margin.top,
+    width: innerW,
+    height: innerH,
+    class: "query-chart-frame",
+  });
+  const line = svgEl("path", { d: path, class: "query-chart-line" });
+  svg.append(frame, line);
+
+  const xMinLabel = mode === "time"
+    ? formatTime(axisMin)
+    : paddedMin.toPrecision(3);
+  const xMaxLabel = mode === "time"
+    ? formatTime(axisMax)
+    : paddedMax.toPrecision(3);
+  const yMinLabel = mode === "time"
+    ? paddedMin.toPrecision(3)
+    : formatVertical(axisMin, verticalLabel);
+  const yMaxLabel = mode === "time"
+    ? paddedMax.toPrecision(3)
+    : formatVertical(axisMax, verticalLabel);
+
+  const labels: Array<[number, number, string, string]> = [
+    [margin.left, height - 10, xMinLabel, "start"],
+    [margin.left + innerW, height - 10, xMaxLabel, "end"],
+    [6, margin.top + innerH, yMinLabel, "start"],
+    [6, margin.top + 8, yMaxLabel, "start"],
+  ];
+
+  for (const [x, y, text, anchor] of labels) {
+    const label = svgEl("text", {
+      x,
+      y,
+      class: "query-chart-label",
+      "text-anchor": anchor,
+    });
+    label.textContent = text;
+    svg.appendChild(label);
+  }
+
+  if (unit) {
+    const unitLabel = svgEl("text", {
+      x: margin.left,
+      y: height - 2,
+      class: "query-chart-unit",
+    });
+    unitLabel.textContent = unit;
+    svg.appendChild(unitLabel);
+  }
+
+  host.appendChild(svg);
+}
+
+// ── DemoApp ───────────────────────────────────────────────────────────
+
+export class DemoApp {
+  private z: Zartigl | null = null;
+  private readonly pane: Pane;
+  private params: DemoParams;
+  private currentLayer: CatalogLayer;
+  private currentBackend: "zarr" | "wmts" = "zarr";
+  private currentProjection: "mercator" | "globe" = "mercator";
+  private activePopup: maplibregl.Popup | null = null;
+  private switchSeq = 0;
+  private pointQuerySeq = 0;
+
+  // Folder refs
+  private dataFolder!: FolderApi;
+  private particlesFolder!: FolderApi;
+  private trailFolder!: FolderApi;
+  private dataBindings: { dispose(): void }[] = [];
+
+  // DOM refs
+  private layerSelectEl!: HTMLSelectElement;
+  private paletteSelectEl!: HTMLSelectElement;
+  private layerDescEl!: HTMLDivElement;
+  private sourceContainer!: HTMLDivElement;
+  private sourceButtons: { source: "zarr" | "wmts"; btn: HTMLButtonElement }[] = [];
+  private projButtons: { proj: string; btn: HTMLButtonElement }[] = [];
+  private legendBar!: HTMLDivElement;
+  private legendMin!: HTMLSpanElement;
+  private legendMax!: HTMLSpanElement;
+  private legendUnit!: HTMLSpanElement;
+  private legendImg!: HTMLImageElement;
+  private gradientSection!: HTMLDivElement;
+
+  constructor(private readonly map: MaplibreMap, private readonly cat: Catalog) {
+    const hash = this.loadHashState();
+    const initialIdx = Math.max(0, Math.min(hash?.d ?? 0, cat.layers.length - 1));
+    this.currentLayer = cat.layers[initialIdx];
+    this.params = this.makeDefaultParams();
+
+    this.pane = new Pane({ title: "zartigl", expanded: true });
+    this.buildStaticUI();
+    this.applyHashCamera(hash);
+
+    void this.switchLayer(this.currentLayer, hash);
+    this.map.on("click", (ev) => void this.onMapClick(ev.lngLat));
+  }
+
+  // ── Layer switching ─────────────────────────────────────────────────
+
+  async switchLayer(layer: CatalogLayer, hashState?: HashState | null): Promise<void> {
+    const seq = ++this.switchSeq;
+    this.pointQuerySeq++;
+
+    this.activePopup?.remove();
+    this.activePopup = null;
+
+    if (hashState?.s === "wmts" && layer.kind === "scalar" && layer.stores.wmts) {
+      this.currentBackend = "wmts";
+    } else if (hashState?.s === "zarr") {
+      this.currentBackend = "zarr";
+    } else if (layer.kind !== "scalar" || !layer.stores.wmts) {
+      this.currentBackend = "zarr";
+    }
+
+    // Apply params: layer defaults, then optional hash overrides
+    this.applyLayerDefaults(layer);
+    if (hashState) this.applyHashState(hashState);
+
+    this.currentLayer = layer;
+
+    this.z?.destroy();
+    this.z = new Zartigl({
+      id: "prod-zartigl",
+      map: this.map,
+      catalog: this.cat,
+      backend: this.currentBackend,
+      visible: true,
+    });
+    this.z.on("loaded", () => this.syncLegend());
+
+    await this.z.setLayer(layer.id);
+    if (seq !== this.switchSeq) return;
+
+    const timeMeta = this.z.getTimeMeta();
+    const depthMeta = this.z.getDepthMeta();
+    const tMin = timeMeta.min ?? 0;
+    const tStep = timeMeta.step ?? 86400000;
+    const tSize = timeMeta.size;
+
+    if (hashState) {
+      this.params.timeIndex = Math.max(0, Math.min(
+        Math.round((hashState.t - tMin) / tStep),
+        tSize - 1,
+      ));
+      this.params.timeLabel = formatTime(tMin + this.params.timeIndex * tStep);
+      this.params.depth = depthMeta.values.includes(hashState.v)
+        ? hashState.v
+        : (depthMeta.values[0] ?? 0);
+    } else {
+      this.params.timeIndex = tSize - 1;
+      this.params.timeLabel = formatTime(timeMeta.current ?? tMin + (tSize - 1) * tStep);
+      this.params.depth = depthMeta.values[0] ?? 0;
+    }
+
+    this.z.updateSettings(this.buildSettings());
+    this.z.setTimeAndDepth(tMin + this.params.timeIndex * tStep, this.params.depth);
+
+    this.rebuildDataUI();
+
+    const isVector = layer.kind === "vector";
+    this.particlesFolder.element.style.display = isVector ? "" : "none";
+    this.trailFolder.element.style.display = isVector ? "" : "none";
+    this.updateSourceVisibility();
+    this.updateLayerDesc(layer);
+    this.updateLayerSelect();
+
+    if (this.paletteSelectEl) this.paletteSelectEl.value = this.params.palette;
+    this.pane.refresh();
+
+    setTimeout(() => this.syncLegend(), 400);
+  }
+
+  // ── Data UI (rebuilt per layer) ─────────────────────────────────────
+
+  private rebuildDataUI(): void {
+    for (const b of this.dataBindings) b.dispose();
+    this.dataBindings = [];
+
+    const timeMeta = this.z!.getTimeMeta();
+    const tMin = timeMeta.min ?? 0;
+    const tStep = timeMeta.step ?? 86400000;
+    const tSize = timeMeta.size;
+
+    let labelBinding: BindingApi;
+
+    const sliderBinding = this.dataFolder.addBinding(this.params, "timeIndex", {
+      min: 0,
+      max: Math.max(0, tSize - 1),
+      step: 1,
+      label: "time",
+    }).on("change", (ev) => {
+      const ms = tMin + ev.value * tStep;
+      this.params.timeLabel = formatTime(ms);
+      labelBinding.refresh();
+      this.z?.setTime(ms);
+    });
+
+    labelBinding = this.dataFolder.addBinding(this.params, "timeLabel", {
+      readonly: true,
+      label: "",
+    }) as BindingApi;
+
+    const depthMeta = this.z!.getDepthMeta();
+    let depthBinding: BindingApi | null = null;
+    if (depthMeta.values.length > 0) {
+      depthBinding = this.dataFolder.addBinding(this.params, "depth", {
+        options: depthMeta.values.map((v) => ({
+          text: formatVertical(v, depthMeta.label),
+          value: v,
+        })),
+        label: depthMeta.label,
+      }).on("change", (ev) => this.z?.setDepth(ev.value)) as BindingApi;
+    }
+
+    this.dataBindings.push(
+      sliderBinding,
+      labelBinding,
+    );
+    if (depthBinding) this.dataBindings.push(depthBinding);
+  }
+
+  // ── Static UI (built once) ──────────────────────────────────────────
+
+  private buildStaticUI(): void {
+    this.buildLayerFolder();
+    this.dataFolder = this.pane.addFolder({ title: "Data" });
+    this.buildSourceFolder();
+    this.buildParticlesFolder();
+    this.buildTrailFolder();
+    this.buildAppearanceFolder();
+    this.buildExportFolder();
+  }
+
+  private buildLayerFolder(): void {
+    const folder = this.pane.addFolder({ title: "Layer" });
+
+    const select = document.createElement("select");
+    select.className = "layer-select";
+
+    const seen = new Set<string>();
+    const cats: string[] = [];
+    for (const l of this.cat.layers) {
+      const cat = l.category ?? "Other";
+      if (!seen.has(cat)) { seen.add(cat); cats.push(cat); }
+    }
+
+    if (cats.length > 1) {
+      for (const cat of cats) {
+        const grp = document.createElement("optgroup");
+        grp.label = cat;
+        this.cat.layers.forEach((l, i) => {
+          if ((l.category ?? "Other") !== cat) return;
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = l.label;
+          grp.appendChild(opt);
+        });
+        select.appendChild(grp);
+      }
+    } else {
+      this.cat.layers.forEach((l, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = l.label;
+        select.appendChild(opt);
+      });
+    }
+
+    select.value = String(this.cat.layers.indexOf(this.currentLayer));
+    select.addEventListener("change", () => {
+      const idx = Number(select.value);
+      const layer = this.cat.layers[idx];
+      if (layer) void this.switchLayer(layer);
+    });
+
+    folder.element.appendChild(select);
+    this.layerSelectEl = select;
+
+    const descDiv = document.createElement("div");
+    descDiv.className = "layer-meta";
+    folder.element.appendChild(descDiv);
+    this.layerDescEl = descDiv;
+  }
+
+  private buildSourceFolder(): void {
+    const folder = this.pane.addFolder({ title: "Source" });
+
+    this.sourceContainer = document.createElement("div");
+    this.sourceContainer.className = "render-mode-btns";
+
+    for (const src of ["zarr", "wmts"] as const) {
+      const btn = document.createElement("button");
+      btn.textContent = src;
+      btn.className = "render-mode-btn" + (src === this.currentBackend ? " active" : "");
+      btn.addEventListener("click", () => {
+        if (src === "wmts" && !this.currentLayer.stores.wmts) return;
+        this.currentBackend = src;
+        this.updateSourceButtons();
+        void this.switchLayer(this.currentLayer);
+      });
+      this.sourceButtons.push({ source: src, btn });
+      this.sourceContainer.appendChild(btn);
+    }
+
+    folder.element.appendChild(this.sourceContainer);
+
+    const projContainer = document.createElement("div");
+    projContainer.className = "render-mode-btns";
+
+    for (const proj of ["mercator", "globe"] as const) {
+      const btn = document.createElement("button");
+      btn.textContent = proj;
+      btn.className = "render-mode-btn" + (proj === this.currentProjection ? " active" : "");
+      btn.addEventListener("click", () => {
+        this.currentProjection = proj;
+        this.map.setProjection({ type: proj });
+        for (const e of this.projButtons) {
+          e.btn.classList.toggle("active", e.proj === proj);
+        }
+      });
+      this.projButtons.push({ proj, btn });
+      projContainer.appendChild(btn);
+    }
+
+    folder.element.appendChild(projContainer);
+  }
+
+  private buildParticlesFolder(): void {
+    this.particlesFolder = this.pane.addFolder({ title: "Particles" });
+
+    this.particlesFolder.addBinding(this.params, "particleDensity", {
+      min: 0.001, max: 0.15, step: 0.001, label: "density",
+    }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
+
+    this.particlesFolder.addBinding(this.params, "speedMin", {
+      min: 0.01, max: 2, step: 0.01, label: "speed (local)",
+    }).on("change", () =>
+      this.z?.updateSettings({ speedFactor: [this.params.speedMin, this.params.speedMax] })
+    );
+
+    this.particlesFolder.addBinding(this.params, "speedMax", {
+      min: 0.01, max: 2, step: 0.01, label: "speed (global)",
+    }).on("change", () =>
+      this.z?.updateSettings({ speedFactor: [this.params.speedMin, this.params.speedMax] })
+    );
+
+    this.particlesFolder.addBinding(this.params, "dropRate", {
+      min: 0, max: 0.1, step: 0.001, label: "drop rate",
+    }).on("change", (ev) => this.z?.updateSettings({ dropRate: ev.value }));
+
+    this.particlesFolder.addBinding(this.params, "dropRateBump", {
+      min: 0, max: 0.1, step: 0.001, label: "drop bump",
+    }).on("change", (ev) => this.z?.updateSettings({ dropRateBump: ev.value }));
+  }
+
+  private buildTrailFolder(): void {
+    this.trailFolder = this.pane.addFolder({ title: "Trail" });
+
+    this.trailFolder.addBinding(this.params, "fadeMin", {
+      min: 0.9, max: 1, step: 0.0001, label: "fade (local)",
+    }).on("change", () =>
+      this.z?.updateSettings({ fadeOpacity: [this.params.fadeMin, this.params.fadeMax] })
+    );
+
+    this.trailFolder.addBinding(this.params, "fadeMax", {
+      min: 0.9, max: 1, step: 0.0001, label: "fade (global)",
+    }).on("change", () =>
+      this.z?.updateSettings({ fadeOpacity: [this.params.fadeMin, this.params.fadeMax] })
+    );
+  }
+
+  private buildAppearanceFolder(): void {
+    const folder = this.pane.addFolder({ title: "Appearance" });
+
+    const paletteSelect = document.createElement("select");
+    paletteSelect.className = "palette-select";
+    for (const p of getPalettes()) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.label;
+      paletteSelect.appendChild(opt);
+    }
+    paletteSelect.value = this.params.palette;
+    paletteSelect.addEventListener("change", () => {
+      this.params.palette = paletteSelect.value;
+      this.z?.updateSettings({ palette: paletteSelect.value });
+      this.syncLegend();
+      setTimeout(() => this.syncLegend(), 400);
+    });
+    folder.element.appendChild(paletteSelect);
+    this.paletteSelectEl = paletteSelect;
+
+    // Legend DOM (gradient + image, toggled by syncLegend)
+    const legendWrapper = document.createElement("div");
+    legendWrapper.className = "pane-legend";
+
+    this.gradientSection = document.createElement("div");
+    this.legendBar = document.createElement("div");
+    this.legendBar.className = "legend-gradient-bar";
+    const metaRow = document.createElement("div");
+    metaRow.className = "legend-meta-row";
+    this.legendMin = document.createElement("span");
+    this.legendMin.className = "legend-min";
+    this.legendUnit = document.createElement("span");
+    this.legendUnit.className = "legend-unit";
+    this.legendMax = document.createElement("span");
+    this.legendMax.className = "legend-max";
+    metaRow.append(this.legendMin, this.legendUnit, this.legendMax);
+    this.gradientSection.append(this.legendBar, metaRow);
+
+    this.legendImg = document.createElement("img");
+    this.legendImg.className = "legend-img";
+    this.legendImg.style.display = "none";
+
+    legendWrapper.append(this.gradientSection, this.legendImg);
+    folder.element.appendChild(legendWrapper);
+
+    folder.addBinding(this.params, "opacity", {
+      min: 0, max: 1, step: 0.01, label: "opacity",
+    }).on("change", (ev) => this.z?.updateSettings({ opacity: ev.value }));
+
+    folder.addBinding(this.params, "logScale", { label: "log scale" })
+      .on("change", (ev) => this.z?.updateSettings({ logScale: ev.value }));
+
+    folder.addBinding(this.params, "vibrance", {
+      min: -1, max: 1, step: 0.01, label: "vibrance",
+    }).on("change", (ev) => this.z?.updateSettings({ vibrance: ev.value }));
+  }
+
+  private buildExportFolder(): void {
+    const folder = this.pane.addFolder({ title: "Export", expanded: false });
+    folder.addButton({ title: "Copy snippet" }).on("click", () => this.copySnippet());
+    folder.addButton({ title: "Share URL" }).on("click", () => this.shareURL());
+  }
+
+  // ── Legend sync ─────────────────────────────────────────────────────
+
+  private syncLegend(): void {
+    if (!this.z) return;
+    const legend = this.z.getLegend();
+    const palettes = this.z.getPalettes();
+
+    if (legend.type === "image") {
+      this.gradientSection.style.display = "none";
+      this.legendImg.src = legend.url;
+      this.legendImg.style.display = "";
+      if (this.paletteSelectEl) this.paletteSelectEl.disabled = true;
+    } else if (legend.type === "gradient") {
+      this.legendImg.style.display = "none";
+      this.gradientSection.style.display = "";
+      if (this.paletteSelectEl) this.paletteSelectEl.disabled = false;
+      const palette = palettes.find((p) => p.id === legend.palette);
+      if (palette) {
+        this.legendBar.style.background =
+          `linear-gradient(to right, ${palette.colors.join(", ")})`;
+      }
+      this.legendMin.textContent = legend.min?.toFixed(2) ?? "";
+      this.legendMax.textContent = legend.max?.toFixed(2) ?? "";
+      this.legendUnit.textContent = legend.unit ?? "";
+    } else {
+      this.gradientSection.style.display = "none";
+      this.legendImg.style.display = "none";
+      if (this.paletteSelectEl) this.paletteSelectEl.disabled = false;
+    }
+  }
+
+  // ── Map click query ─────────────────────────────────────────────────
+
+  private async onMapClick(lngLat: LngLat): Promise<void> {
+    if (!this.z || !this.currentLayer.stores.pointSeries) return;
+    const z = this.z;
+    this.activePopup?.remove();
+
+    const layer = this.currentLayer;
+    const depthAvailable = hasDepthProfile(layer);
+    const root = document.createElement("div");
+    root.className = "query-popup";
+
+    const header = document.createElement("div");
+    header.className = "query-header";
+    const title = document.createElement("strong");
+    title.textContent = layer.label;
+    const coord = document.createElement("div");
+    coord.className = "query-coord";
+    coord.textContent = `${lngLat.lng.toFixed(3)}, ${lngLat.lat.toFixed(3)}`;
+    header.append(title, coord);
+
+    const modeRow = document.createElement("div");
+    modeRow.className = "query-mode-row";
+    const timeBtn = document.createElement("button");
+    timeBtn.type = "button";
+    timeBtn.textContent = "time";
+    const depthBtn = document.createElement("button");
+    depthBtn.type = "button";
+    depthBtn.textContent = "depth";
+    depthBtn.disabled = !depthAvailable;
+    modeRow.append(timeBtn, depthBtn);
+
+    const meta = document.createElement("div");
+    meta.className = "query-meta";
+    const chart = document.createElement("div");
+    chart.className = "query-chart-host";
+    root.append(header, modeRow, meta, chart);
+
+    const popup = new maplibregl.Popup({ closeOnClick: true, maxWidth: "360px" })
+      .setLngLat(lngLat)
+      .setDOMContent(root)
+      .addTo(this.map);
+    this.activePopup = popup;
+
+    const run = async (mode: PopupMode): Promise<void> => {
+      const seq = ++this.pointQuerySeq;
+      timeBtn.classList.toggle("active", mode === "time");
+      depthBtn.classList.toggle("active", mode === "depth");
+      meta.textContent = "";
+      setPopupStatus(chart, "Loading samples...");
+
+      try {
+        const timeMeta = z.getTimeMeta();
+        const currentMs = (timeMeta.min ?? 0) + this.params.timeIndex * (timeMeta.step ?? 86400000);
+        const result = mode === "time"
+          ? await z.queryTimeSeries({
+              longitude: lngLat.lng,
+              latitude: lngLat.lat,
+              depth: this.params.depth,
+              maxPoints: 96,
+            })
+          : await z.queryDepthProfile({
+              longitude: lngLat.lng,
+              latitude: lngLat.lat,
+              time: currentMs,
+              maxDepths: 48,
+            });
+
+        if (seq !== this.pointQuerySeq || !popup.isOpen()) return;
+
+        const data = pointResultToData(result, layer);
+        const unit = layer.variables.units ?? "";
+        const nearest = nearestDatum(
+          data,
+          mode === "time" ? currentMs : this.params.depth,
+          mode,
+        );
+        if (!nearest) {
+          setPopupStatus(chart, "No data at this point.", "query-empty");
+          return;
+        }
+
+        const vectorText = layer.kind === "vector"
+          ? ` | u ${formatValue(nearest.u ?? NaN, unit)} / v ${formatValue(nearest.v ?? NaN, unit)}`
+          : "";
+        const depthText = result.depth != null
+          ? ` | ${formatVertical(result.depth, layer.dimensions.vertical?.label ?? "depth")}`
+          : "";
+        const timeText = mode === "depth" && result.time != null
+          ? ` | ${formatTime(result.time)}`
+          : "";
+        meta.textContent =
+          `grid ${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
+          `value ${formatValue(nearest.value, unit)}${vectorText}`;
+        renderPointChart(
+          chart,
+          data,
+          mode,
+          unit,
+          layer.dimensions.vertical?.label ?? "depth",
+        );
+      } catch (err) {
+        if (seq !== this.pointQuerySeq || !popup.isOpen()) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        setPopupStatus(chart, msg, "query-error");
+      }
+    };
+
+    timeBtn.addEventListener("click", () => void run("time"));
+    depthBtn.addEventListener("click", () => {
+      if (depthAvailable) void run("depth");
+    });
+
+    await run(depthAvailable ? "depth" : "time");
+  }
+
+  // ── Export ──────────────────────────────────────────────────────────
+
+  private copySnippet(): void {
+    if (!this.z) return;
+    const layer = this.currentLayer;
+    const d = layer.defaults ?? {};
+    const timeMeta = this.z.getTimeMeta();
+    const depthMeta = this.z.getDepthMeta();
+    const tMin = timeMeta.min ?? 0;
+    const tStep = timeMeta.step ?? 86400000;
+    const timeMs = tMin + this.params.timeIndex * tStep;
+    const center = this.map.getCenter();
+    const centerCode = `[${codeNumber(center.lng)}, ${codeNumber(center.lat)}]`;
+    const projectionCode = this.currentProjection;
+    const backendCode = this.currentBackend;
+
+    const defPalette = d.palette ?? "rdylbu";
+    const defOpacity = d.raster?.opacity ?? 1;
+    const defLogScale = d.raster?.logScale ?? false;
+    const defVibrance = d.raster?.vibrance ?? 0;
+    const defDensity = d.particles?.density ?? 0.05;
+    const defSpeedRaw = d.particles?.speedFactor;
+    const defSpeedMin = Array.isArray(defSpeedRaw) ? defSpeedRaw[0] : (defSpeedRaw ?? 0.07);
+    const defSpeedMax = Array.isArray(defSpeedRaw) ? defSpeedRaw[1] : (defSpeedRaw ?? 0.27);
+    const defFadeRaw = d.particles?.fadeOpacity;
+    const defFadeMin = Array.isArray(defFadeRaw) ? defFadeRaw[0] : (defFadeRaw ?? 0.9);
+    const defFadeMax = Array.isArray(defFadeRaw) ? defFadeRaw[1] : (defFadeRaw ?? 0.9315);
+    const defDropRate = d.particles?.dropRate ?? 0.003;
+    const defDropRateBump = d.particles?.dropRateBump ?? 0.01;
+
+    const lines: string[] = [];
+    if (this.params.palette !== defPalette) lines.push(`  palette: "${this.params.palette}",`);
+    if (Math.abs(this.params.opacity - defOpacity) > 1e-6) lines.push(`  opacity: ${this.params.opacity},`);
+    if (this.params.logScale !== defLogScale) lines.push(`  logScale: ${this.params.logScale},`);
+    if (Math.abs(this.params.vibrance - defVibrance) > 1e-6) lines.push(`  vibrance: ${this.params.vibrance},`);
+
+    if (layer.kind === "vector") {
+      if (Math.abs(this.params.particleDensity - defDensity) > 1e-6)
+        lines.push(`  particleDensity: ${this.params.particleDensity},`);
+      if (Math.abs(this.params.speedMin - defSpeedMin) > 1e-6 || Math.abs(this.params.speedMax - defSpeedMax) > 1e-6)
+        lines.push(`  speedFactor: [${this.params.speedMin}, ${this.params.speedMax}],`);
+      if (Math.abs(this.params.fadeMin - defFadeMin) > 1e-6 || Math.abs(this.params.fadeMax - defFadeMax) > 1e-6)
+        lines.push(`  fadeOpacity: [${this.params.fadeMin}, ${this.params.fadeMax}],`);
+      if (Math.abs(this.params.dropRate - defDropRate) > 1e-6)
+        lines.push(`  dropRate: ${this.params.dropRate},`);
+      if (Math.abs(this.params.dropRateBump - defDropRateBump) > 1e-6)
+        lines.push(`  dropRateBump: ${this.params.dropRateBump},`);
+    }
+
+    const settingsBlock = lines.length > 0
+      ? `\nz.updateSettings({\n${lines.join("\n")}\n});`
+      : "";
+
+    const timeCode = `new Date("${new Date(timeMs).toISOString()}")`;
+    const timeDepthLine = depthMeta.values.length > 0
+      ? `z.setTimeAndDepth(${timeCode}, ${codeNumber(this.params.depth)});`
+      : `z.setTime(${timeCode});`;
+
+    const snippet =
+      `import maplibregl from "maplibre-gl";\n` +
+      `import { Zartigl } from "zartigl";\n` +
+      `import { catalog } from "zartigl/catalog";\n` +
+      `\n` +
+      `const map = new maplibregl.Map({\n` +
+      `  container: "map",\n` +
+      `  style: "https://demotiles.maplibre.org/style.json",\n` +
+      `  center: ${centerCode},\n` +
+      `  zoom: ${codeNumber(this.map.getZoom(), 3)},\n` +
+      `  bearing: ${codeNumber(this.map.getBearing(), 3)},\n` +
+      `  pitch: ${codeNumber(this.map.getPitch(), 3)},\n` +
+      `});\n` +
+      `map.setProjection({ type: "${projectionCode}" });\n` +
+      `\n` +
+      `const z = new Zartigl({ map, catalog, backend: "${backendCode}" });\n` +
+      `await z.setLayer("${layer.id}");${settingsBlock}\n` +
+      `${timeDepthLine}`;
+
+    navigator.clipboard.writeText(snippet).then(() => showToast("Snippet copied!"));
+  }
+
+  private shareURL(): void {
+    if (!this.z) return;
+    const layerIdx = this.cat.layers.indexOf(this.currentLayer);
+    const timeMeta = this.z.getTimeMeta();
+    const timeMs = (timeMeta.min ?? 0) + this.params.timeIndex * (timeMeta.step ?? 86400000);
+    const center = this.map.getCenter();
+    const state: HashState = {
+      d: layerIdx,
+      t: timeMs,
+      v: this.params.depth,
+      p: this.params.palette,
+      s: this.currentBackend,
+      pr: this.currentProjection,
+      c: [
+        Number(center.lng.toFixed(6)),
+        Number(center.lat.toFixed(6)),
+      ],
+      z: Number(this.map.getZoom().toFixed(3)),
+      b: Number(this.map.getBearing().toFixed(3)),
+      pi: Number(this.map.getPitch().toFixed(3)),
+      pd: this.params.particleDensity,
+      sm: this.params.speedMin,
+      sx: this.params.speedMax,
+      fm: this.params.fadeMin,
+      fx: this.params.fadeMax,
+      dr: this.params.dropRate,
+      db: this.params.dropRateBump,
+      op: this.params.opacity,
+      ls: this.params.logScale,
+      vb: this.params.vibrance,
+    };
+    const hash = btoa(JSON.stringify(state));
+    const url = `${location.origin}${location.pathname}#${hash}`;
+    navigator.clipboard.writeText(url).then(() => showToast("URL copied!"));
+  }
+
+  // ── UI helpers ──────────────────────────────────────────────────────
+
+  private updateLayerSelect(): void {
+    if (!this.layerSelectEl) return;
+    const idx = this.cat.layers.indexOf(this.currentLayer);
+    this.layerSelectEl.value = String(idx);
+  }
+
+  private updateLayerDesc(layer: CatalogLayer): void {
+    if (!this.layerDescEl) return;
+    const metaStr = layer.variables.standardName
+      ? `${layer.variables.standardName.replace(/_/g, " ")} — ${layer.variables.units ?? ""}`
+      : "";
+    this.layerDescEl.textContent = [layer.description, metaStr].filter(Boolean).join("\n");
+  }
+
+  private updateSourceVisibility(): void {
+    const canWmts = this.currentLayer.kind === "scalar" && !!this.currentLayer.stores.wmts;
+    if (this.sourceContainer) this.sourceContainer.style.display = canWmts ? "" : "none";
+    this.updateSourceButtons();
+  }
+
+  private updateSourceButtons(): void {
+    const canWmts = this.currentLayer.kind === "scalar" && !!this.currentLayer.stores.wmts;
+    for (const { source, btn } of this.sourceButtons) {
+      btn.classList.toggle("active", source === this.currentBackend);
+      btn.disabled = source === "wmts" && !canWmts;
+    }
+  }
+
+  private applyHashCamera(hash: HashState | null): void {
+    if (!hash) return;
+
+    if (hash.pr === "mercator" || hash.pr === "globe") {
+      this.currentProjection = hash.pr;
+      this.map.setProjection({ type: hash.pr });
+      for (const e of this.projButtons) {
+        e.btn.classList.toggle("active", e.proj === hash.pr);
+      }
+    }
+
+    const next: {
+      center?: [number, number];
+      zoom?: number;
+      bearing?: number;
+      pitch?: number;
+    } = {};
+    if (Array.isArray(hash.c) && hash.c.length === 2) {
+      next.center = hash.c;
+    }
+    if (Number.isFinite(hash.z)) next.zoom = hash.z;
+    if (Number.isFinite(hash.b)) next.bearing = hash.b;
+    if (Number.isFinite(hash.pi)) next.pitch = hash.pi;
+
+    if (Object.keys(next).length > 0) {
+      this.map.jumpTo(next);
+    }
+  }
+
+  // ── Params helpers ──────────────────────────────────────────────────
+
+  private makeDefaultParams(): DemoParams {
+    return {
+      timeIndex: 0,
+      timeLabel: "",
+      depth: 0,
+      particleDensity: 0.05,
+      speedMin: 0.07,
+      speedMax: 0.27,
+      fadeMin: 0.9,
+      fadeMax: 0.9315,
+      dropRate: 0.003,
+      dropRateBump: 0.01,
+      palette: "rdylbu",
+      opacity: 1,
+      logScale: false,
+      vibrance: 0,
+    };
+  }
+
+  private applyLayerDefaults(layer: CatalogLayer): void {
+    const d = layer.defaults ?? {};
+    const speed = d.particles?.speedFactor;
+    const fade = d.particles?.fadeOpacity;
+    this.params.particleDensity = d.particles?.density ?? 0.05;
+    this.params.speedMin = Array.isArray(speed) ? speed[0] : (speed ?? 0.07);
+    this.params.speedMax = Array.isArray(speed) ? speed[1] : (speed ?? 0.27);
+    this.params.fadeMin = Array.isArray(fade) ? fade[0] : (fade ?? 0.9);
+    this.params.fadeMax = Array.isArray(fade) ? fade[1] : (fade ?? 0.9315);
+    this.params.dropRate = d.particles?.dropRate ?? 0.003;
+    this.params.dropRateBump = d.particles?.dropRateBump ?? 0.01;
+    this.params.opacity = d.raster?.opacity ?? 1;
+    this.params.logScale = d.raster?.logScale ?? false;
+    this.params.vibrance = d.raster?.vibrance ?? 0;
+    this.params.palette = d.palette ?? "rdylbu";
+  }
+
+  private applyHashState(hash: HashState): void {
+    this.params.particleDensity = hash.pd;
+    this.params.speedMin = hash.sm;
+    this.params.speedMax = hash.sx;
+    this.params.fadeMin = hash.fm;
+    this.params.fadeMax = hash.fx;
+    this.params.dropRate = hash.dr;
+    this.params.dropRateBump = hash.db;
+    this.params.opacity = hash.op;
+    this.params.logScale = hash.ls;
+    this.params.vibrance = hash.vb;
+    this.params.palette = hash.p;
+  }
+
+  private buildSettings(): Partial<ZartiglSettings> {
+    return {
+      palette: this.params.palette,
+      particleDensity: this.params.particleDensity,
+      speedFactor: [this.params.speedMin, this.params.speedMax],
+      fadeOpacity: [this.params.fadeMin, this.params.fadeMax],
+      dropRate: this.params.dropRate,
+      dropRateBump: this.params.dropRateBump,
+      opacity: this.params.opacity,
+      logScale: this.params.logScale,
+      vibrance: this.params.vibrance,
+    };
+  }
+
+  private loadHashState(): HashState | null {
+    const hash = location.hash.slice(1);
+    if (!hash) return null;
+    try {
+      return JSON.parse(atob(hash)) as HashState;
+    } catch {
+      return null;
+    }
+  }
+}

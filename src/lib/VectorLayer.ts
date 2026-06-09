@@ -124,9 +124,7 @@ export class VectorLayer implements CustomLayerInterface {
 
   private async initAsync(): Promise<void> {
     try {
-      await this.zarrSource.init();
       await this.loadViewportVelocity();
-      this.initialized = true;
       this.reloadIfViewportUncovered();
       this.map?.triggerRepaint();
     } catch (err) {
@@ -285,6 +283,10 @@ export class VectorLayer implements CustomLayerInterface {
     const generation = this.generation;
 
     try {
+      await this.zarrSource.init();
+      if (generation !== this.generation) return;
+      this.initialized = true;
+
       const ms = this.timeToMs(this.time);
       let velocityData: VelocityData;
 

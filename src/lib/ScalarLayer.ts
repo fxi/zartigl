@@ -87,9 +87,7 @@ export class ScalarLayer implements CustomLayerInterface {
 
   private async initAsync(): Promise<void> {
     try {
-      await this.zarrSource.init();
       await this.loadCurrent();
-      this.initialized = true;
       this.map?.triggerRepaint();
     } catch (err) {
       this.emit("error", err instanceof Error ? err : new Error(String(err)));
@@ -267,6 +265,10 @@ export class ScalarLayer implements CustomLayerInterface {
     this.emit("loading");
     const generation = this.generation;
     try {
+      await this.zarrSource.init();
+      if (generation !== this.generation) return;
+      this.initialized = true;
+
       const ms = this.timeToMs(this.time);
       const data = this.frameCache.get(ms) ?? await this.fetchScalarData(this.time);
       if (generation !== this.generation) return;

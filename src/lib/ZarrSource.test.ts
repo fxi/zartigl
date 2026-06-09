@@ -118,6 +118,16 @@ describe("ZarrSource point sampling", () => {
     });
   });
 
+  it("shares one in-flight metadata load across concurrent init callers", async () => {
+    const fetchMock = installFetch(baseRoutes());
+
+    const source = new ZarrSource(root);
+    await Promise.all([source.init(), source.init(), source.init()]);
+
+    expect(fetchMock.mock.calls.filter(([url]) => url === `${root}/.zmetadata`)).toHaveLength(1);
+    expect(source.getCoords().time).toHaveLength(4);
+  });
+
   it("preserves epoch-millisecond f8 time coordinate precision", async () => {
     const start = Date.UTC(2026, 5, 1, 0);
     const metadata = {

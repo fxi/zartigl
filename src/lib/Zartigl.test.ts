@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ArcoLayer } from "./ArcoLayer";
 import { Zartigl } from "./Zartigl";
 import { ZarrSource } from "./ZarrSource";
 import type { Catalog, CatalogLayer } from "../catalog/types";
@@ -178,6 +179,19 @@ describe("Zartigl facade", () => {
 
     expect(z.getDepthMeta().values).toEqual([-0.5, -10, -100]);
     expect(z.getDepthMeta().current).toBe(-0.5);
+  });
+
+  it("forwards atomic time/depth changes to the active layer", async () => {
+    const spy = vi.spyOn(ArcoLayer.prototype, "setTimeAndDepth");
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+
+    await z.setLayer("scalar");
+    z.setTimeAndDepth(4_000, 20);
+
+    expect(z.getTimeMeta().current).toBe(4_000);
+    expect(z.getDepthMeta().current).toBe(20);
+    expect(spy).toHaveBeenCalledWith(4_000, 20);
   });
 
   it("limits time-series and depth-profile queries", async () => {

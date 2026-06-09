@@ -38,6 +38,7 @@ export class ZarrSource {
   private root: string;
   private meta: ZarrConsolidatedMeta | null = null;
   private coords: CoordArrays | null = null;
+  private initPromise: Promise<void> | null = null;
   private verticalName: string = "depth";
   private timeUnits: string = "";
   private cache = new Map<string, Float32Array>();
@@ -51,13 +52,27 @@ export class ZarrSource {
   }
 
   async init(): Promise<void> {
-    if (this.meta) return;
-    const resp = await fetch(`${this.root}/.zmetadata`);
-    if (!resp.ok) {
-      throw new Error(`Failed to fetch .zmetadata: ${resp.status}`);
+    if (this.coords) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      const resp = await fetch(`${this.root}/.zmetadata`);
+      if (!resp.ok) {
+        throw new Error(`Failed to fetch .zmetadata: ${resp.status}`);
+      }
+      this.meta = (await resp.json()) as ZarrConsolidatedMeta;
+      await this.loadCoordinates();
+    })();
+
+    try {
+      await this.initPromise;
+    } catch (err) {
+      this.meta = null;
+      this.coords = null;
+      throw err;
+    } finally {
+      this.initPromise = null;
     }
-    this.meta = (await resp.json()) as ZarrConsolidatedMeta;
-    await this.loadCoordinates();
   }
 
   private getArrayMeta(variable: string): ZarrArrayMeta {
