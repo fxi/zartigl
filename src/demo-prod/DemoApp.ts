@@ -3,6 +3,8 @@ import maplibregl from "maplibre-gl";
 import { Pane } from "tweakpane";
 import type { FolderApi, BindingApi } from "@tweakpane/core";
 import {
+  buildMapxWidgetSnippet,
+  buildStandaloneDemoSnippet,
   Zartigl,
   deriveDirectionMagnitudeComponents,
   getPalettes,
@@ -659,7 +661,8 @@ export class DemoApp {
 
   private buildExportFolder(): void {
     const folder = this.pane.addFolder({ title: "Export", expanded: false });
-    folder.addButton({ title: "Copy snippet" }).on("click", () => this.copySnippet());
+    folder.addButton({ title: "Copy MapX widget code" }).on("click", () => this.copyMapxWidgetSnippet());
+    folder.addButton({ title: "Copy demo script/app" }).on("click", () => this.copyStandaloneDemoSnippet());
     folder.addButton({ title: "Share URL" }).on("click", () => this.shareURL());
   }
 
@@ -812,82 +815,48 @@ export class DemoApp {
 
   // ── Export ──────────────────────────────────────────────────────────
 
-  private copySnippet(): void {
+  private copyMapxWidgetSnippet(): void {
     if (!this.z) return;
+    const snippet = buildMapxWidgetSnippet(this.currentSnippetOptions());
+
+    navigator.clipboard
+      .writeText(snippet)
+      .then(() => showToast("MapX widget code copied!"))
+      .catch(() => showToast("Could not copy snippet."));
+  }
+
+  private copyStandaloneDemoSnippet(): void {
+    if (!this.z) return;
+    const center = this.map.getCenter();
+    const snippet = buildStandaloneDemoSnippet({
+      ...this.currentSnippetOptions(),
+      center: [center.lng, center.lat],
+      zoom: this.map.getZoom(),
+      bearing: this.map.getBearing(),
+      pitch: this.map.getPitch(),
+      projection: this.currentProjection,
+    });
+
+    navigator.clipboard
+      .writeText(snippet)
+      .then(() => showToast("Demo script copied!"))
+      .catch(() => showToast("Could not copy snippet."));
+  }
+
+  private currentSnippetOptions() {
     const layer = this.currentLayer;
-    const d = layer.defaults ?? {};
-    const timeMeta = this.z.getTimeMeta();
-    const depthMeta = this.z.getDepthMeta();
+    const timeMeta = this.z!.getTimeMeta();
+    const depthMeta = this.z!.getDepthMeta();
     const tMin = timeMeta.min ?? 0;
     const tStep = timeMeta.step ?? 86400000;
     const timeMs = tMin + this.params.timeIndex * tStep;
-    const center = this.map.getCenter();
-    const centerCode = `[${codeNumber(center.lng)}, ${codeNumber(center.lat)}]`;
-    const projectionCode = this.currentProjection;
-    const backendCode = this.currentBackend;
-
-    const defPalette = d.palette ?? "rdylbu";
-    const defOpacity = d.raster?.opacity ?? 1;
-    const defLogScale = d.raster?.logScale ?? false;
-    const defVibrance = d.raster?.vibrance ?? 0;
-    const defDensity = d.particles?.density ?? 0.05;
-    const defSpeedRaw = d.particles?.speedFactor;
-    const defSpeedMin = Array.isArray(defSpeedRaw) ? defSpeedRaw[0] : (defSpeedRaw ?? 0.07);
-    const defSpeedMax = Array.isArray(defSpeedRaw) ? defSpeedRaw[1] : (defSpeedRaw ?? 0.27);
-    const defFadeRaw = d.particles?.fadeOpacity;
-    const defFadeMin = Array.isArray(defFadeRaw) ? defFadeRaw[0] : (defFadeRaw ?? 0.9);
-    const defFadeMax = Array.isArray(defFadeRaw) ? defFadeRaw[1] : (defFadeRaw ?? 0.9315);
-    const defDropRate = d.particles?.dropRate ?? 0.003;
-    const defDropRateBump = d.particles?.dropRateBump ?? 0.01;
-
-    const lines: string[] = [];
-    if (this.params.palette !== defPalette) lines.push(`  palette: "${this.params.palette}",`);
-    if (Math.abs(this.params.opacity - defOpacity) > 1e-6) lines.push(`  opacity: ${this.params.opacity},`);
-    if (this.params.logScale !== defLogScale) lines.push(`  logScale: ${this.params.logScale},`);
-    if (Math.abs(this.params.vibrance - defVibrance) > 1e-6) lines.push(`  vibrance: ${this.params.vibrance},`);
-
-    if (layer.kind === "vector") {
-      if (Math.abs(this.params.particleDensity - defDensity) > 1e-6)
-        lines.push(`  particleDensity: ${this.params.particleDensity},`);
-      if (Math.abs(this.params.speedMin - defSpeedMin) > 1e-6 || Math.abs(this.params.speedMax - defSpeedMax) > 1e-6)
-        lines.push(`  speedFactor: [${this.params.speedMin}, ${this.params.speedMax}],`);
-      if (Math.abs(this.params.fadeMin - defFadeMin) > 1e-6 || Math.abs(this.params.fadeMax - defFadeMax) > 1e-6)
-        lines.push(`  fadeOpacity: [${this.params.fadeMin}, ${this.params.fadeMax}],`);
-      if (Math.abs(this.params.dropRate - defDropRate) > 1e-6)
-        lines.push(`  dropRate: ${this.params.dropRate},`);
-      if (Math.abs(this.params.dropRateBump - defDropRateBump) > 1e-6)
-        lines.push(`  dropRateBump: ${this.params.dropRateBump},`);
-    }
-
-    const settingsBlock = lines.length > 0
-      ? `\nz.updateSettings({\n${lines.join("\n")}\n});`
-      : "";
-
-    const timeCode = `new Date("${new Date(timeMs).toISOString()}")`;
-    const timeDepthLine = depthMeta.values.length > 0
-      ? `z.setTimeAndDepth(${timeCode}, ${codeNumber(this.params.depth)});`
-      : `z.setTime(${timeCode});`;
-
-    const snippet =
-      `import maplibregl from "maplibre-gl";\n` +
-      `import { Zartigl } from "zartigl";\n` +
-      `import { catalog } from "zartigl/catalog";\n` +
-      `\n` +
-      `const map = new maplibregl.Map({\n` +
-      `  container: "map",\n` +
-      `  style: "https://demotiles.maplibre.org/style.json",\n` +
-      `  center: ${centerCode},\n` +
-      `  zoom: ${codeNumber(this.map.getZoom(), 3)},\n` +
-      `  bearing: ${codeNumber(this.map.getBearing(), 3)},\n` +
-      `  pitch: ${codeNumber(this.map.getPitch(), 3)},\n` +
-      `});\n` +
-      `map.setProjection({ type: "${projectionCode}" });\n` +
-      `\n` +
-      `const z = new Zartigl({ map, catalog, backend: "${backendCode}" });\n` +
-      `await z.setLayer("${layer.id}");${settingsBlock}\n` +
-      `${timeDepthLine}`;
-
-    navigator.clipboard.writeText(snippet).then(() => showToast("Snippet copied!"));
+    return {
+      layerId: layer.id,
+      backend: this.currentBackend,
+      time: new Date(timeMs),
+      depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
+      settings: this.buildSettings(),
+    };
   }
 
   private shareURL(): void {

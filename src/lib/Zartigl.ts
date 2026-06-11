@@ -24,6 +24,8 @@ export interface ZartiglOptions {
   backend?: "auto" | "zarr" | "wmts";
   visible?: boolean;
   settings?: Partial<ZartiglSettings>;
+  metadata?: Record<string, unknown>;
+  before?: string;
 }
 
 export interface TimeMeta {
@@ -133,6 +135,8 @@ export class Zartigl {
   private readonly map: MaplibreMap;
   private readonly catalog: Catalog;
   private readonly backendPreference: PublicBackend;
+  private readonly metadata?: Record<string, unknown>;
+  private readonly before?: string;
   private visible: boolean;
   private catalogLayer: CatalogLayer | null = null;
   private layer: ArcoLayer | null = null;
@@ -153,6 +157,8 @@ export class Zartigl {
     this.map = options.map;
     this.catalog = options.catalog;
     this.backendPreference = options.backend ?? "auto";
+    this.metadata = options.metadata ? { ...options.metadata } : undefined;
+    this.before = options.before;
     this.visible = options.visible ?? true;
     this.settings = { ...options.settings };
 
@@ -374,6 +380,8 @@ export class Zartigl {
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
       colorRamp: this.settings.palette,
+      metadata: this.metadata ? { ...this.metadata } : undefined,
+      before: this.before,
     });
     layer.on("loading", () => this.emit("loading"));
     layer.on("loaded", (meta) => {
@@ -384,6 +392,11 @@ export class Zartigl {
     layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
     layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
     this.layer = layer;
+    const before = this.getBeforeLayerId();
+    if (before) {
+      this.map.addLayer(layer, before);
+      return;
+    }
     this.map.addLayer(layer);
   }
 
@@ -424,6 +437,11 @@ export class Zartigl {
       loaded?: () => boolean;
     };
     return map.isStyleLoaded?.() ?? map.loaded?.() ?? true;
+  }
+
+  private getBeforeLayerId(): string | undefined {
+    if (!this.before || !this.map.getLayer(this.before)) return undefined;
+    return this.before;
   }
 
   private requireLayer(): CatalogLayer {

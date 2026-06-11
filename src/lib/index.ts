@@ -10,6 +10,14 @@ export {
   deriveDirectionMagnitudeComponents,
   getVectorDerivationVariables,
 } from "./vector-derivation";
+export {
+  buildMapxWidgetSnippet,
+  buildStandaloneDemoSnippet,
+} from "../mapx/snippet";
+export type {
+  MapxWidgetSnippetOptions,
+  StandaloneDemoSnippetOptions,
+} from "../mapx/snippet";
 export type {
   VectorLayerOptions,
   ScalarLayerOptions,

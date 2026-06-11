@@ -55,6 +55,8 @@ export interface ArcoLayerOptions
   extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
   layer: ArcoLayerCatalogLayer;
   backend?: ArcoLayerBackendPreference;
+  metadata?: Record<string, unknown>;
+  before?: string;
 }
 
 export interface ScalarLayerOptions {

@@ -114,6 +114,7 @@ export class ArcoLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
   readonly renderingMode = "3d" as const;
+  readonly metadata?: Record<string, unknown>;
 
   private readonly options: ArcoLayerOptions;
   private readonly backend: ArcoLayerBackend;
@@ -129,6 +130,7 @@ export class ArcoLayer implements CustomLayerInterface {
   constructor(options: ArcoLayerOptions) {
     this.options = options;
     this.id = options.id;
+    this.metadata = options.metadata ? { ...options.metadata } : undefined;
     this.backend = selectArcoLayerBackend(options);
     this.rasterSourceId = `${options.id}-wmts-source`;
     this.rasterLayerId = `${options.id}-wmts`;
@@ -307,12 +309,19 @@ export class ArcoLayer implements CustomLayerInterface {
       })],
       tileSize: 256,
     });
-    this.map.addLayer({
+    const rasterLayer = {
       id: this.rasterLayerId,
       type: "raster",
       source: this.rasterSourceId,
+      metadata: this.metadata ? { ...this.metadata } : undefined,
       paint: { "raster-opacity": this.opacity },
-    });
+    } as const;
+    const before = this.getBeforeLayerId();
+    if (before) {
+      this.map.addLayer(rasterLayer, before);
+      return;
+    }
+    this.map.addLayer(rasterLayer);
   }
 
   private removeWmts(): void {
@@ -339,5 +348,11 @@ export class ArcoLayer implements CustomLayerInterface {
     if (handlers) {
       for (const h of handlers) (h as Function)(...args);
     }
+  }
+
+  private getBeforeLayerId(): string | undefined {
+    const before = this.options.before;
+    if (!before || !this.map?.getLayer(before)) return undefined;
+    return before;
   }
 }

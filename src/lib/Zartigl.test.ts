@@ -9,6 +9,7 @@ class FakeMap {
   layers = new Map<string, unknown>();
   sources = new Map<string, unknown>();
   listeners = new Map<string, Set<() => void>>();
+  addLayerCalls: Array<{ id: string; before?: string }> = [];
 
   on(event: string, handler: () => void): void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
@@ -27,7 +28,8 @@ class FakeMap {
     return this.ready;
   }
 
-  addLayer(layer: { id: string }): void {
+  addLayer(layer: { id: string }, before?: string): void {
+    this.addLayerCalls.push({ id: layer.id, before });
     this.layers.set(layer.id, layer);
   }
 
@@ -137,6 +139,53 @@ describe("Zartigl facade", () => {
     expect(map.getLayer("surface")).toBeDefined();
   });
 
+  it("passes optional metadata to the render layer", async () => {
+    const map = new FakeMap();
+    const metadata = { idView: "mx-view", type: "arco" };
+    const z = new Zartigl({
+      id: "MX-mx-view",
+      map: map as never,
+      catalog: catalog(),
+      metadata,
+    });
+
+    await z.setLayer("scalar");
+    metadata.type = "mutated";
+
+    expect(map.getLayer("MX-mx-view")).toMatchObject({
+      metadata: { idView: "mx-view", type: "arco" },
+    });
+  });
+
+  it("adds the render layer before the configured anchor when available", async () => {
+    const map = new FakeMap();
+    map.addLayer({ id: "mxlayers" });
+    const z = new Zartigl({
+      id: "MX-layer",
+      map: map as never,
+      catalog: catalog(),
+      before: "mxlayers",
+    });
+
+    await z.setLayer("scalar");
+
+    expect(map.addLayerCalls).toContainEqual({ id: "MX-layer", before: "mxlayers" });
+  });
+
+  it("falls back to normal layer insertion when the configured anchor is unavailable", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({
+      id: "MX-layer",
+      map: map as never,
+      catalog: catalog(),
+      before: "missing-anchor",
+    });
+
+    await z.setLayer("scalar");
+
+    expect(map.addLayerCalls).toContainEqual({ id: "MX-layer", before: undefined });
+  });
+
   it("uses scalar WMTS when auto backend is requested and the layer default asks for it", async () => {
     const map = new FakeMap();
     const layer = scalarLayer({ defaults: { backend: "wmts" } });
@@ -147,6 +196,28 @@ describe("Zartigl facade", () => {
     const renderLayer = map.getLayer("zartigl") as { getBackend(): string };
     expect(renderLayer.getBackend()).toBe("scalar-wmts");
     expect(z.getBackend()).toBe("wmts");
+  });
+
+  it("passes metadata and insertion anchor to WMTS raster sublayers", () => {
+    const map = new FakeMap();
+    map.addLayer({ id: "mxlayers" });
+    const layer = new ArcoLayer({
+      id: "MX-raster",
+      layer: scalarLayer(),
+      backend: "wmts",
+      metadata: { idView: "raster-view", type: "arco" },
+      before: "mxlayers",
+    });
+
+    layer.onAdd(map as never, {} as never);
+
+    expect(map.getLayer("MX-raster-wmts")).toMatchObject({
+      metadata: { idView: "raster-view", type: "arco" },
+    });
+    expect(map.addLayerCalls).toContainEqual({
+      id: "MX-raster-wmts",
+      before: "mxlayers",
+    });
   });
 
   it("returns depth metadata surface-nearest first", async () => {
