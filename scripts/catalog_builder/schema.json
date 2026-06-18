@@ -191,7 +191,7 @@
           "additionalProperties": false,
           "properties": {
             "density": { "type": "number", "exclusiveMinimum": 0 },
-            "speedFactor": { "$ref": "#/$defs/ZoomWeighted" },
+            "speed": { "type": "number", "exclusiveMinimum": 0 },
             "fadeOpacity": { "$ref": "#/$defs/ZoomWeighted" },
             "dropRate": { "type": "number", "minimum": 0 },
             "dropRateBump": { "type": "number", "minimum": 0 }

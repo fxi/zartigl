@@ -59,7 +59,7 @@ Each layer must follow this shape:
     "palette": "rdylbu",
     "particles": {
       "density": 0.05,
-      "speedFactor": [0.01, 1],
+      "speed": 1.0,
       "fadeOpacity": [0.9, 0.96],
       "dropRate": 0.003,
       "dropRateBump": 0
@@ -152,5 +152,12 @@ uv run scripts/catalog_builder/skills/validate_catalog.py
 ## 6. Editing Existing Layers
 
 For defaults, tune the app, copy settings, translate them into grouped `defaults.particles` and `defaults.raster`, then validate.
+
+Note on `particles.speed`: it is a single number (max on-screen pixels/frame for the
+fastest current), giving constant *visual* speed across zoom — not the old
+`speedFactor` `[atHighZoom, atLowZoom]` array. Only `fadeOpacity` is still
+zoom-weighted (`ZoomWeighted`). The internal zoom-compensation curve
+(`SPEED_ZOOM_BIAS`, pivot `WORLD_REF`) lives in the shaders
+(`src/lib/shaders/update.frag.glsl` + `draw.vert.glsl`, kept in sync), not the catalog.
 
 For metadata, rerun `query_dataset.py`, update `stores`, `variables`, or `dimensions`, then validate.

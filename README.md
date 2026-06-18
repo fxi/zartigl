@@ -177,7 +177,7 @@ A = valid data mask
 
 For vector particle rendering, thousands of virtual drifters are seeded across the viewport. Every frame, the GPU samples the vector texture, moves each particle, and respawns particles that leave the valid domain.
 
-Particle state lives in GPU textures using a ping-pong framebuffer pattern, so positions do not need to round-trip through CPU arrays each frame.
+Particle state lives in GPU textures using a ping-pong framebuffer pattern, so positions do not need to round-trip through CPU arrays each frame. Positions are stored at full float precision where the GPU supports it (falling back to 16-bit packing), which keeps trails crisp when zoomed in. Motion is zoom-compensated so a single `speed` setting yields roughly constant *visual* speed from low to high zoom.
 
 ### 4. Queries Use The Same Source Logic
 
