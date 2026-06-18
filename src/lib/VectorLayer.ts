@@ -63,6 +63,7 @@ export class VectorLayer implements CustomLayerInterface {
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveStartHandler: (() => void) | null = null;
+  private moveHandler: (() => void) | null = null;
   private moveEndHandler: (() => void) | null = null;
 
   /** Pre-fetched frames keyed by time-ms. Cleared when the viewport changes. */
@@ -111,15 +112,22 @@ export class VectorLayer implements CustomLayerInterface {
     // Load Zarr metadata and initial velocity data
     this.initAsync();
 
-    // Clear trail history on move start so screen-space ghost trails
-    // don't persist when the viewport shifts.
-    this.moveStartHandler = () => this.simulation.clearState();
+    // Trail history is screen-space, so it must not survive camera changes.
+    this.moveStartHandler = () => this.clearCameraState();
     map.on("movestart", this.moveStartHandler);
+
+    this.moveHandler = () => this.clearCameraState();
+    map.on("move", this.moveHandler);
 
     this.moveEndHandler = () => {
       this.reloadIfViewportUncovered();
     };
     map.on("moveend", this.moveEndHandler);
+  }
+
+  private clearCameraState(): void {
+    this.simulation.clearState();
+    this.map?.triggerRepaint();
   }
 
   private async initAsync(): Promise<void> {
@@ -379,6 +387,7 @@ export class VectorLayer implements CustomLayerInterface {
   onRemove(): void {
     if (this.map) {
       if (this.moveStartHandler) this.map.off("movestart", this.moveStartHandler);
+      if (this.moveHandler) this.map.off("move", this.moveHandler);
       if (this.moveEndHandler) this.map.off("moveend", this.moveEndHandler);
     }
     this.zarrSource.cancelAll();
