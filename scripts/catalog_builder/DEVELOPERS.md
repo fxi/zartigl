@@ -60,9 +60,7 @@ Each layer must follow this shape:
     "particles": {
       "density": 0.05,
       "speed": 1.0,
-      "fadeOpacity": [0.9, 0.96],
-      "dropRate": 0.003,
-      "dropRateBump": 0
+      "fade": 0.7
     },
     "raster": {
       "opacity": 1,
@@ -153,11 +151,16 @@ uv run scripts/catalog_builder/skills/validate_catalog.py
 
 For defaults, tune the app, copy settings, translate them into grouped `defaults.particles` and `defaults.raster`, then validate.
 
-Note on `particles.speed`: it is a single number (max on-screen pixels/frame for the
-fastest current), giving constant *visual* speed across zoom — not the old
-`speedFactor` `[atHighZoom, atLowZoom]` array. Only `fadeOpacity` is still
-zoom-weighted (`ZoomWeighted`). The internal zoom-compensation curve
-(`SPEED_ZOOM_BIAS`, pivot `WORLD_REF`) lives in the shaders
-(`src/lib/shaders/update.frag.glsl` + `draw.vert.glsl`, kept in sync), not the catalog.
+Note on particle defaults — both are single numbers (the old `ZoomWeighted`
+`[atHighZoom, atLowZoom]` arrays are gone):
+- `particles.speed` — max on-screen pixels/frame for the fastest current; gives
+  constant *visual* speed across zoom. The internal zoom-compensation curve
+  (`SPEED_ZOOM_BIAS`, pivot `WORLD_REF`) lives in the shaders
+  (`src/lib/shaders/update.frag.glsl` + `draw.vert.glsl`, kept in sync).
+- `particles.fade` — trail length in `[0, 1]` (higher = longer); remapped to the
+  raw per-frame fade-opacity in `VectorLayer` (`fadeToOpacity`).
+
+`dropRate` / `dropRateBump` are no longer catalog fields — they are internal
+`ParticleSimulation` defaults.
 
 For metadata, rerun `query_dataset.py`, update `stores`, `variables`, or `dimensions`, then validate.

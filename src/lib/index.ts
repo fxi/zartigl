@@ -27,7 +27,6 @@ export type {
   ArcoLayerBackendPreference,
   VectorDerivation,
   DirectionMagnitudeVectorDerivation,
-  ZoomWeighted,
   VelocityData,
   ZarrConsolidatedMeta,
   ZarrArrayMeta,

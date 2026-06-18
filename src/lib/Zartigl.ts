@@ -3,15 +3,13 @@ import type { Catalog, CatalogLayer } from "../catalog/types";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
 import { ArcoLayer, buildWmtsLegendUrl } from "./ArcoLayer";
 import { ZarrSource } from "./ZarrSource";
-import type { ArcoLayerBackendPreference, FieldMeta, ZoomWeighted, ZarrPointSeriesResult } from "./types";
+import type { ArcoLayerBackendPreference, FieldMeta, ZarrPointSeriesResult } from "./types";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
   particleDensity: number;
   speed: number;
-  fadeOpacity: ZoomWeighted;
-  dropRate: number;
-  dropRateBump: number;
+  fade: number;
   opacity: number;
   logScale: boolean;
   vibrance: number;
@@ -121,9 +119,7 @@ function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> 
     palette: defaults?.palette ?? "rdylbu",
     particleDensity: defaults?.particles?.density ?? 0.05,
     speed: defaults?.particles?.speed ?? 1.0,
-    fadeOpacity: defaults?.particles?.fadeOpacity ?? 0.996,
-    dropRate: defaults?.particles?.dropRate ?? 0.003,
-    dropRateBump: defaults?.particles?.dropRateBump ?? 0.01,
+    fade: defaults?.particles?.fade ?? 0.7,
     opacity: defaults?.raster?.opacity ?? 1,
     logScale: defaults?.raster?.logScale ?? false,
     vibrance: defaults?.raster?.vibrance ?? 0,
@@ -373,9 +369,7 @@ export class Zartigl {
       depth: this.depth,
       particleDensity: this.settings.particleDensity,
       speed: this.settings.speed,
-      fadeOpacity: this.settings.fadeOpacity,
-      dropRate: this.settings.dropRate,
-      dropRateBump: this.settings.dropRateBump,
+      fade: this.settings.fade,
       opacity: this.settings.opacity,
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
@@ -414,9 +408,7 @@ export class Zartigl {
   private applyMutableSettings(layer: ArcoLayer, settings: Partial<ZartiglSettings>): void {
     if (settings.particleDensity != null) layer.setParticleDensity(settings.particleDensity);
     if (settings.speed != null) layer.setSpeed(settings.speed);
-    if (settings.fadeOpacity != null) layer.setFadeOpacity(settings.fadeOpacity);
-    if (settings.dropRate != null) layer.setDropRate(settings.dropRate);
-    if (settings.dropRateBump != null) layer.setDropRateBump(settings.dropRateBump);
+    if (settings.fade != null) layer.setFade(settings.fade);
     if (settings.opacity != null) layer.setOpacity(settings.opacity);
     if (settings.logScale != null) layer.setLogScale(settings.logScale);
     if (settings.vibrance != null) layer.setVibrance(settings.vibrance);

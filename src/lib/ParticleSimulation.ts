@@ -32,6 +32,16 @@ const MAX_PARTICLES = MAX_PARTICLE_STATE_RES * MAX_PARTICLE_STATE_RES;
 const RASTER_GRID_LON_SEGMENTS = 128;
 const RASTER_GRID_LAT_SEGMENTS = 64;
 
+/**
+ * Transient drop-rate boost that accelerates uniform respawn after a camera
+ * change (zoom/pan), so the previous viewport's particle cluster disperses
+ * smoothly instead of lingering ~2s. Driven by per-frame viewport-bounds change;
+ * decays back to the configured dropRate once the camera settles.
+ */
+const REDISTRIB_GAIN = 1.0;      // boost per unit per-frame bounds change
+const REDISTRIB_DECAY = 0.92;    // per-frame decay (boost outlives the gesture ~0.5–1s)
+const REDISTRIB_MAX_DROP = 0.1;  // ceiling on effective drop rate during the transition
+
 export interface SimulationParams {
   /** Particles per screen pixel. Active count = clamp(w * h * density, 1, MAX). */
   particleDensity: number;
@@ -78,6 +88,10 @@ export class ParticleSimulation {
 
   /** Active draw count — changes with canvas size / density, no realloc. */
   private numParticles = 0;
+
+  // Smooth redistribution after camera changes (see REDISTRIB_* constants).
+  private prevBounds: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+  private redistributionBoost = 0;
 
   /** Particle-state texture format (float when supported, else RGBA8 packing). */
   private stateFormat!: StateTextureFormat;
@@ -398,7 +412,33 @@ export class ParticleSimulation {
     gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
     gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
     gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
-    gl.uniform1f(this.updateLocs["u_drop_rate"], this.params.dropRate);
+
+    // Transient drop-rate boost: when the viewport changes (zoom/pan), accelerate
+    // the existing uniform respawn so the old cluster disperses smoothly. Decays
+    // back to the configured rate once the camera settles. No reset / no flash.
+    const wNew = bounds.maxX - bounds.minX;
+    if (this.prevBounds) {
+      const wPrev = this.prevBounds.maxX - this.prevBounds.minX;
+      const hPrev = this.prevBounds.maxY - this.prevBounds.minY;
+      const eps = 1e-6;
+      const cxNew = (bounds.minX + bounds.maxX) * 0.5;
+      const cyNew = (bounds.minY + bounds.maxY) * 0.5;
+      const cxPrev = (this.prevBounds.minX + this.prevBounds.maxX) * 0.5;
+      const cyPrev = (this.prevBounds.minY + this.prevBounds.maxY) * 0.5;
+      const sizeChange = Math.abs(wNew - wPrev) / Math.max(wPrev, eps);
+      const panChange =
+        Math.abs(cxNew - cxPrev) / Math.max(wPrev, eps) +
+        Math.abs(cyNew - cyPrev) / Math.max(hPrev, eps);
+      const delta = Math.min(1, sizeChange + panChange);
+      this.redistributionBoost = Math.max(
+        this.redistributionBoost * REDISTRIB_DECAY,
+        delta * REDISTRIB_GAIN,
+      );
+    }
+    this.prevBounds = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+    const effectiveDrop = Math.min(this.params.dropRate + this.redistributionBoost, REDISTRIB_MAX_DROP);
+
+    gl.uniform1f(this.updateLocs["u_drop_rate"], effectiveDrop);
     gl.uniform1f(this.updateLocs["u_drop_rate_bump"], this.params.dropRateBump);
     gl.uniform4f(
       this.updateLocs["u_bounds"],

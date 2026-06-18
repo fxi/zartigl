@@ -21,10 +21,7 @@ interface DemoParams {
   depth: number;
   particleDensity: number;
   speed: number;
-  fadeMin: number;
-  fadeMax: number;
-  dropRate: number;
-  dropRateBump: number;
+  fade: number;
   palette: string;
   opacity: number;
   logScale: boolean;
@@ -44,10 +41,7 @@ interface HashState {
   pi?: number;
   pd: number;
   sp?: number;
-  fm: number;
-  fx: number;
-  dr: number;
-  db: number;
+  f?: number;
   op: number;
   ls: boolean;
   vb: number;
@@ -565,30 +559,14 @@ export class DemoApp {
     this.particlesFolder.addBinding(this.params, "speed", {
       min: 0.1, max: 8, step: 0.1, label: "speed",
     }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
-
-    this.particlesFolder.addBinding(this.params, "dropRate", {
-      min: 0, max: 0.1, step: 0.001, label: "drop rate",
-    }).on("change", (ev) => this.z?.updateSettings({ dropRate: ev.value }));
-
-    this.particlesFolder.addBinding(this.params, "dropRateBump", {
-      min: 0, max: 0.1, step: 0.001, label: "drop bump",
-    }).on("change", (ev) => this.z?.updateSettings({ dropRateBump: ev.value }));
   }
 
   private buildTrailFolder(): void {
     this.trailFolder = this.pane.addFolder({ title: "Trail" });
 
-    this.trailFolder.addBinding(this.params, "fadeMin", {
-      min: 0.9, max: 1, step: 0.0001, label: "fade (local)",
-    }).on("change", () =>
-      this.z?.updateSettings({ fadeOpacity: [this.params.fadeMin, this.params.fadeMax] })
-    );
-
-    this.trailFolder.addBinding(this.params, "fadeMax", {
-      min: 0.9, max: 1, step: 0.0001, label: "fade (global)",
-    }).on("change", () =>
-      this.z?.updateSettings({ fadeOpacity: [this.params.fadeMin, this.params.fadeMax] })
-    );
+    this.trailFolder.addBinding(this.params, "fade", {
+      min: 0, max: 1, step: 0.01, label: "fade",
+    }).on("change", (ev) => this.z?.updateSettings({ fade: ev.value }));
   }
 
   private buildAppearanceFolder(): void {
@@ -871,10 +849,7 @@ export class DemoApp {
       pi: Number(this.map.getPitch().toFixed(3)),
       pd: this.params.particleDensity,
       sp: this.params.speed,
-      fm: this.params.fadeMin,
-      fx: this.params.fadeMax,
-      dr: this.params.dropRate,
-      db: this.params.dropRateBump,
+      f: this.params.fade,
       op: this.params.opacity,
       ls: this.params.logScale,
       vb: this.params.vibrance,
@@ -952,10 +927,7 @@ export class DemoApp {
       depth: 0,
       particleDensity: 0.05,
       speed: 1.0,
-      fadeMin: 0.9,
-      fadeMax: 0.9315,
-      dropRate: 0.003,
-      dropRateBump: 0.01,
+      fade: 0.7,
       palette: "rdylbu",
       opacity: 1,
       logScale: false,
@@ -965,13 +937,9 @@ export class DemoApp {
 
   private applyLayerDefaults(layer: CatalogLayer): void {
     const d = layer.defaults ?? {};
-    const fade = d.particles?.fadeOpacity;
     this.params.particleDensity = d.particles?.density ?? 0.05;
     this.params.speed = d.particles?.speed ?? 1.0;
-    this.params.fadeMin = Array.isArray(fade) ? fade[0] : (fade ?? 0.9);
-    this.params.fadeMax = Array.isArray(fade) ? fade[1] : (fade ?? 0.9315);
-    this.params.dropRate = d.particles?.dropRate ?? 0.003;
-    this.params.dropRateBump = d.particles?.dropRateBump ?? 0.01;
+    this.params.fade = d.particles?.fade ?? 0.7;
     this.params.opacity = d.raster?.opacity ?? 1;
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
@@ -981,10 +949,7 @@ export class DemoApp {
   private applyHashState(hash: HashState): void {
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
-    this.params.fadeMin = hash.fm;
-    this.params.fadeMax = hash.fx;
-    this.params.dropRate = hash.dr;
-    this.params.dropRateBump = hash.db;
+    this.params.fade = hash.f ?? 0.7;
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;
@@ -996,9 +961,7 @@ export class DemoApp {
       palette: this.params.palette,
       particleDensity: this.params.particleDensity,
       speed: this.params.speed,
-      fadeOpacity: [this.params.fadeMin, this.params.fadeMax],
-      dropRate: this.params.dropRate,
-      dropRateBump: this.params.dropRateBump,
+      fade: this.params.fade,
       opacity: this.params.opacity,
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,

@@ -43,8 +43,7 @@ function handler() {
         time: 1700438400000, // 2023-11-20 00:00 UTC
         particleDensity: 0.004,
         speed: 1.0,
-        fadeOpacity: [0.9174, 0.9793],
-        dropRate: 0.005,
+        fade: 0.7,
         opacity: 0.9,
         logScale: true,
         vibrance: 1,

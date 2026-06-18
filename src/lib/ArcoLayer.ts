@@ -9,7 +9,6 @@ import type {
   ArcoLayerBackend,
   ArcoLayerOptions,
   FieldMeta,
-  ZoomWeighted,
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
 import type { CatalogLayer } from "../catalog/types";
@@ -233,16 +232,8 @@ export class ArcoLayer implements CustomLayerInterface {
     if (this.delegate instanceof VectorLayer) this.delegate.setSpeed(v);
   }
 
-  setFadeOpacity(v: ZoomWeighted): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setFadeOpacity(v);
-  }
-
-  setDropRate(v: number): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setDropRate(v);
-  }
-
-  setDropRateBump(v: number): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setDropRateBump(v);
+  setFade(v: number): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setFade(v);
   }
 
   setParticleDensity(density: number): void {

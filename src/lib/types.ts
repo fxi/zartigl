@@ -1,13 +1,3 @@
-/**
- * A param that is either a fixed scalar or a zoom-weighted range.
- * When a range [min, max] is given:
- *   - min is the value at high zoom (local / detail view)
- *   - max is the value at low zoom  (global / overview)
- * The layer interpolates between them based on the current map zoom
- * and the configured zoomRange.
- */
-export type ZoomWeighted = number | [min: number, max: number];
-
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
   direction_variable: string;
@@ -28,15 +18,11 @@ export interface VectorLayerOptions {
   particleDensity?: number;
   /** Max pixels/frame for the fastest current. Constant visual speed at any zoom. Default 1.0. */
   speed?: number;
-  /** Fixed fade or [atHighZoom, atLowZoom]. */
-  fadeOpacity?: ZoomWeighted;
-  dropRate?: number;
-  dropRateBump?: number;
+  /** Trail length [0, 1] (higher = longer trails). Default 0.7. */
+  fade?: number;
   colorRamp?: Record<number, string>;
   time?: string | number;
   depth?: number;
-  /** [lowZoom, highZoom] breakpoints for zoom-weighted params. Default [2, 12]. */
-  zoomRange?: [number, number];
   /** Global layer opacity [0, 1]. Default 1.0. */
   opacity?: number;
   /** Logarithmic speed normalization. Default false. */

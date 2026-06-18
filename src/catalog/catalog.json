@@ -121,12 +121,7 @@
         "particles": {
           "density": 0.033,
           "speed": 1.0,
-          "fadeOpacity": [
-            0.9,
-            0.9913000000000001
-          ],
-          "dropRate": 0.003,
-          "dropRateBump": 0
+          "fade": 0.7
         },
         "raster": {
           "opacity": 1,
@@ -196,12 +191,7 @@
         "particles": {
           "density": 0.004000000000000002,
           "speed": 1.0,
-          "fadeOpacity": [
-            0.9174,
-            0.9793000000000001
-          ],
-          "dropRate": 0.005,
-          "dropRateBump": 0
+          "fade": 0.7
         },
         "raster": {
           "opacity": 0.9,
@@ -401,12 +391,7 @@
         "particles": {
           "density": 0.024,
           "speed": 1.0,
-          "fadeOpacity": [
-            0.975,
-            0.9935
-          ],
-          "dropRate": 0.003,
-          "dropRateBump": 0
+          "fade": 0.7
         },
         "raster": {
           "opacity": 1,
@@ -2054,12 +2039,7 @@
         "particles": {
           "density": 0.02,
           "speed": 1.0,
-          "fadeOpacity": [
-            0.94,
-            0.985
-          ],
-          "dropRate": 0.003,
-          "dropRateBump": 0
+          "fade": 0.7
         },
         "raster": {
           "opacity": 1,
@@ -2130,9 +2110,7 @@
         "particles": {
           "density": 0.04,
           "speed": 1.0,
-          "fadeOpacity": [0.93, 0.97],
-          "dropRate": 0.002,
-          "dropRateBump": 0
+          "fade": 0.7
         },
         "raster": {
           "opacity": 1,

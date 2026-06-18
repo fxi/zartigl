@@ -1,5 +1,3 @@
-import type { ZoomWeighted } from "../lib/types";
-
 export interface TimeDimension {
   min?: number;
   max?: number;
@@ -100,9 +98,7 @@ interface CatalogLayerBase {
     particles?: {
       density?: number;
       speed?: number;
-      fadeOpacity?: ZoomWeighted;
-      dropRate?: number;
-      dropRateBump?: number;
+      fade?: number;
     };
     raster?: {
       opacity?: number;

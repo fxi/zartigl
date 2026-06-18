@@ -192,9 +192,7 @@
           "properties": {
             "density": { "type": "number", "exclusiveMinimum": 0 },
             "speed": { "type": "number", "exclusiveMinimum": 0 },
-            "fadeOpacity": { "$ref": "#/$defs/ZoomWeighted" },
-            "dropRate": { "type": "number", "minimum": 0 },
-            "dropRateBump": { "type": "number", "minimum": 0 }
+            "fade": { "type": "number", "minimum": 0, "maximum": 1 }
           }
         },
         "raster": {
@@ -207,17 +205,6 @@
           }
         }
       }
-    },
-    "ZoomWeighted": {
-      "oneOf": [
-        { "type": "number" },
-        {
-          "type": "array",
-          "items": { "type": "number" },
-          "minItems": 2,
-          "maxItems": 2
-        }
-      ]
     }
   }
 }

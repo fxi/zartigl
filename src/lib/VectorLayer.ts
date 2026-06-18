@@ -3,7 +3,7 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { VectorLayerOptions, ZoomWeighted, FieldMeta, VelocityData } from "./types";
+import type { VectorLayerOptions, FieldMeta, VelocityData } from "./types";
 import { saveGLState, restoreGLState } from "./gl-util";
 import type { ColorRampInput } from "./gl-util";
 import {
@@ -32,6 +32,21 @@ type LayerEventMap = {
   cacheInvalidated: () => void;
 };
 
+// ── Trail fade mapping ───────────────────────────────────────────────
+// Public `fade` is an intuitive 0–1 trail length (higher = longer). It maps to
+// the renderer's raw per-frame fade-opacity. Trail length in frames is
+// interpolated geometrically (perceptually even across the wide range), then
+// converted to the multiplier f via f^N ≈ e^-1.
+const DEFAULT_FADE = 0.7;
+const FADE_NMIN = 20;   // trail length in frames at fade = 0
+const FADE_NMAX = 600;  // trail length in frames at fade = 1
+
+function fadeToOpacity(fade: number): number {
+  const t = Math.max(0, Math.min(1, fade));
+  const n = FADE_NMIN * Math.pow(FADE_NMAX / FADE_NMIN, t);
+  return Math.exp(-1 / n);
+}
+
 export class VectorLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
@@ -43,10 +58,6 @@ export class VectorLayer implements CustomLayerInterface {
   private simulation: ParticleSimulation;
   private velocityField: VelocityField;
   private zarrSource: ZarrSource;
-
-  // Zoom-weighted params (fade only; speed is now a single zoom-independent value)
-  private fadeOpacityParam: ZoomWeighted;
-  private zoomRange: [number, number];
 
   private variableU: string;
   private variableV: string;
@@ -81,17 +92,12 @@ export class VectorLayer implements CustomLayerInterface {
     this.unit = options.unit ?? "m/s";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
-    this.fadeOpacityParam = options.fadeOpacity ?? 0.996;
-    this.zoomRange = options.zoomRange ?? [2, 12];
-
     this.zarrSource = new ZarrSource(options.source);
     this.velocityField = new VelocityField();
     this.simulation = new ParticleSimulation({
       particleDensity: options.particleDensity ?? 0.05,
       speed: options.speed ?? 1.0,
-      fadeOpacity: Array.isArray(options.fadeOpacity) ? options.fadeOpacity[0] : (options.fadeOpacity ?? 0.996),
-      dropRate: options.dropRate ?? 0.003,
-      dropRateBump: options.dropRateBump ?? 0.01,
+      fadeOpacity: fadeToOpacity(options.fade ?? DEFAULT_FADE),
       colorRamp: options.colorRamp,
       opacity: options.opacity ?? 1.0,
       logScale: options.logScale ?? false,
@@ -333,9 +339,6 @@ export class VectorLayer implements CustomLayerInterface {
     const matrix = options.modelViewProjectionMatrix;
     if (!this.initialized || !this.velocityField.hasData() || !this.map) return;
 
-    // Apply zoom-weighted params each frame
-    this.applyZoomWeighting(this.map.getZoom());
-
     const saved = saveGLState(gl);
 
     try {
@@ -395,22 +398,6 @@ export class VectorLayer implements CustomLayerInterface {
     this.inflight.clear();
     this.map = null;
     this.gl = null;
-  }
-
-  /**
-   * Interpolate fade per render frame (cheap uniform upload).
-   * t=0 at low zoom (global), t=1 at high zoom (local).
-   * For the range [min, max]: min applies at high zoom, max at low zoom.
-   * Speed is no longer zoom-weighted — it is a single zoom-independent value.
-   */
-  private applyZoomWeighting(zoom: number): void {
-    const [zLow, zHigh] = this.zoomRange;
-    const t = Math.max(0, Math.min(1, (zoom - zLow) / (zHigh - zLow)));
-
-    if (Array.isArray(this.fadeOpacityParam)) {
-      const [min, max] = this.fadeOpacityParam;
-      this.simulation.setFadeOpacity(max + (min - max) * t);
-    }
   }
 
 // --- Public setters ---
@@ -505,25 +492,12 @@ export class VectorLayer implements CustomLayerInterface {
     this.simulation.setSpeed(v);
   }
 
-  setFadeOpacity(v: ZoomWeighted): void {
-    this.fadeOpacityParam = v;
-    if (!Array.isArray(v)) this.simulation.setFadeOpacity(v);
-  }
-
-  setDropRate(v: number): void {
-    this.simulation.setDropRate(v);
-  }
-
-  setDropRateBump(v: number): void {
-    this.simulation.setDropRateBump(v);
+  setFade(v: number): void {
+    this.simulation.setFadeOpacity(fadeToOpacity(v));
   }
 
   setParticleDensity(density: number): void {
     this.simulation.setParticleDensity(density);
-  }
-
-  setZoomRange(range: [number, number]): void {
-    this.zoomRange = range;
   }
 
   setColorRamp(ramp: ColorRampInput): void {
