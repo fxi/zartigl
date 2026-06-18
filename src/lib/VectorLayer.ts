@@ -44,8 +44,7 @@ export class VectorLayer implements CustomLayerInterface {
   private velocityField: VelocityField;
   private zarrSource: ZarrSource;
 
-  // Zoom-weighted params
-  private speedFactorParam: ZoomWeighted;
+  // Zoom-weighted params (fade only; speed is now a single zoom-independent value)
   private fadeOpacityParam: ZoomWeighted;
   private zoomRange: [number, number];
 
@@ -82,7 +81,6 @@ export class VectorLayer implements CustomLayerInterface {
     this.unit = options.unit ?? "m/s";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
-    this.speedFactorParam = options.speedFactor ?? 0.25;
     this.fadeOpacityParam = options.fadeOpacity ?? 0.996;
     this.zoomRange = options.zoomRange ?? [2, 12];
 
@@ -90,7 +88,7 @@ export class VectorLayer implements CustomLayerInterface {
     this.velocityField = new VelocityField();
     this.simulation = new ParticleSimulation({
       particleDensity: options.particleDensity ?? 0.05,
-      speedFactor: Array.isArray(options.speedFactor) ? options.speedFactor[0] : (options.speedFactor ?? 0.25),
+      speed: options.speed ?? 1.0,
       fadeOpacity: Array.isArray(options.fadeOpacity) ? options.fadeOpacity[0] : (options.fadeOpacity ?? 0.996),
       dropRate: options.dropRate ?? 0.003,
       dropRateBump: options.dropRateBump ?? 0.01,
@@ -400,18 +398,14 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   /**
-   * Interpolate speed and fade per render frame (cheap uniform uploads).
+   * Interpolate fade per render frame (cheap uniform upload).
    * t=0 at low zoom (global), t=1 at high zoom (local).
-   * For each range [min, max]: min applies at high zoom, max at low zoom.
+   * For the range [min, max]: min applies at high zoom, max at low zoom.
+   * Speed is no longer zoom-weighted — it is a single zoom-independent value.
    */
   private applyZoomWeighting(zoom: number): void {
     const [zLow, zHigh] = this.zoomRange;
     const t = Math.max(0, Math.min(1, (zoom - zLow) / (zHigh - zLow)));
-
-    if (Array.isArray(this.speedFactorParam)) {
-      const [min, max] = this.speedFactorParam;
-      this.simulation.setSpeedFactor(max + (min - max) * t);
-    }
 
     if (Array.isArray(this.fadeOpacityParam)) {
       const [min, max] = this.fadeOpacityParam;
@@ -507,9 +501,8 @@ export class VectorLayer implements CustomLayerInterface {
     this.loadViewportVelocity();
   }
 
-  setSpeedFactor(v: ZoomWeighted): void {
-    this.speedFactorParam = v;
-    if (!Array.isArray(v)) this.simulation.setSpeedFactor(v);
+  setSpeed(v: number): void {
+    this.simulation.setSpeed(v);
   }
 
   setFadeOpacity(v: ZoomWeighted): void {

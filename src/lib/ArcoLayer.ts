@@ -229,8 +229,8 @@ export class ArcoLayer implements CustomLayerInterface {
     this.delegate?.cancelPrefetches();
   }
 
-  setSpeedFactor(v: ZoomWeighted): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setSpeedFactor(v);
+  setSpeed(v: number): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setSpeed(v);
   }
 
   setFadeOpacity(v: ZoomWeighted): void {

@@ -35,7 +35,8 @@ const RASTER_GRID_LAT_SEGMENTS = 64;
 export interface SimulationParams {
   /** Particles per screen pixel. Active count = clamp(w * h * density, 1, MAX). */
   particleDensity: number;
-  speedFactor: number;
+  /** Max pixels/frame for the fastest current. Constant visual speed at any zoom. */
+  speed: number;
   fadeOpacity: number;
   dropRate: number;
   dropRateBump: number;
@@ -48,7 +49,7 @@ export interface SimulationParams {
 
 const DEFAULTS: SimulationParams = {
   particleDensity: 0.05,
-  speedFactor: 0.25,
+  speed: 1.0,
   fadeOpacity: 0.996,
   dropRate: 0.003,
   dropRateBump: 0.01,
@@ -131,7 +132,8 @@ export class ParticleSimulation {
       "u_velocity",
       "u_velocity_min",
       "u_velocity_max",
-      "u_speed_factor",
+      "u_speed",
+      "u_world_size",
       "u_rand_seed",
       "u_drop_rate",
       "u_drop_rate_bump",
@@ -148,7 +150,7 @@ export class ParticleSimulation {
       "u_matrix",
       "u_world_size",
       "u_world_offset",
-      "u_speed_factor",
+      "u_speed",
       "u_color_ramp",
       "u_geo_bounds",
       "u_particle_color",
@@ -393,7 +395,8 @@ export class ParticleSimulation {
     gl.uniform1i(this.updateLocs["u_velocity"], velocityTexUnit);
     gl.uniform2f(this.updateLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
     gl.uniform2f(this.updateLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
-    gl.uniform1f(this.updateLocs["u_speed_factor"], this.params.speedFactor);
+    gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
+    gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
     gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
     gl.uniform1f(this.updateLocs["u_drop_rate"], this.params.dropRate);
     gl.uniform1f(this.updateLocs["u_drop_rate_bump"], this.params.dropRateBump);
@@ -457,7 +460,7 @@ export class ParticleSimulation {
 
       gl.uniform1f(this.drawLocs["u_particles_res"], MAX_PARTICLE_STATE_RES);
       gl.uniform1f(this.drawLocs["u_world_size"], worldSize);
-      gl.uniform1f(this.drawLocs["u_speed_factor"], this.params.speedFactor);
+      gl.uniform1f(this.drawLocs["u_speed"], this.params.speed);
 
       bindTexture(gl, this.colorRampTexture, 2);
       gl.uniform1i(this.drawLocs["u_color_ramp"], 2);
@@ -666,8 +669,8 @@ export class ParticleSimulation {
     gl.disableVertexAttribArray(aPos);
   }
 
-  setSpeedFactor(v: number): void {
-    this.params.speedFactor = v;
+  setSpeed(v: number): void {
+    this.params.speed = v;
   }
 
   setFadeOpacity(v: number): void {

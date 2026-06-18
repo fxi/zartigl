@@ -120,10 +120,7 @@
         "palette": "rdylbu",
         "particles": {
           "density": 0.033,
-          "speedFactor": [
-            0.14,
-            1.11
-          ],
+          "speed": 1.0,
           "fadeOpacity": [
             0.9,
             0.9913000000000001
@@ -198,10 +195,7 @@
         "palette": "rdylbu",
         "particles": {
           "density": 0.004000000000000002,
-          "speedFactor": [
-            0.010000000000000005,
-            0.07000000000000002
-          ],
+          "speed": 1.0,
           "fadeOpacity": [
             0.9174,
             0.9793000000000001
@@ -406,10 +400,7 @@
         "palette": "rdylbu",
         "particles": {
           "density": 0.024,
-          "speedFactor": [
-            0.010000000000000005,
-            1.59
-          ],
+          "speed": 1.0,
           "fadeOpacity": [
             0.975,
             0.9935
@@ -2062,10 +2053,7 @@
         "palette": "rdylbu",
         "particles": {
           "density": 0.02,
-          "speedFactor": [
-            0.05,
-            3
-          ],
+          "speed": 1.0,
           "fadeOpacity": [
             0.94,
             0.985
@@ -2141,7 +2129,7 @@
         "palette": "ice",
         "particles": {
           "density": 0.04,
-          "speedFactor": [0.05, 3],
+          "speed": 1.0,
           "fadeOpacity": [0.93, 0.97],
           "dropRate": 0.002,
           "dropRateBump": 0

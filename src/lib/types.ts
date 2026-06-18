@@ -26,8 +26,8 @@ export interface VectorLayerOptions {
   vectorDerivation?: VectorDerivation;
   /** Particles per screen pixel. Count = clamp(w × h × density, 1, 262144). Default 0.05. */
   particleDensity?: number;
-  /** Fixed speed or [atHighZoom, atLowZoom]. */
-  speedFactor?: ZoomWeighted;
+  /** Max pixels/frame for the fastest current. Constant visual speed at any zoom. Default 1.0. */
+  speed?: number;
   /** Fixed fade or [atHighZoom, atLowZoom]. */
   fadeOpacity?: ZoomWeighted;
   dropRate?: number;

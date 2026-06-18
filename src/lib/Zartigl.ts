@@ -8,7 +8,7 @@ import type { ArcoLayerBackendPreference, FieldMeta, ZoomWeighted, ZarrPointSeri
 export interface ZartiglSettings {
   palette: ColorRampInput;
   particleDensity: number;
-  speedFactor: ZoomWeighted;
+  speed: number;
   fadeOpacity: ZoomWeighted;
   dropRate: number;
   dropRateBump: number;
@@ -120,7 +120,7 @@ function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> 
   return {
     palette: defaults?.palette ?? "rdylbu",
     particleDensity: defaults?.particles?.density ?? 0.05,
-    speedFactor: defaults?.particles?.speedFactor ?? 0.25,
+    speed: defaults?.particles?.speed ?? 1.0,
     fadeOpacity: defaults?.particles?.fadeOpacity ?? 0.996,
     dropRate: defaults?.particles?.dropRate ?? 0.003,
     dropRateBump: defaults?.particles?.dropRateBump ?? 0.01,
@@ -372,7 +372,7 @@ export class Zartigl {
       time: this.time,
       depth: this.depth,
       particleDensity: this.settings.particleDensity,
-      speedFactor: this.settings.speedFactor,
+      speed: this.settings.speed,
       fadeOpacity: this.settings.fadeOpacity,
       dropRate: this.settings.dropRate,
       dropRateBump: this.settings.dropRateBump,
@@ -413,7 +413,7 @@ export class Zartigl {
 
   private applyMutableSettings(layer: ArcoLayer, settings: Partial<ZartiglSettings>): void {
     if (settings.particleDensity != null) layer.setParticleDensity(settings.particleDensity);
-    if (settings.speedFactor != null) layer.setSpeedFactor(settings.speedFactor);
+    if (settings.speed != null) layer.setSpeed(settings.speed);
     if (settings.fadeOpacity != null) layer.setFadeOpacity(settings.fadeOpacity);
     if (settings.dropRate != null) layer.setDropRate(settings.dropRate);
     if (settings.dropRateBump != null) layer.setDropRateBump(settings.dropRateBump);

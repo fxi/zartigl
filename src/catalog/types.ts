@@ -99,7 +99,7 @@ interface CatalogLayerBase {
     palette?: string;
     particles?: {
       density?: number;
-      speedFactor?: ZoomWeighted;
+      speed?: number;
       fadeOpacity?: ZoomWeighted;
       dropRate?: number;
       dropRateBump?: number;

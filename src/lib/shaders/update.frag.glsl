@@ -4,7 +4,8 @@ uniform sampler2D u_particles;
 uniform sampler2D u_velocity;
 uniform vec2 u_velocity_min;
 uniform vec2 u_velocity_max;
-uniform float u_speed_factor;
+uniform float u_speed;        // max pixels/frame for the fastest current (zoom-independent)
+uniform float u_world_size;   // 512 * 2^zoom — Mercator [0,1] → screen pixels
 uniform float u_rand_seed;
 uniform float u_drop_rate;
 uniform float u_drop_rate_bump;
@@ -76,12 +77,27 @@ void main() {
     float cosLat = cos(radians(lat));
     float distortion = max(cosLat, 0.01);
 
+    // Constant visual speed: normalize the current by the field max, scale by
+    // u_speed (pixels/frame for the fastest current), then convert pixels →
+    // Mercator [0,1] by dividing by world_size. Result: offset_px = vn * u_speed
+    // is independent of zoom (offset_merc shrinks as you zoom in).
+    float maxSpeed = length(max(abs(u_velocity_min), abs(u_velocity_max)));
+    vec2 vn = velocity / max(maxSpeed, 1e-6);
+
+    // Visual-speed model. bias = 0 -> pure pixel-constant; a small +bias makes a
+    // zoomed-in (sparser) view a touch faster and a zoomed-out view a touch slower,
+    // which reads as constant to the eye. u_speed = px/frame at the reference zoom.
+    // NOTE: must stay identical to draw.vert.glsl.
+    const float SPEED_ZOOM_BIAS = 0.2;        // internal, baked
+    const float WORLD_REF = 512.0 * 32.0;     // zoom 5 pivot
+    float zoomScale = pow(u_world_size / WORLD_REF, SPEED_ZOOM_BIAS);
+
     // Euler integration. In Mercator, Y decreases northward so V is negated.
     // In globe lat/lon mode, Y increases northward so V keeps its sign.
     vec2 offset = vec2(
-        velocity.x / distortion,
-        u_is_globe > 0.5 ? velocity.y : -velocity.y
-    ) * u_speed_factor * 0.0001;
+        vn.x / distortion,
+        u_is_globe > 0.5 ? vn.y : -vn.y
+    ) * u_speed * zoomScale / u_world_size;
 
     // Random respawn logic
     // Use v_tex_coord (unique per particle) to prevent merged particles

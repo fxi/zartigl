@@ -20,8 +20,7 @@ interface DemoParams {
   timeLabel: string;
   depth: number;
   particleDensity: number;
-  speedMin: number;
-  speedMax: number;
+  speed: number;
   fadeMin: number;
   fadeMax: number;
   dropRate: number;
@@ -44,8 +43,7 @@ interface HashState {
   b?: number;
   pi?: number;
   pd: number;
-  sm: number;
-  sx: number;
+  sp?: number;
   fm: number;
   fx: number;
   dr: number;
@@ -564,17 +562,9 @@ export class DemoApp {
       min: 0.001, max: 0.15, step: 0.001, label: "density",
     }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
 
-    this.particlesFolder.addBinding(this.params, "speedMin", {
-      min: 0.01, max: 2, step: 0.01, label: "speed (local)",
-    }).on("change", () =>
-      this.z?.updateSettings({ speedFactor: [this.params.speedMin, this.params.speedMax] })
-    );
-
-    this.particlesFolder.addBinding(this.params, "speedMax", {
-      min: 0.01, max: 2, step: 0.01, label: "speed (global)",
-    }).on("change", () =>
-      this.z?.updateSettings({ speedFactor: [this.params.speedMin, this.params.speedMax] })
-    );
+    this.particlesFolder.addBinding(this.params, "speed", {
+      min: 0.1, max: 8, step: 0.1, label: "speed",
+    }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
 
     this.particlesFolder.addBinding(this.params, "dropRate", {
       min: 0, max: 0.1, step: 0.001, label: "drop rate",
@@ -880,8 +870,7 @@ export class DemoApp {
       b: Number(this.map.getBearing().toFixed(3)),
       pi: Number(this.map.getPitch().toFixed(3)),
       pd: this.params.particleDensity,
-      sm: this.params.speedMin,
-      sx: this.params.speedMax,
+      sp: this.params.speed,
       fm: this.params.fadeMin,
       fx: this.params.fadeMax,
       dr: this.params.dropRate,
@@ -962,8 +951,7 @@ export class DemoApp {
       timeLabel: "",
       depth: 0,
       particleDensity: 0.05,
-      speedMin: 0.07,
-      speedMax: 0.27,
+      speed: 1.0,
       fadeMin: 0.9,
       fadeMax: 0.9315,
       dropRate: 0.003,
@@ -977,11 +965,9 @@ export class DemoApp {
 
   private applyLayerDefaults(layer: CatalogLayer): void {
     const d = layer.defaults ?? {};
-    const speed = d.particles?.speedFactor;
     const fade = d.particles?.fadeOpacity;
     this.params.particleDensity = d.particles?.density ?? 0.05;
-    this.params.speedMin = Array.isArray(speed) ? speed[0] : (speed ?? 0.07);
-    this.params.speedMax = Array.isArray(speed) ? speed[1] : (speed ?? 0.27);
+    this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fadeMin = Array.isArray(fade) ? fade[0] : (fade ?? 0.9);
     this.params.fadeMax = Array.isArray(fade) ? fade[1] : (fade ?? 0.9315);
     this.params.dropRate = d.particles?.dropRate ?? 0.003;
@@ -994,8 +980,7 @@ export class DemoApp {
 
   private applyHashState(hash: HashState): void {
     this.params.particleDensity = hash.pd;
-    this.params.speedMin = hash.sm;
-    this.params.speedMax = hash.sx;
+    this.params.speed = hash.sp ?? 1.0;
     this.params.fadeMin = hash.fm;
     this.params.fadeMax = hash.fx;
     this.params.dropRate = hash.dr;
@@ -1010,7 +995,7 @@ export class DemoApp {
     return {
       palette: this.params.palette,
       particleDensity: this.params.particleDensity,
-      speedFactor: [this.params.speedMin, this.params.speedMax],
+      speed: this.params.speed,
       fadeOpacity: [this.params.fadeMin, this.params.fadeMax],
       dropRate: this.params.dropRate,
       dropRateBump: this.params.dropRateBump,

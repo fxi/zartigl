@@ -11,7 +11,7 @@ uniform vec2 u_velocity_max;
 uniform mat4 u_matrix;
 uniform float u_world_size;   // 512 * 2^zoom
 uniform float u_world_offset; // integer world copy offset (0 = primary, ±1 = copies)
-uniform float u_speed_factor;
+uniform float u_speed;        // max pixels/frame for the fastest current (zoom-independent)
 uniform vec4 u_geo_bounds;   // west, south, east, north in degrees
 uniform float u_is_globe;    // 1.0 = globe projection, 0.0 = mercator
 uniform vec3 u_globe_center; // visible hemisphere center in unit-sphere coords
@@ -60,12 +60,20 @@ void main() {
 
     // Reconstruct previous position analytically (same formula as update shader).
     // This avoids reading a prev-state texture and eliminates all teleport artifacts.
+    // Must match update.frag exactly so the segment equals one simulation step.
     float cosLat = cos(radians(lat));
     float distortion = max(cosLat, 0.01);
+    vec2 vn = velocity / max(maxSpeed, 1e-6);
+
+    // Visual-speed model — MUST stay identical to update.frag.glsl.
+    const float SPEED_ZOOM_BIAS = 0.2;        // internal, baked
+    const float WORLD_REF = 512.0 * 32.0;     // zoom 5 pivot
+    float zoomScale = pow(u_world_size / WORLD_REF, SPEED_ZOOM_BIAS);
+
     vec2 offset = vec2(
-        velocity.x / distortion,
-        -velocity.y
-    ) * u_speed_factor * 0.0001;
+        vn.x / distortion,
+        u_is_globe > 0.5 ? vn.y : -vn.y
+    ) * u_speed * zoomScale / u_world_size;
 
     // a_is_curr=0 → tail of the segment (one step back), a_is_curr=1 → head (current)
     vec2 pos = currPos - offset * (1.0 - a_is_curr);

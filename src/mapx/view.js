@@ -42,7 +42,7 @@ function handler() {
         variableV: "northward_wind",
         time: 1700438400000, // 2023-11-20 00:00 UTC
         particleDensity: 0.004,
-        speedFactor: [0.01, 0.07],
+        speed: 1.0,
         fadeOpacity: [0.9174, 0.9793],
         dropRate: 0.005,
         opacity: 0.9,

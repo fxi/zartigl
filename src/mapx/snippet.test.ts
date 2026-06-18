@@ -14,7 +14,7 @@ describe("buildMapxWidgetSnippet", () => {
       settings: {
         palette: "rdylbu",
         opacity: 0.8,
-        speedFactor: [0.01, 0.07],
+        speed: 1.0,
       },
     });
 
