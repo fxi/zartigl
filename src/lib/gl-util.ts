@@ -122,6 +122,84 @@ export function createTexture(
   return texture;
 }
 
+/**
+ * Capability + GL constants for the particle-state texture format.
+ * When float rendering is available, particle positions are stored at full
+ * 32-bit float precision (eliminating the 1/65025 lattice that plagues the
+ * 8-bit hi/lo packing at high zoom). Otherwise we fall back to RGBA8 packing.
+ */
+export interface StateTextureFormat {
+  float: boolean;
+  internalFormat: number;
+  type: number;
+}
+
+/**
+ * Detect float-render support and return the texture format to use for the
+ * particle state. Enables the extensions needed to render into the format.
+ */
+export function detectStateTextureFormat(
+  gl: WebGLRenderingContext,
+): StateTextureFormat {
+  const isWebGL2 =
+    typeof WebGL2RenderingContext !== "undefined" &&
+    gl instanceof WebGL2RenderingContext;
+
+  if (isWebGL2) {
+    // RGBA32F is renderable when EXT_color_buffer_float is present.
+    if (gl.getExtension("EXT_color_buffer_float")) {
+      const gl2 = gl as unknown as WebGL2RenderingContext;
+      return { float: true, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
+    }
+  } else {
+    // WebGL1: need both the float texture sampling and float color-buffer
+    // rendering extensions. internalFormat must equal format (RGBA).
+    const hasFloatTex = gl.getExtension("OES_texture_float");
+    const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
+    if (hasFloatTex && hasFloatRender) {
+      return { float: true, internalFormat: gl.RGBA, type: gl.FLOAT };
+    }
+  }
+
+  return { float: false, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE };
+}
+
+/**
+ * Create a texture with an explicit internal format / data type. Used for the
+ * float particle-state textures; screen/colorramp textures keep RGBA8 via
+ * {@link createTexture}.
+ */
+export function createTextureFormat(
+  gl: WebGLRenderingContext,
+  filter: number,
+  data: ArrayBufferView | null,
+  width: number,
+  height: number,
+  internalFormat: number,
+  type: number,
+): WebGLTexture {
+  const texture = gl.createTexture();
+  if (!texture) throw new Error("Failed to create texture");
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    internalFormat,
+    width,
+    height,
+    0,
+    gl.RGBA,
+    type,
+    data,
+  );
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return texture;
+}
+
 export function bindTexture(
   gl: WebGLRenderingContext,
   texture: WebGLTexture,

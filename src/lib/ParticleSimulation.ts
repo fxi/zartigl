@@ -1,10 +1,13 @@
 import {
   createProgram,
   createTexture,
+  createTextureFormat,
+  detectStateTextureFormat,
   createFramebuffer,
   createQuadBuffer,
   createColorRampTexture,
   bindTexture,
+  type StateTextureFormat,
 } from "./gl-util";
 
 import quadVert from "./shaders/quad.vert.glsl";
@@ -75,6 +78,9 @@ export class ParticleSimulation {
   /** Active draw count — changes with canvas size / density, no realloc. */
   private numParticles = 0;
 
+  /** Particle-state texture format (float when supported, else RGBA8 packing). */
+  private stateFormat!: StateTextureFormat;
+
   // Screen textures for trail rendering
   private screenTextures!: [WebGLTexture, WebGLTexture];
   private screenFramebuffers!: [WebGLFramebuffer, WebGLFramebuffer];
@@ -105,9 +111,16 @@ export class ParticleSimulation {
   init(gl: WebGLRenderingContext): void {
     this.gl = gl;
 
+    // Choose the particle-state texture format. With float support, positions
+    // are stored at full 32-bit precision; the update/draw shaders branch on
+    // USE_FLOAT_STATE to skip the 8-bit hi/lo packing that quantizes positions
+    // to a 1/65025 lattice (visible as zigzag trails at high zoom).
+    this.stateFormat = detectStateTextureFormat(gl);
+    const stateDefine = this.stateFormat.float ? "#define USE_FLOAT_STATE 1\n" : "";
+
     // Compile programs
-    this.updateProgram = createProgram(gl, quadVert, updateFrag);
-    this.drawProgram = createProgram(gl, drawVert, drawFrag);
+    this.updateProgram = createProgram(gl, quadVert, stateDefine + updateFrag);
+    this.drawProgram = createProgram(gl, stateDefine + drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
     this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
     this.gridGlobeProgram = createProgram(gl, gridGlobeVert, gridGlobeFrag);
@@ -206,18 +219,41 @@ export class ParticleSimulation {
     return result;
   }
 
+  /** Random initial particle positions, matching the active state format. */
+  private makeStateData(): ArrayBufferView {
+    const res = MAX_PARTICLE_STATE_RES;
+    const n = res * res * 4;
+    if (this.stateFormat.float) {
+      // R=x, G=y in [0,1); B/A unused.
+      const data = new Float32Array(n);
+      for (let i = 0; i < n; i++) data[i] = Math.random();
+      return data;
+    }
+    const data = new Uint8Array(n);
+    for (let i = 0; i < n; i++) data[i] = Math.floor(Math.random() * 256);
+    return data;
+  }
+
+  private createStateTexture(data: ArrayBufferView): WebGLTexture {
+    return createTextureFormat(
+      this.gl,
+      this.gl.NEAREST,
+      data,
+      MAX_PARTICLE_STATE_RES,
+      MAX_PARTICLE_STATE_RES,
+      this.stateFormat.internalFormat,
+      this.stateFormat.type,
+    );
+  }
+
   private initParticleState(): void {
     const gl = this.gl;
-    const res = MAX_PARTICLE_STATE_RES;
 
     // Random initial positions across the full texture
-    const stateData = new Uint8Array(res * res * 4);
-    for (let i = 0; i < stateData.length; i++) {
-      stateData[i] = Math.floor(Math.random() * 256);
-    }
+    const stateData = this.makeStateData();
 
-    const tex0 = createTexture(gl, gl.NEAREST, stateData, res, res);
-    const tex1 = createTexture(gl, gl.NEAREST, stateData, res, res);
+    const tex0 = this.createStateTexture(stateData);
+    const tex1 = this.createStateTexture(stateData);
     const fb0 = createFramebuffer(gl, tex0);
     const fb1 = createFramebuffer(gl, tex1);
 
@@ -689,16 +725,13 @@ export class ParticleSimulation {
   resetParticles(): void {
     const gl = this.gl;
     const res = MAX_PARTICLE_STATE_RES;
-    const stateData = new Uint8Array(res * res * 4);
-    for (let i = 0; i < stateData.length; i++) {
-      stateData[i] = Math.floor(Math.random() * 256);
-    }
+    const stateData = this.makeStateData();
 
     for (const tex of this.particleStateTextures) {
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(
-        gl.TEXTURE_2D, 0, gl.RGBA, res, res, 0,
-        gl.RGBA, gl.UNSIGNED_BYTE, stateData,
+        gl.TEXTURE_2D, 0, this.stateFormat.internalFormat, res, res, 0,
+        gl.RGBA, this.stateFormat.type, stateData,
       );
     }
     gl.bindTexture(gl.TEXTURE_2D, null);

@@ -44,11 +44,16 @@ float latToMercY(float lat) {
 void main() {
     vec4 encoded = texture2D(u_particles, v_tex_coord);
 
+#ifdef USE_FLOAT_STATE
+    // Float state texture: position stored directly at full precision.
+    vec2 pos = encoded.rg;
+#else
     // Decode position: R=hi_x, G=lo_x, B=hi_y, A=lo_y
     vec2 pos = vec2(
         encoded.r + encoded.g / 255.0,
         encoded.b + encoded.a / 255.0
     );
+#endif
 
     // Convert position to geographic for velocity lookup.
     // Globe mode: pos.y encodes lat as (lat+90)/180; Mercator mode: standard Web Mercator.
@@ -83,6 +88,10 @@ void main() {
     // from getting identical random values and staying permanently fused.
     vec2 rng_id = pos + v_tex_coord;
 
+#ifdef USE_FLOAT_STATE
+    // Float state has no quantization floor — integrate the exact offset.
+    vec2 newPos = pos + offset;
+#else
     // Stochastic sub-pixel motion: when offset is below the 16-bit encoding
     // precision (1/65025), the position would never change. Instead, randomly
     // advance by one minimum step with probability |offset| / MIN_STEP so the
@@ -100,6 +109,7 @@ void main() {
     vec2 finalOffset = mix(offset, stochStep, belowThreshold);
 
     vec2 newPos = pos + finalOffset;
+#endif
 
     // Wrap longitude: a particle crossing ±180° continues on the other side
     // instead of being dropped. Y (latitude) is intentionally not wrapped —
@@ -130,6 +140,10 @@ void main() {
 
     newPos = mix(newPos, randomPos, drop);
 
+#ifdef USE_FLOAT_STATE
+    // Store position directly at full precision (B/A unused).
+    gl_FragColor = vec4(newPos, 0.0, 1.0);
+#else
     // Encode back to RGBA: R=hi_x, G=lo_x, B=hi_y, A=lo_y
     gl_FragColor = vec4(
         floor(newPos.x * 255.0) / 255.0,
@@ -137,4 +151,5 @@ void main() {
         floor(newPos.y * 255.0) / 255.0,
         fract(newPos.y * 255.0)
     );
+#endif
 }
