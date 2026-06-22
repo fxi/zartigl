@@ -123,6 +123,10 @@
       "properties": {
         "backend": { "type": "string", "enum": ["zarr", "wmts"] },
         "palette": { "type": "string" },
+        "renderMode": {
+          "type": "string",
+          "enum": ["particles", "raster", "raster+particles"]
+        },
         "particles": {
           "type": "object",
           "additionalProperties": false,

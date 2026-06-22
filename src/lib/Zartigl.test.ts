@@ -85,6 +85,20 @@ function scalarLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
   } as CatalogLayer;
 }
 
+function vectorLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
+  return {
+    id: "vector",
+    label: "Vector",
+    category: "Test",
+    kind: "vector",
+    dataset: { id: "dataset" },
+    stores: { field: { url: "https://example.test/vector.zarr" } },
+    variables: { kind: "vector", u: "u", v: "v" },
+    defaults: {},
+    ...extra,
+  } as CatalogLayer;
+}
+
 function catalog(layer: CatalogLayer = scalarLayer()): Catalog {
   return {
     schemaVersion: 1,
@@ -116,6 +130,50 @@ beforeEach(() => {
 });
 
 describe("Zartigl facade", () => {
+  it("uses catalog render mode unless an explicit setting overrides it", async () => {
+    const catalogLayer = vectorLayer({
+      defaults: { renderMode: "raster+particles" },
+    });
+    const catalogValue = catalog(catalogLayer);
+
+    const catalogMap = new FakeMap();
+    const fromCatalog = new Zartigl({
+      map: catalogMap as never,
+      catalog: catalogValue,
+    });
+    await fromCatalog.setLayer("vector");
+    expect(
+      (catalogMap.getLayer("zartigl") as unknown as {
+        options: { renderMode: string };
+      }).options.renderMode,
+    ).toBe("raster+particles");
+
+    const explicitMap = new FakeMap();
+    const explicit = new Zartigl({
+      map: explicitMap as never,
+      catalog: catalogValue,
+      settings: { renderMode: "raster" },
+    });
+    await explicit.setLayer("vector");
+    expect(
+      (explicitMap.getLayer("zartigl") as unknown as {
+        options: { renderMode: string };
+      }).options.renderMode,
+    ).toBe("raster");
+  });
+
+  it("propagates runtime render mode updates", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });
+    await z.setLayer("vector");
+    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const spy = vi.spyOn(renderLayer, "setRenderMode");
+
+    z.updateSettings({ renderMode: "raster+particles" });
+
+    expect(spy).toHaveBeenCalledWith("raster+particles");
+  });
+
   it("queues setLayer until the map style is ready", async () => {
     const map = new FakeMap();
     map.ready = false;

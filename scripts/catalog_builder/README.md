@@ -26,7 +26,7 @@ Each layer has:
 - `dataset` — provenance metadata
 - `stores.field` / `stores.pointSeries` / `stores.wmts` — rendering and query stores
 - `variables` — scalar value, vector components, or vector derivation
-- `defaults` — grouped palette, particle, and raster parameters
+- `defaults` — render mode plus grouped palette, particle, and raster parameters
 
 Time, vertical, spatial, and variable metadata are resolved live from each Zarr store. They are intentionally not duplicated in the catalog.
 

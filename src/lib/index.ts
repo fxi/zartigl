@@ -37,6 +37,7 @@ export type {
   ZarrVerticalDimension,
 } from "./types";
 export type { ColorRampInput, PaletteMeta } from "./gl-util";
+export type { RenderMode } from "./ParticleSimulation";
 export type {
   DepthMeta,
   Legend,

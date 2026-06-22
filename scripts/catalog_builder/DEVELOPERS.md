@@ -44,6 +44,7 @@ Each layer must follow this shape:
   "defaults": {
     "backend": "zarr",
     "palette": "rdylbu",
+    "renderMode": "particles",
     "particles": {
       "density": 0.05,
       "speed": 1.0,
@@ -93,6 +94,8 @@ For direction/magnitude vector derivation, use:
 - Time, vertical, spatial, and variable metadata must not be copied into the catalog; it is loaded live from Zarr.
 - `defaults.backend` can be `zarr` or `wmts`; omit it to let the app auto-detect, or set `"wmts"` explicitly when a scalar layer should prefer WMTS rendering.
 - `defaults.palette` must exist in `src/lib/palettes.json`.
+- `defaults.renderMode` is optional and only affects vector layers. It accepts
+  `particles`, `raster`, or `raster+particles`; the runtime default is `particles`.
 
 ## 3. Display Defaults
 

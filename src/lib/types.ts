@@ -1,4 +1,5 @@
 import type { ZarrSource } from "./ZarrSource";
+import type { RenderMode } from "./ParticleSimulation";
 
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
@@ -24,6 +25,8 @@ export interface VectorLayerOptions {
   speed?: number;
   /** Trail length [0, 1] (higher = longer trails). Default 0.7. */
   fade?: number;
+  /** Vector display mode. Default particles. */
+  renderMode?: RenderMode;
   colorRamp?: Record<number, string>;
   time?: string | number;
   depth?: number;

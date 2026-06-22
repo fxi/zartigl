@@ -50,6 +50,7 @@ interface CatalogLayerBase {
   defaults?: {
     backend?: "zarr" | "wmts";
     palette?: string;
+    renderMode?: "particles" | "raster" | "raster+particles";
     particles?: {
       density?: number;
       speed?: number;

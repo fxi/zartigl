@@ -12,6 +12,7 @@ import type {
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
 import type { CatalogLayer } from "../catalog/types";
+import type { RenderMode } from "./ParticleSimulation";
 
 type LayerEventMap = {
   loading: () => void;
@@ -236,6 +237,10 @@ export class ArcoLayer implements CustomLayerInterface {
 
   setParticleDensity(density: number): void {
     if (this.delegate instanceof VectorLayer) this.delegate.setParticleDensity(density);
+  }
+
+  setRenderMode(mode: RenderMode): void {
+    if (this.delegate instanceof VectorLayer) this.delegate.setRenderMode(mode);
   }
 
   setColorRamp(ramp: ColorRampInput): void {

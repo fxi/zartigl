@@ -103,7 +103,7 @@ export class VectorLayer implements CustomLayerInterface {
       logScale: options.logScale ?? false,
       vibrance: options.vibrance ?? 0.0,
     });
-    this.simulation.setRenderMode("particles");
+    this.setRenderMode(options.renderMode ?? "particles");
   }
 
   async onAdd(map: MaplibreMap, gl: WebGLRenderingContext): Promise<void> {
@@ -378,6 +378,7 @@ export class VectorLayer implements CustomLayerInterface {
         this.velocityField.geoBounds,
         isGlobe,
         globeCenterVector(center.lng, center.lat),
+        options.defaultProjectionData.clippingPlane,
       );
     } finally {
       restoreGLState(gl, saved);

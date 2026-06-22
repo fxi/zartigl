@@ -186,7 +186,7 @@ export class ParticleSimulation {
       "u_speed",
       "u_color_ramp",
       "u_geo_bounds",
-      "u_particle_color",
+      "u_particle_contrast",
       "u_opacity",
       "u_log_scale",
       "u_vibrance",
@@ -404,6 +404,7 @@ export class ParticleSimulation {
     geoBounds?: { west: number; south: number; east: number; north: number },
     isGlobe = false,
     globeCenter: [number, number, number] = [0, 0, 1],
+    clippingPlane?: [number, number, number, number],
   ): void {
     const gl = this.gl;
 
@@ -486,16 +487,27 @@ export class ParticleSimulation {
     this.drawQuad();
 
     // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
-    if (runGrid && geoBounds && !isGlobe) {
-      this.renderGrid(
-        velocityTexUnit,
-        velocityMin,
-        velocityMax,
-        matrix,
-        worldSize,
-        worldCopyOffsets,
-        geoBounds,
-      );
+    if (runGrid && geoBounds) {
+      if (isGlobe && clippingPlane) {
+        this.renderGridGlobe(
+          velocityTexUnit,
+          velocityMin,
+          velocityMax,
+          matrix,
+          geoBounds,
+          clippingPlane,
+        );
+      } else if (!isGlobe) {
+        this.renderGrid(
+          velocityTexUnit,
+          velocityMin,
+          velocityMax,
+          matrix,
+          worldSize,
+          worldCopyOffsets,
+          geoBounds,
+        );
+      }
     }
 
     // --- 4. Draw pass: render particles on top of trails/grid ---
@@ -524,12 +536,10 @@ export class ParticleSimulation {
       bindTexture(gl, this.colorRampTexture, 2);
       gl.uniform1i(this.drawLocs["u_color_ramp"], 2);
 
-      // In raster+particles mode render particles white so they are visible over the colormap
-      if (this.renderMode === 'raster+particles') {
-        gl.uniform4f(this.drawLocs["u_particle_color"], 1.0, 1.0, 1.0, 1.0);
-      } else {
-        gl.uniform4f(this.drawLocs["u_particle_color"], 0.0, 0.0, 0.0, 0.0);
-      }
+      gl.uniform1f(
+        this.drawLocs["u_particle_contrast"],
+        this.renderMode === 'raster+particles' ? 1.0 : 0.0,
+      );
 
       gl.uniform1f(this.drawLocs["u_opacity"], this.params.opacity);
       gl.uniform1f(this.drawLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
