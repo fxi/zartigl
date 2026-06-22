@@ -15,6 +15,7 @@ describe("buildMapxWidgetSnippet", () => {
         palette: "rdylbu",
         opacity: 0.8,
         speed: 1.0,
+        renderMode: "raster+particles",
       },
     });
 
@@ -28,6 +29,7 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).toContain("layer: \"surface-wind\"");
     expect(snippet).toContain("settings: {");
     expect(snippet).toContain("\"opacity\": 0.8");
+    expect(snippet).toContain('"renderMode": "raster+particles"');
     expect(snippet).toContain("time: new Date(\"2026-06-04T00:00:00.000Z\")");
     expect(snippet).toContain("depth: 10");
     expect(snippet).toContain("widget?._arco?.destroy()");
@@ -48,7 +50,7 @@ describe("buildStandaloneDemoSnippet", () => {
       backend: "wmts",
       time: new Date("2026-06-04T00:00:00.000Z"),
       depth: 10,
-      settings: { opacity: 0.8 },
+      settings: { opacity: 0.8, renderMode: "raster" },
       center: [6.1, 46.2],
       zoom: 4.1234,
       bearing: 12.5,
@@ -65,6 +67,7 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet).toContain("backend: \"wmts\"");
     expect(snippet).toContain("await z.setLayer(\"surface-wind\")");
     expect(snippet).toContain("z.updateSettings({");
+    expect(snippet).toContain('"renderMode": "raster"');
     expect(snippet).toContain("z.setTimeAndDepth(new Date(\"2026-06-04T00:00:00.000Z\"), 10)");
   });
 });

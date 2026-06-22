@@ -9,7 +9,7 @@ import {
   deriveDirectionMagnitudeComponents,
   getPalettes,
 } from "../lib";
-import type { ZarrPointSeriesResult, ZartiglSettings } from "../lib";
+import type { RenderMode, ZarrPointSeriesResult, ZartiglSettings } from "../lib";
 import { formatTime, formatVertical } from "../catalog";
 import type { CatalogLayer, Catalog } from "../catalog";
 
@@ -22,6 +22,7 @@ interface DemoParams {
   particleDensity: number;
   speed: number;
   fade: number;
+  renderMode: RenderMode;
   palette: string;
   opacity: number;
   logScale: boolean;
@@ -42,6 +43,7 @@ interface HashState {
   pd: number;
   sp?: number;
   f?: number;
+  rm?: RenderMode;
   op: number;
   ls: boolean;
   vb: number;
@@ -555,6 +557,15 @@ export class DemoApp {
   private buildParticlesFolder(): void {
     this.particlesFolder = this.pane.addFolder({ title: "Particles" });
 
+    this.particlesFolder.addBinding(this.params, "renderMode", {
+      options: [
+        { text: "Particles", value: "particles" },
+        { text: "Raster", value: "raster" },
+        { text: "Raster + particles", value: "raster+particles" },
+      ],
+      label: "mode",
+    }).on("change", (ev) => this.z?.updateSettings({ renderMode: ev.value }));
+
     this.particlesFolder.addBinding(this.params, "particleDensity", {
       min: 0.001, max: 0.15, step: 0.001, label: "density",
     }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
@@ -852,6 +863,7 @@ export class DemoApp {
       pd: this.params.particleDensity,
       sp: this.params.speed,
       f: this.params.fade,
+      rm: this.params.renderMode,
       op: this.params.opacity,
       ls: this.params.logScale,
       vb: this.params.vibrance,
@@ -931,6 +943,7 @@ export class DemoApp {
       particleDensity: 0.05,
       speed: 1.0,
       fade: 0.7,
+      renderMode: "particles",
       palette: "rdylbu",
       opacity: 1,
       logScale: false,
@@ -943,6 +956,7 @@ export class DemoApp {
     this.params.particleDensity = d.particles?.density ?? 0.05;
     this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fade = d.particles?.fade ?? 0.7;
+    this.params.renderMode = d.renderMode ?? "particles";
     this.params.opacity = d.raster?.opacity ?? 1;
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
@@ -953,6 +967,7 @@ export class DemoApp {
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;
+    this.params.renderMode = hash.rm ?? this.params.renderMode;
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;
@@ -965,6 +980,7 @@ export class DemoApp {
       particleDensity: this.params.particleDensity,
       speed: this.params.speed,
       fade: this.params.fade,
+      renderMode: this.params.renderMode,
       opacity: this.params.opacity,
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
