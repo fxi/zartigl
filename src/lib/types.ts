@@ -1,3 +1,5 @@
+import type { ZarrSource } from "./ZarrSource";
+
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
   direction_variable: string;
@@ -12,7 +14,7 @@ export interface VectorLayerOptions {
   id: string;
   source: string;
   /** Optional initialized/shared source. When omitted, the layer creates one from `source`. */
-  zarrSource?: import("./ZarrSource").ZarrSource;
+  zarrSource?: ZarrSource;
   variableU?: string;
   variableV?: string;
   vectorDerivation?: VectorDerivation;
@@ -52,7 +54,7 @@ export interface ScalarLayerOptions {
   id: string;
   source: string;
   /** Optional initialized/shared source. When omitted, the layer creates one from `source`. */
-  zarrSource?: import("./ZarrSource").ZarrSource;
+  zarrSource?: ZarrSource;
   variable: string;
   colorRamp?: Record<number, string>;
   time?: string | number;
