@@ -42,6 +42,13 @@ const REDISTRIB_GAIN = 1.0;      // boost per unit per-frame bounds change
 const REDISTRIB_DECAY = 0.92;    // per-frame decay (boost outlives the gesture ~0.5–1s)
 const REDISTRIB_MAX_DROP = 0.1;  // ceiling on effective drop rate during the transition
 
+// Trail history is screen-space and cannot remain geographically exact while
+// the camera moves. Retain a few frames for visual continuity, but decay them
+// quickly enough that displaced trails do not linger.
+const MOVING_FADE_OPACITY = 0.8;
+const MOVING_FADE_OUT_MS = 120;
+const MOVING_FADE_IN_MS = 300;
+
 export interface SimulationParams {
   /** Particles per screen pixel. Active count = clamp(w * h * density, 1, MAX). */
   particleDensity: number;
@@ -93,6 +100,15 @@ export class ParticleSimulation {
   private prevBounds: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
   private redistributionBoost = 0;
 
+  // Camera-aware trail retention transition. This is separate from the public
+  // configured fade so interaction never overwrites the user's setting.
+  private cameraMoving = false;
+  private currentFadeOpacity: number;
+  private fadeTransitionStartOpacity: number;
+  private fadeTransitionTargetOpacity: number;
+  private fadeTransitionStartMs = 0;
+  private fadeTransitionDurationMs = 0;
+
   /** Particle-state texture format (float when supported, else RGBA8 packing). */
   private stateFormat!: StateTextureFormat;
 
@@ -121,6 +137,9 @@ export class ParticleSimulation {
 
   constructor(params?: Partial<SimulationParams>) {
     this.params = { ...DEFAULTS, ...params };
+    this.currentFadeOpacity = this.params.fadeOpacity;
+    this.fadeTransitionStartOpacity = this.params.fadeOpacity;
+    this.fadeTransitionTargetOpacity = this.params.fadeOpacity;
   }
 
   init(gl: WebGLRenderingContext): void {
@@ -463,7 +482,7 @@ export class ParticleSimulation {
 
     bindTexture(gl, this.screenTextures[0], 0);
     gl.uniform1i(this.fadeLocs["u_screen"], 0);
-    gl.uniform1f(this.fadeLocs["u_opacity"], this.params.fadeOpacity);
+    gl.uniform1f(this.fadeLocs["u_opacity"], this.updateTrailFadeOpacity(performance.now()));
     this.drawQuad();
 
     // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
@@ -715,6 +734,46 @@ export class ParticleSimulation {
 
   setFadeOpacity(v: number): void {
     this.params.fadeOpacity = v;
+    // While moving, retain the aggressive decay target and remember the new
+    // configured value for restoration at moveend.
+    if (!this.cameraMoving) {
+      this.currentFadeOpacity = v;
+      this.fadeTransitionStartOpacity = v;
+      this.fadeTransitionTargetOpacity = v;
+      this.fadeTransitionDurationMs = 0;
+    }
+  }
+
+  /** Smoothly switch between normal and camera-motion trail retention. */
+  setCameraMoving(moving: boolean): void {
+    if (moving === this.cameraMoving) return;
+
+    const now = performance.now();
+    this.updateTrailFadeOpacity(now);
+    this.cameraMoving = moving;
+    this.fadeTransitionStartOpacity = this.currentFadeOpacity;
+    this.fadeTransitionTargetOpacity = moving
+      ? MOVING_FADE_OPACITY
+      : this.params.fadeOpacity;
+    this.fadeTransitionStartMs = now;
+    this.fadeTransitionDurationMs = moving ? MOVING_FADE_OUT_MS : MOVING_FADE_IN_MS;
+  }
+
+  private updateTrailFadeOpacity(now: number): number {
+    if (this.fadeTransitionDurationMs <= 0) return this.currentFadeOpacity;
+
+    const progress = Math.min(
+      1,
+      Math.max(0, (now - this.fadeTransitionStartMs) / this.fadeTransitionDurationMs),
+    );
+    // Smoothstep avoids visible slope changes at the beginning and end.
+    const eased = progress * progress * (3 - 2 * progress);
+    this.currentFadeOpacity =
+      this.fadeTransitionStartOpacity +
+      (this.fadeTransitionTargetOpacity - this.fadeTransitionStartOpacity) * eased;
+
+    if (progress === 1) this.fadeTransitionDurationMs = 0;
+    return this.currentFadeOpacity;
   }
 
   setDropRate(v: number): void {

@@ -181,6 +181,8 @@ For vector particle rendering, thousands of virtual drifters are seeded across t
 
 Particle state lives in GPU textures using a ping-pong framebuffer pattern, so positions do not need to round-trip through CPU arrays each frame. Positions are stored at full float precision where the GPU supports it (falling back to 16-bit packing), which keeps trails crisp when zoomed in. Motion is zoom-compensated so a single `speed` setting yields roughly constant *visual* speed from low to high zoom.
 
+Trail history currently remains a screen-space texture. During camera movement it is faded aggressively rather than cleared every frame, which avoids flicker while limiting displaced trail artifacts on both Mercator and globe projections. A world-aligned or reprojected trail buffer is a possible experimental direction, but globe reprojection and polar continuity require additional work.
+
 ### 4. Queries Use The Same Source Logic
 
 Point inspection, time-series sampling, and vertical-profile sampling reuse the same Zarr metadata, coordinate lookup, chunk decoding, and cache machinery as the renderer. The query API is intentionally separate from the visual interaction layer, so applications can build their own analysis UI.

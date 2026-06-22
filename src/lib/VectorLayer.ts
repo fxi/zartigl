@@ -116,22 +116,23 @@ export class VectorLayer implements CustomLayerInterface {
     // Load Zarr metadata and initial velocity data
     this.initAsync();
 
-    // Trail history is screen-space, so it must not survive camera changes.
-    this.moveStartHandler = () => this.clearCameraState();
+    // Trail history is screen-space. During camera motion, decay it rapidly
+    // instead of clearing every frame, preserving short visual continuity.
+    this.moveStartHandler = () => {
+      this.simulation.setCameraMoving(true);
+      this.map?.triggerRepaint();
+    };
     map.on("movestart", this.moveStartHandler);
 
-    this.moveHandler = () => this.clearCameraState();
+    this.moveHandler = () => this.map?.triggerRepaint();
     map.on("move", this.moveHandler);
 
     this.moveEndHandler = () => {
+      this.simulation.setCameraMoving(false);
       this.reloadIfViewportUncovered();
+      this.map?.triggerRepaint();
     };
     map.on("moveend", this.moveEndHandler);
-  }
-
-  private clearCameraState(): void {
-    this.simulation.clearState();
-    this.map?.triggerRepaint();
   }
 
   private async initAsync(): Promise<void> {

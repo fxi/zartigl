@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     resetParticles: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;
     setRenderMode: ReturnType<typeof vi.fn>;
+    setCameraMoving: ReturnType<typeof vi.fn>;
   }> = [];
 
   const fieldInstances: Array<{
@@ -30,6 +31,7 @@ vi.mock("./ParticleSimulation", () => ({
       resetParticles: vi.fn(),
       destroy: vi.fn(),
       setRenderMode: vi.fn(),
+      setCameraMoving: vi.fn(),
     };
     mocks.simulationInstances.push(instance);
     return instance;
@@ -99,7 +101,7 @@ describe("VectorLayer camera particle state", () => {
     vi.spyOn(vectorLayerPrototype, "initAsync").mockResolvedValue(undefined);
   });
 
-  it("clears screen-space trails while the camera moves", async () => {
+  it("uses aggressive trail decay while the camera moves", async () => {
     const map = new FakeMap();
     const layer = createLayer();
 
@@ -109,7 +111,9 @@ describe("VectorLayer camera particle state", () => {
     map.emit("movestart");
     map.emit("move");
 
-    expect(simulation.clearState).toHaveBeenCalledTimes(2);
+    expect(simulation.setCameraMoving).toHaveBeenCalledOnce();
+    expect(simulation.setCameraMoving).toHaveBeenCalledWith(true);
+    expect(simulation.clearState).not.toHaveBeenCalled();
     expect(map.triggerRepaint).toHaveBeenCalledTimes(2);
   });
 
@@ -125,8 +129,10 @@ describe("VectorLayer camera particle state", () => {
     const simulation = mocks.simulationInstances[0];
     map.emit("moveend");
 
+    expect(simulation.setCameraMoving).toHaveBeenCalledWith(false);
     expect(simulation.resetParticles).not.toHaveBeenCalled();
     expect(reloadSpy).toHaveBeenCalledTimes(1);
+    expect(map.triggerRepaint).toHaveBeenCalledOnce();
   });
 
   it("unregisters camera handlers on remove", async () => {
