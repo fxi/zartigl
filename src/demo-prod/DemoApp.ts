@@ -90,9 +90,13 @@ function getPointVariables(layer: CatalogLayer): string[] {
   return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
 }
 
-function hasDepthProfile(layer: CatalogLayer): boolean {
-  const vertical = layer.dimensions.vertical;
-  return (vertical?.size ?? vertical?.values?.length ?? 0) > 1;
+function nearestTimeIndex(values: readonly number[], target: number): number {
+  if (values.length === 0) return 0;
+  let best = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (Math.abs(values[i] - target) < Math.abs(values[best] - target)) best = i;
+  }
+  return best;
 }
 
 function pointResultToData(
@@ -172,6 +176,7 @@ function renderPointChart(
   mode: PopupMode,
   unit: string,
   verticalLabel = "depth",
+  verticalUnits?: string,
 ): void {
   host.replaceChildren();
   const finite = data.filter((datum) => Number.isFinite(datum.value));
@@ -236,10 +241,10 @@ function renderPointChart(
     : paddedMax.toPrecision(3);
   const yMinLabel = mode === "time"
     ? paddedMin.toPrecision(3)
-    : formatVertical(axisMin, verticalLabel);
+    : formatVertical(axisMin, verticalLabel, verticalUnits);
   const yMaxLabel = mode === "time"
     ? paddedMax.toPrecision(3)
-    : formatVertical(axisMax, verticalLabel);
+    : formatVertical(axisMax, verticalLabel, verticalUnits);
 
   const labels: Array<[number, number, string, string]> = [
     [margin.left, height - 10, xMinLabel, "start"],
@@ -357,27 +362,26 @@ export class DemoApp {
 
     const timeMeta = this.z.getTimeMeta();
     const depthMeta = this.z.getDepthMeta();
-    const tMin = timeMeta.min ?? 0;
-    const tStep = timeMeta.step ?? 86400000;
-    const tSize = timeMeta.size;
+    const times = timeMeta.values ?? [];
+    const tSize = times.length;
 
     if (hashState) {
       this.params.timeIndex = Math.max(0, Math.min(
-        Math.round((hashState.t - tMin) / tStep),
+        nearestTimeIndex(times, hashState.t),
         tSize - 1,
       ));
-      this.params.timeLabel = formatTime(tMin + this.params.timeIndex * tStep);
+      this.params.timeLabel = formatTime(times[this.params.timeIndex]);
       this.params.depth = depthMeta.values.includes(hashState.v)
         ? hashState.v
         : (depthMeta.values[0] ?? 0);
     } else {
-      this.params.timeIndex = tSize - 1;
-      this.params.timeLabel = formatTime(timeMeta.current ?? tMin + (tSize - 1) * tStep);
+      this.params.timeIndex = nearestTimeIndex(times, timeMeta.current ?? timeMeta.max);
+      this.params.timeLabel = formatTime(times[this.params.timeIndex]);
       this.params.depth = depthMeta.values[0] ?? 0;
     }
 
     this.z.updateSettings(this.buildSettings());
-    this.z.setTimeAndDepth(tMin + this.params.timeIndex * tStep, this.params.depth);
+    this.z.setTimeAndDepth(times[this.params.timeIndex], this.params.depth);
 
     this.rebuildDataUI();
 
@@ -401,9 +405,8 @@ export class DemoApp {
     this.dataBindings = [];
 
     const timeMeta = this.z!.getTimeMeta();
-    const tMin = timeMeta.min ?? 0;
-    const tStep = timeMeta.step ?? 86400000;
-    const tSize = timeMeta.size;
+    const times = timeMeta.values ?? [];
+    const tSize = times.length;
 
     let labelBinding: BindingApi;
 
@@ -413,7 +416,7 @@ export class DemoApp {
       step: 1,
       label: "time",
     }).on("change", (ev) => {
-      const ms = tMin + ev.value * tStep;
+      const ms = times[ev.value];
       this.params.timeLabel = formatTime(ms);
       labelBinding.refresh();
       this.z?.setTime(ms);
@@ -429,7 +432,7 @@ export class DemoApp {
     if (depthMeta.values.length > 0) {
       depthBinding = this.dataFolder.addBinding(this.params, "depth", {
         options: depthMeta.values.map((v) => ({
-          text: formatVertical(v, depthMeta.label),
+          text: formatVertical(v, depthMeta.label, depthMeta.units),
           value: v,
         })),
         label: depthMeta.label,
@@ -673,7 +676,7 @@ export class DemoApp {
     this.activePopup?.remove();
 
     const layer = this.currentLayer;
-    const depthAvailable = hasDepthProfile(layer);
+    const depthAvailable = z.getDepthMeta().values.length > 1;
     const root = document.createElement("div");
     root.className = "query-popup";
 
@@ -718,7 +721,7 @@ export class DemoApp {
 
       try {
         const timeMeta = z.getTimeMeta();
-        const currentMs = (timeMeta.min ?? 0) + this.params.timeIndex * (timeMeta.step ?? 86400000);
+        const currentMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
         const result = mode === "time"
           ? await z.queryTimeSeries({
               longitude: lngLat.lng,
@@ -736,7 +739,7 @@ export class DemoApp {
         if (seq !== this.pointQuerySeq || !popup.isOpen()) return;
 
         const data = pointResultToData(result, layer);
-        const unit = layer.variables.units ?? "";
+        const unit = z.getVariableMeta().units ?? "";
         const nearest = nearestDatum(
           data,
           mode === "time" ? currentMs : this.params.depth,
@@ -751,7 +754,7 @@ export class DemoApp {
           ? ` | u ${formatValue(nearest.u ?? NaN, unit)} / v ${formatValue(nearest.v ?? NaN, unit)}`
           : "";
         const depthText = result.depth != null
-          ? ` | ${formatVertical(result.depth, layer.dimensions.vertical?.label ?? "depth")}`
+          ? ` | ${formatVertical(result.depth, z.getDepthMeta().label, z.getDepthMeta().units)}`
           : "";
         const timeText = mode === "depth" && result.time != null
           ? ` | ${formatTime(result.time)}`
@@ -764,7 +767,8 @@ export class DemoApp {
           data,
           mode,
           unit,
-          layer.dimensions.vertical?.label ?? "depth",
+          z.getDepthMeta().label,
+          z.getDepthMeta().units,
         );
       } catch (err) {
         if (seq !== this.pointQuerySeq || !popup.isOpen()) return;
@@ -815,9 +819,7 @@ export class DemoApp {
     const layer = this.currentLayer;
     const timeMeta = this.z!.getTimeMeta();
     const depthMeta = this.z!.getDepthMeta();
-    const tMin = timeMeta.min ?? 0;
-    const tStep = timeMeta.step ?? 86400000;
-    const timeMs = tMin + this.params.timeIndex * tStep;
+    const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
     return {
       layerId: layer.id,
       backend: this.currentBackend,
@@ -831,7 +833,7 @@ export class DemoApp {
     if (!this.z) return;
     const layerIdx = this.cat.layers.indexOf(this.currentLayer);
     const timeMeta = this.z.getTimeMeta();
-    const timeMs = (timeMeta.min ?? 0) + this.params.timeIndex * (timeMeta.step ?? 86400000);
+    const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
     const center = this.map.getCenter();
     const state: HashState = {
       d: layerIdx,
@@ -869,8 +871,9 @@ export class DemoApp {
 
   private updateLayerDesc(layer: CatalogLayer): void {
     if (!this.layerDescEl) return;
-    const metaStr = layer.variables.standardName
-      ? `${layer.variables.standardName.replace(/_/g, " ")} — ${layer.variables.units ?? ""}`
+    const variableMeta = this.z?.getVariableMeta();
+    const metaStr = variableMeta?.standardName
+      ? `${variableMeta.standardName.replace(/_/g, " ")} — ${variableMeta.units ?? ""}`
       : "";
     this.layerDescEl.textContent = [layer.description, metaStr].filter(Boolean).join("\n");
   }

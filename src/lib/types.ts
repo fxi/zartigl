@@ -11,6 +11,8 @@ export type VectorDerivation = DirectionMagnitudeVectorDerivation;
 export interface VectorLayerOptions {
   id: string;
   source: string;
+  /** Optional initialized/shared source. When omitted, the layer creates one from `source`. */
+  zarrSource?: import("./ZarrSource").ZarrSource;
   variableU?: string;
   variableV?: string;
   vectorDerivation?: VectorDerivation;
@@ -41,6 +43,7 @@ export interface ArcoLayerOptions
   extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
   layer: ArcoLayerCatalogLayer;
   backend?: ArcoLayerBackendPreference;
+  verticalLabel?: string;
   metadata?: Record<string, unknown>;
   before?: string;
 }
@@ -48,6 +51,8 @@ export interface ArcoLayerOptions
 export interface ScalarLayerOptions {
   id: string;
   source: string;
+  /** Optional initialized/shared source. When omitted, the layer creates one from `source`. */
+  zarrSource?: import("./ZarrSource").ZarrSource;
   variable: string;
   colorRamp?: Record<number, string>;
   time?: string | number;
@@ -83,6 +88,7 @@ export interface ZarrAttrs {
   standard_name?: string;
   long_name?: string;
   calendar?: string;
+  positive?: "up" | "down" | string;
   [key: string]: unknown;
 }
 
@@ -151,5 +157,13 @@ export interface ZarrTimeDimension {
   step?: number;
   size: number;
   units: string;
+  values: number[];
+}
+
+export interface ZarrVerticalDimension {
+  name: string;
+  label: "depth" | "pressure" | string;
+  units?: string;
+  values: number[];
 }
 import type { CatalogLayer } from "../catalog/types";

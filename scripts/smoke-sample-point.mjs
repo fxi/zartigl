@@ -99,14 +99,8 @@ function pointVariables(layer) {
   return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
 }
 
-function hasDepthProfile(layer) {
-  const vertical = layer.dimensions.vertical;
-  return (vertical?.size ?? vertical?.values?.length ?? 0) > 1;
-}
-
-function sampleWindow(layer, maxPoints = 24) {
-  const time = layer.dimensions.time;
-  const size = time.size ?? 1;
+function sampleWindow(source, maxPoints = 24) {
+  const size = source.getTimeDimension().size;
   const end = size - 1;
   const start = Math.max(0, end - maxPoints + 1);
   return { start, end };
@@ -123,7 +117,7 @@ function valuesForPoint(point, variables, isVector) {
   ];
 }
 
-function summarize(result, layer, scenario) {
+function summarize(result, layer, scenario, unit) {
   const variables = pointVariables(layer);
   const isVector = layer.kind === "vector";
   const samples = result.points.map((point) => valuesForPoint(point, variables, isVector)[0]);
@@ -145,7 +139,7 @@ function summarize(result, layer, scenario) {
     min,
     max,
     variables,
-    unit: layer.variables.units ?? "",
+    unit,
   };
 }
 
@@ -156,7 +150,9 @@ async function runScenario(catalog, scenario) {
   if (scenario.mode !== "time" && scenario.mode !== "depth") {
     throw new Error(`Invalid mode: ${scenario.mode}`);
   }
-  if (scenario.mode === "depth" && !hasDepthProfile(layer)) {
+  const source = new ZarrSource(layer.stores.pointSeries.url, 80);
+  await source.init();
+  if (scenario.mode === "depth" && (source.getVerticalDimension()?.values.length ?? 0) <= 1) {
     return {
       scenario: scenario.name,
       layer: layer.id,
@@ -166,8 +162,8 @@ async function runScenario(catalog, scenario) {
     };
   }
 
-  const source = new ZarrSource(layer.stores.pointSeries.url, 80);
   const variables = pointVariables(layer);
+  const attrs = source.getVariableAttrs(variables.at(-1));
   const result = scenario.mode === "time"
     ? await source.sampleTimeSeries({
         variables,
@@ -175,7 +171,7 @@ async function runScenario(catalog, scenario) {
         latitude: scenario.lat,
         depth: 0,
         ...(() => {
-          const window = sampleWindow(layer);
+          const window = sampleWindow(source);
           return {
             timeStartIndex: window.start,
             timeEndIndex: window.end,
@@ -187,11 +183,11 @@ async function runScenario(catalog, scenario) {
         variables,
         longitude: scenario.lon,
         latitude: scenario.lat,
-        time: layer.dimensions.time.max ?? Date.now(),
+        time: source.getTimeDimension().max,
         stopAfterMissingSamples: 8,
       });
 
-  const summary = summarize(result, layer, scenario);
+  const summary = summarize(result, layer, scenario, attrs.units ?? "");
   if (scenario.expect === "valid" && summary.validCount === 0) {
     throw new Error(`${scenario.name}: expected valid samples, got none`);
   }

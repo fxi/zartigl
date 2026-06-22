@@ -55,7 +55,7 @@ def main():
             v.get("dataset", {}).get("id", ""),
         ))
     print(sep)
-    print(f"\n{len(layers)} layer(s)  ·  generated: {catalog.get('generatedAt', 'unknown')}")
+    print(f"\n{len(layers)} layer(s)")
 
 
 if __name__ == "__main__":

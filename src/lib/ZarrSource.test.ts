@@ -115,6 +115,12 @@ describe("ZarrSource point sampling", () => {
       step: 6 * 60 * 60 * 1000,
       size: 4,
       units: "hours since 2020-01-01T00:00:00Z",
+      values: [
+        Date.UTC(2020, 0, 1, 0),
+        Date.UTC(2020, 0, 1, 6),
+        Date.UTC(2020, 0, 1, 12),
+        Date.UTC(2020, 0, 1, 18),
+      ],
     });
   });
 
@@ -163,6 +169,64 @@ describe("ZarrSource point sampling", () => {
       step: 3600000,
       size: 3,
       units: "milliseconds since 1970-01-01T00:00:00Z",
+      values: [start, start + 3600000, start + 7200000],
+    });
+  });
+
+  it("returns exact irregular time values without inventing a step", async () => {
+    const routes: Record<string, Response> = baseRoutes();
+    routes[`${root}/time/0`] = response(chunk([0, 6, 15, 18]));
+    installFetch(routes);
+
+    const source = new ZarrSource(root);
+    await source.init();
+
+    const time = source.getTimeDimension();
+    expect(time.step).toBeUndefined();
+    expect(time.values).toEqual([
+      Date.UTC(2020, 0, 1, 0),
+      Date.UTC(2020, 0, 1, 6),
+      Date.UTC(2020, 0, 1, 15),
+      Date.UTC(2020, 0, 1, 18),
+    ]);
+  });
+
+  it("rejects unsupported calendars instead of guessing dates", async () => {
+    const routes: Record<string, Response> = baseRoutes();
+    const metadata = await routes[`${root}/.zmetadata`].json() as {
+      metadata: Record<string, Record<string, unknown>>;
+    };
+    metadata.metadata["time/.zattrs"].calendar = "360_day";
+    installFetch(routes);
+
+    const source = new ZarrSource(root);
+    await expect(source.init()).rejects.toThrow("Unsupported Zarr time calendar: 360_day");
+  });
+
+  it("preserves native elevation values and semantics", async () => {
+    const routes: Record<string, Response> = baseRoutes();
+    const metadata = await routes[`${root}/.zmetadata`].json() as {
+      metadata: Record<string, Record<string, unknown>>;
+    };
+    delete metadata.metadata["depth/.zarray"];
+    delete metadata.metadata["depth/.zattrs"];
+    metadata.metadata["elevation/.zarray"] = zarray([3], [3]);
+    metadata.metadata["elevation/.zattrs"] = attrs(["elevation"], {
+      units: "m",
+      positive: "up",
+    });
+    delete routes[`${root}/depth/0`];
+    routes[`${root}/elevation/0`] = response(chunk([-100, -10, -0.5]));
+    installFetch(routes);
+
+    const source = new ZarrSource(root);
+    await source.init();
+
+    expect(source.getVerticalDimension()).toEqual({
+      name: "elevation",
+      label: "elevation",
+      units: "m",
+      values: [-100, -10, -0.5],
     });
   });
 

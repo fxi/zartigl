@@ -89,10 +89,6 @@ export function selectArcoLayerBackend(options: ArcoLayerOptions): ArcoLayerBack
   return "scalar-zarr";
 }
 
-function layerUnit(catalogLayer: CatalogLayer): string {
-  return catalogLayer.variables.units ?? "";
-}
-
 function scalarLayerVariable(catalogLayer: CatalogLayer): string {
   return catalogLayer.variables.kind === "scalar" ? catalogLayer.variables.value : "scalar";
 }
@@ -142,16 +138,18 @@ export class ArcoLayer implements CustomLayerInterface {
       this.delegate = new VectorLayer({
         ...options,
         source: catalogLayer.stores.field.url,
+        zarrSource: options.zarrSource,
         variableU: vectorLayerU(catalogLayer),
         variableV: vectorLayerV(catalogLayer),
         vectorDerivation: vectorLayerDerivation(catalogLayer),
-        unit: layerUnit(catalogLayer),
+        unit: options.unit ?? "",
       });
     } else if (this.backend === "scalar-zarr") {
       const catalogLayer = options.layer;
       this.delegate = new ScalarLayer({
         id: options.id,
         source: catalogLayer.stores.field.url,
+        zarrSource: options.zarrSource,
         variable: scalarLayerVariable(catalogLayer),
         time: options.time,
         depth: options.depth,
@@ -159,7 +157,7 @@ export class ArcoLayer implements CustomLayerInterface {
         opacity: options.opacity,
         logScale: options.logScale,
         vibrance: options.vibrance,
-        unit: layerUnit(catalogLayer),
+        unit: options.unit ?? "",
       });
     }
   }
@@ -296,7 +294,7 @@ export class ArcoLayer implements CustomLayerInterface {
         style: wmts.style,
         time: this.time,
         depth: this.depth,
-        verticalLabel: this.options.layer.dimensions.vertical?.label,
+        verticalLabel: this.options.verticalLabel,
       })],
       tileSize: 256,
     });
@@ -325,7 +323,7 @@ export class ArcoLayer implements CustomLayerInterface {
     this.emit("loaded", {
       min: 0,
       max: 0,
-      unit: layerUnit(this.options.layer),
+      unit: this.options.unit ?? "",
       time: toIsoTime(this.time),
       depth: this.depth,
     });

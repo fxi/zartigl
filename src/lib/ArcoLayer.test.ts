@@ -14,9 +14,7 @@ const scalarWmtsLayer: ArcoLayerOptions["layer"] = {
   dataset: { id: "dataset" },
   stores: {
     field: {
-      type: "zarr",
       url: "https://example.test/scalar.zarr",
-      layout: "time-chunked",
     },
     wmts: {
       capabilities_url: "https://example.test/wmts?service=WMTS&request=GetCapabilities",
@@ -30,12 +28,6 @@ const scalarWmtsLayer: ArcoLayerOptions["layer"] = {
   variables: {
     kind: "scalar",
     value: "chl",
-    standardName: "mass_concentration_of_chlorophyll_a_in_sea_water",
-    units: "mg m-3",
-  },
-  dimensions: {
-    time: { size: 1 },
-    vertical: { label: "depth", values: [0], size: 1 },
   },
   defaults: {},
 };
@@ -123,13 +115,10 @@ describe("selectArcoLayerBackend", () => {
       dataset: { id: "dataset" },
       stores: {
         field: {
-          type: "zarr",
           url: "https://example.test/vector.zarr",
-          layout: "time-chunked",
         },
       },
       variables: { kind: "vector", u: "uo", v: "vo" },
-      dimensions: { time: { size: 1 } },
       defaults: {},
     }))).toBe("vector");
   });
@@ -143,9 +132,7 @@ describe("selectArcoLayerBackend", () => {
       dataset: { id: "dataset" },
       stores: {
         field: {
-          type: "zarr",
           url: "https://example.test/vector.zarr",
-          layout: "time-chunked",
         },
       },
       variables: {
@@ -158,7 +145,6 @@ describe("selectArcoLayerBackend", () => {
           output_direction: "toward",
         },
       },
-      dimensions: { time: { size: 1 } },
       defaults: {},
     }))).toBe("vector");
   });

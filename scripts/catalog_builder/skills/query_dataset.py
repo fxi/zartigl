@@ -87,38 +87,6 @@ def detect_vector_vars(svc) -> tuple[str, str] | None:
     return None
 
 
-def build_dimensions(ref_var) -> dict:
-    dims = {}
-    for coord in ref_var.coordinates:
-        d: dict = {}
-        if coord.values is not None:
-            d["values"] = list(coord.values)
-            d["size"] = len(coord.values)
-        else:
-            if coord.minimum_value is not None:
-                d["min"] = coord.minimum_value
-            if coord.maximum_value is not None:
-                d["max"] = coord.maximum_value
-            if coord.step is not None:
-                d["step"] = coord.step
-                if coord.minimum_value is not None and coord.maximum_value is not None:
-                    d["size"] = int((coord.maximum_value - coord.minimum_value) / coord.step) + 1
-        if coord.chunking_length is not None:
-            d["chunkSize"] = coord.chunking_length
-        if coord.coordinate_unit:
-            d["units"] = coord.coordinate_unit
-
-        if coord.axis == "t":
-            dims["time"] = d
-        elif coord.axis == "z":
-            dims["vertical"] = d
-        elif coord.axis == "y":
-            dims["latitude"] = d
-        elif coord.axis == "x":
-            dims["longitude"] = d
-    return dims
-
-
 def main():
     if len(sys.argv) < 2:
         print("Usage: query_dataset.py <dataset_id>", file=sys.stderr)
@@ -165,32 +133,17 @@ def main():
     suggested_variable = list(variables.keys())[0] if not vec else None
     wmts = build_wmts_metadata(svc_wmts, prod.product_id, suggested_variable)
 
-    dimensions = build_dimensions(svc_geo.variables[0]) if svc_geo.variables else {}
-
-    # Detect vertical label
-    vertical_label = None
-    if dimensions.get("vertical"):
-        units = dimensions["vertical"].get("units", "")
-        vertical_label = "pressure" if any(p in units.lower() for p in ("pa", "bar", "dbar")) else "depth"
-        dimensions["vertical"]["label"] = vertical_label
-
     variables_meta = {}
     if suggested_type == "scalar":
-        meta = variables.get(suggested_variable, {})
         variables_meta = {
             "kind": "scalar",
             "value": suggested_variable,
-            "standardName": meta.get("standard_name"),
-            "units": meta.get("units"),
         }
     elif vec:
-        meta = variables.get(suggested_variable_u, {})
         variables_meta = {
             "kind": "vector",
             "u": suggested_variable_u,
             "v": suggested_variable_v,
-            "standardName": meta.get("standard_name"),
-            "units": meta.get("units"),
         }
 
     result = {
@@ -199,15 +152,11 @@ def main():
         "title": getattr(prod, "title", None) or getattr(ds, "title", None) or dataset_id,
         "stores": {
             "field": {
-                "type": "zarr",
                 "url": svc_geo.uri,
-                "layout": "time-chunked",
             },
             **({
                 "pointSeries": {
-                    "type": "zarr",
                     "url": svc_time.uri,
-                    "layout": "geo-chunked",
                 }
             } if svc_time else {}),
             **({"wmts": wmts} if wmts else {}),
@@ -215,7 +164,6 @@ def main():
         "all_variables": variables,
         "suggested_kind": suggested_type,
         "suggested_variables": variables_meta,
-        "dimensions": dimensions,
     }
     print(json.dumps(result, indent=2))
 

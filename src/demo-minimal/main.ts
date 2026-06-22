@@ -74,7 +74,7 @@ function renderDepthControl(): void {
   for (const value of depth.values) {
     const option = document.createElement("option");
     option.value = String(value);
-    option.textContent = formatVertical(value, depth.label);
+    option.textContent = formatVertical(value, depth.label, depth.units);
     depthSelect.appendChild(option);
   }
   depthSelect.value = String(depth.current ?? depth.values[0] ?? 0);
@@ -102,7 +102,7 @@ function renderLegend(): void {
   meta.className = "legend-meta";
   meta.textContent = [
     legend.min?.toFixed(2) ?? "",
-    legend.unit ?? currentLayer.variables.units ?? "",
+    legend.unit ?? z.getVariableMeta().units ?? "",
     legend.max?.toFixed(2) ?? "",
   ].join(" ");
   legendEl.append(bar, meta);
@@ -157,6 +157,7 @@ visibilityBtn.addEventListener("click", () => {
 timeInput.addEventListener("change", () => {
   if (!timeInput.value) return;
   z?.setTime(new Date(timeInput.value));
+  renderTimeControl();
   renderLegend();
 });
 

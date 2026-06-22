@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ArcoLayer } from "./ArcoLayer";
 import { Zartigl } from "./Zartigl";
 import { ZarrSource } from "./ZarrSource";
@@ -63,14 +63,10 @@ function scalarLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
     dataset: { id: "dataset" },
     stores: {
       field: {
-        type: "zarr",
         url: "https://example.test/field.zarr",
-        layout: "time-chunked",
       },
       pointSeries: {
-        type: "zarr",
         url: "https://example.test/points.zarr",
-        layout: "geo-chunked",
       },
       wmts: {
         capabilities_url: "https://example.test/wmts?service=WMTS&request=GetCapabilities",
@@ -83,20 +79,6 @@ function scalarLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
     variables: {
       kind: "scalar",
       value: "temperature",
-      units: "degC",
-    },
-    dimensions: {
-      time: {
-        min: 0,
-        max: 9_000,
-        step: 1_000,
-        size: 10,
-      },
-      vertical: {
-        label: "depth",
-        values: [0, 10, 20, 30],
-        size: 4,
-      },
     },
     defaults: {},
     ...extra,
@@ -106,10 +88,32 @@ function scalarLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
 function catalog(layer: CatalogLayer = scalarLayer()): Catalog {
   return {
     schemaVersion: 1,
-    generatedAt: "2026-06-09T00:00:00.000Z",
     layers: [layer],
   };
 }
+
+beforeEach(() => {
+  vi.spyOn(ZarrSource.prototype, "init").mockResolvedValue();
+  vi.spyOn(ZarrSource.prototype, "hasVariable").mockReturnValue(true);
+  vi.spyOn(ZarrSource.prototype, "getVariableAttrs").mockReturnValue({
+    units: "degC",
+    standard_name: "sea_water_temperature",
+  });
+  vi.spyOn(ZarrSource.prototype, "getTimeDimension").mockReturnValue({
+    min: 0,
+    max: 9_000,
+    step: 1_000,
+    size: 10,
+    units: "milliseconds since 1970-01-01T00:00:00Z",
+    values: Array.from({ length: 10 }, (_, index) => index * 1_000),
+  });
+  vi.spyOn(ZarrSource.prototype, "getVerticalDimension").mockReturnValue({
+    name: "depth",
+    label: "depth",
+    units: "m",
+    values: [0, 10, 20, 30],
+  });
+});
 
 describe("Zartigl facade", () => {
   it("queues setLayer until the map style is ready", async () => {
@@ -222,12 +226,10 @@ describe("Zartigl facade", () => {
 
   it("returns depth metadata surface-nearest first", async () => {
     const map = new FakeMap();
-    const layer = scalarLayer({
-      dimensions: {
-        time: { size: 1 },
-        vertical: { label: "depth", values: [100, 0.5, 10], size: 3 },
-      },
+    vi.mocked(ZarrSource.prototype.getVerticalDimension).mockReturnValue({
+      name: "depth", label: "depth", units: "m", values: [100, 0.5, 10],
     });
+    const layer = scalarLayer();
     const z = new Zartigl({ map: map as never, catalog: catalog(layer) });
 
     await z.setLayer("scalar");
@@ -238,12 +240,10 @@ describe("Zartigl facade", () => {
 
   it("returns negative vertical values closest to zero first", async () => {
     const map = new FakeMap();
-    const layer = scalarLayer({
-      dimensions: {
-        time: { size: 1 },
-        vertical: { label: "depth", values: [-100, -0.5, -10], size: 3 },
-      },
+    vi.mocked(ZarrSource.prototype.getVerticalDimension).mockReturnValue({
+      name: "depth", label: "depth", units: "m", values: [-100, -0.5, -10],
     });
+    const layer = scalarLayer();
     const z = new Zartigl({ map: map as never, catalog: catalog(layer) });
 
     await z.setLayer("scalar");
@@ -281,5 +281,33 @@ describe("Zartigl facade", () => {
 
     expect(timeSpy).toHaveBeenCalledWith(expect.objectContaining({ stride: 4 }));
     expect(depthSpy).toHaveBeenCalledWith(expect.objectContaining({ maxDepths: 2 }));
+  });
+
+  it("preserves the active layer when candidate metadata loading fails", async () => {
+    const first = scalarLayer();
+    const second = {
+      ...scalarLayer(),
+      id: "second",
+      stores: {
+        ...scalarLayer().stores,
+        field: { url: "https://example.test/second.zarr" },
+      },
+    } as CatalogLayer;
+    const map = new FakeMap();
+    const z = new Zartigl({
+      map: map as never,
+      catalog: { schemaVersion: 1, layers: [first, second] },
+    });
+    const errors: Error[] = [];
+    z.on("error", (error) => errors.push(error));
+
+    await z.setLayer("scalar");
+    const active = map.getLayer("zartigl");
+    vi.mocked(ZarrSource.prototype.init).mockRejectedValueOnce(new Error("metadata unavailable"));
+
+    await expect(z.setLayer("second")).rejects.toThrow("metadata unavailable");
+    expect(map.getLayer("zartigl")).toBe(active);
+    expect(z.getTimeMeta().current).toBe(9_000);
+    expect(errors[errors.length - 1]?.message).toBe("metadata unavailable");
   });
 });

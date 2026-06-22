@@ -50,6 +50,8 @@ z.updateSettings({
 });
 ```
 
+`setLayer()` resolves after the field store's consolidated metadata and coordinate axes have loaded. Metadata getters are therefore authoritative after the awaited call, including exact values for irregular time axes.
+
 The root import does not bundle the catalog presets. Import catalog data from `@fxi/zartigl/catalog` only when you want the built-in catalog.
 
 ## Demo
@@ -130,7 +132,7 @@ To validate the built-in catalog:
 npm run catalog:validate
 ```
 
-To update catalog metadata:
+To add or update catalog entries:
 
 ```bash
 uv run scripts/catalog_builder/skills/list_layers.py
@@ -143,7 +145,7 @@ This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Cope
 
 ## Dataset Scope
 
-The built-in catalog focuses on Copernicus Marine ARCO products, including ocean currents and scalar ocean/ice variables. Other Zarr v2 stores can be used when their dimensions and variables are described in a compatible catalog entry.
+The built-in catalog focuses on Copernicus Marine ARCO products, including ocean currents and scalar ocean/ice variables. Other Zarr v2 stores can be used when their store URLs and variables are described in a compatible catalog entry. Time, vertical, spatial, and variable metadata are loaded live from consolidated Zarr metadata and coordinate chunks.
 
 Good fits include:
 

@@ -3,7 +3,13 @@ import type { Catalog, CatalogLayer } from "../catalog/types";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
 import { ArcoLayer, buildWmtsLegendUrl } from "./ArcoLayer";
 import { ZarrSource } from "./ZarrSource";
-import type { ArcoLayerBackendPreference, FieldMeta, ZarrPointSeriesResult } from "./types";
+import type {
+  ArcoLayerBackendPreference,
+  FieldMeta,
+  ZarrPointSeriesResult,
+  ZarrTimeDimension,
+  ZarrVerticalDimension,
+} from "./types";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -31,16 +37,22 @@ export interface TimeMeta {
   max: number;
   step?: number;
   size: number;
-  values?: number[];
+  values: number[];
   units?: string;
   current?: number;
 }
 
 export interface DepthMeta {
   values: number[];
+  name?: string;
   label: "depth" | "pressure" | string;
   units?: string;
   current?: number;
+}
+
+export interface VariableMeta {
+  standardName?: string;
+  units?: string;
 }
 
 export type Legend =
@@ -93,24 +105,27 @@ function variableNames(catalogLayer: CatalogLayer): string[] {
   return [catalogLayer.variables.u ?? "uo", catalogLayer.variables.v ?? "vo"];
 }
 
-function defaultDepth(catalogLayer: CatalogLayer): number {
-  return sortedDepthValues(catalogLayer)[0] ?? catalogLayer.dimensions.vertical?.min ?? 0;
-}
-
-function defaultTime(catalogLayer: CatalogLayer): number {
-  const dim = catalogLayer.dimensions.time;
-  return dim.values?.[dim.values.length - 1] ?? dim.max ?? dim.min ?? 0;
-}
-
-function sortedDepthValues(catalogLayer: CatalogLayer): number[] {
-  const dim = catalogLayer.dimensions.vertical;
-  const values = [...(dim?.values ?? (dim?.min != null ? [dim.min] : []))];
-  return values.sort((a, b) => {
+function sortedDepthValues(values: readonly number[]): number[] {
+  return [...values].sort((a, b) => {
     const da = Math.abs(a);
     const db = Math.abs(b);
     if (da !== db) return da - db;
     return b - a;
   });
+}
+
+function nearestValue(values: readonly number[], target: number): number {
+  if (values.length === 0) return target;
+  let nearest = values[0];
+  let distance = Math.abs(nearest - target);
+  for (let i = 1; i < values.length; i++) {
+    const candidateDistance = Math.abs(values[i] - target);
+    if (candidateDistance < distance) {
+      nearest = values[i];
+      distance = candidateDistance;
+    }
+  }
+  return nearest;
 }
 
 function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> {
@@ -140,6 +155,13 @@ export class Zartigl {
   private depth: number = 0;
   private settings: Partial<ZartiglSettings>;
   private lastMeta: FieldMeta | null = null;
+  private timeMeta: ZarrTimeDimension | null = null;
+  private verticalMeta: ZarrVerticalDimension | null = null;
+  private variableUnit = "";
+  private variableStandardName: string | undefined;
+  private fieldSources = new Map<string, ZarrSource>();
+  private activeFieldSource: ZarrSource | null = null;
+  private switchGeneration = 0;
   private destroyed = false;
   private attachQueued = false;
   private querySources = new Map<string, ZarrSource>();
@@ -167,10 +189,43 @@ export class Zartigl {
     const catalogLayer = this.catalog.layers.find((candidate) => candidate.id === id);
     if (!catalogLayer) throw new Error(`Unknown zartigl catalog layer: ${id}`);
 
+    const generation = ++this.switchGeneration;
+    const source = this.getFieldSource(catalogLayer.stores.field.url);
+    let timeMeta: ZarrTimeDimension;
+    let verticalMeta: ZarrVerticalDimension | null;
+    let unitAttrs: ReturnType<ZarrSource["getVariableAttrs"]>;
+    try {
+      await source.init();
+      for (const variable of variableNames(catalogLayer)) {
+        if (!source.hasVariable(variable)) {
+          throw new Error(`Configured variable not found in Zarr store: ${variable}`);
+        }
+      }
+      timeMeta = source.getTimeDimension();
+      if (timeMeta.values.length === 0) throw new Error("Zarr time coordinate is empty");
+      verticalMeta = source.getVerticalDimension() ?? null;
+      const configuredVariables = variableNames(catalogLayer);
+      unitAttrs = source.getVariableAttrs(configuredVariables[configuredVariables.length - 1]);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.emit("error", err);
+      throw err;
+    }
+    if (generation !== this.switchGeneration) {
+      throw new DOMException("Layer selection was superseded", "AbortError");
+    }
+
     this.detach();
     this.catalogLayer = catalogLayer;
-    this.time = defaultTime(catalogLayer);
-    this.depth = defaultDepth(catalogLayer);
+    this.activeFieldSource = source;
+    this.timeMeta = timeMeta;
+    this.verticalMeta = verticalMeta;
+    this.variableUnit = typeof unitAttrs.units === "string" ? unitAttrs.units : "";
+    this.variableStandardName = typeof unitAttrs.standard_name === "string"
+      ? unitAttrs.standard_name
+      : undefined;
+    this.time = timeMeta.max;
+    this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
     this.settings = { ...defaultSettings(catalogLayer), ...this.settings };
     this.lastMeta = null;
     this.attachWhenReady();
@@ -192,9 +247,12 @@ export class Zartigl {
 
   destroy(): void {
     if (this.destroyed) return;
+    this.switchGeneration++;
     this.detach();
     this.querySources.forEach((source) => source.cancelAll());
+    this.fieldSources.forEach((source) => source.cancelAll());
     this.querySources.clear();
+    this.fieldSources.clear();
     this.map.off("load", this.onMapLoad);
     this.map.off("styledata", this.onStyleData);
     this.destroyed = true;
@@ -202,21 +260,21 @@ export class Zartigl {
 
   setTime(time: Date | string | number): void {
     this.assertAlive();
-    this.time = timeToMs(time);
+    this.time = nearestValue(this.timeMeta?.values ?? [], timeToMs(time));
     this.layer?.setTime(this.time);
   }
 
   setDepth(depth: number): void {
     this.assertAlive();
-    this.depth = depth;
-    this.layer?.setDepth(depth);
+    this.depth = nearestValue(this.verticalMeta?.values ?? [], depth);
+    this.layer?.setDepth(this.depth);
   }
 
   setTimeAndDepth(time: Date | string | number, depth: number): void {
     this.assertAlive();
-    this.time = timeToMs(time);
-    this.depth = depth;
-    this.layer?.setTimeAndDepth(this.time, depth);
+    this.time = nearestValue(this.timeMeta?.values ?? [], timeToMs(time));
+    this.depth = nearestValue(this.verticalMeta?.values ?? [], depth);
+    this.layer?.setTimeAndDepth(this.time, this.depth);
   }
 
   on<K extends keyof ZartiglEventMap>(event: K, handler: ZartiglEventMap[K]): this {
@@ -233,11 +291,11 @@ export class Zartigl {
   }
 
   getTimeMeta(): TimeMeta {
-    if (!this.catalogLayer) return { min: NaN, max: NaN, size: 0, current: undefined };
-    const dim = this.catalogLayer.dimensions.time;
+    const dim = this.timeMeta;
+    if (!dim) return { min: NaN, max: NaN, size: 0, values: [], current: undefined };
     return {
-      min: dim.min ?? dim.values?.[0] ?? NaN,
-      max: dim.max ?? dim.values?.[dim.values.length - 1] ?? NaN,
+      min: dim.min,
+      max: dim.max,
       step: dim.step,
       size: dim.size,
       values: dim.values,
@@ -247,15 +305,23 @@ export class Zartigl {
   }
 
   getDepthMeta(): DepthMeta {
-    if (!this.catalogLayer?.dimensions.vertical) {
+    if (!this.verticalMeta) {
       return { values: [], label: "depth", current: undefined };
     }
-    const dim = this.catalogLayer.dimensions.vertical;
+    const dim = this.verticalMeta;
     return {
-      values: sortedDepthValues(this.catalogLayer),
+      values: sortedDepthValues(dim.values),
+      name: dim.name,
       label: dim.label,
       units: dim.units,
       current: this.depth,
+    };
+  }
+
+  getVariableMeta(): VariableMeta {
+    return {
+      standardName: this.variableStandardName,
+      units: this.variableUnit || undefined,
     };
   }
 
@@ -279,7 +345,7 @@ export class Zartigl {
       palette,
       min: this.lastMeta?.min,
       max: this.lastMeta?.max,
-      unit: this.lastMeta?.unit ?? this.catalogLayer.variables.units,
+      unit: this.lastMeta?.unit ?? this.variableUnit,
     };
   }
 
@@ -314,9 +380,9 @@ export class Zartigl {
     if (!store) throw new Error(`Catalog layer does not provide a point-series store: ${catalogLayer.id}`);
 
     const maxPoints = Math.max(1, Math.floor(options.maxPoints ?? 512));
-    const timeSize = catalogLayer.dimensions.time.size;
-    const stride = Math.max(1, Math.ceil(timeSize / maxPoints));
     const source = this.getQuerySource(store.url);
+    await source.init();
+    const stride = Math.max(1, Math.ceil(source.getTimeDimension().size / maxPoints));
     return source.sampleTimeSeries({
       variables: variableNames(catalogLayer),
       longitude: options.longitude,
@@ -373,6 +439,9 @@ export class Zartigl {
       opacity: this.settings.opacity,
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
+      zarrSource: this.activeFieldSource ?? undefined,
+      unit: this.variableUnit,
+      verticalLabel: this.verticalMeta?.label,
       colorRamp: this.settings.palette,
       metadata: this.metadata ? { ...this.metadata } : undefined,
       before: this.before,
@@ -419,6 +488,15 @@ export class Zartigl {
     if (!source) {
       source = new ZarrSource(url, 80);
       this.querySources.set(url, source);
+    }
+    return source;
+  }
+
+  private getFieldSource(url: string): ZarrSource {
+    let source = this.fieldSources.get(url);
+    if (!source) {
+      source = new ZarrSource(url);
+      this.fieldSources.set(url, source);
     }
     return source;
   }

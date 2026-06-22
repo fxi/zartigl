@@ -34,6 +34,7 @@ export type {
   ZarrPointSample,
   ZarrPointSeriesResult,
   ZarrTimeDimension,
+  ZarrVerticalDimension,
 } from "./types";
 export type { ColorRampInput, PaletteMeta } from "./gl-util";
 export type {
@@ -42,6 +43,7 @@ export type {
   QueryDepthProfileOptions,
   QueryPointOptions,
   TimeMeta,
+  VariableMeta,
   ZartiglOptions,
   ZartiglSettings,
 } from "./Zartigl";

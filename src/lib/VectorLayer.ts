@@ -92,7 +92,7 @@ export class VectorLayer implements CustomLayerInterface {
     this.unit = options.unit ?? "m/s";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
-    this.zarrSource = new ZarrSource(options.source);
+    this.zarrSource = options.zarrSource ?? new ZarrSource(options.source);
     this.velocityField = new VelocityField();
     this.simulation = new ParticleSimulation({
       particleDensity: options.particleDensity ?? 0.05,

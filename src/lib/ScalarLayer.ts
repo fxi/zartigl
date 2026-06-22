@@ -49,7 +49,7 @@ export class ScalarLayer implements CustomLayerInterface {
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
     this.unit = options.unit ?? "";
-    this.zarrSource = new ZarrSource(options.source);
+    this.zarrSource = options.zarrSource ?? new ZarrSource(options.source);
     this.activeField = new VelocityField();
     this.simulation = new ParticleSimulation({
       colorRamp: options.colorRamp,

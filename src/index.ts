@@ -5,7 +5,4 @@ export type {
   CatalogVariables,
   CatalogVectorDerivation,
   CatalogWmts,
-  SpatialDimension,
-  TimeDimension,
-  VerticalDimension,
 } from "./catalog/types";

@@ -88,14 +88,6 @@ def main():
         if palette and palette not in palettes:
             fail(f"{layer['id']}: unknown default palette {palette!r}")
 
-        time = layer["dimensions"]["time"]
-        if time.get("size", 0) < 1:
-            fail(f"{layer['id']}: time dimension size must be >= 1")
-        if "min" in time and "max" in time and time["min"] > time["max"]:
-            fail(f"{layer['id']}: time dimension min is after max")
-        if time.get("size", 1) > 1 and "values" not in time and "step" not in time:
-            fail(f"{layer['id']}: time dimension needs values or step when size > 1")
-
         data_keys.append(key)
     dupe_data = [k for k in data_keys if data_keys.count(k) > 1]
     if dupe_data:

@@ -1,34 +1,3 @@
-export interface TimeDimension {
-  min?: number;
-  max?: number;
-  step?: number;
-  values?: number[];
-  size: number;
-  chunkSize?: number;
-  units?: string;
-}
-
-export interface SpatialDimension {
-  min?: number;
-  max?: number;
-  step?: number;
-  values?: number[];
-  size?: number;
-  chunkSize?: number;
-  units?: string;
-}
-
-export interface VerticalDimension {
-  label: "depth" | "pressure" | string;
-  min?: number;
-  max?: number;
-  step?: number;
-  values?: number[];
-  size?: number;
-  chunkSize?: number;
-  units?: string;
-}
-
 export interface CatalogWmts {
   capabilities_url: string;
   base_url: string;
@@ -50,16 +19,12 @@ export type CatalogVariables =
   | {
       kind: "scalar";
       value: string;
-      standardName?: string;
-      units?: string;
     }
   | {
       kind: "vector";
       u?: string;
       v?: string;
       derivation?: CatalogVectorDerivation;
-      standardName?: string;
-      units?: string;
     };
 
 interface CatalogLayerBase {
@@ -75,22 +40,12 @@ interface CatalogLayerBase {
   };
   stores: {
     field: {
-      type: "zarr";
       url: string;
-      layout: "time-chunked";
     };
     pointSeries?: {
-      type: "zarr";
       url: string;
-      layout: "geo-chunked";
     };
     wmts?: CatalogWmts;
-  };
-  dimensions: {
-    time: TimeDimension;
-    vertical?: VerticalDimension;
-    latitude?: SpatialDimension;
-    longitude?: SpatialDimension;
   };
   defaults?: {
     backend?: "zarr" | "wmts";
@@ -120,6 +75,5 @@ export type CatalogLayer =
 
 export interface Catalog {
   schemaVersion: 1;
-  generatedAt: string;
   layers: CatalogLayer[];
 }

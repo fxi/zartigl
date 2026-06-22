@@ -1,6 +1,5 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-09T00:00:00.000Z",
   "layers": [
     {
       "id": "ocean-current-velocity",
@@ -15,112 +14,22 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "vector",
-        "standardName": "sea_water_velocity",
-        "units": "m s-1",
         "u": "uo",
         "v": "vo"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781740800000,
-          "step": 21600000,
-          "size": 5913,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.9169921875,
-            5274.7841796875,
-            4833.291015625,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.820068359375,
-            2865.702880859375,
-            2533.3359375,
-            2225.077880859375,
-            1941.8929443359375,
-            1684.2840576171875,
-            1452.2509765625,
-            1245.291015625,
-            1062.43994140625,
-            902.3392944335938,
-            763.3331298828125,
-            643.5667724609375,
-            541.0889282226562,
-            453.9377136230469,
-            380.2130126953125,
-            318.1274108886719,
-            266.0403137207031,
-            222.47520446777344,
-            186.12559509277344,
-            155.85069274902344,
-            130.66600036621094,
-            109.72930145263672,
-            92.3260726928711,
-            77.85385131835938,
-            65.80726623535156,
-            55.76428985595703,
-            47.37369155883789,
-            40.344051361083984,
-            34.43415069580078,
-            29.444730758666992,
-            25.211410522460938,
-            21.598819732666016,
-            18.495559692382812,
-            15.810070037841797,
-            13.467140197753906,
-            11.404999732971191,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078224182128906,
-            3.8194949626922607,
-            2.6456689834594727,
-            1.5413750410079956,
-            0.49402499198913574
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
       },
       "defaults": {
         "palette": "rdylbu",
         "particles": {
           "density": 0.033,
-          "speed": 1.0,
+          "speed": 1,
           "fade": 0.7
         },
         "raster": {
@@ -143,54 +52,22 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "vector",
-        "standardName": "wind_velocity",
-        "units": "m s-1",
         "u": "eastward_wind",
         "v": "northward_wind"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1700438400000,
-          "max": 1773702000000,
-          "step": 3600000,
-          "size": 20352,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -89.9375,
-          "max": 89.9375,
-          "step": 0.125,
-          "size": 1440,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -179.9375,
-          "max": 179.9375,
-          "step": 0.125,
-          "size": 2880,
-          "chunkSize": 1024,
-          "units": "degrees_east"
-        }
       },
       "defaults": {
         "palette": "rdylbu",
         "particles": {
           "density": 0.004000000000000002,
-          "speed": 1.0,
+          "speed": 1,
           "fade": 0.7
         },
         "raster": {
@@ -213,14 +90,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -233,93 +106,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "chl",
-        "standardName": "mass_concentration_of_chlorophyll_a_in_sea_water",
-        "units": "mg m-3"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "chl"
       },
       "defaults": {
         "palette": "algae",
@@ -343,54 +130,22 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "vector",
-        "standardName": "sea_surface_wave_stokes_drift_velocity",
-        "units": "m s-1",
         "u": "VSDX",
         "v": "VSDY"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1667271600000,
-          "max": 1774656000000,
-          "step": 10800000,
-          "size": 9944,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91666666666663,
-          "step": 0.08333333333333333,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
       },
       "defaults": {
         "palette": "rdylbu",
         "particles": {
           "density": 0.024,
-          "speed": 1.0,
+          "speed": 1,
           "fade": 0.7
         },
         "raster": {
@@ -413,14 +168,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -432,93 +183,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "dissic",
-        "standardName": "mole_concentration_of_dissolved_inorganic_carbon_in_sea_water",
-        "units": "mol m-3"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "dissic"
       },
       "defaults": {
         "palette": "balance",
@@ -542,14 +207,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -561,93 +222,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "ph",
-        "standardName": "sea_water_ph_reported_on_total_scale",
-        "units": "1"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "ph"
       },
       "defaults": {
         "palette": "balance",
@@ -671,14 +246,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -690,93 +261,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "nppv",
-        "standardName": "net_primary_production_of_biomass_expressed_as_carbon_per_unit_volume_in_sea_water",
-        "units": "mg m-3 day-1"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "nppv"
       },
       "defaults": {
         "palette": "algae",
@@ -800,14 +285,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -819,93 +300,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "o2",
-        "standardName": "mole_concentration_of_dissolved_molecular_oxygen_in_sea_water",
-        "units": "mmol m-3"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "o2"
       },
       "defaults": {
         "palette": "balance",
@@ -929,14 +324,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -948,93 +339,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "no3",
-        "standardName": "mole_concentration_of_nitrate_in_sea_water",
-        "units": "mmol m-3"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "no3"
       },
       "defaults": {
         "palette": "balance",
@@ -1058,14 +363,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -1077,93 +378,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "po4",
-        "standardName": "mole_concentration_of_phosphate_in_sea_water",
-        "units": "mmol m-3"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.91650390625,
-            5274.7841796875,
-            4833.29052734375,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.8203125,
-            2865.70263671875,
-            2533.336181640625,
-            2225.077880859375,
-            1941.8934326171875,
-            1684.284423828125,
-            1452.2509765625,
-            1245.2911376953125,
-            1062.439697265625,
-            902.3392944335938,
-            763.3330688476562,
-            643.5668334960938,
-            541.0889282226562,
-            453.937744140625,
-            380.2130126953125,
-            318.12744140625,
-            266.0402526855469,
-            222.4751739501953,
-            186.1255645751953,
-            155.85072326660156,
-            130.66598510742188,
-            109.72927856445312,
-            92.3260726928711,
-            77.85385131835938,
-            65.8072738647461,
-            55.76428985595703,
-            47.373687744140625,
-            40.344051361083984,
-            34.43415451049805,
-            29.44472885131836,
-            25.211408615112305,
-            21.59881591796875,
-            18.495559692382812,
-            15.810072898864746,
-            13.467138290405273,
-            11.40500259399414,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078223705291748,
-            3.8194947242736816,
-            2.6456685066223145,
-            1.5413753986358643,
-            0.4940253794193268
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "po4"
       },
       "defaults": {
         "palette": "balance",
@@ -1187,14 +402,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
@@ -1206,35 +417,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "spco2",
-        "standardName": "surface_partial_pressure_of_carbon_dioxide_in_sea_water",
-        "units": "Pa"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1635724800000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1690,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.25,
-          "size": 681,
-          "chunkSize": 681,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.75,
-          "step": 0.25,
-          "size": 1440,
-          "chunkSize": 1440,
-          "units": "degrees_east"
-        }
+        "value": "spco2"
       },
       "defaults": {
         "palette": "balance",
@@ -1258,47 +441,15 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "scalar",
-        "value": "sithick",
-        "standardName": "sea_ice_thickness",
-        "units": "m"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1478,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "sithick"
       },
       "defaults": {
         "palette": "ice",
@@ -1322,14 +473,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
@@ -1341,93 +488,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "thetao",
-        "standardName": "sea_water_potential_temperature",
-        "units": "degrees_C"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1478,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.9169921875,
-            5274.7841796875,
-            4833.291015625,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.820068359375,
-            2865.702880859375,
-            2533.3359375,
-            2225.077880859375,
-            1941.8929443359375,
-            1684.2840576171875,
-            1452.2509765625,
-            1245.291015625,
-            1062.43994140625,
-            902.3392944335938,
-            763.3331298828125,
-            643.5667724609375,
-            541.0889282226562,
-            453.9377136230469,
-            380.2130126953125,
-            318.1274108886719,
-            266.0403137207031,
-            222.47520446777344,
-            186.12559509277344,
-            155.85069274902344,
-            130.66600036621094,
-            109.72930145263672,
-            92.3260726928711,
-            77.85385131835938,
-            65.80726623535156,
-            55.76428985595703,
-            47.37369155883789,
-            40.344051361083984,
-            34.43415069580078,
-            29.444730758666992,
-            25.211410522460938,
-            21.598819732666016,
-            18.495559692382812,
-            15.810070037841797,
-            13.467140197753906,
-            11.404999732971191,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078224182128906,
-            3.8194949626922607,
-            2.6456689834594727,
-            1.5413750410079956,
-            0.49402499198913574
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "thetao"
       },
       "defaults": {
         "palette": "thermal",
@@ -1451,14 +512,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
@@ -1470,93 +527,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "so",
-        "standardName": "sea_water_salinity",
-        "units": "1e-3"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1478,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.9169921875,
-            5274.7841796875,
-            4833.291015625,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.820068359375,
-            2865.702880859375,
-            2533.3359375,
-            2225.077880859375,
-            1941.8929443359375,
-            1684.2840576171875,
-            1452.2509765625,
-            1245.291015625,
-            1062.43994140625,
-            902.3392944335938,
-            763.3331298828125,
-            643.5667724609375,
-            541.0889282226562,
-            453.9377136230469,
-            380.2130126953125,
-            318.1274108886719,
-            266.0403137207031,
-            222.47520446777344,
-            186.12559509277344,
-            155.85069274902344,
-            130.66600036621094,
-            109.72930145263672,
-            92.3260726928711,
-            77.85385131835938,
-            65.80726623535156,
-            55.76428985595703,
-            47.37369155883789,
-            40.344051361083984,
-            34.43415069580078,
-            29.444730758666992,
-            25.211410522460938,
-            21.598819732666016,
-            18.495559692382812,
-            15.810070037841797,
-            13.467140197753906,
-            11.404999732971191,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078224182128906,
-            3.8194949626922607,
-            2.6456689834594727,
-            1.5413750410079956,
-            0.49402499198913574
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "so"
       },
       "defaults": {
         "palette": "haline",
@@ -1580,14 +551,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
@@ -1599,93 +566,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "wo",
-        "standardName": "upward_sea_water_velocity",
-        "units": "m s-1"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1478,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "vertical": {
-          "label": "depth",
-          "values": [
-            5727.9169921875,
-            5274.7841796875,
-            4833.291015625,
-            4405.22412109375,
-            3992.48388671875,
-            3597.031982421875,
-            3220.820068359375,
-            2865.702880859375,
-            2533.3359375,
-            2225.077880859375,
-            1941.8929443359375,
-            1684.2840576171875,
-            1452.2509765625,
-            1245.291015625,
-            1062.43994140625,
-            902.3392944335938,
-            763.3331298828125,
-            643.5667724609375,
-            541.0889282226562,
-            453.9377136230469,
-            380.2130126953125,
-            318.1274108886719,
-            266.0403137207031,
-            222.47520446777344,
-            186.12559509277344,
-            155.85069274902344,
-            130.66600036621094,
-            109.72930145263672,
-            92.3260726928711,
-            77.85385131835938,
-            65.80726623535156,
-            55.76428985595703,
-            47.37369155883789,
-            40.344051361083984,
-            34.43415069580078,
-            29.444730758666992,
-            25.211410522460938,
-            21.598819732666016,
-            18.495559692382812,
-            15.810070037841797,
-            13.467140197753906,
-            11.404999732971191,
-            9.572997093200684,
-            7.92956018447876,
-            6.440614223480225,
-            5.078224182128906,
-            3.8194949626922607,
-            2.6456689834594727,
-            1.5413750410079956,
-            0.49402499198913574
-          ],
-          "size": 50,
-          "chunkSize": 1,
-          "units": "m"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "wo"
       },
       "defaults": {
         "palette": "rdylbu",
@@ -1709,47 +590,15 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "scalar",
-        "value": "mlotst",
-        "standardName": "ocean_mixed_layer_thickness_defined_by_sigma_theta",
-        "units": "m"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781654400000,
-          "step": 86400000,
-          "size": 1478,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "mlotst"
       },
       "defaults": {
         "palette": "deep",
@@ -1773,14 +622,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
@@ -1792,35 +637,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "VMDR_SW1",
-        "standardName": "sea_surface_primary_swell_wave_from_direction",
-        "units": "degree"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1667271600000,
-          "max": 1781740800000,
-          "step": 10800000,
-          "size": 10600,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91666666666663,
-          "step": 0.08333333333333333,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "VMDR_SW1"
       },
       "defaults": {
         "palette": "curl",
@@ -1844,14 +661,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
@@ -1863,35 +676,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "VTM01_SW1",
-        "standardName": "sea_surface_primary_swell_wave_mean_period",
-        "units": "s"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1667271600000,
-          "max": 1781740800000,
-          "step": 10800000,
-          "size": 10600,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91666666666663,
-          "step": 0.08333333333333333,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "VTM01_SW1"
       },
       "defaults": {
         "palette": "rdylbu",
@@ -1915,14 +700,10 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
         },
         "wmts": {
           "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
@@ -1934,35 +715,7 @@
       },
       "variables": {
         "kind": "scalar",
-        "value": "VHM0_SW1",
-        "standardName": "sea_surface_primary_swell_wave_significant_height",
-        "units": "m"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1667271600000,
-          "max": 1781740800000,
-          "step": 10800000,
-          "size": 10600,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91666666666663,
-          "step": 0.08333333333333333,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "value": "VHM0_SW1"
       },
       "defaults": {
         "palette": "deep",
@@ -1986,20 +739,14 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "vector",
-        "standardName": "sea_surface_primary_swell_wave_significant_height_vector",
-        "units": "m",
         "derivation": {
           "kind": "direction_magnitude",
           "direction_variable": "VMDR_SW1",
@@ -2008,37 +755,11 @@
           "output_direction": "toward"
         }
       },
-      "dimensions": {
-        "time": {
-          "min": 1667271600000,
-          "max": 1781740800000,
-          "step": 10800000,
-          "size": 10600,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91666666666663,
-          "step": 0.08333333333333333,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
-      },
       "defaults": {
         "palette": "rdylbu",
         "particles": {
           "density": 0.02,
-          "speed": 1.0,
+          "speed": 1,
           "fade": 0.7
         },
         "raster": {
@@ -2061,55 +782,23 @@
       },
       "stores": {
         "field": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
-          "layout": "time-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
         },
         "pointSeries": {
-          "type": "zarr",
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr",
-          "layout": "geo-chunked"
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         }
       },
       "variables": {
         "kind": "vector",
         "u": "usi",
-        "v": "vsi",
-        "standardName": "sea_ice_velocity",
-        "units": "m s-1"
-      },
-      "dimensions": {
-        "time": {
-          "min": 1654041600000,
-          "max": 1781740800000,
-          "step": 86400000,
-          "size": 1479,
-          "chunkSize": 1,
-          "units": "milliseconds since 1970-01-01 00:00:00Z (no leap seconds)"
-        },
-        "latitude": {
-          "min": -80,
-          "max": 90,
-          "step": 0.08333333333333333,
-          "size": 2041,
-          "chunkSize": 512,
-          "units": "degrees_north"
-        },
-        "longitude": {
-          "min": -180,
-          "max": 179.91668701171875,
-          "step": 0.08333333804392655,
-          "size": 4320,
-          "chunkSize": 2048,
-          "units": "degrees_east"
-        }
+        "v": "vsi"
       },
       "defaults": {
         "backend": "zarr",
         "palette": "ice",
         "particles": {
           "density": 0.04,
-          "speed": 1.0,
+          "speed": 1,
           "fade": 0.7
         },
         "raster": {

@@ -1,5 +1,5 @@
 import catalogJson from "./catalog.json";
-import type { Catalog, CatalogLayer, VerticalDimension } from "./types";
+import type { Catalog, CatalogLayer } from "./types";
 
 export type {
   Catalog,
@@ -7,9 +7,6 @@ export type {
   CatalogVariables,
   CatalogVectorDerivation,
   CatalogWmts,
-  SpatialDimension,
-  TimeDimension,
-  VerticalDimension,
 } from "./types";
 
 export const catalog = catalogJson as Catalog;
@@ -32,15 +29,11 @@ export function formatTime(ms: number): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
-export function formatVertical(v: number, label: string): string {
-  if (label === "pressure") return `${Math.round(v)} hPa`;
+export function formatVertical(v: number, label: string, units?: string): string {
+  const unit = units?.trim();
+  if (label === "pressure") return `${Math.round(v)} ${unit || "hPa"}`;
+  if (unit && unit !== "m") return `${Number(v.toPrecision(5))} ${unit}`;
   if (v < 10) return `${v.toFixed(2)} m`;
   if (v < 100) return `${v.toFixed(1)} m`;
   return `${Math.round(v)} m`;
-}
-
-export function getVerticalDim(
-  layer: CatalogLayer,
-): ["vertical", VerticalDimension] | undefined {
-  return layer.dimensions.vertical ? ["vertical", layer.dimensions.vertical] : undefined;
 }

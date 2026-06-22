@@ -1,9 +1,7 @@
 import type { ArcoLayer } from "../lib";
 
 export interface TimelineConfig {
-  timeMin: number;
-  timeStep: number;
-  timeSize: number;
+  timeValues: readonly number[];
   bufferAhead?: number; // default 10
   frameMs?: number;     // default 200 (5fps)
   bufferTimeoutMs?: number;
@@ -13,7 +11,7 @@ export type PlayerState = "playing" | "paused" | "buffering";
 
 export class TimelinePlayer {
   private layer: ArcoLayer;
-  private cfg: Required<TimelineConfig>;
+  private cfg: Required<Omit<TimelineConfig, "timeValues">> & { timeValues: readonly number[] };
   private currentIndex: number;
   private _state: PlayerState = "paused";
   private frameTimer: ReturnType<typeof setTimeout> | null = null;
@@ -36,9 +34,7 @@ export class TimelinePlayer {
       bufferAhead: cfg.bufferAhead ?? 10,
       frameMs: cfg.frameMs ?? 200,
       bufferTimeoutMs: cfg.bufferTimeoutMs ?? 2000,
-      timeMin: cfg.timeMin,
-      timeStep: cfg.timeStep,
-      timeSize: cfg.timeSize,
+      timeValues: cfg.timeValues,
     };
 
     this.cacheInvalidatedHandler = () => {
@@ -49,7 +45,7 @@ export class TimelinePlayer {
   }
 
   private msAt(i: number): number {
-    return this.cfg.timeMin + i * this.cfg.timeStep;
+    return this.cfg.timeValues[i];
   }
 
   play(): void {
@@ -81,7 +77,7 @@ export class TimelinePlayer {
   private advance(): void {
     if (this._state === "paused") return;
 
-    const nextIndex = (this.currentIndex + 1) % this.cfg.timeSize;
+    const nextIndex = (this.currentIndex + 1) % this.cfg.timeValues.length;
     const nextMs = this.msAt(nextIndex);
 
     if (this.layer.isFrameCached(nextMs)) {
@@ -153,7 +149,7 @@ export class TimelinePlayer {
 
   private prefetchAhead(fromIndex: number): void {
     for (let i = 1; i <= this.cfg.bufferAhead; i++) {
-      const idx = (fromIndex + i) % this.cfg.timeSize;
+      const idx = (fromIndex + i) % this.cfg.timeValues.length;
       this.layer.prefetchTime(this.msAt(idx));
     }
   }

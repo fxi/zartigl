@@ -8,6 +8,7 @@ import type {
   DecodedChunk,
   ZarrPointSeriesResult,
   ZarrTimeDimension,
+  ZarrVerticalDimension,
 } from "./types";
 
 interface CoordArrays {
@@ -41,6 +42,7 @@ export class ZarrSource {
   private initPromise: Promise<void> | null = null;
   private verticalName: string = "depth";
   private timeUnits: string = "";
+  private timeCalendar: string = "standard";
   private cache = new Map<string, Float32Array>();
   private maxCacheSize: number;
   private abortControllers = new Map<string, AbortController>();
@@ -110,11 +112,14 @@ export class ZarrSource {
   getTimeDimension(): ZarrTimeDimension {
     const time = this.getCoords().time;
     const size = time.length;
-    const min = size ? this.zarrTimeToMs(time[0]) : NaN;
-    const max = size ? this.zarrTimeToMs(time[size - 1]) : NaN;
-    const rawStep =
-      size > 1 ? this.zarrTimeToMs(time[1]) - this.zarrTimeToMs(time[0]) : undefined;
-    const step = normalizeTimeStep(rawStep);
+    const values = Array.from(time, (value) => this.zarrTimeToMs(value));
+    let min = size ? values[0] : NaN;
+    let max = min;
+    for (let i = 1; i < values.length; i++) {
+      min = Math.min(min, values[i]);
+      max = Math.max(max, values[i]);
+    }
+    const step = uniformTimeStep(values);
 
     return {
       min,
@@ -122,7 +127,38 @@ export class ZarrSource {
       step,
       size,
       units: this.timeUnits,
+      values,
     };
+  }
+
+  getVerticalDimension(): ZarrVerticalDimension | undefined {
+    if (!this.verticalName) return undefined;
+    const attrs = this.getAttrs(this.verticalName);
+    const units = typeof attrs.units === "string" ? attrs.units : undefined;
+    const standardName = typeof attrs.standard_name === "string" ? attrs.standard_name : "";
+    const unitText = units?.toLowerCase() ?? "";
+    const label = standardName.includes("pressure") || this.verticalName.includes("pressure") || /(^|\s)(pa|hpa|bar|dbar)($|\s)/i.test(unitText)
+      ? "pressure"
+      : standardName.includes("elevation") || this.verticalName === "elevation" || attrs.positive === "up"
+        ? "elevation"
+        : "depth";
+    return {
+      name: this.verticalName,
+      label,
+      units,
+      values: Array.from(this.getCoords().vertical),
+    };
+  }
+
+  hasVariable(variable: string): boolean {
+    const entry = this.meta?.metadata[`${variable}/.zarray`];
+    return Boolean(entry && "dtype" in entry);
+  }
+
+  getVariableAttrs(variable: string): ZarrAttrs {
+    if (!this.meta) throw new Error("Call init() first");
+    if (!this.hasVariable(variable)) throw new Error(`No .zarray for ${variable}`);
+    return { ...this.getAttrs(variable) };
   }
 
   getDimensions(variable: string): string[] {
@@ -161,48 +197,42 @@ export class ZarrSource {
   /**
    * Convert a Unix-ms timestamp to the native time units used by this zarr
    * (read from the time variable's .zattrs "units" field).
-   * Falls back to a magnitude heuristic when units are absent or unparseable.
+   * Unsupported units are rejected during initialization rather than guessed.
    */
   private msToZarrTime(ms: number): number {
-    const units = this.timeUnits;
-    const m = units.match(
-      /^(milliseconds?|seconds?|hours?|days?)\s+since\s+(\S+)/i,
-    );
-    if (m) {
-      const refMs = new Date(m[2]).getTime();
-      const delta = ms - refMs;
-      const u = m[1].toLowerCase();
-      if (u.startsWith("ms") || u.startsWith("milli")) return delta;
-      if (u.startsWith("s")) return delta / 1000;
-      if (u.startsWith("h")) return delta / 3600000;
-      if (u.startsWith("d")) return delta / 86400000;
-    }
-    // Fallback heuristic based on magnitude of the first coordinate value
-    const sample = this.coords!.time[0];
-    if (sample > 1e12) return ms;
-    if (sample > 1e9) return ms / 1000;
-    // Assume days since 1950-01-01 (CF convention)
-    const ref = new Date("1950-01-01T00:00:00Z").getTime();
-    return (ms - ref) / 86400000;
+    const { refMs, multiplier } = this.parseTimeEncoding();
+    return (ms - refMs) / multiplier;
   }
 
   private zarrTimeToMs(value: number): number {
-    const units = this.timeUnits;
-    const m = units.match(
-      /^(milliseconds?|seconds?|hours?|days?)\s+since\s+(\S+)/i,
-    );
-    if (m) {
-      const refMs = new Date(m[2]).getTime();
-      const u = m[1].toLowerCase();
-      if (u.startsWith("ms") || u.startsWith("milli")) return refMs + value;
-      if (u.startsWith("s")) return refMs + value * 1000;
-      if (u.startsWith("h")) return refMs + value * 3600000;
-      if (u.startsWith("d")) return refMs + value * 86400000;
+    const { refMs, multiplier } = this.parseTimeEncoding();
+    return refMs + value * multiplier;
+  }
+
+  private parseTimeEncoding(): { refMs: number; multiplier: number } {
+    const calendar = this.timeCalendar.toLowerCase();
+    if (!["standard", "gregorian", "proleptic_gregorian"].includes(calendar)) {
+      throw new Error(`Unsupported Zarr time calendar: ${this.timeCalendar}`);
     }
-    if (value > 1e12) return value;
-    if (value > 1e9) return value * 1000;
-    const ref = new Date("1950-01-01T00:00:00Z").getTime();
-    return ref + value * 86400000;
+    const match = this.timeUnits.match(
+      /^(milliseconds?|seconds?|minutes?|hours?|days?)\s+since\s+(.+)$/i,
+    );
+    if (!match) throw new Error(`Unsupported Zarr time units: ${this.timeUnits || "<missing>"}`);
+    let epoch = match[2].trim().replace(/\s+\([^)]*\)\s*$/, "");
+    if (!/(?:z|[+-]\d{2}:?\d{2})$/i.test(epoch)) epoch += "Z";
+    const refMs = Date.parse(epoch);
+    if (!Number.isFinite(refMs)) throw new Error(`Invalid Zarr time epoch: ${match[2]}`);
+    const unit = match[1].toLowerCase();
+    const multiplier = unit.startsWith("ms") || unit.startsWith("milli")
+      ? 1
+      : unit.startsWith("s")
+        ? 1000
+        : unit.startsWith("min")
+          ? 60_000
+          : unit.startsWith("h")
+            ? 3_600_000
+            : 86_400_000;
+    return { refMs, multiplier };
   }
 
   private findNearestLongitudeIndex(longitude: number): number {
@@ -369,7 +399,7 @@ export class ZarrSource {
     let depthOrder = Array.from(
       { length: coords.vertical.length },
       (_, index) => index,
-    ).sort((a, b) => coords.vertical[a] - coords.vertical[b]);
+    ).sort((a, b) => Math.abs(coords.vertical[a]) - Math.abs(coords.vertical[b]));
     const maxDepths = Math.max(1, Math.floor(options.maxDepths ?? depthOrder.length));
     const stride = Math.max(
       1,
@@ -718,7 +748,10 @@ export class ZarrSource {
     this.verticalName = verticalName ?? "";
 
     // Read time units before loading coordinates so msToZarrTime works correctly
-    this.timeUnits = (this.getAttrs("time").units as string) ?? "";
+    const timeAttrs = this.getAttrs("time");
+    this.timeUnits = (timeAttrs.units as string) ?? "";
+    this.timeCalendar = (timeAttrs.calendar as string) ?? "standard";
+    this.parseTimeEncoding();
 
     const [time, latitude, longitude] = await Promise.all([
       loadCoord("time"),
@@ -729,14 +762,7 @@ export class ZarrSource {
     let vertical: Float32Array;
     if (verticalName) {
       const rawVertical = await loadCoord(verticalName);
-      // Normalize elevation (negative) to depth (positive)
       vertical = rawVertical as Float32Array;
-      if (vertical.length > 0 && vertical[0] < 0) {
-        vertical = new Float32Array(vertical.length);
-        for (let i = 0; i < rawVertical.length; i++) {
-          vertical[i] = -(rawVertical as Float32Array)[i];
-        }
-      }
     } else {
       // Surface-only dataset — synthesize a single level at 0
       vertical = new Float32Array([0]);
@@ -789,4 +815,15 @@ function normalizeTimeStep(step?: number): number | undefined {
   }
 
   return Math.round(step);
+}
+
+function uniformTimeStep(values: readonly number[]): number | undefined {
+  if (values.length < 2) return undefined;
+  const first = values[1] - values[0];
+  if (!Number.isFinite(first) || first <= 0) return undefined;
+  const tolerance = Math.max(1, Math.abs(first) * 1e-9);
+  for (let i = 2; i < values.length; i++) {
+    if (Math.abs(values[i] - values[i - 1] - first) > tolerance) return undefined;
+  }
+  return normalizeTimeStep(first);
 }

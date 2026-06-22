@@ -9,7 +9,6 @@ Each catalog must have:
 ```json
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-09T00:00:00.000Z",
   "layers": []
 }
 ```
@@ -30,29 +29,17 @@ Each layer must follow this shape:
   },
   "stores": {
     "field": {
-      "type": "zarr",
-      "url": "https://.../timeChunked.zarr",
-      "layout": "time-chunked"
+      "url": "https://.../timeChunked.zarr"
     },
     "pointSeries": {
-      "type": "zarr",
-      "url": "https://.../geoChunked.zarr",
-      "layout": "geo-chunked"
+      "url": "https://.../geoChunked.zarr"
     },
     "wmts": { "...": "optional scalar shortcut" }
   },
   "variables": {
     "kind": "vector",
     "u": "uo",
-    "v": "vo",
-    "standardName": "sea_water_velocity",
-    "units": "m s-1"
-  },
-  "dimensions": {
-    "time": { "size": 10, "min": 0, "max": 9, "step": 1, "chunkSize": 1, "units": "..." },
-    "vertical": { "label": "depth", "values": [0], "size": 1, "chunkSize": 1, "units": "m" },
-    "latitude": { "size": 100, "min": -90, "max": 90, "step": 1, "chunkSize": 100, "units": "degrees_north" },
-    "longitude": { "size": 100, "min": -180, "max": 180, "step": 1, "chunkSize": 100, "units": "degrees_east" }
+    "v": "vo"
   },
   "defaults": {
     "backend": "zarr",
@@ -77,9 +64,7 @@ For scalar layers, use:
 "kind": "scalar",
 "variables": {
   "kind": "scalar",
-  "value": "<short_name>",
-  "standardName": "<CF standard name or descriptive string>",
-  "units": "<unit string>"
+  "value": "<short_name>"
 }
 ```
 
@@ -94,9 +79,7 @@ For direction/magnitude vector derivation, use:
     "magnitude_variable": "VHM0_SW1",
     "direction_convention": "from",
     "output_direction": "toward"
-  },
-  "standardName": "sea_surface_primary_swell_wave_significant_height_vector",
-  "units": "m"
+  }
 }
 ```
 
@@ -107,8 +90,7 @@ For direction/magnitude vector derivation, use:
 - `stores.field` is required and is the map-rendering Zarr store.
 - `stores.pointSeries` enables point time-series and depth-profile queries.
 - `stores.wmts` is only valid on scalar layers.
-- Use `stores.field.layout: "time-chunked"` for `timeChunked.zarr`.
-- Use `stores.pointSeries.layout: "geo-chunked"` for `geoChunked.zarr`.
+- Time, vertical, spatial, and variable metadata must not be copied into the catalog; it is loaded live from Zarr.
 - `defaults.backend` can be `zarr` or `wmts`; omit it to let the app auto-detect, or set `"wmts"` explicitly when a scalar layer should prefer WMTS rendering.
 - `defaults.palette` must exist in `src/lib/palettes.json`.
 
@@ -135,7 +117,7 @@ uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
 uv run scripts/catalog_builder/skills/validate_catalog.py
 ```
 
-`query_dataset.py` emits candidate `stores`, `dimensions`, and `suggested_variables` in the current schema. Always run `validate_catalog.py` after editing.
+`query_dataset.py` emits candidate stores and variables in the current schema. Always run `validate_catalog.py` after editing.
 
 ## 5. Workflow
 
@@ -144,8 +126,7 @@ uv run scripts/catalog_builder/skills/validate_catalog.py
 3. Run `query_dataset.py <dataset_id>` for the chosen dataset.
 4. Compose a full layer entry using the schema above.
 5. Ask the user to approve the entry before appending it.
-6. Update `generatedAt` to the current ISO timestamp.
-7. Run `validate_catalog.py` and fix all failures.
+6. Run `validate_catalog.py` and fix all failures.
 
 ## 6. Editing Existing Layers
 
@@ -163,4 +144,4 @@ Note on particle defaults — both are single numbers (the old `ZoomWeighted`
 `dropRate` / `dropRateBump` are no longer catalog fields — they are internal
 `ParticleSimulation` defaults.
 
-For metadata, rerun `query_dataset.py`, update `stores`, `variables`, or `dimensions`, then validate.
+For configuration changes, rerun `query_dataset.py`, update stores or variables, then validate. Runtime metadata comes from `.zmetadata` and coordinate chunks.
