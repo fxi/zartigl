@@ -50,21 +50,31 @@ describe("ParticleSimulation camera trail fade", () => {
   it("initializes float particle state as Float32 data", () => {
     const simulation = new ParticleSimulation();
     const internals = simulation as unknown as StateInternals;
-    internals.stateFormat = { float: true, internalFormat: 0x1908, type: 0x1406 };
+    internals.stateFormat = { kind: "float32", internalFormat: 0x1908, type: 0x1406 };
     const data = internals.makeStateData();
 
     expect(data).toBeInstanceOf(Float32Array);
-    expect(data.length).toBe(512 * 512 * 4);
+    expect((data as Float32Array).length).toBe(512 * 512 * 4);
+  });
+
+  it("initializes half-float particle state as half-float words", () => {
+    const simulation = new ParticleSimulation();
+    const internals = simulation as unknown as StateInternals;
+    internals.stateFormat = { kind: "float16", internalFormat: 0x1908, type: 0x8d61 };
+    const data = internals.makeStateData();
+
+    expect(data).toBeInstanceOf(Uint16Array);
+    expect((data as Uint16Array).length).toBe(512 * 512 * 4);
   });
 
   it("initializes RGBA8-packed particle state as bytes", () => {
     const simulation = new ParticleSimulation({ particleState: "rgba8" });
     const internals = simulation as unknown as StateInternals;
-    internals.stateFormat = { float: false, internalFormat: 0x1908, type: 0x1401 };
+    internals.stateFormat = { kind: "rgba8-packed", internalFormat: 0x1908, type: 0x1401 };
     const data = internals.makeStateData();
 
     expect(data).toBeInstanceOf(Uint8Array);
-    expect(data.length).toBe(512 * 512 * 4);
+    expect((data as Uint8Array).length).toBe(512 * 512 * 4);
   });
 
   it("reports requested and active particle state in debug info", () => {
@@ -83,7 +93,7 @@ describe("ParticleSimulation camera trail fade", () => {
   it("suppresses RGBA8 particles only above the configured max zoom", () => {
     const simulation = new ParticleSimulation({ particleState: "rgba8", rgba8MaxParticleZoom: 4 });
     const internals = simulation as unknown as StateInternals;
-    internals.stateFormat = { float: false, internalFormat: 0x1908, type: 0x1401 };
+    internals.stateFormat = { kind: "rgba8-packed", internalFormat: 0x1908, type: 0x1401 };
 
     expect(internals.shouldSuppressRgba8Particles(512 * 2 ** 4)).toBe(false);
     expect(internals.shouldSuppressRgba8Particles(512 * 2 ** 5)).toBe(true);
@@ -92,7 +102,7 @@ describe("ParticleSimulation camera trail fade", () => {
   it("does not zoom-limit float particles", () => {
     const simulation = new ParticleSimulation({ rgba8MaxParticleZoom: 4 });
     const internals = simulation as unknown as StateInternals;
-    internals.stateFormat = { float: true, internalFormat: 0x1908, type: 0x1406 };
+    internals.stateFormat = { kind: "float16", internalFormat: 0x1908, type: 0x8d61 };
 
     expect(internals.shouldSuppressRgba8Particles(512 * 2 ** 12)).toBe(false);
   });

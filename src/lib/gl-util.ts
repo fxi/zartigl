@@ -128,7 +128,7 @@ export function createTexture(
  * coordinate lattice. RGBA8 remains the compatibility fallback.
  */
 export interface StateTextureFormat {
-  float: boolean;
+  kind: "float32" | "float16" | "rgba8-packed";
   internalFormat: number;
   type: number;
 }
@@ -190,7 +190,7 @@ function isFramebufferCompleteForTextureFormat(
 }
 
 export function rgba8StateTextureFormat(gl: WebGLRenderingContext): StateTextureFormat {
-  return { float: false, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE };
+  return { kind: "rgba8-packed", internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE };
 }
 
 /**
@@ -205,9 +205,18 @@ export function detectStateTextureFormat(
     gl instanceof WebGL2RenderingContext;
 
   if (isWebGL2) {
+    const gl2 = gl as unknown as WebGL2RenderingContext;
     if (gl.getExtension("EXT_color_buffer_float")) {
-      const gl2 = gl as unknown as WebGL2RenderingContext;
-      const candidate = { float: true, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
+      const candidate = { kind: "float32" as const, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
+      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+        return candidate;
+      }
+    }
+    const halfFloatRender =
+      gl.getExtension("EXT_color_buffer_float") ||
+      gl.getExtension("EXT_color_buffer_half_float");
+    if (halfFloatRender) {
+      const candidate = { kind: "float16" as const, internalFormat: gl2.RGBA16F, type: gl2.HALF_FLOAT };
       if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
         return candidate;
       }
@@ -216,7 +225,15 @@ export function detectStateTextureFormat(
     const hasFloatTex = gl.getExtension("OES_texture_float");
     const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
     if (hasFloatTex && hasFloatRender) {
-      const candidate = { float: true, internalFormat: gl.RGBA, type: gl.FLOAT };
+      const candidate = { kind: "float32" as const, internalFormat: gl.RGBA, type: gl.FLOAT };
+      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+        return candidate;
+      }
+    }
+    const halfFloat = gl.getExtension("OES_texture_half_float") as { HALF_FLOAT_OES: number } | null;
+    const halfFloatRender = gl.getExtension("EXT_color_buffer_half_float");
+    if (halfFloat && halfFloatRender) {
+      const candidate = { kind: "float16" as const, internalFormat: gl.RGBA, type: halfFloat.HALF_FLOAT_OES };
       if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
         return candidate;
       }

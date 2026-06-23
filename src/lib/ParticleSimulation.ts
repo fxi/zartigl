@@ -25,7 +25,7 @@ import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 
 export type RenderMode = 'raster' | 'particles' | 'raster+particles';
 export type ParticleStateMode = "auto" | "rgba8";
-export type ParticleStateKind = "float" | "rgba8-packed";
+export type ParticleStateKind = StateTextureFormat["kind"];
 
 export interface ParticleSimulationDebugInfo {
   particleState: ParticleStateKind;
@@ -74,6 +74,24 @@ const REDISTRIB_MAX_DROP = 0.1;  // ceiling on effective drop rate during the tr
 const MOVING_FADE_OPACITY = 0.8;
 const MOVING_FADE_OUT_MS = 120;
 const MOVING_FADE_IN_MS = 300;
+
+function float32ToFloat16(value: number): number {
+  if (Number.isNaN(value)) return 0x7e00;
+  if (value === Infinity) return 0x7c00;
+  if (value === -Infinity) return 0xfc00;
+
+  const sign = value < 0 ? 0x8000 : 0;
+  const abs = Math.abs(value);
+  if (abs === 0) return sign;
+  if (abs >= 65504) return sign | 0x7bff;
+  if (abs < 0.00006103515625) {
+    return sign | Math.round(abs / 0.000000059604644775390625);
+  }
+
+  const exponent = Math.floor(Math.log2(abs));
+  const mantissa = abs / 2 ** exponent - 1;
+  return sign | ((exponent + 15) << 10) | Math.round(mantissa * 1024);
+}
 
 export interface SimulationParams {
   /** Particles per screen pixel. Active count = clamp(w * h * density, 1, MAX). */
@@ -179,7 +197,7 @@ export class ParticleSimulation {
     this.stateFormat = this.params.particleState === "rgba8"
       ? rgba8StateTextureFormat(gl)
       : detectStateTextureFormat(gl);
-    const stateDefine = this.stateFormat.float ? "#define USE_FLOAT_STATE 1\n" : "";
+    const stateDefine = this.stateFormat.kind !== "rgba8-packed" ? "#define USE_FLOAT_STATE 1\n" : "";
 
     // Compile programs
     this.updateProgram = createProgram(gl, quadVert, stateDefine + updateFrag);
@@ -287,9 +305,14 @@ export class ParticleSimulation {
   private makeStateData(): ArrayBufferView {
     const res = MAX_PARTICLE_STATE_RES;
     const n = res * res * 4;
-    if (this.stateFormat?.float) {
+    if (this.stateFormat?.kind === "float32") {
       const data = new Float32Array(n);
       for (let i = 0; i < n; i++) data[i] = Math.random();
+      return data;
+    }
+    if (this.stateFormat?.kind === "float16") {
+      const data = new Uint16Array(n);
+      for (let i = 0; i < n; i++) data[i] = float32ToFloat16(Math.random());
       return data;
     }
     const data = new Uint8Array(n);
@@ -832,7 +855,7 @@ export class ParticleSimulation {
   }
 
   private shouldSuppressRgba8Particles(worldSize: number): boolean {
-    if (this.stateFormat?.float) return false;
+    if (this.stateFormat?.kind !== "rgba8-packed") return false;
     const zoom = Math.log2(Math.max(worldSize, 1) / 512);
     return zoom > this.params.rgba8MaxParticleZoom;
   }
@@ -923,7 +946,7 @@ export class ParticleSimulation {
 
   getDebugInfo(): ParticleSimulationDebugInfo {
     return {
-      particleState: this.stateFormat?.float ? "float" : "rgba8-packed",
+      particleState: this.stateFormat?.kind ?? "rgba8-packed",
       particleStateMode: this.params.particleState,
       particleStateResolution: MAX_PARTICLE_STATE_RES,
       maxParticles: MAX_PARTICLES,

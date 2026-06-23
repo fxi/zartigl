@@ -29,6 +29,7 @@ interface DemoParams {
   speed: number;
   fade: number;
   renderMode: RenderMode;
+  compatibilityMode: boolean;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
   palette: string;
@@ -620,17 +621,12 @@ export class DemoApp {
       min: 0.1, max: 8, step: 0.1, label: "speed",
     }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
 
-    this.particlesFolder.addBinding(this.params, "particleState", {
-      options: [
-        { text: "Auto / float when supported", value: "auto" },
-        { text: "Force RGBA8 packed", value: "rgba8" },
-      ],
-      label: "state",
-    }).on("change", (ev) => this.z?.updateSettings({ particleState: ev.value }));
-
-    this.particlesFolder.addBinding(this.params, "rgba8MaxParticleZoom", {
-      min: 0, max: 12, step: 0.5, label: "rgba8 max z",
-    }).on("change", (ev) => this.z?.updateSettings({ rgba8MaxParticleZoom: ev.value }));
+    this.particlesFolder.addBinding(this.params, "compatibilityMode", {
+      label: "compatibility mode",
+    }).on("change", (ev) => {
+      this.params.particleState = ev.value ? "rgba8" : "auto";
+      this.z?.updateSettings({ particleState: this.params.particleState });
+    });
   }
 
   private buildTrailFolder(): void {
@@ -925,9 +921,11 @@ export class DemoApp {
     );
     const fpsText = this.currentFps > 0 ? String(this.currentFps) : "--";
     const stateText = simulation
-      ? simulation.rgba8ParticlesSuppressed
-        ? `state ${simulation.particleState} raster-only`
-        : `state ${simulation.particleState}`
+      ? [
+          `state ${simulation.particleState}`,
+          simulation.particleStateMode === "rgba8" ? "compat" : "auto",
+          simulation.rgba8ParticlesSuppressed ? "raster-only" : "",
+        ].filter(Boolean).join(" ")
       : `state ${this.params.particleState}`;
     const dpr = info?.devicePixelRatio ?? (typeof window !== "undefined" ? window.devicePixelRatio : undefined);
     this.fpsEl.textContent = [
@@ -1071,6 +1069,7 @@ export class DemoApp {
       speed: 1.0,
       fade: 0.7,
       renderMode: "particles",
+      compatibilityMode: false,
       particleState: "auto",
       rgba8MaxParticleZoom: 4,
       palette: "rdylbu",
@@ -1086,6 +1085,7 @@ export class DemoApp {
     this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fade = d.particles?.fade ?? 0.7;
     this.params.renderMode = d.renderMode ?? "particles";
+    this.params.compatibilityMode = false;
     this.params.particleState = "auto";
     this.params.rgba8MaxParticleZoom = 4;
     this.params.opacity = d.raster?.opacity ?? 1;
@@ -1100,6 +1100,7 @@ export class DemoApp {
     this.params.fade = hash.f ?? 0.7;
     this.params.renderMode = hash.rm ?? this.params.renderMode;
     this.params.particleState = hash.ps ?? this.params.particleState;
+    this.params.compatibilityMode = this.params.particleState === "rgba8";
     this.params.rgba8MaxParticleZoom = hash.rz ?? this.params.rgba8MaxParticleZoom;
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;

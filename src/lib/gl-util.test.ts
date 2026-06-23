@@ -16,6 +16,7 @@ function makeFakeGl(options: FakeGlOptions = {}) {
     RGBA: 0x1908,
     UNSIGNED_BYTE: 0x1401,
     FLOAT: 0x1406,
+    HALF_FLOAT_OES: 0x8d61,
     NEAREST: 0x2600,
     TEXTURE_2D: 0x0de1,
     TEXTURE_WRAP_S: 0x2802,
@@ -43,6 +44,9 @@ function makeFakeGl(options: FakeGlOptions = {}) {
     deleteTexture: vi.fn(),
     getExtension: vi.fn((name: string) => {
       if (name === "WEBGL_debug_renderer_info") return debugInfo;
+      if (name === "OES_texture_half_float" && extensions.has(name)) {
+        return { HALF_FLOAT_OES: 0x8d61 };
+      }
       return extensions.has(name) ? {} : null;
     }),
     getParameter: vi.fn((key: number) => {
@@ -92,7 +96,7 @@ describe("WebGL utility helpers", () => {
     const gl = makeFakeGl();
 
     expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
-      float: false,
+      kind: "rgba8-packed",
       internalFormat: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
     });
@@ -105,9 +109,22 @@ describe("WebGL utility helpers", () => {
     });
 
     expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
-      float: true,
+      kind: "float32",
       internalFormat: gl.RGBA,
       type: gl.FLOAT,
+    });
+    expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
+  });
+
+  it("uses half-float state when float32 is unavailable but half-float rendering is complete", () => {
+    const gl = makeFakeGl({
+      extensions: ["OES_texture_half_float", "EXT_color_buffer_half_float"],
+    });
+
+    expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
+      kind: "float16",
+      internalFormat: gl.RGBA,
+      type: gl.HALF_FLOAT_OES,
     });
     expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
   });
@@ -119,7 +136,7 @@ describe("WebGL utility helpers", () => {
     });
 
     expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
-      float: false,
+      kind: "rgba8-packed",
       internalFormat: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
     });
