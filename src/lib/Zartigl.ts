@@ -11,7 +11,7 @@ import type {
   ZarrTimeDimension,
   ZarrVerticalDimension,
 } from "./types";
-import type { RenderMode } from "./ParticleSimulation";
+import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -22,6 +22,8 @@ export interface ZartiglSettings {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  particleState: ParticleStateMode;
+  rgba8MaxParticleZoom: number;
 }
 
 export interface ZartiglOptions {
@@ -45,6 +47,8 @@ export interface ZartiglDebugInfo {
   activeBackend?: "zarr" | "wmts";
   projection?: string;
   canvasSize?: { width: number; height: number };
+  canvasCssSize?: { width: number; height: number };
+  devicePixelRatio?: number;
   catalogLayer: {
     id: string;
     label: string;
@@ -163,6 +167,8 @@ function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> 
     opacity: defaults?.raster?.opacity ?? 1,
     logScale: defaults?.raster?.logScale ?? false,
     vibrance: defaults?.raster?.vibrance ?? 0,
+    particleState: "auto",
+    rgba8MaxParticleZoom: 4,
   };
 }
 
@@ -395,6 +401,8 @@ export class Zartigl {
       activeBackend: this.getBackend(),
       projection: String(this.map.getProjection?.()?.type ?? ""),
       canvasSize: canvas ? { width: canvas.width, height: canvas.height } : undefined,
+      canvasCssSize: canvas ? { width: canvas.clientWidth, height: canvas.clientHeight } : undefined,
+      devicePixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : undefined,
       catalogLayer: this.catalogLayer ? {
         id: this.catalogLayer.id,
         label: this.catalogLayer.label,
@@ -410,10 +418,12 @@ export class Zartigl {
   updateSettings(settings: Partial<ZartiglSettings>): void {
     this.assertAlive();
     const paletteChanged = settings.palette != null && settings.palette !== this.settings.palette;
+    const particleStateChanged =
+      settings.particleState != null && settings.particleState !== this.settings.particleState;
     this.settings = { ...this.settings, ...settings };
     if (!this.layer) return;
 
-    if (paletteChanged) {
+    if (paletteChanged || particleStateChanged) {
       this.detach();
       this.attachWhenReady();
       return;
@@ -489,6 +499,8 @@ export class Zartigl {
       opacity: this.settings.opacity,
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
+      particleState: this.settings.particleState,
+      rgba8MaxParticleZoom: this.settings.rgba8MaxParticleZoom,
       zarrSource: this.activeFieldSource ?? undefined,
       unit: this.variableUnit,
       verticalLabel: this.verticalMeta?.label,
@@ -532,6 +544,9 @@ export class Zartigl {
     if (settings.opacity != null) layer.setOpacity(settings.opacity);
     if (settings.logScale != null) layer.setLogScale(settings.logScale);
     if (settings.vibrance != null) layer.setVibrance(settings.vibrance);
+    if (settings.rgba8MaxParticleZoom != null) {
+      layer.setRgba8MaxParticleZoom(settings.rgba8MaxParticleZoom);
+    }
   }
 
   private getQuerySource(url: string): ZarrSource {

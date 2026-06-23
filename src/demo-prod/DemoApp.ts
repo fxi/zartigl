@@ -9,7 +9,13 @@ import {
   deriveDirectionMagnitudeComponents,
   getPalettes,
 } from "../lib";
-import type { RenderMode, ZarrPointSeriesResult, ZartiglDebugInfo, ZartiglSettings } from "../lib";
+import type {
+  ParticleStateMode,
+  RenderMode,
+  ZarrPointSeriesResult,
+  ZartiglDebugInfo,
+  ZartiglSettings,
+} from "../lib";
 import { formatTime, formatVertical } from "../catalog";
 import type { CatalogLayer, Catalog } from "../catalog";
 
@@ -23,6 +29,8 @@ interface DemoParams {
   speed: number;
   fade: number;
   renderMode: RenderMode;
+  particleState: ParticleStateMode;
+  rgba8MaxParticleZoom: number;
   palette: string;
   opacity: number;
   logScale: boolean;
@@ -44,6 +52,8 @@ interface HashState {
   sp?: number;
   f?: number;
   rm?: RenderMode;
+  ps?: ParticleStateMode;
+  rz?: number;
   op: number;
   ls: boolean;
   vb: number;
@@ -470,7 +480,7 @@ export class DemoApp {
   private buildFpsCounter(): void {
     this.fpsEl = document.createElement("div");
     this.fpsEl.className = "demo-fps";
-    this.fpsEl.textContent = "FPS -- | state rgba8";
+    this.fpsEl.textContent = "FPS -- | state auto";
     document.body.appendChild(this.fpsEl);
   }
 
@@ -609,6 +619,18 @@ export class DemoApp {
     this.particlesFolder.addBinding(this.params, "speed", {
       min: 0.1, max: 8, step: 0.1, label: "speed",
     }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
+
+    this.particlesFolder.addBinding(this.params, "particleState", {
+      options: [
+        { text: "Auto / float when supported", value: "auto" },
+        { text: "Force RGBA8 packed", value: "rgba8" },
+      ],
+      label: "state",
+    }).on("change", (ev) => this.z?.updateSettings({ particleState: ev.value }));
+
+    this.particlesFolder.addBinding(this.params, "rgba8MaxParticleZoom", {
+      min: 0, max: 12, step: 0.5, label: "rgba8 max z",
+    }).on("change", (ev) => this.z?.updateSettings({ rgba8MaxParticleZoom: ev.value }));
   }
 
   private buildTrailFolder(): void {
@@ -896,14 +918,22 @@ export class DemoApp {
 
   private updateDebugStatus(): void {
     const info = this.z?.getDebugInfo();
+    const simulation = info?.layer?.delegate?.simulation;
     const renderer = this.shortRendererLabel(
-      info?.layer?.delegate?.simulation.webgl?.unmaskedRenderer ??
-      info?.layer?.delegate?.simulation.webgl?.renderer,
+      simulation?.webgl?.unmaskedRenderer ??
+      simulation?.webgl?.renderer,
     );
     const fpsText = this.currentFps > 0 ? String(this.currentFps) : "--";
+    const stateText = simulation
+      ? simulation.rgba8ParticlesSuppressed
+        ? `state ${simulation.particleState} raster-only`
+        : `state ${simulation.particleState}`
+      : `state ${this.params.particleState}`;
+    const dpr = info?.devicePixelRatio ?? (typeof window !== "undefined" ? window.devicePixelRatio : undefined);
     this.fpsEl.textContent = [
       `FPS ${fpsText}`,
-      "state rgba8",
+      stateText,
+      dpr ? `DPR ${dpr}` : "",
       renderer,
     ].filter(Boolean).join(" | ");
   }
@@ -959,6 +989,8 @@ export class DemoApp {
       sp: this.params.speed,
       f: this.params.fade,
       rm: this.params.renderMode,
+      ps: this.params.particleState,
+      rz: this.params.rgba8MaxParticleZoom,
       op: this.params.opacity,
       ls: this.params.logScale,
       vb: this.params.vibrance,
@@ -1039,6 +1071,8 @@ export class DemoApp {
       speed: 1.0,
       fade: 0.7,
       renderMode: "particles",
+      particleState: "auto",
+      rgba8MaxParticleZoom: 4,
       palette: "rdylbu",
       opacity: 1,
       logScale: false,
@@ -1052,6 +1086,8 @@ export class DemoApp {
     this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fade = d.particles?.fade ?? 0.7;
     this.params.renderMode = d.renderMode ?? "particles";
+    this.params.particleState = "auto";
+    this.params.rgba8MaxParticleZoom = 4;
     this.params.opacity = d.raster?.opacity ?? 1;
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
@@ -1063,6 +1099,8 @@ export class DemoApp {
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;
     this.params.renderMode = hash.rm ?? this.params.renderMode;
+    this.params.particleState = hash.ps ?? this.params.particleState;
+    this.params.rgba8MaxParticleZoom = hash.rz ?? this.params.rgba8MaxParticleZoom;
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;
@@ -1076,6 +1114,8 @@ export class DemoApp {
       speed: this.params.speed,
       fade: this.params.fade,
       renderMode: this.params.renderMode,
+      particleState: this.params.particleState,
+      rgba8MaxParticleZoom: this.params.rgba8MaxParticleZoom,
       opacity: this.params.opacity,
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,

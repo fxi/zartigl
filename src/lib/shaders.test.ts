@@ -9,9 +9,11 @@ describe("particle shader invalid-state guards", () => {
     expect(updateFrag).toContain("drop = 1.0");
   });
 
-  it("uses one RGBA8-packed particle-state shader path", () => {
-    expect(updateFrag).not.toContain("USE_FLOAT_STATE");
-    expect(drawVert).not.toContain("USE_FLOAT_STATE");
+  it("supports float particle state with an RGBA8-packed fallback", () => {
+    expect(updateFrag).toContain("USE_FLOAT_STATE");
+    expect(drawVert).toContain("USE_FLOAT_STATE");
+    expect(updateFrag).toContain("vec2 pos = encoded.rg");
+    expect(updateFrag).toContain("gl_FragColor = vec4(newPos, 0.0, 1.0)");
     expect(updateFrag).toContain("const float MIN_STEP = 1.0 / 65025.0");
     expect(updateFrag).toContain("floor(newPos.x * 255.0) / 255.0");
     expect(drawVert).toContain("encoded.r + encoded.g / 255.0");

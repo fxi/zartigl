@@ -174,6 +174,52 @@ describe("Zartigl facade", () => {
     expect(spy).toHaveBeenCalledWith("raster+particles");
   });
 
+  it("passes particle state settings to the render layer", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({
+      map: map as never,
+      catalog: catalog(vectorLayer()),
+      settings: { particleState: "rgba8", rgba8MaxParticleZoom: 3 },
+    });
+
+    await z.setLayer("vector");
+
+    expect(
+      (map.getLayer("zartigl") as unknown as {
+        options: { particleState: string; rgba8MaxParticleZoom: number };
+      }).options,
+    ).toMatchObject({
+      particleState: "rgba8",
+      rgba8MaxParticleZoom: 3,
+    });
+  });
+
+  it("recreates the render layer when particle state mode changes", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });
+    await z.setLayer("vector");
+    const firstLayer = map.getLayer("zartigl");
+
+    z.updateSettings({ particleState: "rgba8" });
+
+    expect(map.getLayer("zartigl")).toBeDefined();
+    expect(map.getLayer("zartigl")).not.toBe(firstLayer);
+    expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(2);
+  });
+
+  it("updates RGBA8 max zoom without recreating the render layer", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });
+    await z.setLayer("vector");
+    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const spy = vi.spyOn(renderLayer, "setRgba8MaxParticleZoom");
+
+    z.updateSettings({ rgba8MaxParticleZoom: 2 });
+
+    expect(spy).toHaveBeenCalledWith(2);
+    expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(1);
+  });
+
   it("queues setLayer until the map style is ready", async () => {
     const map = new FakeMap();
     map.ready = false;

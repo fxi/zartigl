@@ -1,11 +1,15 @@
 import {
   createProgram,
   createTexture,
+  createTextureFormat,
+  detectStateTextureFormat,
   createFramebuffer,
   createQuadBuffer,
   createColorRampTexture,
   bindTexture,
   getWebGLRendererInfo,
+  rgba8StateTextureFormat,
+  type StateTextureFormat,
   type WebGLRendererInfo,
 } from "./gl-util";
 
@@ -20,12 +24,17 @@ import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 
 export type RenderMode = 'raster' | 'particles' | 'raster+particles';
+export type ParticleStateMode = "auto" | "rgba8";
+export type ParticleStateKind = "float" | "rgba8-packed";
 
 export interface ParticleSimulationDebugInfo {
-  particleState: "rgba8-packed";
+  particleState: ParticleStateKind;
+  particleStateMode: ParticleStateMode;
   particleStateResolution: number;
   maxParticles: number;
   activeParticles: number;
+  rgba8MaxParticleZoom: number;
+  rgba8ParticlesSuppressed: boolean;
   screenSize: { width: number; height: number };
   renderMode: RenderMode;
   speed: number;
@@ -35,6 +44,7 @@ export interface ParticleSimulationDebugInfo {
   logScale: boolean;
   vibrance: number;
   scalarMode: boolean;
+  devicePixelRatio?: number;
   webgl: WebGLRendererInfo | null;
 }
 
@@ -78,6 +88,8 @@ export interface SimulationParams {
   logScale: boolean;
   vibrance: number;
   scalarMode: boolean;
+  particleState: ParticleStateMode;
+  rgba8MaxParticleZoom: number;
 }
 
 const DEFAULTS: SimulationParams = {
@@ -90,6 +102,8 @@ const DEFAULTS: SimulationParams = {
   logScale: false,
   vibrance: 0.0,
   scalarMode: false,
+  particleState: "auto",
+  rgba8MaxParticleZoom: 4,
 };
 
 export class ParticleSimulation {
@@ -126,6 +140,8 @@ export class ParticleSimulation {
   private fadeTransitionDurationMs = 0;
 
   private webglInfo: WebGLRendererInfo | null = null;
+  private stateFormat!: StateTextureFormat;
+  private lastRgba8ParticlesSuppressed = false;
 
   // Screen textures for trail rendering
   private screenTextures!: [WebGLTexture, WebGLTexture];
@@ -160,10 +176,14 @@ export class ParticleSimulation {
   init(gl: WebGLRenderingContext): void {
     this.gl = gl;
     this.webglInfo = getWebGLRendererInfo(gl);
+    this.stateFormat = this.params.particleState === "rgba8"
+      ? rgba8StateTextureFormat(gl)
+      : detectStateTextureFormat(gl);
+    const stateDefine = this.stateFormat.float ? "#define USE_FLOAT_STATE 1\n" : "";
 
     // Compile programs
-    this.updateProgram = createProgram(gl, quadVert, updateFrag);
-    this.drawProgram = createProgram(gl, drawVert, drawFrag);
+    this.updateProgram = createProgram(gl, quadVert, stateDefine + updateFrag);
+    this.drawProgram = createProgram(gl, stateDefine + drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
     this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
     this.gridGlobeProgram = createProgram(gl, gridGlobeVert, gridGlobeFrag);
@@ -263,17 +283,30 @@ export class ParticleSimulation {
     return result;
   }
 
-  /** Random initial particle positions encoded as RGBA8 hi/lo pairs. */
-  private makeStateData(): Uint8Array {
+  /** Random initial particle positions, matching the active state format. */
+  private makeStateData(): ArrayBufferView {
     const res = MAX_PARTICLE_STATE_RES;
     const n = res * res * 4;
+    if (this.stateFormat?.float) {
+      const data = new Float32Array(n);
+      for (let i = 0; i < n; i++) data[i] = Math.random();
+      return data;
+    }
     const data = new Uint8Array(n);
     for (let i = 0; i < n; i++) data[i] = Math.floor(Math.random() * 256);
     return data;
   }
 
-  private createStateTexture(data: Uint8Array): WebGLTexture {
-    return createTexture(this.gl, this.gl.NEAREST, data, MAX_PARTICLE_STATE_RES, MAX_PARTICLE_STATE_RES);
+  private createStateTexture(data: ArrayBufferView): WebGLTexture {
+    return createTextureFormat(
+      this.gl,
+      this.gl.NEAREST,
+      data,
+      MAX_PARTICLE_STATE_RES,
+      MAX_PARTICLE_STATE_RES,
+      this.stateFormat.internalFormat,
+      this.stateFormat.type,
+    );
   }
 
   private initParticleState(): void {
@@ -408,67 +441,82 @@ export class ParticleSimulation {
     // Capture MapLibre's current framebuffer so we can restore it for the final blit
     const mapFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
 
-    const runParticles = this.renderMode === 'particles' || this.renderMode === 'raster+particles';
-    const runGrid = this.renderMode === 'raster' || this.renderMode === 'raster+particles';
+    const suppressRgba8Particles = this.shouldSuppressRgba8Particles(worldSize);
+    if (suppressRgba8Particles && !this.lastRgba8ParticlesSuppressed) {
+      this.clearState();
+    }
+    this.lastRgba8ParticlesSuppressed = suppressRgba8Particles;
+
+    const runParticles =
+      !suppressRgba8Particles &&
+      (this.renderMode === 'particles' || this.renderMode === 'raster+particles');
+    const runGrid =
+      suppressRgba8Particles ||
+      this.renderMode === 'raster' ||
+      this.renderMode === 'raster+particles';
+    let didParticleUpdate = false;
 
     // --- 1. Update pass: advance particle positions (always — keeps simulation live) ---
     // Blending MUST be off: the alpha channel encodes position data (lo byte of Y),
     // not transparency. If blend leaks in, particles snap to 1/255 grid lines.
-    gl.disable(gl.BLEND);
-    gl.useProgram(this.updateProgram);
-    gl.viewport(0, 0, MAX_PARTICLE_STATE_RES, MAX_PARTICLE_STATE_RES);
+    if (runParticles) {
+      gl.disable(gl.BLEND);
+      gl.useProgram(this.updateProgram);
+      gl.viewport(0, 0, MAX_PARTICLE_STATE_RES, MAX_PARTICLE_STATE_RES);
 
-    bindTexture(gl, this.particleStateTextures[0], 0);
-    gl.uniform1i(this.updateLocs["u_particles"], 0);
+      bindTexture(gl, this.particleStateTextures[0], 0);
+      gl.uniform1i(this.updateLocs["u_particles"], 0);
 
-    gl.uniform1i(this.updateLocs["u_velocity"], velocityTexUnit);
-    gl.uniform2f(this.updateLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
-    gl.uniform2f(this.updateLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
-    gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
-    gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
-    gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
+      gl.uniform1i(this.updateLocs["u_velocity"], velocityTexUnit);
+      gl.uniform2f(this.updateLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
+      gl.uniform2f(this.updateLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
+      gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
+      gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
+      gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
 
-    // Transient drop-rate boost: when the viewport changes (zoom/pan), accelerate
-    // the existing uniform respawn so the old cluster disperses smoothly. Decays
-    // back to the configured rate once the camera settles. No reset / no flash.
-    const wNew = bounds.maxX - bounds.minX;
-    if (this.prevBounds) {
-      const wPrev = this.prevBounds.maxX - this.prevBounds.minX;
-      const hPrev = this.prevBounds.maxY - this.prevBounds.minY;
-      const eps = 1e-6;
-      const cxNew = (bounds.minX + bounds.maxX) * 0.5;
-      const cyNew = (bounds.minY + bounds.maxY) * 0.5;
-      const cxPrev = (this.prevBounds.minX + this.prevBounds.maxX) * 0.5;
-      const cyPrev = (this.prevBounds.minY + this.prevBounds.maxY) * 0.5;
-      const sizeChange = Math.abs(wNew - wPrev) / Math.max(wPrev, eps);
-      const panChange =
-        Math.abs(cxNew - cxPrev) / Math.max(wPrev, eps) +
-        Math.abs(cyNew - cyPrev) / Math.max(hPrev, eps);
-      const delta = Math.min(1, sizeChange + panChange);
-      this.redistributionBoost = Math.max(
-        this.redistributionBoost * REDISTRIB_DECAY,
-        delta * REDISTRIB_GAIN,
-      );
-    }
-    this.prevBounds = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
-    const effectiveDrop = Math.min(this.params.dropRate + this.redistributionBoost, REDISTRIB_MAX_DROP);
+      // Transient drop-rate boost: when the viewport changes (zoom/pan), accelerate
+      // the existing uniform respawn so the old cluster disperses smoothly. Decays
+      // back to the configured rate once the camera settles. No reset / no flash.
+      const wNew = bounds.maxX - bounds.minX;
+      if (this.prevBounds) {
+        const wPrev = this.prevBounds.maxX - this.prevBounds.minX;
+        const hPrev = this.prevBounds.maxY - this.prevBounds.minY;
+        const eps = 1e-6;
+        const cxNew = (bounds.minX + bounds.maxX) * 0.5;
+        const cyNew = (bounds.minY + bounds.maxY) * 0.5;
+        const cxPrev = (this.prevBounds.minX + this.prevBounds.maxX) * 0.5;
+        const cyPrev = (this.prevBounds.minY + this.prevBounds.maxY) * 0.5;
+        const sizeChange = Math.abs(wNew - wPrev) / Math.max(wPrev, eps);
+        const panChange =
+          Math.abs(cxNew - cxPrev) / Math.max(wPrev, eps) +
+          Math.abs(cyNew - cyPrev) / Math.max(hPrev, eps);
+        const delta = Math.min(1, sizeChange + panChange);
+        this.redistributionBoost = Math.max(
+          this.redistributionBoost * REDISTRIB_DECAY,
+          delta * REDISTRIB_GAIN,
+        );
+      }
+      this.prevBounds = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+      const effectiveDrop = Math.min(this.params.dropRate + this.redistributionBoost, REDISTRIB_MAX_DROP);
 
-    gl.uniform1f(this.updateLocs["u_drop_rate"], effectiveDrop);
-    gl.uniform1f(this.updateLocs["u_drop_rate_bump"], this.params.dropRateBump);
-    gl.uniform4f(
-      this.updateLocs["u_bounds"],
-      bounds.minX, bounds.minY, bounds.maxX, bounds.maxY,
-    );
-    gl.uniform1f(this.updateLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
-    if (geoBounds) {
+      gl.uniform1f(this.updateLocs["u_drop_rate"], effectiveDrop);
+      gl.uniform1f(this.updateLocs["u_drop_rate_bump"], this.params.dropRateBump);
       gl.uniform4f(
-        this.updateLocs["u_geo_bounds"],
-        geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+        this.updateLocs["u_bounds"],
+        bounds.minX, bounds.minY, bounds.maxX, bounds.maxY,
       );
-    }
+      gl.uniform1f(this.updateLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
+      if (geoBounds) {
+        gl.uniform4f(
+          this.updateLocs["u_geo_bounds"],
+          geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+        );
+      }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFramebuffers[1]);
-    this.drawQuad();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFramebuffers[1]);
+      this.drawQuad();
+      didParticleUpdate = true;
+    }
 
     // --- 2. Fade pass: write faded trails directly (no blending) ---
     gl.viewport(0, 0, this.screenWidth, this.screenHeight);
@@ -587,8 +635,10 @@ export class ParticleSimulation {
     gl.disable(gl.BLEND);
 
     // --- 6. Swap ping-pong buffers ---
-    this.particleStateTextures.reverse();
-    this.particleFramebuffers.reverse();
+    if (didParticleUpdate) {
+      this.particleStateTextures.reverse();
+      this.particleFramebuffers.reverse();
+    }
     this.screenTextures.reverse();
     this.screenFramebuffers.reverse();
   }
@@ -781,6 +831,12 @@ export class ParticleSimulation {
     return this.currentFadeOpacity;
   }
 
+  private shouldSuppressRgba8Particles(worldSize: number): boolean {
+    if (this.stateFormat?.float) return false;
+    const zoom = Math.log2(Math.max(worldSize, 1) / 512);
+    return zoom > this.params.rgba8MaxParticleZoom;
+  }
+
   setDropRate(v: number): void {
     this.params.dropRate = v;
   }
@@ -825,6 +881,10 @@ export class ParticleSimulation {
     this.params.scalarMode = v;
   }
 
+  setRgba8MaxParticleZoom(v: number): void {
+    this.params.rgba8MaxParticleZoom = v;
+  }
+
   /**
    * Reset all particles to random positions. Call after time/depth change
    * or map move. Randomises the full state texture and clears trail FBOs.
@@ -837,8 +897,8 @@ export class ParticleSimulation {
     for (const tex of this.particleStateTextures) {
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(
-        gl.TEXTURE_2D, 0, gl.RGBA, res, res, 0,
-        gl.RGBA, gl.UNSIGNED_BYTE, stateData,
+        gl.TEXTURE_2D, 0, this.stateFormat.internalFormat, res, res, 0,
+        gl.RGBA, this.stateFormat.type, stateData,
       );
     }
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -863,10 +923,13 @@ export class ParticleSimulation {
 
   getDebugInfo(): ParticleSimulationDebugInfo {
     return {
-      particleState: "rgba8-packed",
+      particleState: this.stateFormat?.float ? "float" : "rgba8-packed",
+      particleStateMode: this.params.particleState,
       particleStateResolution: MAX_PARTICLE_STATE_RES,
       maxParticles: MAX_PARTICLES,
       activeParticles: this.numParticles,
+      rgba8MaxParticleZoom: this.params.rgba8MaxParticleZoom,
+      rgba8ParticlesSuppressed: this.lastRgba8ParticlesSuppressed,
       screenSize: { width: this.screenWidth, height: this.screenHeight },
       renderMode: this.renderMode,
       speed: this.params.speed,
@@ -876,6 +939,7 @@ export class ParticleSimulation {
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
       scalarMode: this.params.scalarMode,
+      devicePixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : undefined,
       webgl: this.webglInfo,
     };
   }

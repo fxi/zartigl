@@ -174,6 +174,8 @@ export class ArcoLayer implements CustomLayerInterface {
         opacity: options.opacity,
         logScale: options.logScale,
         vibrance: options.vibrance,
+        particleState: options.particleState,
+        rgba8MaxParticleZoom: options.rgba8MaxParticleZoom,
         unit: options.unit ?? "",
       });
     }
@@ -273,6 +275,10 @@ export class ArcoLayer implements CustomLayerInterface {
 
   setRenderMode(mode: RenderMode): void {
     if (this.delegate instanceof VectorLayer) this.delegate.setRenderMode(mode);
+  }
+
+  setRgba8MaxParticleZoom(v: number): void {
+    this.delegate?.setRgba8MaxParticleZoom(v);
   }
 
   setColorRamp(ramp: ColorRampInput): void {

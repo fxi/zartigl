@@ -122,6 +122,141 @@ export function createTexture(
   return texture;
 }
 
+/**
+ * Capability + GL constants for the particle-state texture format.
+ * Float state stores particle positions directly and avoids the RGBA8 packed
+ * coordinate lattice. RGBA8 remains the compatibility fallback.
+ */
+export interface StateTextureFormat {
+  float: boolean;
+  internalFormat: number;
+  type: number;
+}
+
+function isFramebufferCompleteForTextureFormat(
+  gl: WebGLRenderingContext,
+  internalFormat: number,
+  type: number,
+): boolean {
+  const prevTexture = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
+  const prevFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+  const texture = gl.createTexture();
+  const framebuffer = gl.createFramebuffer();
+
+  if (!texture || !framebuffer) {
+    if (texture) gl.deleteTexture(texture);
+    if (framebuffer) gl.deleteFramebuffer(framebuffer);
+    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
+    return false;
+  }
+
+  let complete = false;
+  try {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      internalFormat,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      type,
+      null,
+    );
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      texture,
+      0,
+    );
+    complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  } finally {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
+    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
+    gl.deleteFramebuffer(framebuffer);
+    gl.deleteTexture(texture);
+  }
+
+  return complete;
+}
+
+export function rgba8StateTextureFormat(gl: WebGLRenderingContext): StateTextureFormat {
+  return { float: false, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE };
+}
+
+/**
+ * Detect float-render support and return the texture format to use for
+ * particle state. Enables the extensions needed to render into the format.
+ */
+export function detectStateTextureFormat(
+  gl: WebGLRenderingContext,
+): StateTextureFormat {
+  const isWebGL2 =
+    typeof WebGL2RenderingContext !== "undefined" &&
+    gl instanceof WebGL2RenderingContext;
+
+  if (isWebGL2) {
+    if (gl.getExtension("EXT_color_buffer_float")) {
+      const gl2 = gl as unknown as WebGL2RenderingContext;
+      const candidate = { float: true, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
+      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+        return candidate;
+      }
+    }
+  } else {
+    const hasFloatTex = gl.getExtension("OES_texture_float");
+    const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
+    if (hasFloatTex && hasFloatRender) {
+      const candidate = { float: true, internalFormat: gl.RGBA, type: gl.FLOAT };
+      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+        return candidate;
+      }
+    }
+  }
+
+  return rgba8StateTextureFormat(gl);
+}
+
+export function createTextureFormat(
+  gl: WebGLRenderingContext,
+  filter: number,
+  data: ArrayBufferView | null,
+  width: number,
+  height: number,
+  internalFormat: number,
+  type: number,
+): WebGLTexture {
+  const texture = gl.createTexture();
+  if (!texture) throw new Error("Failed to create texture");
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    internalFormat,
+    width,
+    height,
+    0,
+    gl.RGBA,
+    type,
+    data,
+  );
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return texture;
+}
+
 export function bindTexture(
   gl: WebGLRenderingContext,
   texture: WebGLTexture,

@@ -71,6 +71,8 @@ export class ScalarLayer implements CustomLayerInterface {
       vibrance: options.vibrance ?? 0,
       scalarMode: true,
       particleDensity: 0.001,
+      particleState: options.particleState ?? "auto",
+      rgba8MaxParticleZoom: options.rgba8MaxParticleZoom ?? 4,
     });
     this.simulation.setRenderMode("raster");
   }
@@ -233,6 +235,11 @@ export class ScalarLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.simulation.setVibrance(v);
+    this.map?.triggerRepaint();
+  }
+
+  setRgba8MaxParticleZoom(v: number): void {
+    this.simulation.setRgba8MaxParticleZoom(v);
     this.map?.triggerRepaint();
   }
 

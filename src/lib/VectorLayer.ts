@@ -115,6 +115,8 @@ export class VectorLayer implements CustomLayerInterface {
       opacity: options.opacity ?? 1.0,
       logScale: options.logScale ?? false,
       vibrance: options.vibrance ?? 0.0,
+      particleState: options.particleState ?? "auto",
+      rgba8MaxParticleZoom: options.rgba8MaxParticleZoom ?? 4,
     });
     this.setRenderMode(options.renderMode ?? "particles");
   }
@@ -526,6 +528,10 @@ export class VectorLayer implements CustomLayerInterface {
     // Raster-only: nearest-neighbour shows the actual grid resolution.
     // Particles need linear interpolation for smooth velocity sampling mid-cell.
     this.velocityField.setFilter(mode !== "raster");
+  }
+
+  setRgba8MaxParticleZoom(v: number): void {
+    this.simulation.setRgba8MaxParticleZoom(v);
   }
 
   setOpacity(v: number): void {

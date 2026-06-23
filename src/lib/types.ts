@@ -1,5 +1,5 @@
 import type { ZarrSource } from "./ZarrSource";
-import type { RenderMode } from "./ParticleSimulation";
+import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
@@ -27,6 +27,10 @@ export interface VectorLayerOptions {
   fade?: number;
   /** Vector display mode. Default particles. */
   renderMode?: RenderMode;
+  /** Particle state format selection. Default auto. */
+  particleState?: ParticleStateMode;
+  /** In RGBA8 mode, particles are suppressed above this zoom and raster remains visible. Default 4. */
+  rgba8MaxParticleZoom?: number;
   colorRamp?: Record<number, string>;
   time?: string | number;
   depth?: number;
@@ -66,6 +70,8 @@ export interface ScalarLayerOptions {
   logScale?: boolean;
   vibrance?: number;
   unit?: string;
+  particleState?: ParticleStateMode;
+  rgba8MaxParticleZoom?: number;
 }
 
 export interface ZarrArrayMeta {
