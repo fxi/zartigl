@@ -2,6 +2,7 @@ precision mediump float;
 
 uniform sampler2D u_color_ramp;
 uniform float u_particle_contrast; // 1.0: select black/white against the raster
+uniform int u_particle_color_mode; // 0 palette, 1 black, 2 white, 3 contrast
 uniform float u_opacity;
 uniform float u_log_scale;
 uniform float u_vibrance;
@@ -31,7 +32,11 @@ void main() {
     vec4 color = texture2D(u_color_ramp, vec2(t, 0.5));
     color.rgb = applyVibrance(color.rgb, u_vibrance);
 
-    if (u_particle_contrast > 0.5) {
+    if (u_particle_color_mode == 1) {
+        color.rgb = vec3(0.0);
+    } else if (u_particle_color_mode == 2) {
+        color.rgb = vec3(1.0);
+    } else if (u_particle_color_mode == 3 || u_particle_contrast > 0.5) {
         // At this crossover black and white have equal WCAG contrast ratios.
         float useBlack = step(0.179, relativeLuminance(color.rgb));
         color.rgb = mix(vec3(1.0), vec3(0.0), useBlack);

@@ -10,6 +10,7 @@ import {
   getPalettes,
 } from "../lib";
 import type {
+  ParticleColorMode,
   ParticleStateMode,
   RenderMode,
   ZarrPointSeriesResult,
@@ -29,6 +30,7 @@ interface DemoParams {
   speed: number;
   fade: number;
   renderMode: RenderMode;
+  particleColorMode: ParticleColorMode;
   compatibilityMode: boolean;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
@@ -53,6 +55,7 @@ interface HashState {
   sp?: number;
   f?: number;
   rm?: RenderMode;
+  pc?: ParticleColorMode;
   ps?: ParticleStateMode;
   rz?: number;
   op: number;
@@ -613,6 +616,16 @@ export class DemoApp {
       label: "mode",
     }).on("change", (ev) => this.z?.updateSettings({ renderMode: ev.value }));
 
+    this.particlesFolder.addBinding(this.params, "particleColorMode", {
+      options: [
+        { text: "Black", value: "black" },
+        { text: "White", value: "white" },
+        { text: "Palette", value: "palette" },
+        { text: "Contrast", value: "contrast" },
+      ],
+      label: "color",
+    }).on("change", (ev) => this.z?.updateSettings({ particleColorMode: ev.value }));
+
     this.particlesFolder.addBinding(this.params, "particleDensity", {
       min: 0.001, max: 0.15, step: 0.001, label: "density",
     }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
@@ -987,6 +1000,7 @@ export class DemoApp {
       sp: this.params.speed,
       f: this.params.fade,
       rm: this.params.renderMode,
+      pc: this.params.particleColorMode,
       ps: this.params.particleState,
       rz: this.params.rgba8MaxParticleZoom,
       op: this.params.opacity,
@@ -1069,6 +1083,7 @@ export class DemoApp {
       speed: 1.0,
       fade: 0.7,
       renderMode: "particles",
+      particleColorMode: "black",
       compatibilityMode: false,
       particleState: "auto",
       rgba8MaxParticleZoom: 4,
@@ -1085,6 +1100,7 @@ export class DemoApp {
     this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fade = d.particles?.fade ?? 0.7;
     this.params.renderMode = d.renderMode ?? "particles";
+    this.params.particleColorMode = d.particles?.colorMode ?? "black";
     this.params.compatibilityMode = false;
     this.params.particleState = "auto";
     this.params.rgba8MaxParticleZoom = 4;
@@ -1099,6 +1115,7 @@ export class DemoApp {
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;
     this.params.renderMode = hash.rm ?? this.params.renderMode;
+    this.params.particleColorMode = hash.pc ?? this.params.particleColorMode;
     this.params.particleState = hash.ps ?? this.params.particleState;
     this.params.compatibilityMode = this.params.particleState === "rgba8";
     this.params.rgba8MaxParticleZoom = hash.rz ?? this.params.rgba8MaxParticleZoom;
@@ -1115,6 +1132,7 @@ export class DemoApp {
       speed: this.params.speed,
       fade: this.params.fade,
       renderMode: this.params.renderMode,
+      particleColorMode: this.params.particleColorMode,
       particleState: this.params.particleState,
       rgba8MaxParticleZoom: this.params.rgba8MaxParticleZoom,
       opacity: this.params.opacity,

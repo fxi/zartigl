@@ -15,7 +15,7 @@ import {
   viewportGeoBounds,
 } from "./geo-util";
 import { ParticleSimulation } from "./ParticleSimulation";
-import type { ParticleSimulationDebugInfo, RenderMode } from "./ParticleSimulation";
+import type { ParticleColorMode, ParticleSimulationDebugInfo, RenderMode } from "./ParticleSimulation";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
 import { deriveDirectionMagnitudeComponents } from "./vector-derivation";
@@ -113,6 +113,7 @@ export class VectorLayer implements CustomLayerInterface {
       fadeOpacity: fadeToOpacity(options.fade ?? DEFAULT_FADE),
       colorRamp: options.colorRamp,
       opacity: options.opacity ?? 1.0,
+      particleColorMode: options.particleColorMode ?? "palette",
       logScale: options.logScale ?? false,
       vibrance: options.vibrance ?? 0.0,
       particleState: options.particleState ?? "auto",
@@ -536,6 +537,10 @@ export class VectorLayer implements CustomLayerInterface {
 
   setOpacity(v: number): void {
     this.simulation.setOpacity(v);
+  }
+
+  setParticleColorMode(v: ParticleColorMode): void {
+    this.simulation.setParticleColorMode(v);
   }
 
   setLogScale(v: boolean): void {

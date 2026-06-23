@@ -39,6 +39,7 @@ export type {
 export type { ColorRampInput, PaletteMeta } from "./gl-util";
 export type {
   ParticleSimulationDebugInfo,
+  ParticleColorMode,
   ParticleStateKind,
   ParticleStateMode,
   RenderMode,

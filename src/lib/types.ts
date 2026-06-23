@@ -1,5 +1,5 @@
 import type { ZarrSource } from "./ZarrSource";
-import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
+import type { ParticleColorMode, ParticleStateMode, RenderMode } from "./ParticleSimulation";
 
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
@@ -36,6 +36,8 @@ export interface VectorLayerOptions {
   depth?: number;
   /** Global layer opacity [0, 1]. Default 1.0. */
   opacity?: number;
+  /** Particle/trail color policy. Default palette. */
+  particleColorMode?: ParticleColorMode;
   /** Logarithmic speed normalization. Default false. */
   logScale?: boolean;
   /** Vibrance adjustment [-1, 1]. Default 0.0. */

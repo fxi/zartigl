@@ -7,6 +7,8 @@ export interface CatalogWmts {
   style?: string;
 }
 
+export type CatalogParticleColorMode = "palette" | "black" | "white" | "contrast";
+
 export interface CatalogVectorDerivation {
   kind: "direction_magnitude";
   direction_variable: string;
@@ -55,6 +57,7 @@ interface CatalogLayerBase {
       density?: number;
       speed?: number;
       fade?: number;
+      colorMode?: CatalogParticleColorMode;
     };
     raster?: {
       opacity?: number;

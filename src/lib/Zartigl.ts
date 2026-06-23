@@ -11,7 +11,7 @@ import type {
   ZarrTimeDimension,
   ZarrVerticalDimension,
 } from "./types";
-import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
+import type { ParticleColorMode, ParticleStateMode, RenderMode } from "./ParticleSimulation";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -20,6 +20,7 @@ export interface ZartiglSettings {
   fade: number;
   renderMode: RenderMode;
   opacity: number;
+  particleColorMode: ParticleColorMode;
   logScale: boolean;
   vibrance: number;
   particleState: ParticleStateMode;
@@ -165,6 +166,7 @@ function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> 
     fade: defaults?.particles?.fade ?? 0.7,
     renderMode: defaults?.renderMode ?? "particles",
     opacity: defaults?.raster?.opacity ?? 1,
+    particleColorMode: defaults?.particles?.colorMode ?? "palette",
     logScale: defaults?.raster?.logScale ?? false,
     vibrance: defaults?.raster?.vibrance ?? 0,
     particleState: "auto",
@@ -497,6 +499,7 @@ export class Zartigl {
       fade: this.settings.fade,
       renderMode: this.settings.renderMode,
       opacity: this.settings.opacity,
+      particleColorMode: this.settings.particleColorMode,
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
       particleState: this.settings.particleState,
@@ -542,6 +545,7 @@ export class Zartigl {
     if (settings.fade != null) layer.setFade(settings.fade);
     if (settings.renderMode != null) layer.setRenderMode(settings.renderMode);
     if (settings.opacity != null) layer.setOpacity(settings.opacity);
+    if (settings.particleColorMode != null) layer.setParticleColorMode(settings.particleColorMode);
     if (settings.logScale != null) layer.setLogScale(settings.logScale);
     if (settings.vibrance != null) layer.setVibrance(settings.vibrance);
     if (settings.rgba8MaxParticleZoom != null) {

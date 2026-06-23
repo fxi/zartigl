@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import drawVert from "./shaders/draw.vert.glsl";
+import drawFrag from "./shaders/draw.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
 
 describe("particle shader invalid-state guards", () => {
@@ -36,5 +37,14 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).not.toContain("pos.x = fract(pos.x)");
     expect(drawVert).toContain("invalidWrappedPosition(headPos)");
     expect(drawVert).toContain("invalidWrappedPosition(tailPos)");
+  });
+
+  it("supports particle color modes in the draw shader", () => {
+    expect(drawFrag).toContain("u_particle_color_mode");
+    expect(drawFrag).toContain("u_particle_color_mode == 1");
+    expect(drawFrag).toContain("u_particle_color_mode == 2");
+    expect(drawFrag).toContain("u_particle_color_mode == 3");
+    expect(drawFrag).toContain("color.rgb = vec3(0.0)");
+    expect(drawFrag).toContain("color.rgb = vec3(1.0)");
   });
 });

@@ -220,6 +220,38 @@ describe("Zartigl facade", () => {
     expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(1);
   });
 
+  it("passes particle color settings to the render layer", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({
+      map: map as never,
+      catalog: catalog(vectorLayer()),
+      settings: { particleColorMode: "black" },
+    });
+
+    await z.setLayer("vector");
+
+    expect(
+      (map.getLayer("zartigl") as unknown as {
+        options: { particleColorMode: string };
+      }).options,
+    ).toMatchObject({
+      particleColorMode: "black",
+    });
+  });
+
+  it("updates particle color mode without recreating the render layer", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });
+    await z.setLayer("vector");
+    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const spy = vi.spyOn(renderLayer, "setParticleColorMode");
+
+    z.updateSettings({ particleColorMode: "white" });
+
+    expect(spy).toHaveBeenCalledWith("white");
+    expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(1);
+  });
+
   it("queues setLayer until the map style is ready", async () => {
     const map = new FakeMap();
     map.ready = false;

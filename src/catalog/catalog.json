@@ -31,7 +31,8 @@
         "particles": {
           "density": 0.033,
           "speed": 1,
-          "fade": 0.7
+          "fade": 0.7,
+          "colorMode": "palette"
         },
         "raster": {
           "opacity": 1,
@@ -70,7 +71,8 @@
         "particles": {
           "density": 0.004000000000000002,
           "speed": 1,
-          "fade": 0.7
+          "fade": 0.7,
+          "colorMode": "palette"
         },
         "raster": {
           "opacity": 0.9,
@@ -149,7 +151,8 @@
         "particles": {
           "density": 0.024,
           "speed": 1,
-          "fade": 0.7
+          "fade": 0.7,
+          "colorMode": "palette"
         },
         "raster": {
           "opacity": 1,
@@ -764,7 +767,8 @@
         "particles": {
           "density": 0.02,
           "speed": 1,
-          "fade": 0.7
+          "fade": 0.7,
+          "colorMode": "palette"
         },
         "raster": {
           "opacity": 1,
@@ -804,7 +808,8 @@
         "particles": {
           "density": 0.04,
           "speed": 1,
-          "fade": 0.7
+          "fade": 0.7,
+          "colorMode": "palette"
         },
         "raster": {
           "opacity": 1,
