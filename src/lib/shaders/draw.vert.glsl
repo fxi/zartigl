@@ -111,7 +111,6 @@ void main() {
         hideParticle();
         return;
     }
-    pos.x = fract(pos.x);
 
     if (u_is_globe > 0.5) {
         // MapLibre globe matrix maps from a unit sphere (radius=1) to clip space.
