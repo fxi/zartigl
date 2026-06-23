@@ -218,9 +218,7 @@ export class ZarrSource {
       /^(milliseconds?|seconds?|minutes?|hours?|days?)\s+since\s+(.+)$/i,
     );
     if (!match) throw new Error(`Unsupported Zarr time units: ${this.timeUnits || "<missing>"}`);
-    let epoch = match[2].trim().replace(/\s+\([^)]*\)\s*$/, "");
-    if (!/(?:z|[+-]\d{2}:?\d{2})$/i.test(epoch)) epoch += "Z";
-    const refMs = Date.parse(epoch);
+    const refMs = parseZarrTimeEpoch(match[2]);
     if (!Number.isFinite(refMs)) throw new Error(`Invalid Zarr time epoch: ${match[2]}`);
     const unit = match[1].toLowerCase();
     const multiplier = unit.startsWith("ms") || unit.startsWith("milli")
@@ -786,6 +784,59 @@ function createMissingChunk(meta: ZarrArrayMeta): Float32Array {
   const data = new Float32Array(size);
   data.fill(NaN);
   return data;
+}
+
+function parseZarrTimeEpoch(epochValue: string): number {
+  const epoch = epochValue.trim().replace(/\s+\([^)]*\)\s*$/, "");
+  const match = epoch.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:(?:T|\s+)(\d{2})(?::(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?)?)?(?:\s*(Z|[+-]\d{2}:?\d{2}))?$/i,
+  );
+  if (!match) return NaN;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4] ?? 0);
+  const minute = Number(match[5] ?? 0);
+  const second = Number(match[6] ?? 0);
+  const millisecond = Number((match[7] ?? "").padEnd(3, "0").slice(0, 3));
+  const offset = match[8] ?? "Z";
+
+  if (
+    month < 1 || month > 12 ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return NaN;
+  }
+
+  const utc = new Date(0);
+  utc.setUTCFullYear(year, month - 1, day);
+  utc.setUTCHours(hour, minute, second, millisecond);
+  const localMs = utc.getTime();
+
+  if (
+    utc.getUTCFullYear() !== year ||
+    utc.getUTCMonth() !== month - 1 ||
+    utc.getUTCDate() !== day ||
+    utc.getUTCHours() !== hour ||
+    utc.getUTCMinutes() !== minute ||
+    utc.getUTCSeconds() !== second ||
+    utc.getUTCMilliseconds() !== millisecond
+  ) {
+    return NaN;
+  }
+
+  if (/^z$/i.test(offset)) return localMs;
+
+  const offsetMatch = offset.match(/^([+-])(\d{2}):?(\d{2})$/);
+  if (!offsetMatch) return NaN;
+  const offsetHours = Number(offsetMatch[2]);
+  const offsetMinutes = Number(offsetMatch[3]);
+  if (offsetHours > 23 || offsetMinutes > 59) return NaN;
+  const offsetMs = (offsetHours * 60 + offsetMinutes) * 60_000;
+  return localMs - (offsetMatch[1] === "+" ? offsetMs : -offsetMs);
 }
 
 function normalizeTimeStep(step?: number): number | undefined {

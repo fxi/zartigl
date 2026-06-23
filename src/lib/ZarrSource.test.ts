@@ -173,6 +173,54 @@ describe("ZarrSource point sampling", () => {
     });
   });
 
+  it("parses CF time epochs without relying on Date.parse", async () => {
+    vi.spyOn(Date, "parse").mockReturnValue(NaN);
+    const cases = [
+      {
+        units: "hours since 1950-01-01",
+        start: Date.UTC(1950, 0, 1, 0),
+      },
+      {
+        units: "hours since 1950-01-01 06:30:00",
+        start: Date.UTC(1950, 0, 1, 6, 30),
+      },
+      {
+        units: "hours since 1950-01-01 01:00:00 +0100",
+        start: Date.UTC(1950, 0, 1, 0),
+      },
+      {
+        units: "hours since 1950-01-01T01:30:00-0130",
+        start: Date.UTC(1950, 0, 1, 3),
+      },
+    ];
+
+    for (const { units, start } of cases) {
+      const routes: Record<string, Response> = baseRoutes();
+      const metadata = await routes[`${root}/.zmetadata`].json() as {
+        metadata: Record<string, Record<string, unknown>>;
+      };
+      metadata.metadata["time/.zattrs"].units = units;
+      installFetch(routes);
+
+      const source = new ZarrSource(root);
+      await source.init();
+
+      expect(source.getTimeDimension()).toMatchObject({
+        min: start,
+        max: start + 18 * 60 * 60 * 1000,
+        step: 6 * 60 * 60 * 1000,
+        size: 4,
+        units,
+        values: [
+          start,
+          start + 6 * 60 * 60 * 1000,
+          start + 12 * 60 * 60 * 1000,
+          start + 18 * 60 * 60 * 1000,
+        ],
+      });
+    }
+  });
+
   it("returns exact irregular time values without inventing a step", async () => {
     const routes: Record<string, Response> = baseRoutes();
     routes[`${root}/time/0`] = response(chunk([0, 6, 15, 18]));
@@ -201,6 +249,18 @@ describe("ZarrSource point sampling", () => {
 
     const source = new ZarrSource(root);
     await expect(source.init()).rejects.toThrow("Unsupported Zarr time calendar: 360_day");
+  });
+
+  it("rejects invalid time epochs instead of normalizing dates", async () => {
+    const routes: Record<string, Response> = baseRoutes();
+    const metadata = await routes[`${root}/.zmetadata`].json() as {
+      metadata: Record<string, Record<string, unknown>>;
+    };
+    metadata.metadata["time/.zattrs"].units = "hours since 2020-02-31";
+    installFetch(routes);
+
+    const source = new ZarrSource(root);
+    await expect(source.init()).rejects.toThrow("Invalid Zarr time epoch: 2020-02-31");
   });
 
   it("preserves native elevation values and semantics", async () => {
