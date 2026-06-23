@@ -15,8 +15,16 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).toContain("return;");
   });
 
+  it("validates the full line segment before selecting a draw endpoint", () => {
+    expect(drawVert).toContain("vec2 headPos = currPos");
+    expect(drawVert).toContain("vec2 tailPos = currPos - offset");
+    expect(drawVert).toContain("segmentPx > maxSegmentPx");
+    expect(drawVert).toContain("vec2 pos = mix(tailPos, headPos, a_is_curr)");
+  });
+
   it("does not wrap draw-time segment endpoints across the dateline", () => {
     expect(drawVert).not.toContain("pos.x = fract(pos.x)");
-    expect(drawVert).toContain("invalidWrappedPosition(pos)");
+    expect(drawVert).toContain("invalidWrappedPosition(headPos)");
+    expect(drawVert).toContain("invalidWrappedPosition(tailPos)");
   });
 });

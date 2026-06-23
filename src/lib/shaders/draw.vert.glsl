@@ -42,6 +42,20 @@ bool invalidWrappedPosition(vec2 p) {
            p.y < 0.0 || p.y > 1.0;
 }
 
+vec3 globeEcef(vec2 p) {
+    // MapLibre globe matrix maps from a unit sphere (radius=1) to clip space.
+    // Axis convention (from MapLibre's angularCoordinatesRadiansToVector):
+    //   x = sin(lng) * cos(lat),  y = sin(lat),  z = cos(lng) * cos(lat)
+    float lngRad = radians(mercToLng(p.x));
+    float latRad = radians(p.y * 180.0 - 90.0);
+    float cosLat = cos(latRad);
+    return vec3(
+        sin(lngRad) * cosLat,
+        sin(latRad),
+        cos(lngRad) * cosLat
+    );
+}
+
 void hideParticle() {
     v_speed = 0.0;
     v_valid = 0.0;
@@ -105,28 +119,36 @@ void main() {
         return;
     }
 
-    // a_is_curr=0 → tail of the segment (one step back), a_is_curr=1 → head (current)
-    vec2 pos = currPos - offset * (1.0 - a_is_curr);
-    if (invalidWrappedPosition(pos)) {
+    // Validate the whole GL_LINES segment before selecting either endpoint.
+    // If only one endpoint is hidden, WebGL still rasterizes a long interpolated
+    // segment from the hidden vertex to the valid one.
+    vec2 headPos = currPos;
+    vec2 tailPos = currPos - offset;
+    float segmentPx = length((headPos - tailPos) * safeWorldSize);
+    float maxSegmentPx = max(128.0, u_speed * zoomScale * 160.0);
+    if (invalidWrappedPosition(headPos) ||
+        invalidWrappedPosition(tailPos) ||
+        segmentPx != segmentPx ||
+        segmentPx > maxSegmentPx) {
         hideParticle();
         return;
     }
 
     if (u_is_globe > 0.5) {
-        // MapLibre globe matrix maps from a unit sphere (radius=1) to clip space.
-        // Axis convention (from MapLibre's angularCoordinatesRadiansToVector):
-        //   x = sin(lng) * cos(lat),  y = sin(lat),  z = cos(lng) * cos(lat)
-        float lngRad = radians(mercToLng(pos.x));
-        float latRad = radians(u_is_globe > 0.5 ? (pos.y * 180.0 - 90.0) : mercToLat(pos.y));
-        float cosLat = cos(latRad);
-        vec3 ecef = vec3(
-            sin(lngRad) * cosLat,
-            sin(latRad),
-            cos(lngRad) * cosLat
-        );
-        if (dot(ecef, u_globe_center) <= 0.0) {
-            v_valid = 0.0;
+        vec3 headEcef = globeEcef(headPos);
+        vec3 tailEcef = globeEcef(tailPos);
+        if (dot(headEcef, u_globe_center) <= 0.0 ||
+            dot(tailEcef, u_globe_center) <= 0.0) {
+            hideParticle();
+            return;
         }
+    }
+
+    // a_is_curr=0 → tail of the segment (one step back), a_is_curr=1 → head (current)
+    vec2 pos = mix(tailPos, headPos, a_is_curr);
+
+    if (u_is_globe > 0.5) {
+        vec3 ecef = globeEcef(pos);
         gl_Position = u_matrix * vec4(ecef, 1.0);
     } else {
         vec2 worldPos = vec2((pos.x + u_world_offset) * u_world_size, pos.y * u_world_size);
