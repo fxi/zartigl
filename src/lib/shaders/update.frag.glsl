@@ -42,6 +42,17 @@ float latToMercY(float lat) {
     return y;
 }
 
+bool invalidNormalizedPosition(vec2 p) {
+    return p.x != p.x || p.y != p.y ||
+           p.x < 0.0 || p.x > 1.0 ||
+           p.y < 0.0 || p.y > 1.0;
+}
+
+bool invalidWrappedPosition(vec2 p) {
+    return p.x != p.x || p.y != p.y ||
+           p.y < 0.0 || p.y > 1.0;
+}
+
 void main() {
     vec4 encoded = texture2D(u_particles, v_tex_coord);
 
@@ -56,15 +67,22 @@ void main() {
     );
 #endif
 
+    bool invalidInputPos = invalidNormalizedPosition(pos);
+    if (invalidInputPos) {
+        pos = vec2(0.5);
+    }
+
     // Convert position to geographic for velocity lookup.
     // Globe mode: pos.y encodes lat as (lat+90)/180; Mercator mode: standard Web Mercator.
     float lng = mercToLng(pos.x);
     float lat = u_is_globe > 0.5 ? (pos.y * 180.0 - 90.0) : mercToLat(pos.y);
 
     // Velocity texture UV from actual data geographic bounds
+    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
+    float geoHeight = max(abs(u_geo_bounds.w - u_geo_bounds.y), 1e-6);
     vec2 geoUV = vec2(
-        fract((lng - u_geo_bounds.x) / (u_geo_bounds.z - u_geo_bounds.x)),
-        (lat - u_geo_bounds.y) / (u_geo_bounds.w - u_geo_bounds.y)
+        fract((lng - u_geo_bounds.x) / geoWidth),
+        (lat - u_geo_bounds.y) / geoHeight
     );
     float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
 
@@ -90,14 +108,15 @@ void main() {
     // NOTE: must stay identical to draw.vert.glsl.
     const float SPEED_ZOOM_BIAS = 0.2;        // internal, baked
     const float WORLD_REF = 512.0 * 32.0;     // zoom 5 pivot
-    float zoomScale = pow(u_world_size / WORLD_REF, SPEED_ZOOM_BIAS);
+    float safeWorldSize = max(abs(u_world_size), 1.0);
+    float zoomScale = pow(safeWorldSize / WORLD_REF, SPEED_ZOOM_BIAS);
 
     // Euler integration. In Mercator, Y decreases northward so V is negated.
     // In globe lat/lon mode, Y increases northward so V keeps its sign.
     vec2 offset = vec2(
         vn.x / distortion,
         u_is_globe > 0.5 ? vn.y : -vn.y
-    ) * u_speed * zoomScale / u_world_size;
+    ) * u_speed * zoomScale / safeWorldSize;
 
     // Random respawn logic
     // Use v_tex_coord (unique per particle) to prevent merged particles
@@ -130,7 +149,10 @@ void main() {
     // Wrap longitude: a particle crossing ±180° continues on the other side
     // instead of being dropped. Y (latitude) is intentionally not wrapped —
     // the outOfBounds drop below handles polar exit.
-    newPos.x = fract(newPos.x);
+    bool invalidNewPos = invalidWrappedPosition(newPos);
+    if (!invalidNewPos) {
+        newPos.x = fract(newPos.x);
+    }
 
     float dropRate = u_drop_rate + speed * u_drop_rate_bump;
     float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
@@ -146,7 +168,14 @@ void main() {
                          step(u_bounds.w, newPos.y);
     outOfBounds = clamp(outOfBounds, 0.0, 1.0);
 
+    if (invalidNormalizedPosition(newPos)) {
+        invalidNewPos = true;
+    }
     drop = max(drop, max(outOfData, outOfBounds));
+    bool forceRespawn = invalidInputPos || invalidNewPos;
+    if (forceRespawn) {
+        drop = 1.0;
+    }
 
     // Random position within viewport bounds
     vec2 randomPos = vec2(
@@ -154,7 +183,11 @@ void main() {
         mix(u_bounds.y, u_bounds.w, rand(rng_id + 2.1 + u_rand_seed))
     );
 
-    newPos = mix(newPos, randomPos, drop);
+    if (forceRespawn) {
+        newPos = randomPos;
+    } else {
+        newPos = mix(newPos, randomPos, drop);
+    }
 
 #ifdef USE_FLOAT_STATE
     // Store position directly at full precision (B/A unused).

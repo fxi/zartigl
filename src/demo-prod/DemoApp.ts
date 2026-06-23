@@ -311,6 +311,10 @@ export class DemoApp {
   private legendUnit!: HTMLSpanElement;
   private legendImg!: HTMLImageElement;
   private gradientSection!: HTMLDivElement;
+  private fpsEl!: HTMLDivElement;
+  private fpsFrameCount = 0;
+  private fpsLastSample = 0;
+  private fpsRafId = 0;
 
   constructor(private readonly map: MaplibreMap, private readonly cat: Catalog) {
     const hash = this.loadHashState();
@@ -320,6 +324,8 @@ export class DemoApp {
 
     this.pane = new Pane({ title: "zartigl", expanded: true });
     this.buildStaticUI();
+    this.buildFpsCounter();
+    this.startFpsCounter();
     this.applyHashCamera(hash);
 
     void this.switchLayer(this.currentLayer, hash);
@@ -458,6 +464,34 @@ export class DemoApp {
     this.buildTrailFolder();
     this.buildAppearanceFolder();
     this.buildExportFolder();
+  }
+
+  private buildFpsCounter(): void {
+    this.fpsEl = document.createElement("div");
+    this.fpsEl.className = "demo-fps";
+    this.fpsEl.textContent = "FPS --";
+    document.body.appendChild(this.fpsEl);
+  }
+
+  private startFpsCounter(): void {
+    const tick = (now: number): void => {
+      if (this.fpsLastSample === 0) {
+        this.fpsLastSample = now;
+      }
+
+      this.fpsFrameCount++;
+      const elapsed = now - this.fpsLastSample;
+      if (elapsed >= 500) {
+        const fps = (this.fpsFrameCount * 1000) / elapsed;
+        this.fpsEl.textContent = `FPS ${Math.round(fps)}`;
+        this.fpsFrameCount = 0;
+        this.fpsLastSample = now;
+      }
+
+      this.fpsRafId = requestAnimationFrame(tick);
+    };
+
+    this.fpsRafId = requestAnimationFrame(tick);
   }
 
   private buildLayerFolder(): void {

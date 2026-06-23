@@ -134,6 +134,62 @@ export interface StateTextureFormat {
   type: number;
 }
 
+function isFramebufferCompleteForTextureFormat(
+  gl: WebGLRenderingContext,
+  internalFormat: number,
+  type: number,
+): boolean {
+  const prevTexture = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
+  const prevFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+  const texture = gl.createTexture();
+  const framebuffer = gl.createFramebuffer();
+
+  if (!texture || !framebuffer) {
+    if (texture) gl.deleteTexture(texture);
+    if (framebuffer) gl.deleteFramebuffer(framebuffer);
+    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
+    return false;
+  }
+
+  let complete = false;
+  try {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      internalFormat,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      type,
+      null,
+    );
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      texture,
+      0,
+    );
+    complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  } finally {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
+    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
+    gl.deleteFramebuffer(framebuffer);
+    gl.deleteTexture(texture);
+  }
+
+  return complete;
+}
+
 /**
  * Detect float-render support and return the texture format to use for the
  * particle state. Enables the extensions needed to render into the format.
@@ -149,7 +205,10 @@ export function detectStateTextureFormat(
     // RGBA32F is renderable when EXT_color_buffer_float is present.
     if (gl.getExtension("EXT_color_buffer_float")) {
       const gl2 = gl as unknown as WebGL2RenderingContext;
-      return { float: true, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
+      const candidate = { float: true, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
+      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+        return candidate;
+      }
     }
   } else {
     // WebGL1: need both the float texture sampling and float color-buffer
@@ -157,7 +216,10 @@ export function detectStateTextureFormat(
     const hasFloatTex = gl.getExtension("OES_texture_float");
     const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
     if (hasFloatTex && hasFloatRender) {
-      return { float: true, internalFormat: gl.RGBA, type: gl.FLOAT };
+      const candidate = { float: true, internalFormat: gl.RGBA, type: gl.FLOAT };
+      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+        return candidate;
+      }
     }
   }
 
