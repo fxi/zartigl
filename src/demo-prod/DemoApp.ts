@@ -9,7 +9,7 @@ import {
   deriveDirectionMagnitudeComponents,
   getPalettes,
 } from "../lib";
-import type { RenderMode, ZarrPointSeriesResult, ZartiglSettings } from "../lib";
+import type { RenderMode, ZarrPointSeriesResult, ZartiglDebugInfo, ZartiglSettings } from "../lib";
 import { formatTime, formatVertical } from "../catalog";
 import type { CatalogLayer, Catalog } from "../catalog";
 
@@ -314,6 +314,7 @@ export class DemoApp {
   private fpsEl!: HTMLDivElement;
   private fpsFrameCount = 0;
   private fpsLastSample = 0;
+  private currentFps = 0;
   private fpsRafId = 0;
 
   constructor(private readonly map: MaplibreMap, private readonly cat: Catalog) {
@@ -469,7 +470,7 @@ export class DemoApp {
   private buildFpsCounter(): void {
     this.fpsEl = document.createElement("div");
     this.fpsEl.className = "demo-fps";
-    this.fpsEl.textContent = "FPS --";
+    this.fpsEl.textContent = "FPS -- | state rgba8";
     document.body.appendChild(this.fpsEl);
   }
 
@@ -483,7 +484,8 @@ export class DemoApp {
       const elapsed = now - this.fpsLastSample;
       if (elapsed >= 500) {
         const fps = (this.fpsFrameCount * 1000) / elapsed;
-        this.fpsEl.textContent = `FPS ${Math.round(fps)}`;
+        this.currentFps = Math.round(fps);
+        this.updateDebugStatus();
         this.fpsFrameCount = 0;
         this.fpsLastSample = now;
       }
@@ -679,6 +681,7 @@ export class DemoApp {
     const folder = this.pane.addFolder({ title: "Export", expanded: false });
     folder.addButton({ title: "Copy MapX widget code" }).on("click", () => this.copyMapxWidgetSnippet());
     folder.addButton({ title: "Copy demo script/app" }).on("click", () => this.copyStandaloneDemoSnippet());
+    folder.addButton({ title: "Copy debug info" }).on("click", () => this.copyDebugInfo());
     folder.addButton({ title: "Share URL" }).on("click", () => this.shareURL());
   }
 
@@ -858,6 +861,64 @@ export class DemoApp {
       .writeText(snippet)
       .then(() => showToast("Demo script copied!"))
       .catch(() => showToast("Could not copy snippet."));
+  }
+
+  private copyDebugInfo(): void {
+    if (!this.z) return;
+
+    navigator.clipboard
+      .writeText(JSON.stringify(this.getDebugPayload(), null, 2))
+      .then(() => showToast("Debug info copied!"))
+      .catch(() => showToast("Could not copy debug info."));
+  }
+
+  private getDebugPayload(): {
+    zartigl: ZartiglDebugInfo;
+    demo: Record<string, unknown>;
+  } {
+    const center = this.map.getCenter();
+    return {
+      zartigl: this.z!.getDebugInfo(),
+      demo: {
+        fps: this.currentFps || null,
+        url: location.href,
+        projection: this.currentProjection,
+        backend: this.currentBackend,
+        layerId: this.currentLayer.id,
+        layerLabel: this.currentLayer.label,
+        center: [center.lng, center.lat],
+        zoom: this.map.getZoom(),
+        bearing: this.map.getBearing(),
+        pitch: this.map.getPitch(),
+      },
+    };
+  }
+
+  private updateDebugStatus(): void {
+    const info = this.z?.getDebugInfo();
+    const renderer = this.shortRendererLabel(
+      info?.layer?.delegate?.simulation.webgl?.unmaskedRenderer ??
+      info?.layer?.delegate?.simulation.webgl?.renderer,
+    );
+    const fpsText = this.currentFps > 0 ? String(this.currentFps) : "--";
+    this.fpsEl.textContent = [
+      `FPS ${fpsText}`,
+      "state rgba8",
+      renderer,
+    ].filter(Boolean).join(" | ");
+  }
+
+  private shortRendererLabel(renderer?: string): string {
+    if (!renderer) return "";
+    const parts = [
+      renderer.match(/Intel/i)?.[0],
+      renderer.match(/NVIDIA/i)?.[0],
+      renderer.match(/AMD|Radeon/i)?.[0],
+      renderer.match(/Apple/i)?.[0],
+      renderer.match(/D3D11|Direct3D11|D3D9|Metal|OpenGL/i)?.[0],
+    ].filter(Boolean);
+    if (parts.length) return [...new Set(parts)].join(" ");
+    return renderer.length > 28 ? `${renderer.slice(0, 25)}...` : renderer;
   }
 
   private currentSnippetOptions() {

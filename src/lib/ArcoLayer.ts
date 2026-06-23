@@ -4,7 +4,9 @@ import type {
   Map as MaplibreMap,
 } from "maplibre-gl";
 import { ScalarLayer } from "./ScalarLayer";
+import type { ScalarLayerDebugInfo } from "./ScalarLayer";
 import { VectorLayer } from "./VectorLayer";
+import type { VectorLayerDebugInfo } from "./VectorLayer";
 import type {
   ArcoLayerBackend,
   ArcoLayerOptions,
@@ -20,6 +22,20 @@ type LayerEventMap = {
   error: (err: Error) => void;
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
+};
+
+export type ArcoLayerDebugInfo = {
+  id: string;
+  backend: ArcoLayerBackend;
+  catalogLayer: {
+    id: string;
+    label: string;
+    kind: CatalogLayer["kind"];
+  };
+  time: string | number;
+  depth: number;
+  opacity: number;
+  delegate: VectorLayerDebugInfo | ScalarLayerDebugInfo | null;
 };
 
 function toIsoTime(time: string | number): string {
@@ -165,6 +181,22 @@ export class ArcoLayer implements CustomLayerInterface {
 
   getBackend(): ArcoLayerBackend {
     return this.backend;
+  }
+
+  getDebugInfo(): ArcoLayerDebugInfo {
+    return {
+      id: this.id,
+      backend: this.backend,
+      catalogLayer: {
+        id: this.options.layer.id,
+        label: this.options.layer.label,
+        kind: this.options.layer.kind,
+      },
+      time: this.time,
+      depth: this.depth,
+      opacity: this.opacity,
+      delegate: this.delegate?.getDebugInfo() ?? null,
+    };
   }
 
   onAdd(map: MaplibreMap, gl: WebGLRenderingContext): void | Promise<void> {

@@ -2,6 +2,7 @@ import type { Map as MaplibreMap } from "maplibre-gl";
 import type { Catalog, CatalogLayer } from "../catalog/types";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
 import { ArcoLayer, buildWmtsLegendUrl } from "./ArcoLayer";
+import type { ArcoLayerDebugInfo } from "./ArcoLayer";
 import { ZarrSource } from "./ZarrSource";
 import type {
   ArcoLayerBackendPreference,
@@ -32,6 +33,27 @@ export interface ZartiglOptions {
   settings?: Partial<ZartiglSettings>;
   metadata?: Record<string, unknown>;
   before?: string;
+}
+
+export interface ZartiglDebugInfo {
+  timestamp: string;
+  userAgent?: string;
+  id: string;
+  destroyed: boolean;
+  visible: boolean;
+  backendPreference: "auto" | "zarr" | "wmts";
+  activeBackend?: "zarr" | "wmts";
+  projection?: string;
+  canvasSize?: { width: number; height: number };
+  catalogLayer: {
+    id: string;
+    label: string;
+    kind: CatalogLayer["kind"];
+  } | null;
+  time: number;
+  depth: number;
+  settings: Partial<ZartiglSettings>;
+  layer: ArcoLayerDebugInfo | null;
 }
 
 export interface TimeMeta {
@@ -359,6 +381,30 @@ export class Zartigl {
   getBackend(): "zarr" | "wmts" | undefined {
     if (!this.catalogLayer) return undefined;
     return this.activeBackendPreference() === "wmts" ? "wmts" : "zarr";
+  }
+
+  getDebugInfo(): ZartiglDebugInfo {
+    const canvas = this.map.getCanvas?.();
+    return {
+      timestamp: new Date().toISOString(),
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      id: this.id,
+      destroyed: this.destroyed,
+      visible: this.visible,
+      backendPreference: this.backendPreference,
+      activeBackend: this.getBackend(),
+      projection: String(this.map.getProjection?.()?.type ?? ""),
+      canvasSize: canvas ? { width: canvas.width, height: canvas.height } : undefined,
+      catalogLayer: this.catalogLayer ? {
+        id: this.catalogLayer.id,
+        label: this.catalogLayer.label,
+        kind: this.catalogLayer.kind,
+      } : null,
+      time: this.time,
+      depth: this.depth,
+      settings: { ...this.settings },
+      layer: this.layer?.getDebugInfo() ?? null,
+    };
   }
 
   updateSettings(settings: Partial<ZartiglSettings>): void {

@@ -7,6 +7,7 @@ import type { ColorRampInput } from "./gl-util";
 import { visibleWorldCopyOffsets } from "./geo-util";
 import { restoreGLState, saveGLState } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
+import type { ParticleSimulationDebugInfo } from "./ParticleSimulation";
 import type { FieldMeta, ScalarLayerOptions, VelocityData } from "./types";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
@@ -18,6 +19,18 @@ type LayerEventMap = {
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
 };
+
+export interface ScalarLayerDebugInfo {
+  kind: "scalar-zarr";
+  id: string;
+  initialized: boolean;
+  loading: boolean;
+  variable: string;
+  time: string | number;
+  depth: number;
+  unit: string;
+  simulation: ParticleSimulationDebugInfo;
+}
 
 export class ScalarLayer implements CustomLayerInterface {
   readonly id: string;
@@ -221,6 +234,20 @@ export class ScalarLayer implements CustomLayerInterface {
   setVibrance(v: number): void {
     this.simulation.setVibrance(v);
     this.map?.triggerRepaint();
+  }
+
+  getDebugInfo(): ScalarLayerDebugInfo {
+    return {
+      kind: "scalar-zarr",
+      id: this.id,
+      initialized: this.initialized,
+      loading: this.loading,
+      variable: this.variable,
+      time: this.time,
+      depth: this.depth,
+      unit: this.unit,
+      simulation: this.simulation.getDebugInfo(),
+    };
   }
 
   async samplePoint(options: {

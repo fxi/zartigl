@@ -15,7 +15,7 @@ import {
   viewportGeoBounds,
 } from "./geo-util";
 import { ParticleSimulation } from "./ParticleSimulation";
-import type { RenderMode } from "./ParticleSimulation";
+import type { ParticleSimulationDebugInfo, RenderMode } from "./ParticleSimulation";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
 import { deriveDirectionMagnitudeComponents } from "./vector-derivation";
@@ -31,6 +31,19 @@ type LayerEventMap = {
   /** Fired when the frame cache is wiped (viewport changed). */
   cacheInvalidated: () => void;
 };
+
+export interface VectorLayerDebugInfo {
+  kind: "vector";
+  id: string;
+  initialized: boolean;
+  loading: boolean;
+  variableU: string;
+  variableV: string;
+  time: string | number;
+  depth: number;
+  unit: string;
+  simulation: ParticleSimulationDebugInfo;
+}
 
 // ── Trail fade mapping ───────────────────────────────────────────────
 // Public `fade` is an intuitive 0–1 trail length (higher = longer). It maps to
@@ -525,6 +538,21 @@ export class VectorLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.simulation.setVibrance(v);
+  }
+
+  getDebugInfo(): VectorLayerDebugInfo {
+    return {
+      kind: "vector",
+      id: this.id,
+      initialized: this.initialized,
+      loading: this.loading,
+      variableU: this.variableU,
+      variableV: this.variableV,
+      time: this.time,
+      depth: this.depth,
+      unit: this.unit,
+      simulation: this.simulation.getDebugInfo(),
+    };
   }
 
   on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {

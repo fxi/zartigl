@@ -1,17 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { detectStateTextureFormat } from "./gl-util";
+import { createTexture, getWebGLRendererInfo } from "./gl-util";
 
-type FakeGlOptions = {
-  extensions?: string[];
-  framebufferStatus?: number;
-};
-
-function makeFakeWebGL1(options: FakeGlOptions = {}) {
-  const extensions = new Set(options.extensions ?? []);
-  const gl = {
+function makeFakeGl() {
+  const debugInfo = {
+    UNMASKED_VENDOR_WEBGL: 0x9245,
+    UNMASKED_RENDERER_WEBGL: 0x9246,
+  };
+  return {
     RGBA: 0x1908,
     UNSIGNED_BYTE: 0x1401,
-    FLOAT: 0x1406,
     NEAREST: 0x2600,
     TEXTURE_2D: 0x0de1,
     TEXTURE_WRAP_S: 0x2802,
@@ -19,72 +16,54 @@ function makeFakeWebGL1(options: FakeGlOptions = {}) {
     TEXTURE_MIN_FILTER: 0x2801,
     TEXTURE_MAG_FILTER: 0x2800,
     CLAMP_TO_EDGE: 0x812f,
-    FRAMEBUFFER: 0x8d40,
-    COLOR_ATTACHMENT0: 0x8ce0,
-    FRAMEBUFFER_COMPLETE: 0x8cd5,
-    TEXTURE_BINDING_2D: 0x8069,
-    FRAMEBUFFER_BINDING: 0x8ca6,
-    getExtension: vi.fn((name: string) => extensions.has(name) ? {} : null),
-    getParameter: vi.fn(() => null),
+    VENDOR: 0x1f00,
+    RENDERER: 0x1f01,
+    VERSION: 0x1f02,
     createTexture: vi.fn(() => ({ kind: "texture" })),
     bindTexture: vi.fn(),
     texParameteri: vi.fn(),
     texImage2D: vi.fn(),
-    createFramebuffer: vi.fn(() => ({ kind: "framebuffer" })),
-    bindFramebuffer: vi.fn(),
-    framebufferTexture2D: vi.fn(),
-    checkFramebufferStatus: vi.fn(() => options.framebufferStatus ?? 0x8cd5),
-    deleteFramebuffer: vi.fn(),
-    deleteTexture: vi.fn(),
+    getExtension: vi.fn((name: string) => name === "WEBGL_debug_renderer_info" ? debugInfo : null),
+    getParameter: vi.fn((key: number) => {
+      if (key === 0x1f00) return "Google Inc.";
+      if (key === 0x1f01) return "WebKit WebGL";
+      if (key === 0x1f02) return "WebGL 1.0";
+      if (key === debugInfo.UNMASKED_VENDOR_WEBGL) return "Google Inc. (Intel)";
+      if (key === debugInfo.UNMASKED_RENDERER_WEBGL) return "ANGLE (Intel, D3D11)";
+      return null;
+    }),
   };
-  return gl;
 }
 
-describe("detectStateTextureFormat", () => {
-  it("uses RGBA8 packed state when float render extensions are missing", () => {
-    const gl = makeFakeWebGL1();
+describe("WebGL utility helpers", () => {
+  it("creates RGBA8/UNSIGNED_BYTE textures", () => {
+    const gl = makeFakeGl();
+    const data = new Uint8Array(16);
 
-    const format = detectStateTextureFormat(gl as unknown as WebGLRenderingContext);
+    createTexture(gl as unknown as WebGLRenderingContext, gl.NEAREST, data, 2, 2);
 
-    expect(format).toEqual({
-      float: false,
-      internalFormat: gl.RGBA,
-      type: gl.UNSIGNED_BYTE,
-    });
-    expect(gl.createTexture).not.toHaveBeenCalled();
-    expect(gl.checkFramebufferStatus).not.toHaveBeenCalled();
+    expect(gl.texImage2D).toHaveBeenCalledWith(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      2,
+      2,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      data,
+    );
   });
 
-  it("uses float state when WebGL1 float texture rendering is framebuffer-complete", () => {
-    const gl = makeFakeWebGL1({
-      extensions: ["OES_texture_float", "WEBGL_color_buffer_float"],
+  it("reports masked and unmasked renderer information when available", () => {
+    const gl = makeFakeGl();
+
+    expect(getWebGLRendererInfo(gl as unknown as WebGLRenderingContext)).toEqual({
+      vendor: "Google Inc.",
+      renderer: "WebKit WebGL",
+      unmaskedVendor: "Google Inc. (Intel)",
+      unmaskedRenderer: "ANGLE (Intel, D3D11)",
+      version: "WebGL 1.0",
     });
-
-    const format = detectStateTextureFormat(gl as unknown as WebGLRenderingContext);
-
-    expect(format).toEqual({
-      float: true,
-      internalFormat: gl.RGBA,
-      type: gl.FLOAT,
-    });
-    expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
-    expect(gl.deleteFramebuffer).toHaveBeenCalledTimes(1);
-    expect(gl.deleteTexture).toHaveBeenCalledTimes(1);
-  });
-
-  it("falls back to RGBA8 when advertised float rendering is framebuffer-incomplete", () => {
-    const gl = makeFakeWebGL1({
-      extensions: ["OES_texture_float", "WEBGL_color_buffer_float"],
-      framebufferStatus: 0x8cd6,
-    });
-
-    const format = detectStateTextureFormat(gl as unknown as WebGLRenderingContext);
-
-    expect(format).toEqual({
-      float: false,
-      internalFormat: gl.RGBA,
-      type: gl.UNSIGNED_BYTE,
-    });
-    expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
   });
 });

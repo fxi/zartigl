@@ -37,9 +37,13 @@ export type {
   ZarrVerticalDimension,
 } from "./types";
 export type { ColorRampInput, PaletteMeta } from "./gl-util";
-export type { RenderMode } from "./ParticleSimulation";
+export type { ParticleSimulationDebugInfo, RenderMode } from "./ParticleSimulation";
+export type { ArcoLayerDebugInfo } from "./ArcoLayer";
+export type { ScalarLayerDebugInfo } from "./ScalarLayer";
+export type { VectorLayerDebugInfo } from "./VectorLayer";
 export type {
   DepthMeta,
+  ZartiglDebugInfo,
   Legend,
   QueryDepthProfileOptions,
   QueryPointOptions,

@@ -122,146 +122,6 @@ export function createTexture(
   return texture;
 }
 
-/**
- * Capability + GL constants for the particle-state texture format.
- * When float rendering is available, particle positions are stored at full
- * 32-bit float precision (eliminating the 1/65025 lattice that plagues the
- * 8-bit hi/lo packing at high zoom). Otherwise we fall back to RGBA8 packing.
- */
-export interface StateTextureFormat {
-  float: boolean;
-  internalFormat: number;
-  type: number;
-}
-
-function isFramebufferCompleteForTextureFormat(
-  gl: WebGLRenderingContext,
-  internalFormat: number,
-  type: number,
-): boolean {
-  const prevTexture = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
-  const prevFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
-  const texture = gl.createTexture();
-  const framebuffer = gl.createFramebuffer();
-
-  if (!texture || !framebuffer) {
-    if (texture) gl.deleteTexture(texture);
-    if (framebuffer) gl.deleteFramebuffer(framebuffer);
-    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
-    return false;
-  }
-
-  let complete = false;
-  try {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      internalFormat,
-      1,
-      1,
-      0,
-      gl.RGBA,
-      type,
-      null,
-    );
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      texture,
-      0,
-    );
-    complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
-  } finally {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
-    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
-    gl.deleteFramebuffer(framebuffer);
-    gl.deleteTexture(texture);
-  }
-
-  return complete;
-}
-
-/**
- * Detect float-render support and return the texture format to use for the
- * particle state. Enables the extensions needed to render into the format.
- */
-export function detectStateTextureFormat(
-  gl: WebGLRenderingContext,
-): StateTextureFormat {
-  const isWebGL2 =
-    typeof WebGL2RenderingContext !== "undefined" &&
-    gl instanceof WebGL2RenderingContext;
-
-  if (isWebGL2) {
-    // RGBA32F is renderable when EXT_color_buffer_float is present.
-    if (gl.getExtension("EXT_color_buffer_float")) {
-      const gl2 = gl as unknown as WebGL2RenderingContext;
-      const candidate = { float: true, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
-      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
-        return candidate;
-      }
-    }
-  } else {
-    // WebGL1: need both the float texture sampling and float color-buffer
-    // rendering extensions. internalFormat must equal format (RGBA).
-    const hasFloatTex = gl.getExtension("OES_texture_float");
-    const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
-    if (hasFloatTex && hasFloatRender) {
-      const candidate = { float: true, internalFormat: gl.RGBA, type: gl.FLOAT };
-      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
-        return candidate;
-      }
-    }
-  }
-
-  return { float: false, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE };
-}
-
-/**
- * Create a texture with an explicit internal format / data type. Used for the
- * float particle-state textures; screen/colorramp textures keep RGBA8 via
- * {@link createTexture}.
- */
-export function createTextureFormat(
-  gl: WebGLRenderingContext,
-  filter: number,
-  data: ArrayBufferView | null,
-  width: number,
-  height: number,
-  internalFormat: number,
-  type: number,
-): WebGLTexture {
-  const texture = gl.createTexture();
-  if (!texture) throw new Error("Failed to create texture");
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    internalFormat,
-    width,
-    height,
-    0,
-    gl.RGBA,
-    type,
-    data,
-  );
-  gl.bindTexture(gl.TEXTURE_2D, null);
-  return texture;
-}
-
 export function bindTexture(
   gl: WebGLRenderingContext,
   texture: WebGLTexture,
@@ -338,6 +198,29 @@ export function createColorRampTexture(
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
   gl.bindTexture(gl.TEXTURE_2D, null);
   return texture;
+}
+
+export interface WebGLRendererInfo {
+  vendor: string;
+  renderer: string;
+  unmaskedVendor?: string;
+  unmaskedRenderer?: string;
+  version?: string;
+}
+
+export function getWebGLRendererInfo(gl: WebGLRenderingContext): WebGLRendererInfo {
+  const info = gl.getExtension("WEBGL_debug_renderer_info") as {
+    UNMASKED_VENDOR_WEBGL: number;
+    UNMASKED_RENDERER_WEBGL: number;
+  } | null;
+
+  return {
+    vendor: String(gl.getParameter(gl.VENDOR) ?? ""),
+    renderer: String(gl.getParameter(gl.RENDERER) ?? ""),
+    unmaskedVendor: info ? String(gl.getParameter(info.UNMASKED_VENDOR_WEBGL) ?? "") : undefined,
+    unmaskedRenderer: info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) ?? "") : undefined,
+    version: String(gl.getParameter(gl.VERSION) ?? ""),
+  };
 }
 
 /**

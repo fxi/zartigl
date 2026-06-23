@@ -1,13 +1,12 @@
 import {
   createProgram,
   createTexture,
-  createTextureFormat,
-  detectStateTextureFormat,
   createFramebuffer,
   createQuadBuffer,
   createColorRampTexture,
   bindTexture,
-  type StateTextureFormat,
+  getWebGLRendererInfo,
+  type WebGLRendererInfo,
 } from "./gl-util";
 
 import quadVert from "./shaders/quad.vert.glsl";
@@ -21,6 +20,23 @@ import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 
 export type RenderMode = 'raster' | 'particles' | 'raster+particles';
+
+export interface ParticleSimulationDebugInfo {
+  particleState: "rgba8-packed";
+  particleStateResolution: number;
+  maxParticles: number;
+  activeParticles: number;
+  screenSize: { width: number; height: number };
+  renderMode: RenderMode;
+  speed: number;
+  fadeOpacity: number;
+  particleDensity: number;
+  opacity: number;
+  logScale: boolean;
+  vibrance: number;
+  scalarMode: boolean;
+  webgl: WebGLRendererInfo | null;
+}
 
 /**
  * State texture is always allocated at this fixed resolution.
@@ -109,8 +125,7 @@ export class ParticleSimulation {
   private fadeTransitionStartMs = 0;
   private fadeTransitionDurationMs = 0;
 
-  /** Particle-state texture format (float when supported, else RGBA8 packing). */
-  private stateFormat!: StateTextureFormat;
+  private webglInfo: WebGLRendererInfo | null = null;
 
   // Screen textures for trail rendering
   private screenTextures!: [WebGLTexture, WebGLTexture];
@@ -144,17 +159,11 @@ export class ParticleSimulation {
 
   init(gl: WebGLRenderingContext): void {
     this.gl = gl;
-
-    // Choose the particle-state texture format. With float support, positions
-    // are stored at full 32-bit precision; the update/draw shaders branch on
-    // USE_FLOAT_STATE to skip the 8-bit hi/lo packing that quantizes positions
-    // to a 1/65025 lattice (visible as zigzag trails at high zoom).
-    this.stateFormat = detectStateTextureFormat(gl);
-    const stateDefine = this.stateFormat.float ? "#define USE_FLOAT_STATE 1\n" : "";
+    this.webglInfo = getWebGLRendererInfo(gl);
 
     // Compile programs
-    this.updateProgram = createProgram(gl, quadVert, stateDefine + updateFrag);
-    this.drawProgram = createProgram(gl, stateDefine + drawVert, drawFrag);
+    this.updateProgram = createProgram(gl, quadVert, updateFrag);
+    this.drawProgram = createProgram(gl, drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
     this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
     this.gridGlobeProgram = createProgram(gl, gridGlobeVert, gridGlobeFrag);
@@ -254,31 +263,17 @@ export class ParticleSimulation {
     return result;
   }
 
-  /** Random initial particle positions, matching the active state format. */
-  private makeStateData(): ArrayBufferView {
+  /** Random initial particle positions encoded as RGBA8 hi/lo pairs. */
+  private makeStateData(): Uint8Array {
     const res = MAX_PARTICLE_STATE_RES;
     const n = res * res * 4;
-    if (this.stateFormat.float) {
-      // R=x, G=y in [0,1); B/A unused.
-      const data = new Float32Array(n);
-      for (let i = 0; i < n; i++) data[i] = Math.random();
-      return data;
-    }
     const data = new Uint8Array(n);
     for (let i = 0; i < n; i++) data[i] = Math.floor(Math.random() * 256);
     return data;
   }
 
-  private createStateTexture(data: ArrayBufferView): WebGLTexture {
-    return createTextureFormat(
-      this.gl,
-      this.gl.NEAREST,
-      data,
-      MAX_PARTICLE_STATE_RES,
-      MAX_PARTICLE_STATE_RES,
-      this.stateFormat.internalFormat,
-      this.stateFormat.type,
-    );
+  private createStateTexture(data: Uint8Array): WebGLTexture {
+    return createTexture(this.gl, this.gl.NEAREST, data, MAX_PARTICLE_STATE_RES, MAX_PARTICLE_STATE_RES);
   }
 
   private initParticleState(): void {
@@ -842,8 +837,8 @@ export class ParticleSimulation {
     for (const tex of this.particleStateTextures) {
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(
-        gl.TEXTURE_2D, 0, this.stateFormat.internalFormat, res, res, 0,
-        gl.RGBA, this.stateFormat.type, stateData,
+        gl.TEXTURE_2D, 0, gl.RGBA, res, res, 0,
+        gl.RGBA, gl.UNSIGNED_BYTE, stateData,
       );
     }
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -864,6 +859,25 @@ export class ParticleSimulation {
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  getDebugInfo(): ParticleSimulationDebugInfo {
+    return {
+      particleState: "rgba8-packed",
+      particleStateResolution: MAX_PARTICLE_STATE_RES,
+      maxParticles: MAX_PARTICLES,
+      activeParticles: this.numParticles,
+      screenSize: { width: this.screenWidth, height: this.screenHeight },
+      renderMode: this.renderMode,
+      speed: this.params.speed,
+      fadeOpacity: this.params.fadeOpacity,
+      particleDensity: this.params.particleDensity,
+      opacity: this.params.opacity,
+      logScale: this.params.logScale,
+      vibrance: this.params.vibrance,
+      scalarMode: this.params.scalarMode,
+      webgl: this.webglInfo,
+    };
   }
 
   destroy(): void {

@@ -68,11 +68,7 @@ void main() {
     vec2 texCoord = (vec2(col, row) + 0.5) / u_particles_res;
 
     vec4 encoded = texture2D(u_particles, texCoord);
-#ifdef USE_FLOAT_STATE
-    vec2 currPos = encoded.rg;
-#else
     vec2 currPos = vec2(encoded.r + encoded.g / 255.0, encoded.b + encoded.a / 255.0);
-#endif
 
     if (invalidNormalizedPosition(currPos)) {
         hideParticle();

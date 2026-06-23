@@ -5,6 +5,10 @@ type TransitionInternals = {
   updateTrailFadeOpacity(now: number): number;
 };
 
+type StateInternals = {
+  makeStateData(): Uint8Array;
+};
+
 describe("ParticleSimulation camera trail fade", () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -38,5 +42,23 @@ describe("ParticleSimulation camera trail fade", () => {
     now.mockReturnValue(2_120);
     simulation.setCameraMoving(false);
     expect(transition.updateTrailFadeOpacity(2_420)).toBeCloseTo(0.97);
+  });
+
+  it("initializes particle state as RGBA8-packed bytes", () => {
+    const simulation = new ParticleSimulation();
+    const data = (simulation as unknown as StateInternals).makeStateData();
+
+    expect(data).toBeInstanceOf(Uint8Array);
+    expect(data.length).toBe(512 * 512 * 4);
+  });
+
+  it("reports RGBA8-packed particle state in debug info", () => {
+    const simulation = new ParticleSimulation();
+
+    expect(simulation.getDebugInfo()).toMatchObject({
+      particleState: "rgba8-packed",
+      particleStateResolution: 512,
+      maxParticles: 512 * 512,
+    });
   });
 });
