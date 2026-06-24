@@ -100,29 +100,34 @@ const series = await z.queryTimeSeries({
 
 `VectorLayer`, `ScalarLayer`, `ArcoLayer`, and `ZarrSource` remain exported for advanced use cases that need direct control over renderer internals. Ordinary MapLibre integrations should prefer `Zartigl`.
 
-## Why MapLibre Native, Not deck.gl By Default?
+## Alternatives And Project Fit
 
-deck.gl is a good visualization framework and could become an optional adapter target. It already has useful concepts for layer lifecycle, picking, MapLibre overlay integration, and composition with other deck.gl layers.
+Zartigl overlaps with several useful projects. The goal is not to replace them, but to cover a specific MapX/ARCO workflow: public cloud Zarr stores, MapLibre integration, animated vector particles, scalar rasters, time/depth controls, point inspection, and reproducible widget configuration without a dedicated tile server.
 
-Zartigl does not depend on deck.gl today because the project is not only a rendering wrapper. Most of the hard work is renderer-independent:
+The table below is a fit matrix based on documented project scope. "Not specified" means the feature is not a stated focus in the referenced project, not that it is impossible.
 
-- reading Zarr metadata and compressed chunks in the browser
-- selecting chunks from viewport, time, and vertical coordinates
-- decoding scalar and vector variables
-- deriving U/V components from direction and magnitude products
-- handling nodata, palettes, log scale, and vector magnitude
-- protecting users from accidental multi-GB fetches
-- querying time series and vertical profiles
+| Project | Best fit | Zarr raster | Vector particles | Time/depth UI | Query API | Polar/globe rendering | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| zartigl | MapX-ready ARCO-like ocean layers | Yes, Zarr v2 | Yes | Built in | Time series and vertical profiles when a point-series store is available | MapLibre globe/ECEF path for lon/lat scalar and vector layers, including over-pole views | Catalog defaults, WMTS fallback for selected scalar layers, MapX snippet generation |
+| [Copernicus Marine MyOcean Pro](https://data.marine.copernicus.eu/viewer/expert) | Copernicus end-user exploration | Service-managed | Product-dependent | Application UI | Product UI, not a reusable library API | Service-managed | Reference viewer, not a MapLibre/WebGL library to embed in MapX |
+| [@carbonplan/zarr-layer](https://github.com/carbonplan/zarr-layer) | General Zarr raster layers for MapLibre/Mapbox | Yes, Zarr v2/v3 | No, raster-focused | Selector API | GeoJSON queries | Full polar coverage documented for MapLibre with suitable untiled datasets | Strong closest alternative for raster Zarr; supports custom stores, CRS reprojection, custom fragment shaders |
+| [@carbonplan/maps](https://github.com/carbonplan/maps) | React maps for prepared multidimensional rasters | Yes, prepared Zarr pyramids | No | React selector workflow | Not its main focus | Web Mercator-focused | Higher-level React framework; its core MapLibre path is documented as Web Mercator-only |
+| [zarr-gl](https://github.com/carderne/zarr-gl) | Lightweight Zarr layer for Mapbox/MapLibre | Yes | No | Limited | Not specified | Not specified | The README now recommends using `@carbonplan/zarr-layer` instead |
+| [maplibre-gl-wind](https://github.com/geoql/maplibre-gl-wind) | Wind particle layer for deck.gl/MapLibre | No | Yes | No | No | Not specified | Takes wind textures or point data, not Zarr metadata/chunks |
 
-A deck.gl implementation would still need nearly all of that logic, plus custom rendering for the particle simulation. For that reason, deck.gl is best treated as a future interoperability layer rather than the foundation of the core library.
+The closest general alternative is `@carbonplan/zarr-layer`. It has a broader documented scope for raster Zarr rendering: Zarr v2/v3, custom stores, CRS reprojection, custom fragment shaders, GeoJSON queries, and full polar coverage in MapLibre for suitable untiled datasets. If the requirement were only "draw a multidimensional Zarr raster on a MapLibre map", using or contributing to `@carbonplan/zarr-layer` would be a strong option.
 
-Polar and globe support are also part of the decision. deck.gl's default Web Mercator viewport follows the usual Mercator pole limitation, and its `GlobeView` is still documented as experimental with restrictions around pitch, bearing, high zoom precision, and some layer types:
+Zartigl remains useful because it combines pieces that are not currently covered together by those projects:
 
-- https://deck.gl/docs/api-reference/core/web-mercator-viewport
-- https://deck.gl/docs/api-reference/core/globe-view
-- https://deck.gl/docs/developer-guide/base-maps/using-with-maplibre
+- ARCO-oriented catalog entries and defaults for Copernicus Marine products.
+- U/V vector products rendered as animated particles, with optional raster magnitude in the same layer.
+- Time and vertical-axis metadata exposed as application controls.
+- Depth/elevation labeling, ordering, and point inspection tuned for ocean products.
+- MapLibre globe rendering for both scalar and vector fields, including polar scenes beyond the usual Web Mercator `85.0511°` latitude limit.
+- GPU particle-state fallbacks for browser and hardware differences, including float, half-float, and `RGBA8` compatibility mode.
+- A facade API that can generate MapX widget snippets and keep widget state reproducible.
 
-For ice and polar datasets above 85 degrees, the current priority is to keep a small MapLibre-native renderer that can be validated directly against those requirements. A later `ZarrScalarDeckLayer` or `ZarrParticleDeckLayer` could reuse the same Zarr source, catalog, query, and caching code.
+deck.gl, Three.js, or `@carbonplan/zarr-layer` could still be useful integration targets. They would not remove the ARCO catalog, time/depth metadata, vector particle simulation, point-query workflow, or MapX widget-state work that zartigl currently owns.
 
 ## Catalog Metadata
 
