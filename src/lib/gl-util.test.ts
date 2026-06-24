@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTexture, detectStateTextureFormat, getWebGLRendererInfo } from "./gl-util";
+import {
+  createTexture,
+  detectStateTextureFormat,
+  getPalettes,
+  getWebGLRendererInfo,
+  resolveColorRamp,
+} from "./gl-util";
 
 type FakeGlOptions = {
   extensions?: string[];
@@ -141,5 +147,16 @@ describe("WebGL utility helpers", () => {
       type: gl.UNSIGNED_BYTE,
     });
     expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
+  });
+
+  it("exposes monochrome palettes for particle-only visibility", () => {
+    const palettes = getPalettes();
+
+    expect(palettes.map((palette) => palette.id)).toEqual(
+      expect.arrayContaining(["mono-black", "mono-white", "mono-pink"]),
+    );
+    expect(resolveColorRamp("mono-black")).toEqual({ 0: "#000000", 1: "#000000" });
+    expect(resolveColorRamp("mono-white")).toEqual({ 0: "#ffffff", 1: "#ffffff" });
+    expect(resolveColorRamp("mono-pink")).toEqual({ 0: "#ff2aa1", 1: "#ff2aa1" });
   });
 });

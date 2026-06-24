@@ -133,11 +133,7 @@
           "properties": {
             "density": { "type": "number", "exclusiveMinimum": 0 },
             "speed": { "type": "number", "exclusiveMinimum": 0 },
-            "fade": { "type": "number", "minimum": 0, "maximum": 1 },
-            "colorMode": {
-              "type": "string",
-              "enum": ["palette", "black", "white", "contrast"]
-            }
+            "fade": { "type": "number", "minimum": 0, "maximum": 1 }
           }
         },
         "raster": {

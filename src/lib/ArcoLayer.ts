@@ -14,7 +14,7 @@ import type {
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
 import type { CatalogLayer } from "../catalog/types";
-import type { ParticleColorMode, RenderMode } from "./ParticleSimulation";
+import type { RenderMode } from "./ParticleSimulation";
 
 type LayerEventMap = {
   loading: () => void;
@@ -294,10 +294,6 @@ export class ArcoLayer implements CustomLayerInterface {
     if (this.map?.getLayer(this.rasterLayerId)) {
       this.map.setPaintProperty(this.rasterLayerId, "raster-opacity", v);
     }
-  }
-
-  setParticleColorMode(v: ParticleColorMode): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setParticleColorMode(v);
   }
 
   setLogScale(v: boolean): void {

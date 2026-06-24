@@ -195,6 +195,30 @@
       "#270b17"
     ]
   },
+  "mono-black": {
+    "label": "Black",
+    "tags": ["monochrome", "particles"],
+    "colors": [
+      "#000000",
+      "#000000"
+    ]
+  },
+  "mono-white": {
+    "label": "White",
+    "tags": ["monochrome", "particles"],
+    "colors": [
+      "#ffffff",
+      "#ffffff"
+    ]
+  },
+  "mono-pink": {
+    "label": "Pink",
+    "tags": ["monochrome", "particles"],
+    "colors": [
+      "#ff2aa1",
+      "#ff2aa1"
+    ]
+  },
   "gray": {
     "label": "Gray",
     "tags": ["sequential"],

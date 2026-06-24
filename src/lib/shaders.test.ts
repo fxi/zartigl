@@ -39,12 +39,9 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).toContain("invalidWrappedPosition(tailPos)");
   });
 
-  it("supports particle color modes in the draw shader", () => {
-    expect(drawFrag).toContain("u_particle_color_mode");
-    expect(drawFrag).toContain("u_particle_color_mode == 1");
-    expect(drawFrag).toContain("u_particle_color_mode == 2");
-    expect(drawFrag).toContain("u_particle_color_mode == 3");
-    expect(drawFrag).toContain("color.rgb = vec3(0.0)");
-    expect(drawFrag).toContain("color.rgb = vec3(1.0)");
+  it("uses the palette path with automatic raster-particle contrast only", () => {
+    expect(drawFrag).not.toContain("u_particle_color_mode");
+    expect(drawFrag).toContain("texture2D(u_color_ramp");
+    expect(drawFrag).toContain("u_particle_contrast > 0.5");
   });
 });

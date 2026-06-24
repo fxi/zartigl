@@ -78,15 +78,11 @@ describe("ParticleSimulation camera trail fade", () => {
   });
 
   it("reports requested and active particle state in debug info", () => {
-    const simulation = new ParticleSimulation({
-      particleState: "rgba8",
-      particleColorMode: "black",
-    });
+    const simulation = new ParticleSimulation({ particleState: "rgba8" });
 
     expect(simulation.getDebugInfo()).toMatchObject({
       particleState: "rgba8-packed",
       particleStateMode: "rgba8",
-      particleColorMode: "black",
       particleStateResolution: 512,
       maxParticles: 512 * 512,
       rgba8MaxParticleZoom: 4,
@@ -109,18 +105,5 @@ describe("ParticleSimulation camera trail fade", () => {
     internals.stateFormat = { kind: "float16", internalFormat: 0x1908, type: 0x8d61 };
 
     expect(internals.shouldSuppressRgba8Particles(512 * 2 ** 12)).toBe(false);
-  });
-
-  it("clears trails when particle color mode changes", () => {
-    const simulation = new ParticleSimulation({ particleColorMode: "palette" });
-    const clear = vi.spyOn(simulation, "clearState").mockImplementation(() => {});
-
-    simulation.setParticleColorMode("black");
-    simulation.setParticleColorMode("black");
-
-    expect(simulation.getDebugInfo()).toMatchObject({
-      particleColorMode: "black",
-    });
-    expect(clear).toHaveBeenCalledTimes(1);
   });
 });

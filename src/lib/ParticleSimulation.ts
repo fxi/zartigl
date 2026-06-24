@@ -26,7 +26,6 @@ import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 export type RenderMode = 'raster' | 'particles' | 'raster+particles';
 export type ParticleStateMode = "auto" | "rgba8";
 export type ParticleStateKind = StateTextureFormat["kind"];
-export type ParticleColorMode = "palette" | "black" | "white" | "contrast";
 
 export interface ParticleSimulationDebugInfo {
   particleState: ParticleStateKind;
@@ -42,7 +41,6 @@ export interface ParticleSimulationDebugInfo {
   fadeOpacity: number;
   particleDensity: number;
   opacity: number;
-  particleColorMode: ParticleColorMode;
   logScale: boolean;
   vibrance: number;
   scalarMode: boolean;
@@ -105,7 +103,6 @@ export interface SimulationParams {
   dropRateBump: number;
   colorRamp?: Record<number, string>;
   opacity: number;
-  particleColorMode: ParticleColorMode;
   logScale: boolean;
   vibrance: number;
   scalarMode: boolean;
@@ -120,7 +117,6 @@ const DEFAULTS: SimulationParams = {
   dropRate: 0.003,
   dropRateBump: 0.01,
   opacity: 1.0,
-  particleColorMode: "palette",
   logScale: false,
   vibrance: 0.0,
   scalarMode: false,
@@ -238,7 +234,6 @@ export class ParticleSimulation {
       "u_color_ramp",
       "u_geo_bounds",
       "u_particle_contrast",
-      "u_particle_color_mode",
       "u_opacity",
       "u_log_scale",
       "u_vibrance",
@@ -611,10 +606,6 @@ export class ParticleSimulation {
         this.drawLocs["u_particle_contrast"],
         this.renderMode === 'raster+particles' ? 1.0 : 0.0,
       );
-      gl.uniform1i(
-        this.drawLocs["u_particle_color_mode"],
-        particleColorModeToUniform(this.params.particleColorMode),
-      );
 
       gl.uniform1f(this.drawLocs["u_opacity"], this.params.opacity);
       gl.uniform1f(this.drawLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
@@ -901,12 +892,6 @@ export class ParticleSimulation {
     this.params.opacity = v;
   }
 
-  setParticleColorMode(v: ParticleColorMode): void {
-    if (this.params.particleColorMode === v) return;
-    this.params.particleColorMode = v;
-    this.clearState();
-  }
-
   setLogScale(v: boolean): void {
     this.params.logScale = v;
   }
@@ -974,7 +959,6 @@ export class ParticleSimulation {
       fadeOpacity: this.params.fadeOpacity,
       particleDensity: this.params.particleDensity,
       opacity: this.params.opacity,
-      particleColorMode: this.params.particleColorMode,
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
       scalarMode: this.params.scalarMode,
@@ -1003,11 +987,4 @@ export class ParticleSimulation {
     gl.deleteBuffer(this.particleIsCurrBuffer);
     gl.deleteTexture(this.colorRampTexture);
   }
-}
-
-function particleColorModeToUniform(mode: ParticleColorMode): number {
-  if (mode === "black") return 1;
-  if (mode === "white") return 2;
-  if (mode === "contrast") return 3;
-  return 0;
 }
