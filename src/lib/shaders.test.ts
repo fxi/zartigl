@@ -30,7 +30,16 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).toContain("vec2 headPos = currPos");
     expect(drawVert).toContain("vec2 tailPos = currPos - offset");
     expect(drawVert).toContain("segmentPx > maxSegmentPx");
+    expect(drawVert).toContain("dataValidityAtPosition(headPos) < u_valid_threshold");
+    expect(drawVert).toContain("dataValidityAtPosition(tailPos) < u_valid_threshold");
     expect(drawVert).toContain("vec2 pos = mix(tailPos, headPos, a_is_curr)");
+  });
+
+  it("uses a strict alpha validity threshold for particle updates and drawing", () => {
+    expect(updateFrag).toContain("uniform float u_valid_threshold");
+    expect(updateFrag).toContain("step(u_valid_threshold, valid)");
+    expect(drawVert).toContain("uniform float u_valid_threshold");
+    expect(drawVert).toContain("v_valid < u_valid_threshold");
   });
 
   it("does not wrap draw-time segment endpoints across the dateline", () => {

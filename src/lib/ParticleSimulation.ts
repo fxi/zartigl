@@ -75,6 +75,11 @@ const MOVING_FADE_OPACITY = 0.8;
 const MOVING_FADE_OUT_MS = 120;
 const MOVING_FADE_IN_MS = 300;
 
+// Particle velocity sampling stays bilinear for smooth motion, but the alpha
+// mask marks valid data. Near hard no-data edges, bilinear alpha becomes
+// fractional and can create visible fringe trails unless particles reject it.
+const PARTICLE_VALID_THRESHOLD = 0.98;
+
 function float32ToFloat16(value: number): number {
   if (Number.isNaN(value)) return 0x7e00;
   if (value === Infinity) return 0x7c00;
@@ -219,6 +224,7 @@ export class ParticleSimulation {
       "u_drop_rate_bump",
       "u_bounds",
       "u_geo_bounds",
+      "u_valid_threshold",
       "u_is_globe",
     ]);
     this.drawLocs = this.getUniforms(this.drawProgram, [
@@ -237,6 +243,7 @@ export class ParticleSimulation {
       "u_opacity",
       "u_log_scale",
       "u_vibrance",
+      "u_valid_threshold",
       "u_is_globe",
       "u_globe_center",
     ]);
@@ -535,6 +542,7 @@ export class ParticleSimulation {
           geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
         );
       }
+      gl.uniform1f(this.updateLocs["u_valid_threshold"], PARTICLE_VALID_THRESHOLD);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFramebuffers[1]);
       this.drawQuad();
@@ -610,6 +618,7 @@ export class ParticleSimulation {
       gl.uniform1f(this.drawLocs["u_opacity"], this.params.opacity);
       gl.uniform1f(this.drawLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
       gl.uniform1f(this.drawLocs["u_vibrance"], this.params.vibrance);
+      gl.uniform1f(this.drawLocs["u_valid_threshold"], PARTICLE_VALID_THRESHOLD);
       gl.uniform1f(this.drawLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
       gl.uniform3f(
         this.drawLocs["u_globe_center"],

@@ -11,6 +11,7 @@ uniform float u_drop_rate;
 uniform float u_drop_rate_bump;
 uniform vec4 u_bounds; // minX, minY, maxX, maxY in mercator [0,1] or lat/lon [0,1] (globe)
 uniform vec4 u_geo_bounds; // west, south, east, north in degrees
+uniform float u_valid_threshold; // rejects bilinear alpha fringe around no-data cells
 uniform float u_is_globe; // 1.0 = globe mode (lat/lon Y), 0.0 = mercator
 
 varying vec2 v_tex_coord;
@@ -159,7 +160,7 @@ void main() {
 
     // Drop if on land / no data (alpha channel = validity mask)
     float valid = texture2D(u_velocity, geoUV).a * inDataY;
-    float outOfData = 1.0 - step(0.5, valid);
+    float outOfData = 1.0 - step(u_valid_threshold, valid);
 
     // Also drop if out of viewport bounds
     float outOfBounds = step(newPos.x, u_bounds.x) +

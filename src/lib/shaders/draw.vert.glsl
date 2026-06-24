@@ -13,6 +13,7 @@ uniform float u_world_size;   // 512 * 2^zoom
 uniform float u_world_offset; // integer world copy offset (0 = primary, ±1 = copies)
 uniform float u_speed;        // max pixels/frame for the fastest current (zoom-independent)
 uniform vec4 u_geo_bounds;   // west, south, east, north in degrees
+uniform float u_valid_threshold; // rejects bilinear alpha fringe around no-data cells
 uniform float u_is_globe;    // 1.0 = globe projection, 0.0 = mercator
 uniform vec3 u_globe_center; // visible hemisphere center in unit-sphere coords
 
@@ -40,6 +41,23 @@ bool invalidNormalizedPosition(vec2 p) {
 bool invalidWrappedPosition(vec2 p) {
     return p.x != p.x || p.y != p.y ||
            p.y < 0.0 || p.y > 1.0;
+}
+
+vec2 geoUvFromPosition(vec2 p) {
+    float lng = mercToLng(p.x);
+    float lat = u_is_globe > 0.5 ? (p.y * 180.0 - 90.0) : mercToLat(p.y);
+    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
+    float geoHeight = max(abs(u_geo_bounds.w - u_geo_bounds.y), 1e-6);
+    return vec2(
+        fract((lng - u_geo_bounds.x) / geoWidth),
+        (lat - u_geo_bounds.y) / geoHeight
+    );
+}
+
+float dataValidityAtPosition(vec2 p) {
+    vec2 geoUV = geoUvFromPosition(p);
+    float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
+    return texture2D(u_velocity, geoUV).a * inDataY;
 }
 
 vec3 globeEcef(vec2 p) {
@@ -79,18 +97,17 @@ void main() {
         return;
     }
 
-    float lng = mercToLng(currPos.x);
-    float lat = u_is_globe > 0.5 ? (currPos.y * 180.0 - 90.0) : mercToLat(currPos.y);
-    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
-    float geoHeight = max(abs(u_geo_bounds.w - u_geo_bounds.y), 1e-6);
-    vec2 geoUV = vec2(
-        fract((lng - u_geo_bounds.x) / geoWidth),
-        (lat - u_geo_bounds.y) / geoHeight
-    );
+    vec2 geoUV = geoUvFromPosition(currPos);
     float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
 
     vec4 velSample = texture2D(u_velocity, geoUV);
     v_valid = velSample.a * inDataY;
+    if (v_valid < u_valid_threshold) {
+        hideParticle();
+        return;
+    }
+
+    float lat = u_is_globe > 0.5 ? (currPos.y * 180.0 - 90.0) : mercToLat(currPos.y);
     vec2 velocity = mix(u_velocity_min, u_velocity_max, velSample.rg);
     float speed = length(velocity);
     float maxSpeed = length(max(abs(u_velocity_min), abs(u_velocity_max)));
@@ -129,7 +146,9 @@ void main() {
     if (invalidWrappedPosition(headPos) ||
         invalidWrappedPosition(tailPos) ||
         segmentPx != segmentPx ||
-        segmentPx > maxSegmentPx) {
+        segmentPx > maxSegmentPx ||
+        dataValidityAtPosition(headPos) < u_valid_threshold ||
+        dataValidityAtPosition(tailPos) < u_valid_threshold) {
         hideParticle();
         return;
     }
