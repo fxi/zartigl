@@ -4,6 +4,7 @@ attribute float a_index;
 attribute float a_is_curr;   // 0 = back-projected prev endpoint, 1 = current endpoint
 
 uniform sampler2D u_particles;
+uniform sampler2D u_prev_particles;
 uniform float u_particles_res;
 uniform sampler2D u_velocity;
 uniform vec2 u_velocity_min;
@@ -41,6 +42,24 @@ bool invalidNormalizedPosition(vec2 p) {
 bool invalidWrappedPosition(vec2 p) {
     return p.x != p.x || p.y != p.y ||
            p.y < 0.0 || p.y > 1.0;
+}
+
+vec2 decodeParticlePosition(vec4 encoded) {
+#ifdef USE_FLOAT_STATE
+    return encoded.rg;
+#else
+    return vec2(encoded.r + encoded.g / 255.0, encoded.b + encoded.a / 255.0);
+#endif
+}
+
+float maxParticleSegmentPx(float zoomScale) {
+    return max(128.0, u_speed * zoomScale * 128.0);
+}
+
+float wrappedSegmentPx(vec2 a, vec2 b, float worldSize) {
+    float dx = abs(a.x - b.x);
+    dx = min(dx, 1.0 - dx);
+    return length(vec2(dx, a.y - b.y) * worldSize);
 }
 
 vec2 geoUvFromPosition(vec2 p) {
@@ -85,14 +104,10 @@ void main() {
     float col = a_index - row * u_particles_res;
     vec2 texCoord = (vec2(col, row) + 0.5) / u_particles_res;
 
-    vec4 encoded = texture2D(u_particles, texCoord);
-#ifdef USE_FLOAT_STATE
-    vec2 currPos = encoded.rg;
-#else
-    vec2 currPos = vec2(encoded.r + encoded.g / 255.0, encoded.b + encoded.a / 255.0);
-#endif
+    vec2 currPos = decodeParticlePosition(texture2D(u_particles, texCoord));
+    vec2 prevPos = decodeParticlePosition(texture2D(u_prev_particles, texCoord));
 
-    if (invalidNormalizedPosition(currPos)) {
+    if (invalidNormalizedPosition(currPos) || invalidNormalizedPosition(prevPos)) {
         hideParticle();
         return;
     }
@@ -113,9 +128,6 @@ void main() {
     float maxSpeed = length(max(abs(u_velocity_min), abs(u_velocity_max)));
     v_speed = clamp(speed / max(maxSpeed, 0.001), 0.0, 1.0);
 
-    // Reconstruct previous position analytically (same formula as update shader).
-    // This avoids reading a prev-state texture and eliminates all teleport artifacts.
-    // Must match update.frag exactly so the segment equals one simulation step.
     float cosLat = cos(radians(lat));
     float distortion = max(cosLat, 0.01);
     vec2 vn = velocity / max(maxSpeed, 1e-6);
@@ -125,13 +137,18 @@ void main() {
     const float WORLD_REF = 512.0 * 32.0;     // zoom 5 pivot
     float safeWorldSize = max(abs(u_world_size), 1.0);
     float zoomScale = pow(safeWorldSize / WORLD_REF, SPEED_ZOOM_BIAS);
+    float maxSegmentPx = maxParticleSegmentPx(zoomScale);
 
     vec2 offset = vec2(
         vn.x / distortion,
         u_is_globe > 0.5 ? vn.y : -vn.y
     ) * u_speed * zoomScale / safeWorldSize;
 
-    if (offset.x != offset.x || offset.y != offset.y) {
+    float actualTransitionPx = wrappedSegmentPx(currPos, prevPos, safeWorldSize);
+    if (actualTransitionPx != actualTransitionPx ||
+        actualTransitionPx > maxSegmentPx ||
+        offset.x != offset.x ||
+        offset.y != offset.y) {
         hideParticle();
         return;
     }
@@ -142,7 +159,6 @@ void main() {
     vec2 headPos = currPos;
     vec2 tailPos = currPos - offset;
     float segmentPx = length((headPos - tailPos) * safeWorldSize);
-    float maxSegmentPx = max(128.0, u_speed * zoomScale * 160.0);
     if (invalidWrappedPosition(headPos) ||
         invalidWrappedPosition(tailPos) ||
         segmentPx != segmentPx ||

@@ -20,13 +20,23 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).toContain("encoded.r + encoded.g / 255.0");
   });
 
+  it("respawns particles whose computed update step is non-finite or excessive", () => {
+    expect(updateFrag).toContain("maxParticleSegmentPx");
+    expect(updateFrag).toContain("bool invalidOffset = offset.x != offset.x");
+    expect(updateFrag).toContain("segmentPx > maxParticleSegmentPx(zoomScale)");
+    expect(updateFrag).toContain("invalidInputPos || invalidNewPos || invalidOffset");
+  });
+
   it("hides invalid particles before projection in the draw shader", () => {
     expect(drawVert).toContain("invalidNormalizedPosition");
     expect(drawVert).toContain("hideParticle()");
     expect(drawVert).toContain("return;");
   });
 
-  it("validates the full line segment before selecting a draw endpoint", () => {
+  it("uses previous state only to hide jump frames, not as the rendered trail", () => {
+    expect(drawVert).toContain("uniform sampler2D u_prev_particles");
+    expect(drawVert).toContain("texture2D(u_prev_particles, texCoord)");
+    expect(drawVert).toContain("actualTransitionPx > maxSegmentPx");
     expect(drawVert).toContain("vec2 headPos = currPos");
     expect(drawVert).toContain("vec2 tailPos = currPos - offset");
     expect(drawVert).toContain("segmentPx > maxSegmentPx");

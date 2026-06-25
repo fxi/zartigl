@@ -54,6 +54,10 @@ bool invalidWrappedPosition(vec2 p) {
            p.y < 0.0 || p.y > 1.0;
 }
 
+float maxParticleSegmentPx(float zoomScale) {
+    return max(128.0, u_speed * zoomScale * 128.0);
+}
+
 void main() {
     vec4 encoded = texture2D(u_particles, v_tex_coord);
 
@@ -119,6 +123,15 @@ void main() {
         u_is_globe > 0.5 ? vn.y : -vn.y
     ) * u_speed * zoomScale / safeWorldSize;
 
+    float segmentPx = length(offset * safeWorldSize);
+    bool invalidOffset = offset.x != offset.x ||
+                         offset.y != offset.y ||
+                         segmentPx != segmentPx ||
+                         segmentPx > maxParticleSegmentPx(zoomScale);
+    if (invalidOffset) {
+        offset = vec2(0.0);
+    }
+
     // Random respawn logic
     // Use v_tex_coord (unique per particle) to prevent merged particles
     // from getting identical random values and staying permanently fused.
@@ -173,7 +186,7 @@ void main() {
         invalidNewPos = true;
     }
     drop = max(drop, max(outOfData, outOfBounds));
-    bool forceRespawn = invalidInputPos || invalidNewPos;
+    bool forceRespawn = invalidInputPos || invalidNewPos || invalidOffset;
     if (forceRespawn) {
         drop = 1.0;
     }

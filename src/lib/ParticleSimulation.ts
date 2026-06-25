@@ -229,6 +229,7 @@ export class ParticleSimulation {
     ]);
     this.drawLocs = this.getUniforms(this.drawProgram, [
       "u_particles",
+      "u_prev_particles",
       "u_velocity",
       "u_velocity_min",
       "u_velocity_max",
@@ -592,6 +593,8 @@ export class ParticleSimulation {
 
       bindTexture(gl, this.particleStateTextures[1], 0);
       gl.uniform1i(this.drawLocs["u_particles"], 0);
+      bindTexture(gl, this.particleStateTextures[0], 3);
+      gl.uniform1i(this.drawLocs["u_prev_particles"], 3);
 
       gl.uniform1i(this.drawLocs["u_velocity"], velocityTexUnit);
       gl.uniform2f(this.drawLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
