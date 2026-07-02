@@ -97,7 +97,30 @@ For direction/magnitude vector derivation, use:
 - `defaults.renderMode` is optional and only affects vector layers. It accepts
   `particles`, `raster`, or `raster+particles`; the runtime default is `particles`.
 
-## 3. Display Defaults
+## 3. Source Policy
+
+The built-in catalog is maintained for public cloud-native Zarr data. The
+preferred and scripted source family is Copernicus Marine ARCO, discovered and
+queried with the local `copernicusmarine`-based tools in this directory.
+
+- Use `search_products.py` and `query_dataset.py` before looking elsewhere.
+- Do not use general web search for catalog candidates unless the user explicitly
+  asks for broader source research, or the ARCO workflow cannot answer a specific
+  question. Treat web results as source exploration, not catalog-ready entries.
+- `validate_catalog.py` checks the JSON contract only. It does not prove that a
+  Zarr store renders correctly at runtime.
+- Runtime candidates must expose public Zarr metadata and chunks, including
+  compatible time, latitude, longitude, variable, and optional vertical
+  coordinates.
+- External public Zarr sources are possible only when their source policy and
+  runtime compatibility are explicitly documented and smoke-tested.
+- Do not add GRIB/netCDF/HDF-only products, bespoke APIs, or services that
+  require ingestion/conversion before browser-side Zarr access.
+- WMTS is only an optional scalar shortcut. For polar products, prefer Zarr unless
+  WMTS coverage has been verified to reach the poles; zartigl's shader path is
+  intended to cover polar views.
+
+## 4. Display Defaults
 
 Use these as starting points and tune visually:
 
@@ -109,7 +132,7 @@ Use these as starting points and tune visually:
 | Waves | `rdylbu` or `deep` | false | Prefer vector components or derivation |
 | Ice | `ice` | false | Scalar raster |
 
-## 4. Skills
+## 5. Skills
 
 Run these from the repo root:
 
@@ -122,7 +145,7 @@ uv run scripts/catalog_builder/skills/validate_catalog.py
 
 `query_dataset.py` emits candidate stores and variables in the current schema. Always run `validate_catalog.py` after editing.
 
-## 5. Workflow
+## 6. Workflow
 
 1. Run `list_layers.py` and avoid duplicate dataset+variable layers.
 2. Run `search_products.py` to find candidate Copernicus datasets.
@@ -131,7 +154,7 @@ uv run scripts/catalog_builder/skills/validate_catalog.py
 5. Ask the user to approve the entry before appending it.
 6. Run `validate_catalog.py` and fix all failures.
 
-## 6. Editing Existing Layers
+## 7. Editing Existing Layers
 
 For defaults, tune the app, copy settings, translate them into grouped `defaults.particles` and `defaults.raster`, then validate.
 

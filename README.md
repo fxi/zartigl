@@ -150,7 +150,7 @@ This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Cope
 
 ## Dataset Scope
 
-The built-in catalog focuses on Copernicus Marine ARCO products, including ocean currents and scalar ocean/ice variables. Other Zarr v2 stores can be used when their store URLs and variables are described in a compatible catalog entry. Time, vertical, spatial, and variable metadata are loaded live from consolidated Zarr metadata and coordinate chunks.
+The built-in catalog focuses on Copernicus Marine ARCO products, including ocean currents and scalar ocean/ice variables. Other public cloud-native Zarr v2 stores can be used when their store URLs and variables are described in a compatible catalog entry and runtime compatibility is verified. Time, vertical, spatial, and variable metadata are loaded live from consolidated Zarr metadata and coordinate chunks.
 
 Good fits include:
 
@@ -161,6 +161,8 @@ Good fits include:
 - Hydrodynamic model rasters or vectors
 
 Vector layers need either U/V component variables or a catalog derivation from direction and magnitude. Scalar layers need one numeric variable and enough coordinate metadata to locate chunks by longitude, latitude, time, and optional vertical dimension.
+
+Catalog validation checks the JSON contract, not remote service behavior. For built-in catalog additions, use the ARCO-oriented catalog-builder scripts first. WMTS is only an optional scalar shortcut; for polar products, prefer Zarr unless WMTS coverage is verified to reach the poles.
 
 ## How It Works
 
