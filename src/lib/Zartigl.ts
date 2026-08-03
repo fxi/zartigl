@@ -200,6 +200,7 @@ export class Zartigl {
 
   private readonly onMapLoad = () => this.attachWhenReady();
   private readonly onStyleData = () => this.attachWhenReady();
+  private readonly onMapIdle = () => this.attachWhenReady();
 
   constructor(options: ZartiglOptions) {
     this.id = options.id ?? "zartigl";
@@ -213,6 +214,7 @@ export class Zartigl {
 
     this.map.on("load", this.onMapLoad);
     this.map.on("styledata", this.onStyleData);
+    this.map.on("idle", this.onMapIdle);
   }
 
   async setLayer(id: string): Promise<void> {
@@ -286,6 +288,7 @@ export class Zartigl {
     this.fieldSources.clear();
     this.map.off("load", this.onMapLoad);
     this.map.off("styledata", this.onStyleData);
+    this.map.off("idle", this.onMapIdle);
     this.destroyed = true;
   }
 

@@ -265,6 +265,36 @@ describe("Zartigl facade", () => {
     expect(map.getLayer("zartigl")).toBeDefined();
   });
 
+  it("retries a queued layer on idle without attaching it twice", async () => {
+    const map = new FakeMap();
+    map.ready = false;
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+
+    await z.setLayer("scalar");
+    expect(map.getLayer("zartigl")).toBeUndefined();
+
+    map.ready = true;
+    map.emit("idle");
+    map.emit("idle");
+
+    expect(map.getLayer("zartigl")).toBeDefined();
+    expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(1);
+  });
+
+  it("removes readiness listeners when destroyed", async () => {
+    const map = new FakeMap();
+    map.ready = false;
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+
+    await z.setLayer("scalar");
+    z.destroy();
+    map.ready = true;
+    map.emit("idle");
+
+    expect(map.getLayer("zartigl")).toBeUndefined();
+    expect(map.listeners.get("idle")?.size ?? 0).toBe(0);
+  });
+
   it("uses the configured id namespace and supports hide/show", async () => {
     const map = new FakeMap();
     const z = new Zartigl({ id: "surface", map: map as never, catalog: catalog() });
