@@ -52,6 +52,8 @@ export interface ArcoLayerOptions
   extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
   layer: ArcoLayerCatalogLayer;
   backend?: ArcoLayerBackendPreference;
+  /** Fixed physical-value domain for scalar colors. Null/omitted uses frame extrema. */
+  colorDomain?: [number, number] | null;
   verticalLabel?: string;
   metadata?: Record<string, unknown>;
   before?: string;
@@ -69,6 +71,8 @@ export interface ScalarLayerOptions {
   opacity?: number;
   logScale?: boolean;
   vibrance?: number;
+  /** Fixed physical-value domain for scalar colors. Null/omitted uses frame extrema. */
+  colorDomain?: [number, number] | null;
   unit?: string;
   particleState?: ParticleStateMode;
   rgba8MaxParticleZoom?: number;

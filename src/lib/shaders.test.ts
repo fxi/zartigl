@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
+import gridFrag from "./shaders/grid.frag.glsl?raw";
+import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 
 describe("particle shader invalid-state guards", () => {
   it("respawns invalid particle state in the update shader", () => {
@@ -62,5 +64,13 @@ describe("particle shader invalid-state guards", () => {
     expect(drawFrag).not.toContain("u_particle_color_mode");
     expect(drawFrag).toContain("texture2D(u_color_ramp");
     expect(drawFrag).toContain("u_particle_contrast > 0.5");
+  });
+
+  it("uses CPU-normalized scalar values without physical-value arithmetic", () => {
+    for (const shader of [gridFrag, gridGlobeFrag]) {
+      expect(shader).toContain("t = clamp(sample.r, 0.0, 1.0)");
+      expect(shader).not.toContain("float scalarValue");
+      expect(shader).not.toContain("float scalarRange");
+    }
   });
 });

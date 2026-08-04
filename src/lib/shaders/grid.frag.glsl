@@ -38,7 +38,8 @@ void main() {
 
     float t;
     if (u_scalar_mode > 0.5) {
-        // Scalar: R channel is already normalized [0,1] — use directly
+        // Scalar textures are normalized on the CPU against either the fixed
+        // color domain or the current frame extrema.
         t = clamp(sample.r, 0.0, 1.0);
     } else {
         // Vector: decode physical values, compute speed magnitude

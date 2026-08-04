@@ -32,6 +32,7 @@ interface DemoParams {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  colorDomain: [number, number] | null;
 }
 
 interface HashState {
@@ -52,6 +53,7 @@ interface HashState {
   op: number;
   ls: boolean;
   vb: number;
+  cd?: [number, number] | null;
 }
 
 type PopupMode = "time" | "depth";
@@ -977,6 +979,7 @@ export class DemoApp {
       op: this.params.opacity,
       ls: this.params.logScale,
       vb: this.params.vibrance,
+      cd: this.params.colorDomain,
     };
     const hash = btoa(JSON.stringify(state));
     const url = `${location.origin}${location.pathname}#${hash}`;
@@ -1058,6 +1061,7 @@ export class DemoApp {
       opacity: 1,
       logScale: false,
       vibrance: 0,
+      colorDomain: null,
     };
   }
 
@@ -1070,6 +1074,7 @@ export class DemoApp {
     this.params.opacity = d.raster?.opacity ?? 1;
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
+    this.params.colorDomain = d.raster?.colorDomain ?? null;
     this.params.palette = d.palette ?? "rdylbu";
   }
 
@@ -1081,6 +1086,7 @@ export class DemoApp {
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;
+    if (hash.cd !== undefined) this.params.colorDomain = hash.cd;
     this.params.palette = hash.p;
   }
 
@@ -1094,6 +1100,7 @@ export class DemoApp {
       opacity: this.params.opacity,
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
+      colorDomain: this.params.colorDomain,
     };
   }
 

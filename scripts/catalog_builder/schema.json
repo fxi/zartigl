@@ -142,7 +142,13 @@
           "properties": {
             "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
             "logScale": { "type": "boolean" },
-            "vibrance": { "type": "number", "minimum": -1, "maximum": 1 }
+            "vibrance": { "type": "number", "minimum": -1, "maximum": 1 },
+            "colorDomain": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 2,
+              "maxItems": 2
+            }
           }
         }
       }

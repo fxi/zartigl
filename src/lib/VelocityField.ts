@@ -1,5 +1,6 @@
 import type { VelocityData } from "./types";
 import { bindTexture } from "./gl-util";
+import type { ScalarColorDomain } from "./scalar-color-domain";
 
 /**
  * Manages a WebGL texture that holds stitched U/V velocity data
@@ -25,9 +26,10 @@ export class VelocityField {
   /**
    * Upload velocity data as a 2-channel (RG) texture.
    * Input: u/v Float32Arrays with real physical values.
-   * Stored normalized to [0,1] using uMin/uMax/vMin/vMax.
+   * Stored normalized to [0,1] using uMin/uMax/vMin/vMax, except scalar
+   * fields may use a fixed color domain so fragments never decode physical values.
    */
-  update(data: VelocityData): void {
+  update(data: VelocityData, colorDomain: ScalarColorDomain | null = null): void {
     const gl = this.gl!;
     const { u, v, width, height, uMin, uMax, vMin, vMax } = data;
 
@@ -40,7 +42,9 @@ export class VelocityField {
     this.vMax = vMax;
     this.geoBounds = data.bounds;
 
-    const uRange = uMax - uMin || 1;
+    const scalarTextureMin = this.scalarMode && colorDomain ? colorDomain[0] : uMin;
+    const scalarTextureMax = this.scalarMode && colorDomain ? colorDomain[1] : uMax;
+    const uRange = scalarTextureMax - scalarTextureMin || 1;
     const vRange = vMax - vMin || 1;
 
     // Encode to RGBA Uint8 (R=u, G=v, B=unused, A=validity mask)
@@ -55,7 +59,9 @@ export class VelocityField {
         if (isNaN(uVal)) {
           pixels[i * 4] = 0; pixels[i * 4 + 1] = 0; pixels[i * 4 + 2] = 0; pixels[i * 4 + 3] = 0;
         } else {
-          pixels[i * 4]   = Math.round(Math.max(0, Math.min(1, (uVal - uMin) / uRange)) * 255);
+          pixels[i * 4] = Math.round(
+            Math.max(0, Math.min(1, (uVal - scalarTextureMin) / uRange)) * 255,
+          );
           pixels[i * 4 + 1] = 128;
           pixels[i * 4 + 2] = 0;
           pixels[i * 4 + 3] = 255;

@@ -503,6 +503,56 @@
       }
     },
     {
+      "id": "sea-surface-temperature-anomaly",
+      "label": "Sea Surface Temperature Anomaly",
+      "description": "Daily source-provided sea surface temperature anomaly from global physics analysis and forecast, suitable for visualizing El Niño and La Niña patterns.",
+      "category": "Ocean",
+      "tags": [
+        "el-nino",
+        "la-nina",
+        "enso",
+        "anomaly"
+      ],
+      "kind": "scalar",
+      "dataset": {
+        "id": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m",
+        "provider": "copernicus",
+        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+      },
+      "stores": {
+        "field": {
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/timeChunked.zarr"
+        },
+        "pointSeries": {
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/geoChunked.zarr"
+        },
+        "wmts": {
+          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411?service=WMTS&request=GetCapabilities",
+          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/sea_surface_temperature_anomaly",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png"
+        }
+      },
+      "variables": {
+        "kind": "scalar",
+        "value": "sea_surface_temperature_anomaly"
+      },
+      "defaults": {
+        "backend": "zarr",
+        "palette": "balance",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            -3,
+            3
+          ]
+        }
+      }
+    },
+    {
       "id": "sea-water-salinity",
       "label": "Sea Water Salinity",
       "description": "Daily sea water salinity from global physics analysis and forecast.",

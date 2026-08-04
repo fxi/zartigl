@@ -12,6 +12,7 @@ import type {
   ZarrVerticalDimension,
 } from "./types";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
+import { validateScalarColorDomain } from "./scalar-color-domain";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -22,6 +23,8 @@ export interface ZartiglSettings {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  /** Fixed physical-value domain for scalar colors. Null uses frame extrema. */
+  colorDomain: [number, number] | null;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
 }
@@ -167,6 +170,7 @@ function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> 
     opacity: defaults?.raster?.opacity ?? 1,
     logScale: defaults?.raster?.logScale ?? false,
     vibrance: defaults?.raster?.vibrance ?? 0,
+    colorDomain: validateScalarColorDomain(defaults?.raster?.colorDomain ?? null),
     particleState: "auto",
     rgba8MaxParticleZoom: 4,
   };
@@ -185,6 +189,7 @@ export class Zartigl {
   private time: number = 0;
   private depth: number = 0;
   private settings: Partial<ZartiglSettings>;
+  private colorDomainOverridden: boolean;
   private lastMeta: FieldMeta | null = null;
   private timeMeta: ZarrTimeDimension | null = null;
   private verticalMeta: ZarrVerticalDimension | null = null;
@@ -211,6 +216,10 @@ export class Zartigl {
     this.before = options.before;
     this.visible = options.visible ?? true;
     this.settings = { ...options.settings };
+    if (options.settings?.colorDomain !== undefined) {
+      this.settings.colorDomain = validateScalarColorDomain(options.settings.colorDomain);
+    }
+    this.colorDomainOverridden = options.settings?.colorDomain !== undefined;
 
     this.map.on("load", this.onMapLoad);
     this.map.on("styledata", this.onStyleData);
@@ -221,6 +230,7 @@ export class Zartigl {
     this.assertAlive();
     const catalogLayer = this.catalog.layers.find((candidate) => candidate.id === id);
     if (!catalogLayer) throw new Error(`Unknown zartigl catalog layer: ${id}`);
+    const layerDefaults = defaultSettings(catalogLayer);
 
     const generation = ++this.switchGeneration;
     const source = this.getFieldSource(catalogLayer.stores.field.url);
@@ -259,7 +269,11 @@ export class Zartigl {
       : undefined;
     this.time = timeMeta.max;
     this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
-    this.settings = { ...defaultSettings(catalogLayer), ...this.settings };
+    const overriddenColorDomain = this.settings.colorDomain;
+    this.settings = { ...layerDefaults, ...this.settings };
+    this.settings.colorDomain = this.colorDomainOverridden
+      ? (overriddenColorDomain ?? null)
+      : (layerDefaults.colorDomain ?? null);
     this.lastMeta = null;
     this.attachWhenReady();
   }
@@ -374,11 +388,12 @@ export class Zartigl {
       };
     }
     const palette = typeof this.settings.palette === "string" ? this.settings.palette : "custom";
+    const colorDomain = this.catalogLayer.kind === "scalar" ? this.settings.colorDomain : null;
     return {
       type: "gradient",
       palette,
-      min: this.lastMeta?.min,
-      max: this.lastMeta?.max,
+      min: colorDomain?.[0] ?? this.lastMeta?.min,
+      max: colorDomain?.[1] ?? this.lastMeta?.max,
       unit: this.lastMeta?.unit ?? this.variableUnit,
     };
   }
@@ -420,10 +435,19 @@ export class Zartigl {
 
   updateSettings(settings: Partial<ZartiglSettings>): void {
     this.assertAlive();
-    const paletteChanged = settings.palette != null && settings.palette !== this.settings.palette;
+    const validatedSettings = settings.colorDomain === undefined
+      ? settings
+      : {
+          ...settings,
+          colorDomain: validateScalarColorDomain(settings.colorDomain),
+        };
+    const paletteChanged = validatedSettings.palette != null &&
+      validatedSettings.palette !== this.settings.palette;
     const particleStateChanged =
-      settings.particleState != null && settings.particleState !== this.settings.particleState;
-    this.settings = { ...this.settings, ...settings };
+      validatedSettings.particleState != null &&
+      validatedSettings.particleState !== this.settings.particleState;
+    if (validatedSettings.colorDomain !== undefined) this.colorDomainOverridden = true;
+    this.settings = { ...this.settings, ...validatedSettings };
     if (!this.layer) return;
 
     if (paletteChanged || particleStateChanged) {
@@ -432,7 +456,7 @@ export class Zartigl {
       return;
     }
 
-    this.applyMutableSettings(this.layer, settings);
+    this.applyMutableSettings(this.layer, validatedSettings);
   }
 
   async queryTimeSeries(options: QueryPointOptions): Promise<ZarrPointSeriesResult> {
@@ -502,6 +526,7 @@ export class Zartigl {
       opacity: this.settings.opacity,
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
+      colorDomain: this.settings.colorDomain,
       particleState: this.settings.particleState,
       rgba8MaxParticleZoom: this.settings.rgba8MaxParticleZoom,
       zarrSource: this.activeFieldSource ?? undefined,
@@ -547,6 +572,7 @@ export class Zartigl {
     if (settings.opacity != null) layer.setOpacity(settings.opacity);
     if (settings.logScale != null) layer.setLogScale(settings.logScale);
     if (settings.vibrance != null) layer.setVibrance(settings.vibrance);
+    if (settings.colorDomain !== undefined) layer.setColorDomain(settings.colorDomain);
     if (settings.rgba8MaxParticleZoom != null) {
       layer.setRgba8MaxParticleZoom(settings.rgba8MaxParticleZoom);
     }

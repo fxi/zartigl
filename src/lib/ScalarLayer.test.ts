@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ScalarLayer } from "./ScalarLayer";
 import type { VelocityData } from "./types";
+import type { VelocityField } from "./VelocityField";
 
 function layerWithData(data: VelocityData): ScalarLayer {
   const layer = new ScalarLayer({
@@ -32,6 +33,26 @@ function scalarData(overrides: Partial<VelocityData> = {}): VelocityData {
 }
 
 describe("ScalarLayer point sampling", () => {
+  it("rejects invalid fixed color domains", () => {
+    expect(() => new ScalarLayer({
+      id: "invalid-domain",
+      source: "https://example.test/scalar.zarr",
+      variable: "temperature",
+      colorDomain: [3, -3],
+    })).toThrow(/finite, increasing/);
+  });
+
+  it("re-encodes the active frame when the color domain changes", () => {
+    const data = scalarData();
+    const layer = layerWithData(data);
+    const field = (layer as unknown as { activeField: VelocityField }).activeField;
+    const update = vi.spyOn(field, "update").mockImplementation(() => undefined);
+
+    layer.setColorDomain([-3, 3]);
+
+    expect(update).toHaveBeenCalledWith(data, [-3, 3]);
+  });
+
   it("samples the currently displayed scalar frame without a Zarr query", async () => {
     const layer = layerWithData(scalarData({ latDescending: true }));
 

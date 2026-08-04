@@ -88,6 +88,13 @@ def main():
         if palette and palette not in palettes:
             fail(f"{layer['id']}: unknown default palette {palette!r}")
 
+        color_domain = (defaults.get("raster") or {}).get("colorDomain")
+        if color_domain is not None:
+            if layer["kind"] != "scalar":
+                fail(f"{layer['id']}: raster.colorDomain is only valid on scalar layers")
+            if color_domain[0] >= color_domain[1]:
+                fail(f"{layer['id']}: raster.colorDomain minimum must be less than maximum")
+
         data_keys.append(key)
     dupe_data = [k for k in data_keys if data_keys.count(k) > 1]
     if dupe_data:

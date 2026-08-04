@@ -96,6 +96,8 @@ For direction/magnitude vector derivation, use:
 - `defaults.palette` must exist in `src/lib/palettes.json`.
 - `defaults.renderMode` is optional and only affects vector layers. It accepts
   `particles`, `raster`, or `raster+particles`; the runtime default is `particles`.
+- `defaults.raster.colorDomain` optionally fixes the physical-value range used
+  for scalar color normalization. Omit it to normalize from each loaded frame.
 
 ## 3. Source Policy
 

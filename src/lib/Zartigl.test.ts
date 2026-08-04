@@ -239,6 +239,125 @@ describe("Zartigl facade", () => {
     });
   });
 
+  it("uses a catalog scalar color domain for rendering and the legend", async () => {
+    const map = new FakeMap();
+    const layer = scalarLayer({
+      defaults: {
+        backend: "zarr",
+        palette: "balance",
+        raster: { colorDomain: [-3, 3] },
+      },
+    });
+    const z = new Zartigl({ map: map as never, catalog: catalog(layer) });
+
+    await z.setLayer("scalar");
+
+    expect(
+      (map.getLayer("zartigl") as unknown as {
+        options: { colorDomain: [number, number] };
+      }).options.colorDomain,
+    ).toEqual([-3, 3]);
+    expect(z.getLegend()).toMatchObject({
+      type: "gradient",
+      palette: "balance",
+      min: -3,
+      max: 3,
+    });
+  });
+
+  it("updates and clears a scalar color domain without recreating the layer", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(scalarLayer()) });
+    await z.setLayer("scalar");
+    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const spy = vi.spyOn(renderLayer, "setColorDomain");
+
+    z.updateSettings({ colorDomain: [-2, 2] });
+    z.updateSettings({ colorDomain: null });
+
+    expect(spy).toHaveBeenNthCalledWith(1, [-2, 2]);
+    expect(spy).toHaveBeenNthCalledWith(2, null);
+    expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(1);
+  });
+
+  it("rejects an invalid runtime domain without changing facade or layer state", async () => {
+    const map = new FakeMap();
+    const first = scalarLayer({ defaults: { raster: { colorDomain: [-3, 3] } } });
+    const second = scalarLayer({
+      id: "second",
+      defaults: { raster: { colorDomain: [-1, 1] } },
+    });
+    const z = new Zartigl({
+      map: map as never,
+      catalog: { schemaVersion: 1, layers: [first, second] },
+    });
+    await z.setLayer("scalar");
+    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const spy = vi.spyOn(renderLayer, "setColorDomain");
+
+    expect(() => z.updateSettings({ colorDomain: [3, -3] })).toThrow(/finite, increasing/);
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(z.getLegend()).toMatchObject({ min: -3, max: 3 });
+    expect(z.getDebugInfo().settings.colorDomain).toEqual([-3, 3]);
+
+    await z.setLayer("second");
+    expect(z.getLegend()).toMatchObject({ min: -1, max: 1 });
+  });
+
+  it("rejects invalid constructor settings before registering map listeners", () => {
+    const map = new FakeMap();
+
+    expect(() => new Zartigl({
+      map: map as never,
+      catalog: catalog(),
+      settings: { colorDomain: [Number.NaN, 3] },
+    })).toThrow(/finite, increasing/);
+
+    expect(map.listeners.size).toBe(0);
+  });
+
+  it("rejects an invalid catalog domain without replacing the active layer", async () => {
+    const map = new FakeMap();
+    const valid = scalarLayer({ defaults: { raster: { colorDomain: [-3, 3] } } });
+    const invalid = scalarLayer({
+      id: "invalid",
+      defaults: { raster: { colorDomain: [2, 2] } },
+    });
+    const z = new Zartigl({
+      map: map as never,
+      catalog: { schemaVersion: 1, layers: [valid, invalid] },
+    });
+    await z.setLayer("scalar");
+    const activeLayer = map.getLayer("zartigl");
+
+    await expect(z.setLayer("invalid")).rejects.toThrow(/finite, increasing/);
+
+    expect(map.getLayer("zartigl")).toBe(activeLayer);
+    expect(z.getLegend()).toMatchObject({ min: -3, max: 3 });
+  });
+
+  it("does not leak a catalog color domain to the next layer", async () => {
+    const map = new FakeMap();
+    const anomaly = scalarLayer({
+      defaults: { raster: { colorDomain: [-3, 3] } },
+    });
+    const regular = scalarLayer({ id: "regular", defaults: {} });
+    const z = new Zartigl({
+      map: map as never,
+      catalog: { schemaVersion: 1, layers: [anomaly, regular] },
+    });
+
+    await z.setLayer("scalar");
+    await z.setLayer("regular");
+
+    expect(
+      (map.getLayer("zartigl") as unknown as {
+        options: { colorDomain: [number, number] | null };
+      }).options.colorDomain,
+    ).toBeNull();
+  });
+
   it("recreates the render layer when palette changes", async () => {
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });

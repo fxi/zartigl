@@ -174,6 +174,7 @@ export class ArcoLayer implements CustomLayerInterface {
         opacity: options.opacity,
         logScale: options.logScale,
         vibrance: options.vibrance,
+        colorDomain: options.colorDomain,
         particleState: options.particleState,
         rgba8MaxParticleZoom: options.rgba8MaxParticleZoom,
         unit: options.unit ?? "",
@@ -303,6 +304,10 @@ export class ArcoLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.delegate?.setVibrance(v);
+  }
+
+  setColorDomain(domain: [number, number] | null): void {
+    if (this.delegate instanceof ScalarLayer) this.delegate.setColorDomain(domain);
   }
 
   async samplePoint(options: { longitude: number; latitude: number; time?: string | number; depth?: number }) {

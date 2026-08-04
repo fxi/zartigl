@@ -172,7 +172,7 @@ Think of a Cloud Optimized GeoTIFF extended into longitude, latitude, time, and 
 
 ### 2. Chunks Become GPU Textures
 
-Scalar chunks are normalized into a raster texture and colorized by the selected palette. Vector chunks are converted into a two-channel field texture, with validity carried as a mask.
+Scalar chunks are normalized into a raster texture and colorized by the selected palette. By default the color domain follows the loaded frame; scalar layers can instead set `colorDomain: [min, max]` to keep colors comparable across viewports and dates. Vector chunks are converted into a two-channel field texture, with validity carried as a mask.
 
 For vector U/V data:
 

@@ -60,6 +60,8 @@ interface CatalogLayerBase {
       opacity?: number;
       logScale?: boolean;
       vibrance?: number;
+      /** Fixed physical-value domain for scalar color normalization. */
+      colorDomain?: [number, number];
     };
   };
 }

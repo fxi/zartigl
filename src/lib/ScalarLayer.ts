@@ -11,6 +11,7 @@ import type { ParticleSimulationDebugInfo } from "./ParticleSimulation";
 import type { FieldMeta, ScalarLayerOptions, VelocityData } from "./types";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
+import { validateScalarColorDomain } from "./scalar-color-domain";
 
 type LayerEventMap = {
   loading: () => void;
@@ -29,6 +30,7 @@ export interface ScalarLayerDebugInfo {
   time: string | number;
   depth: number;
   unit: string;
+  colorDomain: [number, number] | null;
   simulation: ParticleSimulationDebugInfo;
 }
 
@@ -54,6 +56,7 @@ export class ScalarLayer implements CustomLayerInterface {
   private time: string | number;
   private depth: number;
   private unit: string;
+  private colorDomain: [number, number] | null;
   private textureUnit = 1;
 
   constructor(options: ScalarLayerOptions) {
@@ -62,6 +65,7 @@ export class ScalarLayer implements CustomLayerInterface {
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
     this.unit = options.unit ?? "";
+    this.colorDomain = validateScalarColorDomain(options.colorDomain ?? null);
     this.zarrSource = options.zarrSource ?? new ZarrSource(options.source);
     this.activeField = new VelocityField();
     this.simulation = new ParticleSimulation({
@@ -238,6 +242,12 @@ export class ScalarLayer implements CustomLayerInterface {
     this.map?.triggerRepaint();
   }
 
+  setColorDomain(domain: [number, number] | null): void {
+    this.colorDomain = validateScalarColorDomain(domain);
+    if (this.activeData) this.activeField.update(this.activeData, this.colorDomain);
+    this.map?.triggerRepaint();
+  }
+
   setRgba8MaxParticleZoom(v: number): void {
     this.simulation.setRgba8MaxParticleZoom(v);
     this.map?.triggerRepaint();
@@ -253,6 +263,7 @@ export class ScalarLayer implements CustomLayerInterface {
       time: this.time,
       depth: this.depth,
       unit: this.unit,
+      colorDomain: this.colorDomain,
       simulation: this.simulation.getDebugInfo(),
     };
   }
@@ -398,7 +409,7 @@ export class ScalarLayer implements CustomLayerInterface {
 
   private setActive(data: VelocityData, time: string | number): void {
     this.activeData = data;
-    this.activeField.update(data);
+    this.activeField.update(data, this.colorDomain);
     this.activeField.setFilter(false);
     this.emit("loaded", this.computeFieldMeta(data, time));
     this.map?.triggerRepaint();
