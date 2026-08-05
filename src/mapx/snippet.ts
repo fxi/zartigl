@@ -76,8 +76,11 @@ export function buildMapxWidgetSnippet(options: MapxWidgetSnippetOptions): strin
 
   return `function handler() {
   const { moduleLoad, getViewLegend } = mx.helpers;
+  const local = {
+    arco: null,
+  };
 
-  const widget_config = {
+  return {
     onAdd: async function (widget) {
       const { ArcoMapLegend } = await moduleLoad(
         "extension",
@@ -86,21 +89,20 @@ export function buildMapxWidgetSnippet(options: MapxWidgetSnippetOptions): strin
 
       const elLegend = getViewLegend(widget.opt.view, { clone: false });
 
-      widget._arco = new ArcoMapLegend({
+      local.arco = new ArcoMapLegend({
 ${optionLines.join("\n")}
       });
 
-      await widget._arco.init();
+      await local.arco.init();
     },
 
-    onRemove: async function (widget) {
-      widget?._arco?.destroy();
+    onRemove: function () {
+      local.arco?.destroy();
+      local.arco = null;
     },
 
     onData: async function () {},
   };
-
-  return widget_config;
 }`;
 }
 

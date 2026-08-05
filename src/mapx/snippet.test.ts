@@ -22,8 +22,11 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).toContain("function handler()");
     expect(snippet).toContain("moduleLoad");
     expect(snippet).toContain("\"arco_time_map_legend\"");
+    expect(snippet).toContain("const local = {");
+    expect(snippet).toContain("arco: null");
     expect(snippet).toContain("const elLegend = getViewLegend(widget.opt.view, { clone: false })");
-    expect(snippet).toContain("new ArcoMapLegend({");
+    expect(snippet).toContain("local.arco = new ArcoMapLegend({");
+    expect(snippet).toContain("await local.arco.init()");
     expect(snippet).toContain("elInputs: widget.elContent");
     expect(snippet).toContain("backend: \"zarr\"");
     expect(snippet).toContain("layer: \"surface-wind\"");
@@ -32,7 +35,9 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).toContain('"renderMode": "raster+particles"');
     expect(snippet).toContain("time: new Date(\"2026-06-04T00:00:00.000Z\")");
     expect(snippet).toContain("depth: 10");
-    expect(snippet).toContain("widget?._arco?.destroy()");
+    expect(snippet).toContain("local.arco?.destroy()");
+    expect(snippet).toContain("local.arco = null");
+    expect(snippet).not.toContain("widget._arco");
   });
 
   it("does not use the direct zartigl API in MapX widget code", () => {
