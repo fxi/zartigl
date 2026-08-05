@@ -34,6 +34,8 @@ interface DemoParams {
   logScale: boolean;
   vibrance: number;
   colorDomain: [number, number] | null;
+  colorDomainMin: number;
+  colorDomainMax: number;
 }
 
 interface HashState {
@@ -319,6 +321,12 @@ export class DemoApp {
   private legendUnit!: HTMLSpanElement;
   private legendImg!: HTMLImageElement;
   private gradientSection!: HTMLDivElement;
+  private colorDomainMinBinding!: BindingApi;
+  private colorDomainMaxBinding!: BindingApi;
+  private colorDomainAutoButton!: ReturnType<FolderApi["addButton"]>;
+  private colorDomainControls: { hidden: boolean }[] = [];
+  private frameColorDomain: [number, number] | null = null;
+  private syncingColorDomainControls = false;
   private fpsEl!: HTMLDivElement;
   private dataStatusEl!: HTMLDivElement;
   private fpsFrameCount = 0;
@@ -347,6 +355,7 @@ export class DemoApp {
   async switchLayer(layer: CatalogLayer, hashState?: HashState | null): Promise<void> {
     const seq = ++this.switchSeq;
     this.pointQuerySeq++;
+    this.frameColorDomain = null;
 
     this.activePopup?.remove();
     this.activePopup = null;
@@ -374,7 +383,11 @@ export class DemoApp {
       visible: true,
     });
     const activeZartigl = this.z;
-    activeZartigl.on("loaded", () => this.syncLegend());
+    activeZartigl.on("loaded", (meta) => {
+      if (this.z !== activeZartigl || seq !== this.switchSeq) return;
+      if (layer.kind === "scalar") this.frameColorDomain = [meta.min, meta.max];
+      this.syncLegend();
+    });
     activeZartigl.on("status", (status) => {
       if (this.z === activeZartigl && seq === this.switchSeq) this.updateDataStatus(status);
     });
@@ -411,6 +424,7 @@ export class DemoApp {
     this.particlesFolder.element.style.display = isVector ? "" : "none";
     this.trailFolder.element.style.display = isVector ? "" : "none";
     this.updateSourceVisibility();
+    this.syncColorDomainVisibility();
     this.updateLayerDesc(layer);
     this.updateLayerSelect();
 
@@ -603,6 +617,7 @@ export class DemoApp {
         if (src === "wmts" && !this.currentLayer.stores.wmts) return;
         this.currentBackend = src;
         this.updateSourceButtons();
+        this.syncColorDomainVisibility();
         void this.switchLayer(this.currentLayer);
       });
       this.sourceButtons.push({ source: src, btn });
@@ -708,6 +723,8 @@ export class DemoApp {
     legendWrapper.append(this.gradientSection, this.legendImg);
     folder.element.appendChild(legendWrapper);
 
+    this.buildColorDomainControls(folder);
+
     folder.addBinding(this.params, "opacity", {
       min: 0, max: 1, step: 0.01, label: "opacity",
     }).on("change", (ev) => this.z?.updateSettings({ opacity: ev.value }));
@@ -757,6 +774,72 @@ export class DemoApp {
       this.legendImg.style.display = "none";
       if (this.paletteSelectEl) this.paletteSelectEl.disabled = false;
     }
+    this.syncColorDomainControl();
+  }
+
+  private buildColorDomainControls(folder: FolderApi): void {
+    this.colorDomainMinBinding = folder.addBinding(this.params, "colorDomainMin", {
+      label: "color min",
+    }).on("change", () => {
+      if (!this.syncingColorDomainControls) this.applyColorDomainBindings();
+    }) as BindingApi;
+    this.colorDomainMaxBinding = folder.addBinding(this.params, "colorDomainMax", {
+      label: "color max",
+    }).on("change", () => {
+      if (!this.syncingColorDomainControls) this.applyColorDomainBindings();
+    }) as BindingApi;
+    this.colorDomainAutoButton = folder.addButton({ label: "color range", title: "Auto" })
+      .on("click", () => this.resetColorDomain());
+    this.colorDomainControls = [
+      this.colorDomainMinBinding,
+      this.colorDomainMaxBinding,
+      this.colorDomainAutoButton,
+    ];
+    this.syncColorDomainVisibility();
+  }
+
+  private syncColorDomainVisibility(): void {
+    if (this.colorDomainControls.length === 0) return;
+    const visible = this.currentLayer.kind === "scalar" && this.currentBackend === "zarr";
+    for (const control of this.colorDomainControls) control.hidden = !visible;
+  }
+
+  private syncColorDomainControl(): void {
+    if (this.colorDomainControls.length === 0) return;
+    this.syncColorDomainVisibility();
+
+    const domain = this.params.colorDomain ?? this.frameColorDomain;
+    if (domain && domain.every(Number.isFinite)) {
+      this.syncingColorDomainControls = true;
+      try {
+        this.params.colorDomainMin = domain[0];
+        this.params.colorDomainMax = domain[1];
+        this.colorDomainMinBinding.refresh();
+        this.colorDomainMaxBinding.refresh();
+      } finally {
+        this.syncingColorDomainControls = false;
+      }
+    }
+    this.colorDomainAutoButton.disabled = this.params.colorDomain == null;
+  }
+
+  private applyColorDomainBindings(): void {
+    const min = this.params.colorDomainMin;
+    const max = this.params.colorDomainMax;
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) {
+      showToast("Color range requires min < max");
+      this.syncColorDomainControl();
+      return;
+    }
+    this.params.colorDomain = [min, max];
+    this.z?.updateSettings({ colorDomain: this.params.colorDomain });
+    this.syncLegend();
+  }
+
+  private resetColorDomain(): void {
+    this.params.colorDomain = null;
+    this.z?.updateSettings({ colorDomain: null });
+    this.syncLegend();
   }
 
   // ── Map click query ─────────────────────────────────────────────────
@@ -1097,6 +1180,8 @@ export class DemoApp {
       logScale: false,
       vibrance: 0,
       colorDomain: null,
+      colorDomainMin: 0,
+      colorDomainMax: 1,
     };
   }
 
@@ -1110,6 +1195,8 @@ export class DemoApp {
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
     this.params.colorDomain = d.raster?.colorDomain ?? null;
+    this.params.colorDomainMin = this.params.colorDomain?.[0] ?? 0;
+    this.params.colorDomainMax = this.params.colorDomain?.[1] ?? 1;
     this.params.palette = d.palette ?? "rdylbu";
   }
 
@@ -1121,7 +1208,13 @@ export class DemoApp {
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;
-    if (hash.cd !== undefined) this.params.colorDomain = hash.cd;
+    if (hash.cd !== undefined) {
+      this.params.colorDomain = hash.cd;
+      if (hash.cd) {
+        this.params.colorDomainMin = hash.cd[0];
+        this.params.colorDomainMax = hash.cd[1];
+      }
+    }
     this.params.palette = hash.p;
   }
 
