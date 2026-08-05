@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VectorLayer } from "./VectorLayer";
+import type { VelocityData } from "./types";
 
 const mocks = vi.hoisted(() => {
   const simulationInstances: Array<{
@@ -134,6 +135,20 @@ function createLayer(renderMode?: "particles" | "raster" | "raster+particles"): 
   });
 }
 
+function vectorData(): VelocityData {
+  return {
+    u: new Float32Array([1, 2]),
+    v: new Float32Array([3, 4]),
+    width: 2,
+    height: 1,
+    uMin: 1,
+    uMax: 2,
+    vMin: 3,
+    vMax: 4,
+    bounds: { west: 0, east: 1, south: 0, north: 1 },
+  };
+}
+
 describe("VectorLayer camera particle state", () => {
   beforeEach(() => {
     mocks.simulationInstances.length = 0;
@@ -259,5 +274,31 @@ describe("VectorLayer camera particle state", () => {
     expect(map.listenerCount("movestart")).toBe(0);
     expect(map.listenerCount("move")).toBe(0);
     expect(map.listenerCount("moveend")).toBe(0);
+  });
+
+  it("caches and buffers a renderable sparse frame", async () => {
+    const layer = createLayer();
+    const internals = layer as unknown as {
+      map: FakeMap;
+      initialized: boolean;
+      fetchVelocityData(): Promise<VelocityData>;
+    };
+    internals.map = new FakeMap();
+    internals.initialized = true;
+    const sparse = vectorData();
+    sparse.u[0] = NaN;
+    sparse.v[0] = NaN;
+    const fetchFrame = vi
+      .spyOn(internals, "fetchVelocityData")
+      .mockResolvedValue(sparse);
+    const buffered = vi.fn();
+    layer.on("frameBuffered", buffered);
+
+    await layer.prefetchTime(123);
+    expect(layer.isFrameCached(123)).toBe(true);
+    expect(buffered).toHaveBeenCalledWith(123);
+
+    await layer.prefetchTime(123);
+    expect(fetchFrame).toHaveBeenCalledOnce();
   });
 });

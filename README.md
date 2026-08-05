@@ -105,8 +105,9 @@ const series = await z.queryTimeSeries({
 
 New layers initially select the latest advertised timestamp that is not in the
 future. Forecast timestamps remain available through `getTimeMeta().values`.
-Missing remote chunks are not cached, so selecting a frame again can recover
-after an upstream store finishes publishing it.
+Missing remote chunks are interpreted as Zarr fill data. A wholly unavailable
+frame is not cached, so selecting it again can recover after an upstream store
+finishes publishing it; a renderable sparse frame is cached normally.
 
 `VectorLayer`, `ScalarLayer`, `ArcoLayer`, and `ZarrSource` remain exported for advanced use cases that need direct control over renderer internals. Ordinary MapLibre integrations should prefer `Zartigl`.
 

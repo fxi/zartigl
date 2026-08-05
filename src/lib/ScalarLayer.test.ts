@@ -83,4 +83,34 @@ describe("ScalarLayer point sampling", () => {
 
     expect(result.value).toBeNaN();
   });
+
+  it("caches and buffers a renderable sparse frame", async () => {
+    const layer = new ScalarLayer({
+      id: "scalar",
+      source: "https://example.test/scalar.zarr",
+      variable: "temperature",
+    });
+    const internals = layer as unknown as {
+      map: { triggerRepaint(): void };
+      initialized: boolean;
+      fetchScalarData(): Promise<VelocityData>;
+    };
+    internals.map = { triggerRepaint: vi.fn() };
+    internals.initialized = true;
+    const sparse = scalarData({
+      u: new Float32Array([NaN, NaN, NaN, 20, 21, 22]),
+    });
+    const fetchFrame = vi
+      .spyOn(internals, "fetchScalarData")
+      .mockResolvedValue(sparse);
+    const buffered = vi.fn();
+    layer.on("frameBuffered", buffered);
+
+    await layer.prefetchTime(123);
+    expect(layer.isFrameCached(123)).toBe(true);
+    expect(buffered).toHaveBeenCalledWith(123);
+
+    await layer.prefetchTime(123);
+    expect(fetchFrame).toHaveBeenCalledOnce();
+  });
 });
