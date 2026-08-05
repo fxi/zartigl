@@ -130,6 +130,46 @@ beforeEach(() => {
 });
 
 describe("Zartigl facade", () => {
+  it("defaults to the latest advertised time that is not in the future", async () => {
+    const now = Date.UTC(2026, 7, 5, 9);
+    const values = [now - 6 * 3600_000, now, now + 6 * 3600_000];
+    vi.spyOn(Date, "now").mockReturnValue(now + 3600_000);
+    vi.mocked(ZarrSource.prototype.getTimeDimension).mockReturnValueOnce({
+      min: values[0],
+      max: values[2],
+      step: 6 * 3600_000,
+      size: values.length,
+      units: "milliseconds since 1970-01-01T00:00:00Z",
+      values,
+    });
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+
+    await z.setLayer("scalar");
+
+    expect(z.getTimeMeta()).toMatchObject({
+      min: values[0],
+      max: values[2],
+      current: now,
+      values,
+    });
+    vi.mocked(Date.now).mockRestore();
+  });
+
+  it("reports metadata loading and metadata failures through status events", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+    const statuses: Array<{ phase: string }> = [];
+    z.on("status", (status) => statuses.push(status));
+
+    await z.setLayer("scalar");
+    expect(statuses[0]).toEqual({ phase: "metadata" });
+
+    vi.mocked(ZarrSource.prototype.init).mockRejectedValueOnce(new Error("offline"));
+    await expect(z.setLayer("scalar")).rejects.toThrow("offline");
+    expect(statuses[statuses.length - 1]).toMatchObject({ phase: "error" });
+  });
+
   it("uses catalog render mode unless an explicit setting overrides it", async () => {
     const catalogLayer = vectorLayer({
       defaults: { renderMode: "raster+particles" },

@@ -90,6 +90,11 @@ z.on("loaded", (meta) => {
   console.log(meta.min, meta.max, meta.unit);
 });
 
+z.on("status", (status) => {
+  // metadata → fetching → rendering → ready, or blocked/error
+  console.log(status.phase);
+});
+
 const series = await z.queryTimeSeries({
   longitude: 7.4,
   latitude: 46.9,
@@ -97,6 +102,11 @@ const series = await z.queryTimeSeries({
   maxPoints: 256,
 });
 ```
+
+New layers initially select the latest advertised timestamp that is not in the
+future. Forecast timestamps remain available through `getTimeMeta().values`.
+Missing remote chunks are not cached, so selecting a frame again can recover
+after an upstream store finishes publishing it.
 
 `VectorLayer`, `ScalarLayer`, `ArcoLayer`, and `ZarrSource` remain exported for advanced use cases that need direct control over renderer internals. Ordinary MapLibre integrations should prefer `Zartigl`.
 

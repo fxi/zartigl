@@ -19,6 +19,12 @@ import type { ParticleSimulationDebugInfo, RenderMode } from "./ParticleSimulati
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
 import { deriveDirectionMagnitudeComponents } from "./vector-derivation";
+import {
+  blockedStatus,
+  hasRenderableVector,
+  ZartiglFrameUnavailableError,
+  type ZartiglStatus,
+} from "./load-status";
 
 // ── Minimal event emitter ────────────────────────────────────────────
 
@@ -26,6 +32,7 @@ type LayerEventMap = {
   loading: () => void;
   loaded: (meta: FieldMeta) => void;
   error: (err: Error) => void;
+  status: (status: ZartiglStatus) => void;
   /** Fired when a time step has been pre-fetched and is ready for instant swap. */
   frameBuffered: (ms: number) => void;
   /** Fired when the frame cache is wiped (viewport changed). */
@@ -83,6 +90,8 @@ export class VectorLayer implements CustomLayerInterface {
   private reloadQueued = false;
   private reloadQueuedResetParticles = false;
   private generation = 0;
+  private requestId = 0;
+  private pendingReadyTime: number | null = null;
   // Unit 0: particles state, Unit 1: velocity, Unit 2: color ramp
   private velocityTexUnit = 1;
   private moveStartHandler: (() => void) | null = null;
@@ -188,6 +197,8 @@ export class VectorLayer implements CustomLayerInterface {
     if (this.isViewportCovered()) return;
 
     this.generation++;
+    this.requestId++;
+    this.pendingReadyTime = null;
     this.zarrSource.cancelAll();
     this.frameCache.clear();
     this.inflight.clear();
@@ -199,7 +210,10 @@ export class VectorLayer implements CustomLayerInterface {
    * Fetch and stitch velocity data for the given time without touching GL state.
    * The map's current viewport is used to determine the lat bounds of the request.
    */
-  private async fetchVelocityData(time: string | number): Promise<VelocityData> {
+  private async fetchVelocityData(
+    time: string | number,
+    onProgress?: (completed: number, total: number) => void,
+  ): Promise<VelocityData> {
     const bounds = this.map!.getBounds();
     const isGlobe = this.map!.getProjection?.()?.type === 'globe';
     const geoBounds = paddedViewportGeoBounds(bounds, 1, isGlobe);
@@ -228,6 +242,12 @@ export class VectorLayer implements CustomLayerInterface {
     const latDim = dims.indexOf("latitude");
     const lonDim = dims.indexOf("longitude");
 
+    let completed = 0;
+    const total = uChunkInfos.length * 2;
+    const missingStatuses: number[] = [];
+    const missingUrls: string[] = [];
+    onProgress?.(completed, total);
+
     // Fetch U and V chunks in parallel
     const makeChunkFetch = (variable: string) =>
       uChunkInfos.map(async (info) => {
@@ -236,11 +256,17 @@ export class VectorLayer implements CustomLayerInterface {
         indices[depthDim] = info.depthIdx;
         indices[latDim] = info.latIdx;
         indices[lonDim] = info.lonIdx;
-        const data = await this.zarrSource.fetchChunk(variable, indices);
+        const result = await this.zarrSource.fetchChunkResult(variable, indices);
+        if (result.missing) {
+          if (result.status != null) missingStatuses.push(result.status);
+          missingUrls.push(result.url);
+        }
+        completed++;
+        onProgress?.(completed, total);
         const chunkShape = this.zarrSource.getChunkShape(variable);
         const lonChunkSize = chunkShape[lonDim];
         return {
-          data,
+          data: result.data,
           latStart: info.latIdx * chunkShape[latDim],
           lonStart: info.lonIdx * lonChunkSize,
           latSize: info.latSize,
@@ -289,7 +315,7 @@ export class VectorLayer implements CustomLayerInterface {
     };
     const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
 
-    return stitchVelocityChunks(
+    const stitched = stitchVelocityChunks(
       uChunksRel,
       vChunksRel,
       fetchedHeight,
@@ -297,6 +323,14 @@ export class VectorLayer implements CustomLayerInterface {
       dataGeoBounds,
       latDescending,
     );
+    if (!hasRenderableVector(stitched.u, stitched.v)) {
+      throw new ZartiglFrameUnavailableError(
+        this.timeToMs(time),
+        missingStatuses,
+        missingUrls,
+      );
+    }
+    return stitched;
   }
 
   private async loadViewportVelocity(options: { resetParticles?: boolean } = {}): Promise<void> {
@@ -309,33 +343,58 @@ export class VectorLayer implements CustomLayerInterface {
     this.loading = true;
     this.emit("loading");
     const generation = this.generation;
+    const requestId = this.requestId;
+    const requestedTime = this.time;
+    const requestedMs = this.timeToMs(requestedTime);
 
     try {
       await this.zarrSource.init();
-      if (generation !== this.generation) return;
+      if (generation !== this.generation || requestId !== this.requestId) return;
       this.initialized = true;
 
-      const ms = this.timeToMs(this.time);
       let velocityData: VelocityData;
 
-      if (this.frameCache.has(ms)) {
-        velocityData = this.frameCache.get(ms)!;
+      if (this.frameCache.has(requestedMs)) {
+        velocityData = this.frameCache.get(requestedMs)!;
       } else {
-        const fetched = await this.fetchVelocityData(this.time);
-        if (generation !== this.generation) return;
-        this.frameCache.set(ms, fetched);
+        const fetched = await this.fetchVelocityData(
+          requestedTime,
+          (completed, total) => {
+            if (generation === this.generation && requestId === this.requestId) {
+              this.emit("status", {
+                phase: "fetching",
+                time: requestedMs,
+                completed,
+                total,
+              });
+            }
+          },
+        );
+        if (generation !== this.generation || requestId !== this.requestId) return;
+        this.frameCache.set(requestedMs, fetched);
         velocityData = fetched;
       }
 
-      if (generation !== this.generation) return;
+      if (generation !== this.generation || requestId !== this.requestId) return;
+      this.emit("status", { phase: "rendering", time: requestedMs });
       this.velocityField.update(velocityData);
       if (options.resetParticles) this.simulation.resetParticles();
-      this.emit("loaded", this.computeFieldMeta(velocityData, this.time));
+      this.emit("loaded", this.computeFieldMeta(velocityData, requestedTime));
+      this.pendingReadyTime = requestedMs;
       this.map?.triggerRepaint();
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
-        console.error("[zartigl] Failed to load velocity:", err);
-        this.emit("error", err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error("[zartigl] Failed to load velocity:", error);
+        if (generation === this.generation && requestId === this.requestId) {
+          this.emit(
+            "status",
+            error instanceof ZartiglFrameUnavailableError
+              ? blockedStatus(error)
+              : { phase: "error", time: requestedMs, error },
+          );
+          this.emit("error", error);
+        }
       }
     } finally {
       this.loading = false;
@@ -399,10 +458,19 @@ export class VectorLayer implements CustomLayerInterface {
       restoreGLState(gl, saved);
     }
 
+    if (this.pendingReadyTime != null) {
+      const time = this.pendingReadyTime;
+      this.pendingReadyTime = null;
+      this.emit("status", { phase: "ready", time });
+    }
+
     this.map.triggerRepaint();
   }
 
   onRemove(): void {
+    this.generation++;
+    this.requestId++;
+    this.pendingReadyTime = null;
     if (this.map) {
       if (this.moveStartHandler) this.map.off("movestart", this.moveStartHandler);
       if (this.moveHandler) this.map.off("move", this.moveHandler);
@@ -420,14 +488,18 @@ export class VectorLayer implements CustomLayerInterface {
 // --- Public setters ---
 
   setTime(time: string | number): void {
+    this.requestId++;
+    this.pendingReadyTime = null;
     this.time = time;
     const ms = this.timeToMs(time);
 
     if (this.frameCache.has(ms)) {
       // Instant swap — no network round-trip needed.
       const data = this.frameCache.get(ms)!;
+      this.emit("status", { phase: "rendering", time: ms });
       this.velocityField.update(data);
       this.emit("loaded", this.computeFieldMeta(data, time));
+      this.pendingReadyTime = ms;
       this.map?.triggerRepaint();
     } else {
       this.loadViewportVelocity();
@@ -435,6 +507,8 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   setTimeAndDepth(time: string | number, depth: number): void {
+    this.requestId++;
+    this.pendingReadyTime = null;
     const depthChanged = this.depth !== depth;
     this.time = time;
     this.depth = depth;
@@ -449,8 +523,10 @@ export class VectorLayer implements CustomLayerInterface {
     const ms = this.timeToMs(time);
     if (!depthChanged && this.frameCache.has(ms)) {
       const data = this.frameCache.get(ms)!;
+      this.emit("status", { phase: "rendering", time: ms });
       this.velocityField.update(data);
       this.emit("loaded", this.computeFieldMeta(data, time));
+      this.pendingReadyTime = ms;
       this.map?.triggerRepaint();
       return;
     }
@@ -497,6 +573,8 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   setDepth(depth: number): void {
+    this.requestId++;
+    this.pendingReadyTime = null;
     this.depth = depth;
     this.generation++;
     this.zarrSource.cancelAll();

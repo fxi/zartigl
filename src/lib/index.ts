@@ -35,7 +35,10 @@ export type {
   ZarrPointSeriesResult,
   ZarrTimeDimension,
   ZarrVerticalDimension,
+  ZarrChunkFetchResult,
 } from "./types";
+export { ZartiglFrameUnavailableError } from "./load-status";
+export type { ZartiglStatus } from "./load-status";
 export type { ColorRampInput, PaletteMeta } from "./gl-util";
 export type {
   ParticleSimulationDebugInfo,

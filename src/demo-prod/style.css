@@ -57,6 +57,26 @@ body {
   white-space: pre-wrap;
 }
 
+.data-status {
+  margin: 2px 8px 6px;
+  padding: 5px 7px;
+  border-left: 2px solid #888;
+  color: #aaa;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.data-status[data-phase="ready"] {
+  border-color: #6a6;
+  color: #8c8;
+}
+
+.data-status[data-phase="blocked"],
+.data-status[data-phase="error"] {
+  border-color: #d66;
+  color: #e99;
+}
+
 /* Render mode buttons (inside Tweakpane folder) */
 .render-mode-btns {
   display: flex;

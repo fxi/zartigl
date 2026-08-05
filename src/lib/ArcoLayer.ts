@@ -15,11 +15,13 @@ import type {
 import type { ColorRampInput } from "./gl-util";
 import type { CatalogLayer } from "../catalog/types";
 import type { RenderMode } from "./ParticleSimulation";
+import type { ZartiglStatus } from "./load-status";
 
 type LayerEventMap = {
   loading: () => void;
   loaded: (meta: FieldMeta) => void;
   error: (err: Error) => void;
+  status: (status: ZartiglStatus) => void;
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
 };
@@ -368,6 +370,8 @@ export class ArcoLayer implements CustomLayerInterface {
   }
 
   private emitLoaded(): void {
+    const time = typeof this.time === "number" ? this.time : new Date(this.time).getTime();
+    this.emit("status", { phase: "rendering", time });
     this.emit("loaded", {
       min: 0,
       max: 0,
@@ -375,6 +379,7 @@ export class ArcoLayer implements CustomLayerInterface {
       time: toIsoTime(this.time),
       depth: this.depth,
     });
+    this.emit("status", { phase: "ready", time });
   }
 
   private emit<K extends keyof LayerEventMap>(

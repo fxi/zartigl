@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
+import type { ZartiglStatus } from "./load-status";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -117,9 +118,23 @@ type ZartiglEventMap = {
   loading: () => void;
   loaded: (meta: FieldMeta) => void;
   error: (err: Error) => void;
+  status: (status: ZartiglStatus) => void;
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
 };
+
+function latestTimeAtOrBefore(values: readonly number[], now: number): number {
+  if (values.length === 0) return now;
+  let earliest = values[0];
+  let latestPast: number | undefined;
+  for (const value of values) {
+    if (value < earliest) earliest = value;
+    if (value <= now && (latestPast === undefined || value > latestPast)) {
+      latestPast = value;
+    }
+  }
+  return latestPast ?? earliest;
+}
 
 function timeToMs(time: Date | string | number): number {
   return time instanceof Date ? time.getTime() : typeof time === "number" ? time : new Date(time).getTime();
@@ -237,6 +252,7 @@ export class Zartigl {
     let timeMeta: ZarrTimeDimension;
     let verticalMeta: ZarrVerticalDimension | null;
     let unitAttrs: ReturnType<ZarrSource["getVariableAttrs"]>;
+    this.emit("status", { phase: "metadata" });
     try {
       await source.init();
       for (const variable of variableNames(catalogLayer)) {
@@ -251,6 +267,7 @@ export class Zartigl {
       unitAttrs = source.getVariableAttrs(configuredVariables[configuredVariables.length - 1]);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+      this.emit("status", { phase: "error", error: err });
       this.emit("error", err);
       throw err;
     }
@@ -267,7 +284,7 @@ export class Zartigl {
     this.variableStandardName = typeof unitAttrs.standard_name === "string"
       ? unitAttrs.standard_name
       : undefined;
-    this.time = timeMeta.max;
+    this.time = latestTimeAtOrBefore(timeMeta.values, Date.now());
     this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
     const overriddenColorDomain = this.settings.colorDomain;
     this.settings = { ...layerDefaults, ...this.settings };
@@ -542,6 +559,7 @@ export class Zartigl {
       this.emit("loaded", meta);
     });
     layer.on("error", (err) => this.emit("error", err));
+    layer.on("status", (status) => this.emit("status", status));
     layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
     layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
     this.layer = layer;

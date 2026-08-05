@@ -375,6 +375,32 @@ describe("ZarrSource point sampling", () => {
     expect(result.points[0].values.v).toBe(-12);
   });
 
+  it("does not cache a missing chunk so a later request can recover", async () => {
+    installFetch(baseRoutes());
+    const source = new ZarrSource(root);
+    await source.init();
+
+    const chunkUrl = `${root}/u/0.0.0.0`;
+    let attempts = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(url).toBe(chunkUrl);
+      attempts++;
+      return attempts === 1
+        ? response(new ArrayBuffer(0), false, 403)
+        : dataChunk(0, 0);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const missing = await source.fetchChunkResult("u", [0, 0, 0, 0]);
+    const available = await source.fetchChunkResult("u", [0, 0, 0, 0]);
+
+    expect(missing).toMatchObject({ missing: true, status: 403, url: chunkUrl });
+    expect(missing.data.every(Number.isNaN)).toBe(true);
+    expect(available).toMatchObject({ missing: false, url: chunkUrl });
+    expect(available.data[1]).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("stops after a configured run of all-missing samples", async () => {
     installFetch(baseRoutes({
       [`${root}/u/0.0.0.0`]: response(new ArrayBuffer(0), false, 403),

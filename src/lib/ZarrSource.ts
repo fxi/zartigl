@@ -9,6 +9,7 @@ import type {
   ZarrPointSeriesResult,
   ZarrTimeDimension,
   ZarrVerticalDimension,
+  ZarrChunkFetchResult,
 } from "./types";
 
 interface CoordArrays {
@@ -529,12 +530,20 @@ export class ZarrSource {
     variable: string,
     indices: number[],
   ): Promise<Float32Array> {
+    return (await this.fetchChunkResult(variable, indices)).data;
+  }
+
+  async fetchChunkResult(
+    variable: string,
+    indices: number[],
+  ): Promise<ZarrChunkFetchResult> {
     const sep = this.getDimensionSeparator(variable);
     const key = indices.join(sep);
     const cacheKey = `${variable}/${key}`;
+    const url = `${this.root}/${variable}/${key}`;
 
     if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)!;
+      return { data: this.cache.get(cacheKey)!, missing: false, url };
     }
 
     // Cancel any existing fetch for this key
@@ -542,29 +551,33 @@ export class ZarrSource {
     const controller = new AbortController();
     this.abortControllers.set(cacheKey, controller);
 
-    const url = `${this.root}/${variable}/${key}`;
     const meta = this.getArrayMeta(variable);
-    const resp = await fetch(url, { signal: controller.signal });
-    if (!resp.ok) {
-      if (resp.status === 403 || resp.status === 404) {
-        const missing = createMissingChunk(meta);
-        this.cacheChunk(cacheKey, missing);
-        this.abortControllers.delete(cacheKey);
-        return missing;
+    try {
+      const resp = await fetch(url, { signal: controller.signal });
+      if (!resp.ok) {
+        if (resp.status === 403 || resp.status === 404) {
+          return {
+            data: createMissingChunk(meta),
+            missing: true,
+            status: resp.status,
+            url,
+          };
+        }
+        throw new ZarrChunkFetchError(resp.status, url);
       }
-      this.abortControllers.delete(cacheKey);
-      throw new ZarrChunkFetchError(resp.status, url);
+
+      const raw = new Uint8Array(await resp.arrayBuffer());
+      const decompressed = toFloat32Array(
+        await this.decompress(raw, meta, variable),
+      );
+
+      this.cacheChunk(cacheKey, decompressed);
+      return { data: decompressed, missing: false, url };
+    } finally {
+      if (this.abortControllers.get(cacheKey) === controller) {
+        this.abortControllers.delete(cacheKey);
+      }
     }
-
-    const raw = new Uint8Array(await resp.arrayBuffer());
-    const decompressed = toFloat32Array(
-      await this.decompress(raw, meta, variable),
-    );
-
-    this.cacheChunk(cacheKey, decompressed);
-    this.abortControllers.delete(cacheKey);
-
-    return decompressed;
   }
 
   cancelAll(): void {

@@ -14,6 +14,7 @@ import type {
   ZarrPointSeriesResult,
   ZartiglDebugInfo,
   ZartiglSettings,
+  ZartiglStatus,
 } from "../lib";
 import { formatTime, formatVertical } from "../catalog";
 import type { CatalogLayer, Catalog } from "../catalog";
@@ -319,6 +320,7 @@ export class DemoApp {
   private legendImg!: HTMLImageElement;
   private gradientSection!: HTMLDivElement;
   private fpsEl!: HTMLDivElement;
+  private dataStatusEl!: HTMLDivElement;
   private fpsFrameCount = 0;
   private fpsLastSample = 0;
   private currentFps = 0;
@@ -371,9 +373,13 @@ export class DemoApp {
       backend: this.currentBackend,
       visible: true,
     });
-    this.z.on("loaded", () => this.syncLegend());
+    const activeZartigl = this.z;
+    activeZartigl.on("loaded", () => this.syncLegend());
+    activeZartigl.on("status", (status) => {
+      if (this.z === activeZartigl && seq === this.switchSeq) this.updateDataStatus(status);
+    });
 
-    await this.z.setLayer(layer.id);
+    await activeZartigl.setLayer(layer.id);
     if (seq !== this.switchSeq) return;
 
     const timeMeta = this.z.getTimeMeta();
@@ -467,11 +473,40 @@ export class DemoApp {
   private buildStaticUI(): void {
     this.buildLayerFolder();
     this.dataFolder = this.pane.addFolder({ title: "Data" });
+    this.dataStatusEl = document.createElement("div");
+    this.dataStatusEl.className = "data-status";
+    this.dataStatusEl.dataset.phase = "idle";
+    this.dataStatusEl.textContent = "Idle";
+    this.dataFolder.element.appendChild(this.dataStatusEl);
     this.buildSourceFolder();
     this.buildParticlesFolder();
     this.buildTrailFolder();
     this.buildAppearanceFolder();
     this.buildExportFolder();
+  }
+
+  private updateDataStatus(status: ZartiglStatus): void {
+    this.dataStatusEl.dataset.phase = status.phase;
+    switch (status.phase) {
+      case "metadata":
+        this.dataStatusEl.textContent = "Fetching metadata…";
+        break;
+      case "fetching":
+        this.dataStatusEl.textContent = `Fetching ${status.completed}/${status.total}…`;
+        break;
+      case "rendering":
+        this.dataStatusEl.textContent = "Rendering…";
+        break;
+      case "ready":
+        this.dataStatusEl.textContent = "Ready";
+        break;
+      case "blocked":
+        this.dataStatusEl.textContent = status.message;
+        break;
+      case "error":
+        this.dataStatusEl.textContent = `Error: ${status.error.message}`;
+        break;
+    }
   }
 
   private buildFpsCounter(): void {

@@ -12,11 +12,18 @@ import type { FieldMeta, ScalarLayerOptions, VelocityData } from "./types";
 import { VelocityField, stitchVelocityChunks } from "./VelocityField";
 import { ZarrSource } from "./ZarrSource";
 import { validateScalarColorDomain } from "./scalar-color-domain";
+import {
+  blockedStatus,
+  hasRenderableScalar,
+  ZartiglFrameUnavailableError,
+  type ZartiglStatus,
+} from "./load-status";
 
 type LayerEventMap = {
   loading: () => void;
   loaded: (meta: FieldMeta) => void;
   error: (err: Error) => void;
+  status: (status: ZartiglStatus) => void;
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
 };
@@ -49,6 +56,8 @@ export class ScalarLayer implements CustomLayerInterface {
   private loading = false;
   private reloadQueued = false;
   private generation = 0;
+  private requestId = 0;
+  private pendingReadyTime: number | null = null;
   private frameCache = new Map<number, VelocityData>();
   private inflight = new Set<number>();
   private listeners: Map<string, Set<Function>> = new Map();
@@ -91,6 +100,8 @@ export class ScalarLayer implements CustomLayerInterface {
     this.activeField.setFilter(false);
 
     this.moveEndHandler = () => {
+      this.requestId++;
+      this.pendingReadyTime = null;
       this.zarrSource.cancelAll();
       this.frameCache.clear();
       this.inflight.clear();
@@ -153,10 +164,17 @@ export class ScalarLayer implements CustomLayerInterface {
     } finally {
       restoreGLState(gl, saved);
     }
+    if (this.pendingReadyTime != null) {
+      const time = this.pendingReadyTime;
+      this.pendingReadyTime = null;
+      this.emit("status", { phase: "ready", time });
+    }
   }
 
   onRemove(): void {
     this.generation++;
+    this.requestId++;
+    this.pendingReadyTime = null;
     if (this.map && this.moveEndHandler) this.map.off("moveend", this.moveEndHandler);
     this.zarrSource.cancelAll();
     this.activeField.destroy();
@@ -168,6 +186,8 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   setTime(time: string | number): void {
+    this.requestId++;
+    this.pendingReadyTime = null;
     this.time = time;
     const ms = this.timeToMs(time);
     const cached = this.frameCache.get(ms);
@@ -184,6 +204,7 @@ export class ScalarLayer implements CustomLayerInterface {
     this.depth = depth;
     if (depthChanged) {
       this.generation++;
+      this.zarrSource.cancelAll();
       this.frameCache.clear();
       this.inflight.clear();
     }
@@ -309,19 +330,42 @@ export class ScalarLayer implements CustomLayerInterface {
     this.loading = true;
     this.emit("loading");
     const generation = this.generation;
+    const requestId = this.requestId;
+    const requestedTime = this.time;
+    const requestedMs = this.timeToMs(requestedTime);
     try {
       await this.zarrSource.init();
-      if (generation !== this.generation) return;
+      if (generation !== this.generation || requestId !== this.requestId) return;
       this.initialized = true;
 
-      const ms = this.timeToMs(this.time);
-      const data = this.frameCache.get(ms) ?? await this.fetchScalarData(this.time);
-      if (generation !== this.generation) return;
-      this.frameCache.set(ms, data);
-      this.setActive(data, this.time);
+      const data = this.frameCache.get(requestedMs) ?? await this.fetchScalarData(
+        requestedTime,
+        (completed, total) => {
+          if (generation === this.generation && requestId === this.requestId) {
+            this.emit("status", {
+              phase: "fetching",
+              time: requestedMs,
+              completed,
+              total,
+            });
+          }
+        },
+      );
+      if (generation !== this.generation || requestId !== this.requestId) return;
+      this.frameCache.set(requestedMs, data);
+      this.setActive(data, requestedTime);
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
-        this.emit("error", err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        if (generation === this.generation && requestId === this.requestId) {
+          this.emit(
+            "status",
+            error instanceof ZartiglFrameUnavailableError
+              ? blockedStatus(error)
+              : { phase: "error", time: requestedMs, error },
+          );
+          this.emit("error", error);
+        }
       }
     } finally {
       this.loading = false;
@@ -332,7 +376,10 @@ export class ScalarLayer implements CustomLayerInterface {
     }
   }
 
-  private async fetchScalarData(time: string | number): Promise<VelocityData> {
+  private async fetchScalarData(
+    time: string | number,
+    onProgress?: (completed: number, total: number) => void,
+  ): Promise<VelocityData> {
     const bounds = this.map!.getBounds();
     const geoBounds = {
       west: -180,
@@ -357,15 +404,26 @@ export class ScalarLayer implements CustomLayerInterface {
     const lonDim = dims.indexOf("longitude");
     const chunkShape = this.zarrSource.getChunkShape(this.variable);
 
+    let completed = 0;
+    const total = chunkInfos.length;
+    const missingStatuses: number[] = [];
+    const missingUrls: string[] = [];
+    onProgress?.(completed, total);
     const chunks = await Promise.all(chunkInfos.map(async (info) => {
       const indices: number[] = [];
       indices[timeDim] = info.timeIdx;
       indices[depthDim] = info.depthIdx;
       indices[latDim] = info.latIdx;
       indices[lonDim] = info.lonIdx;
-      const data = await this.zarrSource.fetchChunk(this.variable, indices);
+      const result = await this.zarrSource.fetchChunkResult(this.variable, indices);
+      if (result.missing) {
+        if (result.status != null) missingStatuses.push(result.status);
+        missingUrls.push(result.url);
+      }
+      completed++;
+      onProgress?.(completed, total);
       return {
-        data,
+        data: result.data,
         latStart: info.latIdx * chunkShape[latDim],
         lonStart: info.lonIdx * chunkShape[lonDim],
         latSize: info.latSize,
@@ -396,7 +454,7 @@ export class ScalarLayer implements CustomLayerInterface {
       north: Math.max(coords.latitude[latPixMin], coords.latitude[latLast]),
     };
     const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
-    return stitchVelocityChunks(
+    const stitched = stitchVelocityChunks(
       chunksRel,
       [],
       fetchedHeight,
@@ -405,13 +463,24 @@ export class ScalarLayer implements CustomLayerInterface {
       latDescending,
       true,
     );
+    if (!hasRenderableScalar(stitched.u)) {
+      throw new ZartiglFrameUnavailableError(
+        this.timeToMs(time),
+        missingStatuses,
+        missingUrls,
+      );
+    }
+    return stitched;
   }
 
   private setActive(data: VelocityData, time: string | number): void {
+    const ms = this.timeToMs(time);
+    this.emit("status", { phase: "rendering", time: ms });
     this.activeData = data;
     this.activeField.update(data, this.colorDomain);
     this.activeField.setFilter(false);
     this.emit("loaded", this.computeFieldMeta(data, time));
+    this.pendingReadyTime = ms;
     this.map?.triggerRepaint();
   }
 

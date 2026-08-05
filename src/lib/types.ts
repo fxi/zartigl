@@ -127,6 +127,13 @@ export interface DecodedChunk {
   lonRange: [number, number];
 }
 
+export interface ZarrChunkFetchResult {
+  data: Float32Array;
+  missing: boolean;
+  status?: number;
+  url: string;
+}
+
 export interface VelocityData {
   u: Float32Array;
   v: Float32Array;
