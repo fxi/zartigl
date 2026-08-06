@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ArcoLayer,
   buildWmtsLegendUrl,
   buildWmtsTileUrl,
   selectArcoLayerBackend,
@@ -151,5 +152,35 @@ describe("selectArcoLayerBackend", () => {
 
   it("uses WMTS only when explicitly requested", () => {
     expect(selectArcoLayerBackend(layerOptions(scalarWmtsLayer, { backend: "wmts" }))).toBe("scalar-wmts");
+  });
+});
+
+describe("ArcoLayer suspension", () => {
+  it("detaches WMTS requests and restores only the latest time", () => {
+    const layers = new Map<string, unknown>();
+    const sources = new Map<string, unknown>();
+    const map = {
+      addLayer: (layer: { id: string }) => layers.set(layer.id, layer),
+      removeLayer: (id: string) => layers.delete(id),
+      getLayer: (id: string) => layers.get(id),
+      addSource: (id: string, source: unknown) => sources.set(id, source),
+      removeSource: (id: string) => sources.delete(id),
+      getSource: (id: string) => sources.get(id),
+    };
+    const layer = new ArcoLayer(
+      layerOptions(scalarWmtsLayer, { backend: "wmts", time: 1_000 }),
+    );
+    layer.onAdd(map as never, {} as never);
+    expect(sources.has("layer-wmts-source")).toBe(true);
+
+    layer.suspend();
+    layer.setTime(2_000);
+    expect(sources.has("layer-wmts-source")).toBe(false);
+
+    layer.resume();
+    const source = sources.get("layer-wmts-source") as { tiles: string[] };
+    expect(source.tiles[0]).toContain(
+      `time=${encodeURIComponent(new Date(2_000).toISOString())}`,
+    );
   });
 });

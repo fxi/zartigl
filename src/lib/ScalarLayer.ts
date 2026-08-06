@@ -53,6 +53,7 @@ export class ScalarLayer implements CustomLayerInterface {
   private activeField: VelocityField;
   private activeData: VelocityData | null = null;
   private initialized = false;
+  private suspended = false;
   private loading = false;
   private reloadQueued = false;
   private generation = 0;
@@ -106,6 +107,10 @@ export class ScalarLayer implements CustomLayerInterface {
       this.frameCache.clear();
       this.inflight.clear();
       this.emit("cacheInvalidated");
+      if (this.suspended) {
+        this.reloadQueued = true;
+        return;
+      }
       this.loadCurrent();
     };
     map.on("moveend", this.moveEndHandler);
@@ -125,7 +130,7 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    if (!this.map || !this.activeData || !this.activeField.hasData()) return;
+    if (this.suspended || !this.map || !this.activeData || !this.activeField.hasData()) return;
 
     const saved = saveGLState(gl);
     try {
@@ -189,6 +194,7 @@ export class ScalarLayer implements CustomLayerInterface {
     this.requestId++;
     this.pendingReadyTime = null;
     this.time = time;
+    if (this.suspended) return;
     const ms = this.timeToMs(time);
     const cached = this.frameCache.get(ms);
     if (cached) {
@@ -216,7 +222,7 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   async prefetchTime(ms: number): Promise<void> {
-    if (!this.map || !this.initialized) return;
+    if (this.suspended || !this.map || !this.initialized) return;
     if (this.frameCache.has(ms) || this.inflight.has(ms)) return;
     this.inflight.add(ms);
     const generation = this.generation;
@@ -241,6 +247,22 @@ export class ScalarLayer implements CustomLayerInterface {
   cancelPrefetches(): void {
     this.zarrSource.cancelAll();
     this.inflight.clear();
+  }
+
+  suspend(): void {
+    if (this.suspended) return;
+    this.suspended = true;
+    this.requestId++;
+    this.pendingReadyTime = null;
+    this.reloadQueued = false;
+    this.zarrSource.cancelAll();
+    this.inflight.clear();
+  }
+
+  resume(): void {
+    if (!this.suspended) return;
+    this.suspended = false;
+    this.loadCurrent();
   }
 
   setColorRamp(ramp: ColorRampInput): void {
@@ -322,7 +344,7 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   private async loadCurrent(): Promise<void> {
-    if (!this.map) return;
+    if (this.suspended || !this.map) return;
     if (this.loading) {
       this.reloadQueued = true;
       return;
@@ -369,7 +391,7 @@ export class ScalarLayer implements CustomLayerInterface {
       }
     } finally {
       this.loading = false;
-      if (this.reloadQueued) {
+      if (this.reloadQueued && !this.suspended) {
         this.reloadQueued = false;
         this.loadCurrent();
       }

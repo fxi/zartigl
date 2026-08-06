@@ -47,6 +47,7 @@ export interface ZartiglDebugInfo {
   id: string;
   destroyed: boolean;
   visible: boolean;
+  suspended: boolean;
   backendPreference: "auto" | "zarr" | "wmts";
   activeBackend?: "zarr" | "wmts";
   projection?: string;
@@ -214,6 +215,7 @@ export class Zartigl {
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
   private destroyed = false;
+  private suspended = false;
   private attachQueued = false;
   private querySources = new Map<string, ZarrSource>();
   private listeners: Map<keyof ZartiglEventMap, Set<Function>> = new Map();
@@ -307,6 +309,28 @@ export class Zartigl {
     if (!this.visible) return;
     this.visible = false;
     this.detach();
+  }
+
+  /** Pause rendering and abort field requests without discarding layer state. */
+  suspend(): void {
+    this.assertAlive();
+    if (this.suspended) return;
+    this.suspended = true;
+    this.layer?.suspend();
+    this.querySources.forEach((source) => source.cancelAll());
+    this.fieldSources.forEach((source) => source.cancelAll());
+  }
+
+  /** Resume rendering and load only the latest requested time/depth state. */
+  resume(): void {
+    this.assertAlive();
+    if (!this.suspended) return;
+    this.suspended = false;
+    if (this.layer) {
+      this.layer.resume();
+      return;
+    }
+    this.attachWhenReady();
   }
 
   destroy(): void {
@@ -432,6 +456,7 @@ export class Zartigl {
       id: this.id,
       destroyed: this.destroyed,
       visible: this.visible,
+      suspended: this.suspended,
       backendPreference: this.backendPreference,
       activeBackend: this.getBackend(),
       projection: String(this.map.getProjection?.()?.type ?? ""),
@@ -522,7 +547,7 @@ export class Zartigl {
   }
 
   private attachWhenReady(): void {
-    if (this.destroyed || !this.visible || !this.catalogLayer) return;
+    if (this.destroyed || this.suspended || !this.visible || !this.catalogLayer) return;
     if (!this.isMapReady()) {
       this.attachQueued = true;
       return;

@@ -86,6 +86,7 @@ export class VectorLayer implements CustomLayerInterface {
   private time: string | number;
   private depth: number;
   private initialized = false;
+  private suspended = false;
   private loading = false;
   private reloadQueued = false;
   private reloadQueuedResetParticles = false;
@@ -143,18 +144,21 @@ export class VectorLayer implements CustomLayerInterface {
     // Trail history is screen-space. During camera motion, decay it rapidly
     // instead of clearing every frame, preserving short visual continuity.
     this.moveStartHandler = () => {
+      if (this.suspended) return;
       this.simulation.setCameraMoving(true);
       this.map?.triggerRepaint();
     };
     map.on("movestart", this.moveStartHandler);
 
-    this.moveHandler = () => this.map?.triggerRepaint();
+    this.moveHandler = () => {
+      if (!this.suspended) this.map?.triggerRepaint();
+    };
     map.on("move", this.moveHandler);
 
     this.moveEndHandler = () => {
       this.simulation.setCameraMoving(false);
       this.reloadIfViewportUncovered();
-      this.map?.triggerRepaint();
+      if (!this.suspended) this.map?.triggerRepaint();
     };
     map.on("moveend", this.moveEndHandler);
   }
@@ -203,6 +207,11 @@ export class VectorLayer implements CustomLayerInterface {
     this.frameCache.clear();
     this.inflight.clear();
     this.emit("cacheInvalidated");
+    if (this.suspended) {
+      this.reloadQueued = true;
+      this.reloadQueuedResetParticles = true;
+      return;
+    }
     this.loadViewportVelocity({ resetParticles: true });
   }
 
@@ -334,7 +343,7 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   private async loadViewportVelocity(options: { resetParticles?: boolean } = {}): Promise<void> {
-    if (!this.map) return;
+    if (this.suspended || !this.map) return;
     if (this.loading) {
       this.reloadQueued = true;
       this.reloadQueuedResetParticles ||= options.resetParticles ?? false;
@@ -398,7 +407,7 @@ export class VectorLayer implements CustomLayerInterface {
       }
     } finally {
       this.loading = false;
-      if (this.reloadQueued) {
+      if (this.reloadQueued && !this.suspended) {
         const resetParticles = this.reloadQueuedResetParticles;
         this.reloadQueued = false;
         this.reloadQueuedResetParticles = false;
@@ -412,7 +421,7 @@ export class VectorLayer implements CustomLayerInterface {
     options: CustomRenderMethodInput,
   ): void {
     const matrix = options.modelViewProjectionMatrix;
-    if (!this.initialized || !this.velocityField.hasData() || !this.map) return;
+    if (this.suspended || !this.initialized || !this.velocityField.hasData() || !this.map) return;
 
     const saved = saveGLState(gl);
 
@@ -491,6 +500,7 @@ export class VectorLayer implements CustomLayerInterface {
     this.requestId++;
     this.pendingReadyTime = null;
     this.time = time;
+    if (this.suspended) return;
     const ms = this.timeToMs(time);
 
     if (this.frameCache.has(ms)) {
@@ -520,6 +530,8 @@ export class VectorLayer implements CustomLayerInterface {
       this.inflight.clear();
     }
 
+    if (this.suspended) return;
+
     const ms = this.timeToMs(time);
     if (!depthChanged && this.frameCache.has(ms)) {
       const data = this.frameCache.get(ms)!;
@@ -540,7 +552,7 @@ export class VectorLayer implements CustomLayerInterface {
    * immediately without a loading gap.
    */
   async prefetchTime(ms: number): Promise<void> {
-    if (!this.map || !this.initialized) return;
+    if (this.suspended || !this.map || !this.initialized) return;
     if (this.frameCache.has(ms) || this.inflight.has(ms)) return;
 
     this.inflight.add(ms);
@@ -572,6 +584,23 @@ export class VectorLayer implements CustomLayerInterface {
     this.inflight.clear();
   }
 
+  suspend(): void {
+    if (this.suspended) return;
+    this.suspended = true;
+    this.requestId++;
+    this.pendingReadyTime = null;
+    this.reloadQueued = false;
+    this.reloadQueuedResetParticles = false;
+    this.zarrSource.cancelAll();
+    this.inflight.clear();
+  }
+
+  resume(): void {
+    if (!this.suspended) return;
+    this.suspended = false;
+    this.loadViewportVelocity({ resetParticles: true });
+  }
+
   setDepth(depth: number): void {
     this.requestId++;
     this.pendingReadyTime = null;
@@ -580,6 +609,7 @@ export class VectorLayer implements CustomLayerInterface {
     this.zarrSource.cancelAll();
     this.frameCache.clear();
     this.inflight.clear();
+    if (this.suspended) return;
     this.loadViewportVelocity();
   }
 

@@ -301,4 +301,25 @@ describe("VectorLayer camera particle state", () => {
     await layer.prefetchTime(123);
     expect(fetchFrame).toHaveBeenCalledOnce();
   });
+
+  it("suppresses time loads while suspended and reloads once on resume", () => {
+    const layer = createLayer();
+    const internals = layer as unknown as {
+      map: FakeMap;
+      loadViewportVelocity(options?: { resetParticles?: boolean }): Promise<void>;
+    };
+    internals.map = new FakeMap();
+    const load = vi
+      .spyOn(internals, "loadViewportVelocity")
+      .mockResolvedValue();
+
+    layer.suspend();
+    layer.setTime(123);
+    expect(load).not.toHaveBeenCalled();
+    expect(mocks.zarrCancelAll).toHaveBeenCalled();
+
+    layer.resume();
+    expect(load).toHaveBeenCalledOnce();
+    expect(load).toHaveBeenCalledWith({ resetParticles: true });
+  });
 });

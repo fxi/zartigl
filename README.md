@@ -95,6 +95,12 @@ z.on("status", (status) => {
   console.log(status.phase);
 });
 
+// Embedding applications can stop rendering and abort field requests while
+// retaining the latest requested time/depth for one reload on resume.
+z.suspend();
+z.setTime(new Date("2025-02-01T00:00:00Z"));
+z.resume();
+
 const series = await z.queryTimeSeries({
   longitude: 7.4,
   latitude: 46.9,

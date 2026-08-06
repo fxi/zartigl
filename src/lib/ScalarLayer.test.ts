@@ -113,4 +113,34 @@ describe("ScalarLayer point sampling", () => {
     await layer.prefetchTime(123);
     expect(fetchFrame).toHaveBeenCalledOnce();
   });
+
+  it("aborts while suspended and loads only the latest requested time on resume", async () => {
+    const layer = new ScalarLayer({
+      id: "scalar",
+      source: "https://example.test/scalar.zarr",
+      variable: "temperature",
+    });
+    const internals = layer as unknown as {
+      map: { getBounds(): unknown; triggerRepaint(): void };
+      zarrSource: { init(): Promise<void>; cancelAll(): void };
+      fetchScalarData(time: string | number): Promise<VelocityData>;
+    };
+    internals.map = {
+      getBounds: vi.fn(),
+      triggerRepaint: vi.fn(),
+    };
+    vi.spyOn(internals.zarrSource, "init").mockResolvedValue();
+    const cancel = vi.spyOn(internals.zarrSource, "cancelAll");
+    const fetchFrame = vi
+      .spyOn(internals, "fetchScalarData")
+      .mockResolvedValue(scalarData());
+
+    layer.suspend();
+    layer.setTime(123);
+    expect(fetchFrame).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledOnce();
+
+    layer.resume();
+    await vi.waitFor(() => expect(fetchFrame).toHaveBeenCalledWith(123, expect.any(Function)));
+  });
 });

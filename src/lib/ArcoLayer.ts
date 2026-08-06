@@ -139,6 +139,7 @@ export class ArcoLayer implements CustomLayerInterface {
   private time: string | number;
   private depth: number;
   private opacity: number;
+  private suspended = false;
   private listeners: Map<string, Set<Function>> = new Map();
 
   constructor(options: ArcoLayerOptions) {
@@ -212,7 +213,7 @@ export class ArcoLayer implements CustomLayerInterface {
   }
 
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    this.delegate?.render(gl, options);
+    if (!this.suspended) this.delegate?.render(gl, options);
   }
 
   onRemove(): void {
@@ -223,6 +224,7 @@ export class ArcoLayer implements CustomLayerInterface {
 
   setTime(time: string | number): void {
     this.time = time;
+    if (this.suspended) return;
     if (this.delegate) {
       this.delegate.setTime(time);
       return;
@@ -234,6 +236,7 @@ export class ArcoLayer implements CustomLayerInterface {
   setTimeAndDepth(time: string | number, depth: number): void {
     this.time = time;
     this.depth = depth;
+    if (this.suspended) return;
     if (this.delegate) {
       this.delegate.setTimeAndDepth(time, depth);
       return;
@@ -244,6 +247,7 @@ export class ArcoLayer implements CustomLayerInterface {
 
   setDepth(depth: number): void {
     this.depth = depth;
+    if (this.suspended) return;
     if (this.delegate) {
       this.delegate.setDepth(depth);
       return;
@@ -262,6 +266,28 @@ export class ArcoLayer implements CustomLayerInterface {
 
   cancelPrefetches(): void {
     this.delegate?.cancelPrefetches();
+  }
+
+  suspend(): void {
+    if (this.suspended) return;
+    this.suspended = true;
+    if (this.delegate) {
+      this.delegate.suspend();
+      return;
+    }
+    this.removeWmts();
+  }
+
+  resume(): void {
+    if (!this.suspended) return;
+    this.suspended = false;
+    if (this.delegate) {
+      this.delegate.setTimeAndDepth(this.time, this.depth);
+      this.delegate.resume();
+      return;
+    }
+    this.addOrUpdateWmts();
+    this.emitLoaded();
   }
 
   setSpeed(v: number): void {

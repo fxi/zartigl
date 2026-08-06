@@ -468,6 +468,49 @@ describe("Zartigl facade", () => {
     expect(map.getLayer("surface")).toBeDefined();
   });
 
+  it("defers attachment while suspended and resumes with the selected layer", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+
+    z.suspend();
+    await z.setLayer("scalar");
+    expect(map.getLayer("zartigl")).toBeUndefined();
+    expect(z.getDebugInfo().suspended).toBe(true);
+
+    z.resume();
+    expect(map.getLayer("zartigl")).toBeDefined();
+    expect(z.getDebugInfo().suspended).toBe(false);
+  });
+
+  it("forwards suspension to an attached render layer", async () => {
+    const suspend = vi.spyOn(ArcoLayer.prototype, "suspend");
+    const resume = vi.spyOn(ArcoLayer.prototype, "resume");
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+    await z.setLayer("scalar");
+
+    z.suspend();
+    z.suspend();
+    z.resume();
+    z.resume();
+
+    expect(suspend).toHaveBeenCalledOnce();
+    expect(resume).toHaveBeenCalledOnce();
+  });
+
+  it("loads the latest requested state when suspension ends", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog() });
+    await z.setLayer("scalar");
+
+    z.suspend();
+    z.setTimeAndDepth(4_000, 20);
+    z.resume();
+
+    const debug = z.getDebugInfo();
+    expect(debug.layer?.delegate).toMatchObject({ time: 4_000, depth: 20 });
+  });
+
   it("passes optional metadata to the render layer", async () => {
     const map = new FakeMap();
     const metadata = { idView: "mx-view", type: "arco" };
