@@ -1063,8 +1063,12 @@ export class DemoApp {
         ].filter(Boolean).join(" ")
       : "state --";
     const dpr = info?.devicePixelRatio ?? (typeof window !== "undefined" ? window.devicePixelRatio : undefined);
+    const videoFps = delegate?.kind === "scalar-geovideo" ? delegate.presentedFps : null;
+    const fpsLabel = videoFps != null
+      ? `video ${videoFps.toFixed(1)} FPS | UI ${fpsText}`
+      : `FPS ${fpsText}`;
     this.fpsEl.textContent = [
-      `FPS ${fpsText}`,
+      fpsLabel,
       stateText,
       dpr ? `DPR ${dpr}` : "",
       renderer,

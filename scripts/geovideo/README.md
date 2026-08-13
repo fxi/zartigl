@@ -59,7 +59,8 @@ settings; for example:
 uv run scripts/geovideo/calibrate.py --frames 12 --crf 12 --max-bitrate 16M
 ```
 
-Then exercise the browser's actual video → canvas → WebGL → readback path:
+Then exercise both browser paths, video → WebGL directly (GeoVideo v2) and the
+legacy video → canvas → WebGL route, through readback:
 
 ```bash
 uv run scripts/geovideo/browser_calibrate.py

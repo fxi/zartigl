@@ -69,6 +69,10 @@ Chrome's video → canvas → WebGL readback retains 212 stable ramp codes, with
 maximum ramp error of one code and no temporal variation over the tested clip.
 Safari and Firefox remain publication gates.
 
+GeoVideo v2 uploads the video element directly to WebGL and repaints only when
+the decoder presents a new frame. The browser calibration covers this direct
+path alongside the schema-v1 canvas compatibility path.
+
 A two-frame 2048×1024 Copernicus SST anomaly extraction encoded with the
 production CRF 12 / 16 Mbit/s profile occupies 482 KiB. On sampled valid pixels,
 its mean absolute error is 2.01 codes, p99 is 6, and maximum is 10 (about 0.15 °C

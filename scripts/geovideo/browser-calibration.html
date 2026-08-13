@@ -81,9 +81,14 @@ async function run() {
   const minima = new Uint8Array(256).fill(255);
   const maxima = new Uint8Array(256);
   const seen = new Set();
+  const directSeen = [new Set(), new Set()];
   let maxError = 0;
+  const directMaxError = [0, 0];
+  const directMinima = [new Uint8Array(256).fill(255), new Uint8Array(256).fill(255)];
+  const directMaxima = [new Uint8Array(256), new Uint8Array(256)];
   let webglMismatchDirect = 0;
   let webglMismatchFlipped = 0;
+  const directVideoCanvasMismatch = [0, 0];
   const y = Math.floor(height / 8);
   for (let frame = 0; frame < frames; frame++) {
     video.currentTime = Math.min(video.duration - 1 / fps / 4, (frame + .25) / fps);
@@ -91,12 +96,17 @@ async function run() {
     context.drawImage(video, 0, 0, width, height);
     const canvasPixels = context.getImageData(0, 0, width, height).data;
     const glPixels = webglRoundTrip(canvas);
+    const directVideoPixels = webglRoundTrip(video);
     for (let code = 0; code < 256; code++) {
       const x = Math.min(width - 1, Math.floor((code * 2 + 1) * width / 512));
       const canvasOffset = (y * width + x) * 4;
       const glOffsetDirect = (y * width + x) * 4;
       const glOffsetFlipped = ((height - 1 - y) * width + x) * 4;
       const decoded = luminance(canvasPixels, canvasOffset);
+      const directDecoded = [
+        luminance(directVideoPixels, glOffsetDirect),
+        luminance(directVideoPixels, glOffsetFlipped),
+      ];
       webglMismatchDirect = Math.max(
         webglMismatchDirect, Math.abs(decoded - luminance(glPixels, glOffsetDirect))
       );
@@ -107,10 +117,26 @@ async function run() {
       maxima[code] = Math.max(maxima[code], decoded);
       seen.add(decoded);
       maxError = Math.max(maxError, Math.abs(code - decoded));
+      for (let orientation = 0; orientation < 2; orientation++) {
+        const value = directDecoded[orientation];
+        directVideoCanvasMismatch[orientation] = Math.max(
+          directVideoCanvasMismatch[orientation], Math.abs(decoded - value)
+        );
+        directMaxError[orientation] = Math.max(directMaxError[orientation], Math.abs(code - value));
+        directMinima[orientation][code] = Math.min(directMinima[orientation][code], value);
+        directMaxima[orientation][code] = Math.max(directMaxima[orientation][code], value);
+        directSeen[orientation].add(value);
+      }
     }
   }
   const maxTemporalCodeSpan = Math.max(...maxima.map((value, index) => value - minima[index]));
   const webglMismatch = Math.min(webglMismatchDirect, webglMismatchFlipped);
+  const directOrientation = directVideoCanvasMismatch[0] <= directVideoCanvasMismatch[1] ? 0 : 1;
+  const directTemporalSpan = Math.max(
+    ...directMaxima[directOrientation].map(
+      (value, index) => value - directMinima[directOrientation][index]
+    )
+  );
   const report = {
     userAgent: navigator.userAgent,
     frames,
@@ -119,8 +145,15 @@ async function run() {
     maxTemporalCodeSpan,
     maxCanvasWebglCodeMismatch: webglMismatch,
     webglReadbackOrientation: webglMismatchDirect <= webglMismatchFlipped ? "direct" : "flipped",
+    directVideoWebglOrientation: directOrientation === 0 ? "direct" : "flipped",
+    directVideoDistinctStableRampCodes: directSeen[directOrientation].size,
+    directVideoMaxStableRampCodeError: directMaxError[directOrientation],
+    directVideoMaxTemporalCodeSpan: directTemporalSpan,
+    maxDirectVideoCanvasCodeMismatch: directVideoCanvasMismatch[directOrientation],
   };
-  report.accepted = seen.size >= 128 && maxError <= 2 && maxTemporalCodeSpan === 0 && webglMismatch === 0;
+  report.accepted = seen.size >= 128 && maxError <= 2 && maxTemporalCodeSpan === 0 && webglMismatch === 0 &&
+    directSeen[directOrientation].size >= 128 && directMaxError[directOrientation] <= 2 &&
+    directTemporalSpan === 0 && directVideoCanvasMismatch[directOrientation] <= 2;
   result.textContent = JSON.stringify(report);
   document.title = report.accepted ? "PASS" : "FAIL";
 }

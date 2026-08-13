@@ -68,6 +68,7 @@ class FakeVideo extends EventTarget {
   ended = false;
   currentTime = 0;
   readyState = 2;
+  networkState = 1;
   videoWidth = 32;
   videoHeight = 8;
   crossOrigin = "";
@@ -181,16 +182,40 @@ afterEach(() => {
 });
 
 describe("GeoVideoLayer playback scheduling", () => {
-  it("loads a v2 mask independently and captures the full-width value video", () => {
-    const { video, images, canvases } = setup(true, scalarLumaManifest);
+  it("loads a v2 mask independently without copying the value video through canvas", () => {
+    const { layer, video, images, canvases } = setup(true, scalarLumaManifest);
     expect(images).toHaveLength(1);
+    expect(canvases).toHaveLength(1);
     expect(images[0].src).toBe("mask.png");
     images[0].dispatchEvent(new Event("load"));
     video.dispatchEvent(new Event("loadeddata"));
 
-    expect(canvases[1].drawImage).toHaveBeenCalledWith(images[0], 0, 0, 16, 8);
-    expect(canvases[0].drawImage).toHaveBeenCalledWith(video, 0, 0, 16, 8, 0, 0, 16, 8);
-    expect(canvases[1].drawImage).not.toHaveBeenCalledWith(video, expect.anything());
+    expect(canvases[0].drawImage).toHaveBeenCalledWith(images[0], 0, 0, 16, 8);
+    expect(canvases[0].drawImage).not.toHaveBeenCalledWith(video, expect.anything());
+    expect(layer.getDebugInfo().bufferedFrames).toBe(1);
+    expect((layer as unknown as { colorCanvas: unknown }).colorCanvas).toBeNull();
+  });
+
+  it("accepts the video element itself as a WebGL texture source", () => {
+    const { layer, video } = setup(true, scalarLumaManifest);
+    const gl = {
+      TEXTURE_2D: 0x0de1, RGBA: 0x1908, UNSIGNED_BYTE: 0x1401, UNPACK_FLIP_Y_WEBGL: 0x9240,
+      getParameter: vi.fn(() => false), pixelStorei: vi.fn(),
+      texImage2D: vi.fn(), texSubImage2D: vi.fn(),
+    };
+    const upload = (layer as unknown as {
+      uploadTextureSource: (context: WebGLRenderingContext, source: HTMLVideoElement, initialized: boolean) => void;
+    }).uploadTextureSource.bind(layer);
+
+    upload(gl as unknown as WebGLRenderingContext, video as unknown as HTMLVideoElement, false);
+    upload(gl as unknown as WebGLRenderingContext, video as unknown as HTMLVideoElement, true);
+
+    expect(gl.texImage2D).toHaveBeenCalledWith(
+      gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video,
+    );
+    expect(gl.texSubImage2D).toHaveBeenCalledWith(
+      gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video,
+    );
   });
 
   it("does not report v2 ready until both video and mask are loaded", () => {
@@ -216,8 +241,20 @@ describe("GeoVideoLayer playback scheduling", () => {
     expect(error).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("dimensions") }));
   });
 
-  it("repaints continuously while playing and stops while paused or waiting", async () => {
+  it("does not run a continuous repaint loop when video frame callbacks are available", async () => {
     const { layer, video, triggerRepaint, animationFrames } = setup();
+
+    await layer.play();
+    expect(triggerRepaint).not.toHaveBeenCalled();
+    expect(animationFrames.size).toBe(0);
+
+    video.frameCallback!(16, { mediaTime: 1, presentedFrames: 1 });
+    expect(triggerRepaint).toHaveBeenCalledOnce();
+    expect(animationFrames.size).toBe(0);
+  });
+
+  it("repaints continuously as a fallback without video frame callbacks", async () => {
+    const { layer, video, triggerRepaint, animationFrames } = setup(false);
 
     await layer.play();
     expect(triggerRepaint).toHaveBeenCalledTimes(1);
@@ -250,6 +287,9 @@ describe("GeoVideoLayer playback scheduling", () => {
       bufferedFrames: 1,
       uploadedFrames: 0,
       droppedFrames: 2,
+      frameCallbackCount: 1,
+      readyState: 2,
+      networkState: 1,
     });
   });
 
