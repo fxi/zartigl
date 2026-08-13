@@ -26,6 +26,7 @@
         "kind": { "type": "string", "enum": ["vector", "scalar"] },
         "dataset": { "$ref": "#/$defs/Dataset" },
         "stores": { "$ref": "#/$defs/Stores" },
+        "derived": { "$ref": "#/$defs/Derived" },
         "variables": { "$ref": "#/$defs/Variables" },
         "defaults": { "$ref": "#/$defs/Defaults" }
       }
@@ -117,11 +118,31 @@
         "style": { "type": "string", "minLength": 1 }
       }
     },
+    "Derived": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "geoVideos": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "manifestUrl"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+              "label": { "type": "string", "minLength": 1 },
+              "manifestUrl": { "type": "string", "pattern": "^https?://" }
+            }
+          }
+        }
+      }
+    },
     "Defaults": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "backend": { "type": "string", "enum": ["zarr", "wmts"] },
+        "backend": { "type": "string", "enum": ["zarr", "geovideo", "wmts"] },
         "palette": { "type": "string" },
         "renderMode": {
           "type": "string",

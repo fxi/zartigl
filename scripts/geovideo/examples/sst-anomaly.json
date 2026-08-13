@@ -1,0 +1,27 @@
+{
+  "id": "sst-anomaly-six-months",
+  "layerId": "sea-surface-temperature-anomaly",
+  "dateStart": "2026-02-01T00:00:00Z",
+  "dateEnd": "2026-08-01T00:00:00Z",
+  "durationSeconds": 30,
+  "interpolation": "linear",
+  "bounds": [-180, -90, 180, 90],
+  "style": {
+    "palette": "balance",
+    "colorDomain": [-3, 3],
+    "unit": "degrees_C",
+    "logScale": false,
+    "vibrance": 0.1
+  },
+  "output": {
+    "width": 2048,
+    "height": 1024,
+    "fps": 24,
+    "maxBitrate": "8M",
+    "preset": "fast",
+    "directory": "artifacts/geovideo"
+  },
+  "upload": {
+    "prefix": "geovideo"
+  }
+}

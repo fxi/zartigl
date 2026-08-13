@@ -43,7 +43,7 @@ interface HashState {
   t: number;
   v: number;
   p: string;
-  s?: "zarr" | "wmts";
+  s?: "zarr" | "geovideo" | "wmts";
   pr?: "mercator" | "globe";
   c?: [number, number];
   z?: number;
@@ -296,7 +296,7 @@ export class DemoApp {
   private readonly pane: Pane;
   private params: DemoParams;
   private currentLayer: CatalogLayer;
-  private currentBackend: "zarr" | "wmts" = "zarr";
+  private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
   private currentProjection: "mercator" | "globe" = "mercator";
   private activePopup: maplibregl.Popup | null = null;
   private switchSeq = 0;
@@ -313,7 +313,7 @@ export class DemoApp {
   private paletteSelectEl!: HTMLSelectElement;
   private layerDescEl!: HTMLDivElement;
   private sourceContainer!: HTMLDivElement;
-  private sourceButtons: { source: "zarr" | "wmts"; btn: HTMLButtonElement }[] = [];
+  private sourceButtons: { source: "zarr" | "geovideo" | "wmts"; btn: HTMLButtonElement }[] = [];
   private projButtons: { proj: string; btn: HTMLButtonElement }[] = [];
   private legendBar!: HTMLDivElement;
   private legendMin!: HTMLSpanElement;
@@ -360,11 +360,17 @@ export class DemoApp {
     this.activePopup?.remove();
     this.activePopup = null;
 
-    if (hashState?.s === "wmts" && layer.kind === "scalar" && layer.stores.wmts) {
+    if (hashState?.s === "geovideo" && layer.kind === "scalar" && layer.derived?.geoVideos?.length) {
+      this.currentBackend = "geovideo";
+    } else if (hashState?.s === "wmts" && layer.kind === "scalar" && layer.stores.wmts) {
       this.currentBackend = "wmts";
     } else if (hashState?.s === "zarr") {
       this.currentBackend = "zarr";
-    } else if (layer.kind !== "scalar" || !layer.stores.wmts) {
+    } else if (
+      layer.kind !== "scalar" ||
+      (this.currentBackend === "wmts" && !layer.stores.wmts) ||
+      (this.currentBackend === "geovideo" && !layer.derived?.geoVideos?.length)
+    ) {
       this.currentBackend = "zarr";
     }
 
@@ -390,6 +396,17 @@ export class DemoApp {
     });
     activeZartigl.on("status", (status) => {
       if (this.z === activeZartigl && seq === this.switchSeq) this.updateDataStatus(status);
+    });
+    let lastVideoUiUpdate = 0;
+    activeZartigl.on("timeChange", (time) => {
+      if (this.z !== activeZartigl || seq !== this.switchSeq || this.currentBackend !== "geovideo") return;
+      const now = performance.now();
+      if (now - lastVideoUiUpdate < 200) return;
+      lastVideoUiUpdate = now;
+      const values = activeZartigl.getTimeMeta().values;
+      this.params.timeIndex = nearestTimeIndex(values, time);
+      this.params.timeLabel = formatTime(time);
+      this.pane.refresh();
     });
 
     await activeZartigl.setLayer(layer.id);
@@ -480,6 +497,13 @@ export class DemoApp {
       labelBinding,
     );
     if (depthBinding) this.dataBindings.push(depthBinding);
+    if (this.currentBackend === "geovideo") {
+      const playButton = this.dataFolder.addButton({ title: "Play GeoVideo" })
+        .on("click", () => void this.z?.play());
+      const pauseButton = this.dataFolder.addButton({ title: "Pause GeoVideo" })
+        .on("click", () => this.z?.pause());
+      this.dataBindings.push(playButton, pauseButton);
+    }
   }
 
   // ── Static UI (built once) ──────────────────────────────────────────
@@ -609,12 +633,13 @@ export class DemoApp {
     this.sourceContainer = document.createElement("div");
     this.sourceContainer.className = "render-mode-btns";
 
-    for (const src of ["zarr", "wmts"] as const) {
+    for (const src of ["zarr", "geovideo", "wmts"] as const) {
       const btn = document.createElement("button");
       btn.textContent = src;
       btn.className = "render-mode-btn" + (src === this.currentBackend ? " active" : "");
       btn.addEventListener("click", () => {
         if (src === "wmts" && !this.currentLayer.stores.wmts) return;
+        if (src === "geovideo" && !this.currentLayer.derived?.geoVideos?.length) return;
         this.currentBackend = src;
         this.updateSourceButtons();
         this.syncColorDomainVisibility();
@@ -802,6 +827,7 @@ export class DemoApp {
     if (this.colorDomainControls.length === 0) return;
     const visible = this.currentLayer.kind === "scalar" && this.currentBackend === "zarr";
     for (const control of this.colorDomainControls) control.hidden = !visible;
+    if (this.paletteSelectEl) this.paletteSelectEl.disabled = this.currentBackend === "geovideo";
   }
 
   private syncColorDomainControl(): void {
@@ -1022,7 +1048,8 @@ export class DemoApp {
 
   private updateDebugStatus(): void {
     const info = this.z?.getDebugInfo();
-    const simulation = info?.layer?.delegate?.simulation;
+    const delegate = info?.layer?.delegate;
+    const simulation = delegate && "simulation" in delegate ? delegate.simulation : undefined;
     const renderer = this.shortRendererLabel(
       simulation?.webgl?.unmaskedRenderer ??
       simulation?.webgl?.renderer,
@@ -1123,15 +1150,18 @@ export class DemoApp {
 
   private updateSourceVisibility(): void {
     const canWmts = this.currentLayer.kind === "scalar" && !!this.currentLayer.stores.wmts;
-    if (this.sourceContainer) this.sourceContainer.style.display = canWmts ? "" : "none";
+    const canGeoVideo = this.currentLayer.kind === "scalar" && !!this.currentLayer.derived?.geoVideos?.length;
+    if (this.sourceContainer) this.sourceContainer.style.display = canWmts || canGeoVideo ? "" : "none";
     this.updateSourceButtons();
   }
 
   private updateSourceButtons(): void {
     const canWmts = this.currentLayer.kind === "scalar" && !!this.currentLayer.stores.wmts;
+    const canGeoVideo = this.currentLayer.kind === "scalar" && !!this.currentLayer.derived?.geoVideos?.length;
     for (const { source, btn } of this.sourceButtons) {
       btn.classList.toggle("active", source === this.currentBackend);
       btn.disabled = source === "wmts" && !canWmts;
+      if (source === "geovideo") btn.disabled = !canGeoVideo;
     }
   }
 

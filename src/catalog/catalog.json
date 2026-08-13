@@ -534,6 +534,15 @@
           "format": "image/png"
         }
       },
+      "derived": {
+        "geoVideos": [
+          {
+            "id": "sst-anomaly-six-months-2026",
+            "label": "Six-month global animation (February–August 2026)",
+            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-surface-temperature-anomaly/d06c30f7a023/manifest.json"
+          }
+        ]
+      },
       "variables": {
         "kind": "scalar",
         "value": "sea_surface_temperature_anomaly"

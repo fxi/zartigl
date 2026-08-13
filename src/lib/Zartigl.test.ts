@@ -130,6 +130,58 @@ beforeEach(() => {
 });
 
 describe("Zartigl facade", () => {
+  it("loads an explicit GeoVideo backend without initializing the field Zarr store", async () => {
+    const layer = scalarLayer({
+      derived: {
+        geoVideos: [{ id: "preview", manifestUrl: "https://example.test/manifest.json" }],
+      },
+    });
+    const manifest = {
+      schemaVersion: 1,
+      id: "preview",
+      type: "geovideo",
+      projection: "equirectangular",
+      bounds: [-180, -90, 180, 90],
+      media: {
+        url: "video.mp4",
+        mimeType: "video/mp4",
+        width: 16,
+        height: 8,
+        packedWidth: 32,
+        packedHeight: 8,
+        fps: 2,
+        durationSeconds: 2,
+        codec: "h264",
+        alpha: "side-by-side",
+      },
+      timeline: {
+        kind: "range",
+        dateStart: "2026-01-01T00:00:00Z",
+        dateEnd: "2026-01-02T00:00:00Z",
+        interpolation: "linear",
+      },
+      provenance: {
+        layerId: "scalar",
+        datasetId: "dataset",
+        variable: "temperature",
+        generatedAt: "2026-01-03T00:00:00Z",
+      },
+      style: { palette: "balance", colorDomain: [-3, 3], unit: "degC" },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
+    vi.mocked(ZarrSource.prototype.init).mockClear();
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(layer), backend: "geovideo" });
+
+    await z.setLayer("scalar");
+
+    expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
+    expect(z.getBackend()).toBe("geovideo");
+    expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "degC" });
+    expect(z.getTimeMeta()).toMatchObject({ size: 4 });
+    vi.unstubAllGlobals();
+  });
+
   it("defaults to the latest advertised time that is not in the future", async () => {
     const now = Date.UTC(2026, 7, 5, 9);
     const values = [now - 6 * 3600_000, now, now + 6 * 3600_000];

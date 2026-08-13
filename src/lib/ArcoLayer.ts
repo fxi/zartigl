@@ -16,6 +16,8 @@ import type { ColorRampInput } from "./gl-util";
 import type { CatalogLayer } from "../catalog/types";
 import type { RenderMode } from "./ParticleSimulation";
 import type { ZartiglStatus } from "./load-status";
+import { GeoVideoLayer } from "./GeoVideoLayer";
+import type { GeoVideoLayerDebugInfo } from "./GeoVideoLayer";
 
 type LayerEventMap = {
   loading: () => void;
@@ -24,6 +26,7 @@ type LayerEventMap = {
   status: (status: ZartiglStatus) => void;
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
+  timeChange: (time: number) => void;
 };
 
 export type ArcoLayerDebugInfo = {
@@ -37,7 +40,7 @@ export type ArcoLayerDebugInfo = {
   time: string | number;
   depth: number;
   opacity: number;
-  delegate: VectorLayerDebugInfo | ScalarLayerDebugInfo | null;
+  delegate: VectorLayerDebugInfo | ScalarLayerDebugInfo | GeoVideoLayerDebugInfo | null;
 };
 
 function toIsoTime(time: string | number): string {
@@ -104,6 +107,9 @@ export function buildWmtsLegendUrl(options: {
 
 export function selectArcoLayerBackend(options: ArcoLayerOptions): ArcoLayerBackend {
   if (options.layer.kind === "vector") return "vector";
+  if (options.backend === "geovideo" && options.layer.derived?.geoVideos?.length) {
+    return "scalar-geovideo";
+  }
   if (options.backend === "wmts" && options.layer.stores.wmts) return "scalar-wmts";
   return "scalar-zarr";
 }
@@ -132,7 +138,7 @@ export class ArcoLayer implements CustomLayerInterface {
 
   private readonly options: ArcoLayerOptions;
   private readonly backend: ArcoLayerBackend;
-  private delegate: ScalarLayer | VectorLayer | null = null;
+  private delegate: ScalarLayer | VectorLayer | GeoVideoLayer | null = null;
   private map: MaplibreMap | null = null;
   private rasterSourceId: string;
   private rasterLayerId: string;
@@ -181,6 +187,14 @@ export class ArcoLayer implements CustomLayerInterface {
         particleState: options.particleState,
         rgba8MaxParticleZoom: options.rgba8MaxParticleZoom,
         unit: options.unit ?? "",
+      });
+    } else if (this.backend === "scalar-geovideo") {
+      const render = options.layer.derived?.geoVideos?.[0];
+      if (!render) throw new Error(`Catalog layer does not provide GeoVideo: ${options.layer.id}`);
+      this.delegate = new GeoVideoLayer({
+        id: options.id,
+        manifest: options.geoVideoManifest ?? render.manifestUrl,
+        opacity: options.opacity,
       });
     }
   }
@@ -338,20 +352,34 @@ export class ArcoLayer implements CustomLayerInterface {
     if (this.delegate instanceof ScalarLayer) this.delegate.setColorDomain(domain);
   }
 
+  async play(): Promise<void> {
+    if (this.delegate instanceof GeoVideoLayer) await this.delegate.play();
+  }
+
+  pause(): void {
+    if (this.delegate instanceof GeoVideoLayer) this.delegate.pause();
+  }
+
   async samplePoint(options: { longitude: number; latitude: number; time?: string | number; depth?: number }) {
     if (this.delegate instanceof ScalarLayer) return this.delegate.samplePoint(options);
     return undefined;
   }
 
   on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
-    this.delegate?.on(event, handler);
+    const delegate = this.delegate as unknown as {
+      on?: (name: string, callback: Function) => unknown;
+    } | null;
+    delegate?.on?.(event, handler);
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(handler);
     return this;
   }
 
   off<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
-    this.delegate?.off(event, handler);
+    const delegate = this.delegate as unknown as {
+      off?: (name: string, callback: Function) => unknown;
+    } | null;
+    delegate?.off?.(event, handler);
     this.listeners.get(event)?.delete(handler);
     return this;
   }

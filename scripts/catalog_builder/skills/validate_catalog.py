@@ -95,6 +95,16 @@ def main():
             if color_domain[0] >= color_domain[1]:
                 fail(f"{layer['id']}: raster.colorDomain minimum must be less than maximum")
 
+        geo_videos = (layer.get("derived") or {}).get("geoVideos") or []
+        if geo_videos and layer["kind"] != "scalar":
+            fail(f"{layer['id']}: GeoVideo v1 is only valid on scalar layers")
+        render_ids = [render["id"] for render in geo_videos]
+        duplicate_render_ids = {item for item in render_ids if render_ids.count(item) > 1}
+        if duplicate_render_ids:
+            fail(f"{layer['id']}: duplicate GeoVideo ids: {duplicate_render_ids}")
+        if defaults.get("backend") == "geovideo" and not geo_videos:
+            fail(f"{layer['id']}: geovideo default requires derived.geoVideos")
+
         data_keys.append(key)
     dupe_data = [k for k in data_keys if data_keys.count(k) > 1]
     if dupe_data:

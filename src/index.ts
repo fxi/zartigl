@@ -5,4 +5,5 @@ export type {
   CatalogVariables,
   CatalogVectorDerivation,
   CatalogWmts,
+  CatalogGeoVideo,
 } from "./catalog/types";

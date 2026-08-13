@@ -33,6 +33,16 @@ const scalarWmtsLayer: ArcoLayerOptions["layer"] = {
   defaults: {},
 };
 
+const scalarGeoVideoLayer: ArcoLayerOptions["layer"] = {
+  ...scalarWmtsLayer,
+  derived: {
+    geoVideos: [{
+      id: "preview",
+      manifestUrl: "https://example.test/geovideo/manifest.json",
+    }],
+  },
+};
+
 function layerOptions(layer: ArcoLayerOptions["layer"], extra: Partial<ArcoLayerOptions> = {}): ArcoLayerOptions {
   return {
     id: "layer",
@@ -152,6 +162,11 @@ describe("selectArcoLayerBackend", () => {
 
   it("uses WMTS only when explicitly requested", () => {
     expect(selectArcoLayerBackend(layerOptions(scalarWmtsLayer, { backend: "wmts" }))).toBe("scalar-wmts");
+  });
+
+  it("uses GeoVideo only when explicitly requested", () => {
+    expect(selectArcoLayerBackend(layerOptions(scalarGeoVideoLayer, { backend: "geovideo" })))
+      .toBe("scalar-geovideo");
   });
 });
 

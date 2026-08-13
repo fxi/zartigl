@@ -32,6 +32,7 @@
     "preview": "vite preview",
     "catalog": "npm run catalog:validate",
     "catalog:validate": "uv run scripts/catalog_builder/skills/validate_catalog.py",
+    "geovideo:dry-run": "uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run",
     "smoke:sample": "npm run build:lib && node scripts/smoke-sample-point.mjs",
     "release:check": "npm run test && npm run catalog:validate && npm run build && npm run build:lib && npm run smoke:sample",
     "prepublishOnly": "npm run build:lib"

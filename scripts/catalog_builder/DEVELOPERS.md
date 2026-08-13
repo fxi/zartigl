@@ -92,7 +92,13 @@ For direction/magnitude vector derivation, use:
 - `stores.pointSeries` enables point time-series and depth-profile queries.
 - `stores.wmts` is only valid on scalar layers.
 - Time, vertical, spatial, and variable metadata must not be copied into the catalog; it is loaded live from Zarr.
-- `defaults.backend` can be `zarr` or `wmts`; omit it to let the app auto-detect, or set `"wmts"` explicitly when a scalar layer should prefer WMTS rendering.
+- `defaults.backend` can be `zarr`, `geovideo`, or `wmts`; omit it to keep the normal scientific-first automatic selection.
+- A scalar layer may reference immutable, pre-rendered GeoVideo manifests under
+  `derived.geoVideos`. GeoVideo is a derived visualization, never a replacement
+  for the authoritative Zarr store or dataset provenance. See
+  `scripts/geovideo/README.md`.
+- A `geovideo` default requires such a derived manifest. The normal automatic
+  preference remains Zarr first.
 - `defaults.palette` must exist in `src/lib/palettes.json`.
 - `defaults.renderMode` is optional and only affects vector layers. It accepts
   `particles`, `raster`, or `raster+particles`; the runtime default is `particles`.

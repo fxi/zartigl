@@ -4,8 +4,15 @@ import drawFrag from "./shaders/draw.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
 import gridFrag from "./shaders/grid.frag.glsl?raw";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
+import geoVideoFrag from "./shaders/geovideo.frag.glsl";
 
 describe("particle shader invalid-state guards", () => {
+  it("combines buffered GeoVideo color with its stable mask texture", () => {
+    expect(geoVideoFrag).toContain("uniform sampler2D u_color");
+    expect(geoVideoFrag).toContain("uniform sampler2D u_mask");
+    expect(geoVideoFrag).toContain("texture2D(u_mask, uv).r");
+    expect(geoVideoFrag).toContain("alpha * u_opacity");
+  });
   it("respawns invalid particle state in the update shader", () => {
     expect(updateFrag).toContain("invalidNormalizedPosition");
     expect(updateFrag).toContain("invalidWrappedPosition");

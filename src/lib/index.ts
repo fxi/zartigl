@@ -1,5 +1,13 @@
 export { Zartigl } from "./Zartigl";
 export { ScalarLayer } from "./ScalarLayer";
+export { GeoVideoLayer } from "./GeoVideoLayer";
+export {
+  geoVideoSecondsForTime,
+  geoVideoTimeForSeconds,
+  geoVideoTimelineValues,
+  loadGeoVideoManifest,
+  validateGeoVideoManifest,
+} from "./geovideo";
 export { VectorLayer } from "./VectorLayer";
 export { ArcoLayer, buildWmtsLegendUrl, buildWmtsTileUrl, selectArcoLayerBackend } from "./ArcoLayer";
 export { ZarrSource } from "./ZarrSource";
@@ -48,6 +56,13 @@ export type {
 } from "./ParticleSimulation";
 export type { ArcoLayerDebugInfo } from "./ArcoLayer";
 export type { ScalarLayerDebugInfo } from "./ScalarLayer";
+export type { GeoVideoLayerDebugInfo, GeoVideoLayerOptions } from "./GeoVideoLayer";
+export type {
+  GeoVideoBounds,
+  GeoVideoManifestV1,
+  GeoVideoRangeTimeline,
+  GeoVideoSnapshotLoopTimeline,
+} from "./geovideo";
 export type { VectorLayerDebugInfo } from "./VectorLayer";
 export type {
   DepthMeta,

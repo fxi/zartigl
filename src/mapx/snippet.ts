@@ -2,7 +2,7 @@ import type { ZartiglSettings } from "../lib/Zartigl";
 
 export interface MapxWidgetSnippetOptions {
   layerId: string;
-  backend?: "auto" | "zarr" | "wmts";
+  backend?: "auto" | "zarr" | "geovideo" | "wmts";
   time?: string | number | Date;
   depth?: number;
   settings?: Partial<ZartiglSettings>;

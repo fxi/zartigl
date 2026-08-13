@@ -7,6 +7,12 @@ export interface CatalogWmts {
   style?: string;
 }
 
+export interface CatalogGeoVideo {
+  id: string;
+  label?: string;
+  manifestUrl: string;
+}
+
 export interface CatalogVectorDerivation {
   kind: "direction_magnitude";
   direction_variable: string;
@@ -47,8 +53,11 @@ interface CatalogLayerBase {
     };
     wmts?: CatalogWmts;
   };
+  derived?: {
+    geoVideos?: CatalogGeoVideo[];
+  };
   defaults?: {
-    backend?: "zarr" | "wmts";
+    backend?: "zarr" | "geovideo" | "wmts";
     palette?: string;
     renderMode?: "particles" | "raster" | "raster+particles";
     particles?: {

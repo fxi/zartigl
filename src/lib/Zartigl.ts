@@ -14,6 +14,11 @@ import type {
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
 import type { ZartiglStatus } from "./load-status";
+import {
+  geoVideoTimelineValues,
+  loadGeoVideoManifest,
+  type GeoVideoManifestV1,
+} from "./geovideo";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -34,7 +39,7 @@ export interface ZartiglOptions {
   id?: string;
   map: MaplibreMap;
   catalog: Catalog;
-  backend?: "auto" | "zarr" | "wmts";
+  backend?: "auto" | "zarr" | "geovideo" | "wmts";
   visible?: boolean;
   settings?: Partial<ZartiglSettings>;
   metadata?: Record<string, unknown>;
@@ -48,8 +53,8 @@ export interface ZartiglDebugInfo {
   destroyed: boolean;
   visible: boolean;
   suspended: boolean;
-  backendPreference: "auto" | "zarr" | "wmts";
-  activeBackend?: "zarr" | "wmts";
+  backendPreference: "auto" | "zarr" | "geovideo" | "wmts";
+  activeBackend?: "zarr" | "geovideo" | "wmts";
   projection?: string;
   canvasSize?: { width: number; height: number };
   canvasCssSize?: { width: number; height: number };
@@ -113,7 +118,7 @@ export interface QueryDepthProfileOptions {
   maxDepths?: number;
 }
 
-type PublicBackend = "auto" | "zarr" | "wmts";
+type PublicBackend = "auto" | "zarr" | "geovideo" | "wmts";
 
 type ZartiglEventMap = {
   loading: () => void;
@@ -122,6 +127,7 @@ type ZartiglEventMap = {
   status: (status: ZartiglStatus) => void;
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
+  timeChange: (time: number) => void;
 };
 
 function latestTimeAtOrBefore(values: readonly number[], now: number): number {
@@ -211,6 +217,7 @@ export class Zartigl {
   private verticalMeta: ZarrVerticalDimension | null = null;
   private variableUnit = "";
   private variableStandardName: string | undefined;
+  private geoVideoManifest: GeoVideoManifestV1 | null = null;
   private fieldSources = new Map<string, ZarrSource>();
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
@@ -250,6 +257,53 @@ export class Zartigl {
     const layerDefaults = defaultSettings(catalogLayer);
 
     const generation = ++this.switchGeneration;
+    const requestedBackend = this.backendForLayer(catalogLayer);
+    if (requestedBackend === "geovideo") {
+      const render = catalogLayer.derived?.geoVideos?.[0];
+      if (!render) throw new Error(`Catalog layer does not provide GeoVideo: ${id}`);
+      this.emit("status", { phase: "metadata" });
+      try {
+        const manifest = await loadGeoVideoManifest(render.manifestUrl);
+        if (generation !== this.switchGeneration) {
+          throw new DOMException("Layer selection was superseded", "AbortError");
+        }
+        const values = geoVideoTimelineValues(manifest);
+        this.detach();
+        this.catalogLayer = catalogLayer;
+        this.activeFieldSource = null;
+        this.geoVideoManifest = manifest;
+        this.timeMeta = {
+          min: values[0],
+          max: values[values.length - 1],
+          step: values.length > 1 ? values[1] - values[0] : undefined,
+          size: values.length,
+          units: "milliseconds since 1970-01-01T00:00:00Z",
+          values,
+        };
+        this.verticalMeta = null;
+        this.variableUnit = manifest.style.unit ?? "";
+        this.variableStandardName = manifest.provenance.variable;
+        this.time = values[0];
+        this.depth = 0;
+        const overriddenColorDomain = this.settings.colorDomain;
+        this.settings = { ...layerDefaults, ...this.settings };
+        this.settings.colorDomain = this.colorDomainOverridden
+          ? (overriddenColorDomain ?? null)
+          : manifest.style.colorDomain;
+        this.settings.palette = manifest.style.palette;
+        this.lastMeta = null;
+        this.attachWhenReady();
+        return;
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        if (err.name !== "AbortError") {
+          this.emit("status", { phase: "error", error: err });
+          this.emit("error", err);
+        }
+        throw err;
+      }
+    }
+
     const source = this.getFieldSource(catalogLayer.stores.field.url);
     let timeMeta: ZarrTimeDimension;
     let verticalMeta: ZarrVerticalDimension | null;
@@ -280,6 +334,7 @@ export class Zartigl {
     this.detach();
     this.catalogLayer = catalogLayer;
     this.activeFieldSource = source;
+    this.geoVideoManifest = null;
     this.timeMeta = timeMeta;
     this.verticalMeta = verticalMeta;
     this.variableUnit = typeof unitAttrs.units === "string" ? unitAttrs.units : "";
@@ -351,6 +406,16 @@ export class Zartigl {
     this.assertAlive();
     this.time = nearestValue(this.timeMeta?.values ?? [], timeToMs(time));
     this.layer?.setTime(this.time);
+  }
+
+  async play(): Promise<void> {
+    this.assertAlive();
+    await this.layer?.play();
+  }
+
+  pause(): void {
+    this.assertAlive();
+    this.layer?.pause();
   }
 
   setDepth(depth: number): void {
@@ -428,6 +493,15 @@ export class Zartigl {
         format: "image/svg+xml",
       };
     }
+    if (this.activeBackendPreference() === "geovideo" && this.geoVideoManifest) {
+      return {
+        type: "gradient",
+        palette: this.geoVideoManifest.style.palette,
+        min: this.geoVideoManifest.style.colorDomain[0],
+        max: this.geoVideoManifest.style.colorDomain[1],
+        unit: this.geoVideoManifest.style.unit,
+      };
+    }
     const palette = typeof this.settings.palette === "string" ? this.settings.palette : "custom";
     const colorDomain = this.catalogLayer.kind === "scalar" ? this.settings.colorDomain : null;
     return {
@@ -443,9 +517,10 @@ export class Zartigl {
     return getPalettes();
   }
 
-  getBackend(): "zarr" | "wmts" | undefined {
+  getBackend(): "zarr" | "geovideo" | "wmts" | undefined {
     if (!this.catalogLayer) return undefined;
-    return this.activeBackendPreference() === "wmts" ? "wmts" : "zarr";
+    const backend = this.activeBackendPreference();
+    return backend === "wmts" || backend === "geovideo" ? backend : "zarr";
   }
 
   getDebugInfo(): ZartiglDebugInfo {
@@ -477,6 +552,13 @@ export class Zartigl {
 
   updateSettings(settings: Partial<ZartiglSettings>): void {
     this.assertAlive();
+    if (this.activeBackendPreference() === "geovideo") {
+      if (settings.opacity != null) {
+        this.settings = { ...this.settings, opacity: settings.opacity };
+        this.layer?.setOpacity(settings.opacity);
+      }
+      return;
+    }
     const validatedSettings = settings.colorDomain === undefined
       ? settings
       : {
@@ -541,9 +623,32 @@ export class Zartigl {
   private activeBackendPreference(): ArcoLayerBackendPreference {
     const catalogLayer = this.catalogLayer;
     if (!catalogLayer || catalogLayer.kind === "vector") return "zarr";
+    if (this.backendPreference === "geovideo") {
+      return catalogLayer.derived?.geoVideos?.length ? "geovideo" : "zarr";
+    }
     if (this.backendPreference === "wmts") return catalogLayer.stores.wmts ? "wmts" : "zarr";
     if (this.backendPreference === "zarr") return "zarr";
+    if (catalogLayer.defaults?.backend === "geovideo" && catalogLayer.derived?.geoVideos?.length) {
+      return "geovideo";
+    }
     return catalogLayer.defaults?.backend === "wmts" && catalogLayer.stores.wmts ? "wmts" : "zarr";
+  }
+
+  private backendForLayer(catalogLayer: CatalogLayer): "zarr" | "geovideo" | "wmts" {
+    if (catalogLayer.kind === "vector") return "zarr";
+    if (this.backendPreference === "geovideo") {
+      return catalogLayer.derived?.geoVideos?.length ? "geovideo" : "zarr";
+    }
+    if (this.backendPreference === "wmts") return catalogLayer.stores.wmts ? "wmts" : "zarr";
+    if (this.backendPreference === "zarr") return "zarr";
+    if (catalogLayer.defaults?.backend === "geovideo" && catalogLayer.derived?.geoVideos?.length) {
+      return "geovideo";
+    }
+    if (catalogLayer.defaults?.backend === "wmts" && catalogLayer.stores.wmts) return "wmts";
+    // Auto intentionally preserves the existing scientific-first preference.
+    if (catalogLayer.stores.field) return "zarr";
+    if (catalogLayer.derived?.geoVideos?.length) return "geovideo";
+    return catalogLayer.stores.wmts ? "wmts" : "zarr";
   }
 
   private attachWhenReady(): void {
@@ -569,6 +674,7 @@ export class Zartigl {
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
       colorDomain: this.settings.colorDomain,
+      geoVideoManifest: this.geoVideoManifest ?? undefined,
       particleState: this.settings.particleState,
       rgba8MaxParticleZoom: this.settings.rgba8MaxParticleZoom,
       zarrSource: this.activeFieldSource ?? undefined,
@@ -587,6 +693,10 @@ export class Zartigl {
     layer.on("status", (status) => this.emit("status", status));
     layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
     layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
+    layer.on("timeChange", (time) => {
+      this.time = time;
+      this.emit("timeChange", time);
+    });
     this.layer = layer;
     const before = this.getBeforeLayerId();
     if (before) {

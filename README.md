@@ -15,6 +15,7 @@ Zartigl renders scalar rasters and vector particle fields from multidimensional 
 - Point queries for time series and vertical profiles when a point-series store is available
 - Catalog-backed datasets with automatic Zarr/WMTS backend selection for scalar layers
 - MapLibre custom layer integration, including Mercator and globe rendering paths
+- Pre-rendered GeoVideo backends with true polar globe draping and packed transparency
 - No server component required for public CORS-enabled stores
 
 ## Quick Start
@@ -164,6 +165,31 @@ uv run scripts/catalog_builder/skills/validate_catalog.py
 ```
 
 This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Copernicus Marine](https://data.marine.copernicus.eu/register) account.
+
+## GeoVideo
+
+GeoVideo pre-renders an expensive scalar Zarr timeline into a short,
+streamable H.264 MP4 while retaining spatial bounds, scientific dates,
+provenance, units, palette, and color domain in a sidecar manifest. It is a
+selectable backend of the original scalar catalog layer, so point queries can
+still use the authoritative Zarr point-series store.
+
+Unlike MapLibre's native four-corner video source, `GeoVideoLayer` maps an
+equirectangular texture through zartigl's subdivided lon/lat mesh. Globe mode
+therefore reaches both poles. Transparency is portable across modern browsers:
+RGB is stored in the left half of the MP4 and a grayscale alpha mask in the
+right half, then reconstructed in the custom shader.
+
+```bash
+uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run
+uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json
+uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --upload
+```
+
+Generation requires FFmpeg. Upload credentials remain in `.env`; no private
+key is bundled into the demo or written to a manifest. See
+[`scripts/geovideo/README.md`](scripts/geovideo/README.md) for the configuration
+and smoke-test workflow.
 
 ## Dataset Scope
 

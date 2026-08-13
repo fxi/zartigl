@@ -7,6 +7,7 @@ export type {
   CatalogVariables,
   CatalogVectorDerivation,
   CatalogWmts,
+  CatalogGeoVideo,
 } from "./types";
 
 export const catalog = catalogJson as Catalog;
