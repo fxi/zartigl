@@ -537,9 +537,9 @@
       "derived": {
         "geoVideos": [
           {
-            "id": "sst-anomaly-six-months-2026",
-            "label": "Six-month global animation (February–August 2026)",
-            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-surface-temperature-anomaly/d06c30f7a023/manifest.json"
+            "id": "sst-anomaly-six-months-2026-scalar-luma",
+            "label": "Six-month scalar-luma animation (February–August 2026)",
+            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-surface-temperature-anomaly/5b560a8404a9/manifest.json"
           }
         ]
       },

@@ -32,6 +32,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import time
 from typing import Any
 import zlib
 
@@ -152,7 +153,7 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
 
 def artifact_hash(config: dict[str, Any], layer: dict[str, Any]) -> str:
     material = {
-        "format": "geovideo-v2-scalar-luma-static-mask",
+        "format": "geovideo-v2-scalar-luma-static-mask-intersection-v1",
         "config": config,
         "dataset": layer["dataset"],
         "store": layer["stores"]["field"],
@@ -226,7 +227,20 @@ class ScalarFrames:
         cached = self.cache.get(index)
         if cached is not None:
             return cached
-        raw = np.asarray(self.data.isel(time=index).values, dtype=np.float32)
+        for attempt in range(5):
+            try:
+                raw = np.asarray(self.data.isel(time=index).values, dtype=np.float32)
+                break
+            except Exception as exc:
+                if attempt == 4:
+                    raise
+                delay = 2 ** attempt
+                print(
+                    f"Zarr read failed for source time index {index}; retrying in {delay}s "
+                    f"({attempt + 1}/5): {exc}",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
         raw = raw[self.lat_order, :][:, self.lon_order]
         if self.lon_wrap:
             raw = np.concatenate([raw, raw[:, :1]], axis=1)
@@ -680,6 +694,7 @@ def main() -> int:
     command = ffmpeg_command(config, video_path)
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
     static_mask: np.ndarray | None = None
+    union_mask: np.ndarray | None = None
     expected_samples: list[tuple[np.ndarray, np.ndarray]] = []
     y_stride = max(1, config["output"]["height"] // 32)
     x_stride = max(1, config["output"]["width"] // 64)
@@ -690,12 +705,11 @@ def main() -> int:
             valid = np.isfinite(values)
             if static_mask is None:
                 static_mask = valid.copy()
-                write_mask_png(mask_path, static_mask)
-            elif not np.array_equal(valid, static_mask):
-                changed = int(np.count_nonzero(valid != static_mask))
-                raise RuntimeError(
-                    f"GeoVideo scalar-luma requires a static validity mask; frame {index} changes {changed} pixels"
-                )
+                union_mask = valid.copy()
+            else:
+                static_mask &= valid
+                assert union_mask is not None
+                union_mask |= valid
             encoded = render_scalar_luma(values, config)
             expected_samples.append((
                 encoded[::y_stride, ::x_stride, 0].copy(),
@@ -712,6 +726,16 @@ def main() -> int:
         process.kill()
         raise
 
+    assert static_mask is not None and union_mask is not None
+    write_mask_png(mask_path, static_mask)
+    sampled_static_mask = static_mask[::y_stride, ::x_stride]
+    expected_samples = [(expected, sampled_static_mask) for expected, _valid in expected_samples]
+    mask_report = {
+        "strategy": "intersection",
+        "validPixels": int(np.count_nonzero(static_mask)),
+        "varyingPixelsExcluded": int(np.count_nonzero(union_mask != static_mask)),
+        "totalPixels": int(static_mask.size),
+    }
     probe = probe_media(video_path, config, frame_count / config["output"]["fps"])
     value_validation = validate_encoded_values(
         video_path, expected_samples, config["output"]["width"], config["output"]["height"],
@@ -722,6 +746,7 @@ def main() -> int:
         **summary,
         "videoBytes": video_path.stat().st_size,
         "maskBytes": mask_path.stat().st_size,
+        "maskValidation": mask_report,
         "valueValidation": value_validation,
         "probe": probe,
         "manifest": manifest,

@@ -46,6 +46,10 @@ still required before adopting scalar-encoded video as a public format.
 GeoVideo is a visualization transport. Point clicks, time series, and depth
 profiles always query the catalog's authoritative Zarr store; decoded video
 values are never exposed as scientific samples. Vector layers remain Zarr-only.
+The lossless static mask is the intersection of validity over all encoded
+frames. Pixels whose validity changes are conservatively hidden for the whole
+animation, and their count is recorded as `maskValidation.varyingPixelsExcluded`
+in `report.json`.
 
 Use `--crf`, `--max-bitrate`, `--frames`, `--width`, and `--height` to compare
 profiles. The defaults exercise the current production dimensions and codec

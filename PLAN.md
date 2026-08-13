@@ -26,6 +26,9 @@ already uses spatial/temporal Zarr chunks and is outside this work.
 - Prefer a static lossless mask image when validity is time-invariant. Before
   encoding, fill masked pixels from nearby valid values to prevent H.264 ringing
   at coastlines; the mask remains the authority for visibility.
+- If source validity varies, derive the static mask from the intersection across
+  all frames. Conservatively hide those varying pixels and record their count in
+  the artifact report.
 
 Candidate manifest metadata:
 
