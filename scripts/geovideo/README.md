@@ -20,3 +20,25 @@ For a cheap end-to-end check, copy the example, lower its resolution/duration,
 and pass `--max-frames 2`. `--max-frames` is intentionally a smoke-test option:
 the resulting shortened media retains the requested timeline in its manifest
 and must not be published as a production artifact.
+
+## Scalar and vector calibration
+
+`calibrate.py` generates deterministic scalar and packed `u | v` value videos,
+round-trips them through the production H.264 settings, and reports code,
+`nodata`, speed, and direction errors:
+
+```bash
+npm run geovideo:calibrate
+```
+
+Outputs are written below `artifacts/geovideo-calibration/` and are ignored by
+Git. These statistics cover FFmpeg decoding; browser canvas/WebGL calibration is
+still required before adopting scalar-encoded video as a public format.
+
+Use `--crf`, `--max-bitrate`, `--frames`, `--width`, and `--height` to compare
+profiles. The defaults exercise the current production dimensions and codec
+settings; for example:
+
+```bash
+uv run scripts/geovideo/calibrate.py --frames 12 --crf 12 --max-bitrate 16M
+```

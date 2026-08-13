@@ -11,6 +11,10 @@ benefits of GeoVideo.
 This representation is intended for visualization. Zarr remains the source for
 scientific analysis and exact values.
 
+The same transport can carry vector fields by packing two grayscale components
+side by side (`u | v`). The stabilized canvas-buffer path already used by
+GeoVideo can crop those halves into independent GPU textures.
+
 ## Proposed encoding
 
 - Normalize the configured physical range into reserved 8-bit luminance codes.
@@ -22,6 +26,11 @@ scientific analysis and exact values.
   range, `nodata` range, color space, and default style in the manifest.
 - Decode the sampled luminance in the fragment shader and apply the existing
   scalar styling path. Do not expose decoded values as exact scientific samples.
+- For vector fields, encode `u` and `v` independently rather than direction and
+  magnitude; this avoids the angular discontinuity at 0/360 degrees.
+- Prefer a static lossless mask image when validity is time-invariant. Before
+  encoding, fill masked pixels from nearby valid values to prevent H.264 ringing
+  at coastlines; the mask remains the authority for visibility.
 
 Candidate manifest metadata:
 
@@ -45,6 +54,30 @@ Candidate manifest metadata:
 The final wire shape must be based on the calibration results rather than added
 to the public manifest immediately.
 
+## Preliminary FFmpeg results
+
+`scripts/geovideo/calibrate.py` now exercises scalar 2048x1024 and packed vector
+4096x1024 videos with deterministic ramps, moving gradients, hard `nodata`
+edges, and an adversarial noise field.
+
+With H.264 `yuv420p`, CRF 12, and a 16 Mbit/s ceiling:
+
+- the stable scalar ramp retains 206 distinct valid modal codes;
+- the RGB/YUV round trip produces a deterministic mean code offset of about
+  1.73 and a maximum of 2 even at CRF 0, so a decode LUT or calibrated transfer
+  is required;
+- the moving-gradient region has a p99 code error of 3; its larger isolated
+  errors occur at the deliberately wrapped 255-to-0 discontinuity;
+- stable and moving vector regions have vector RMSE around 0.042-0.044 over a
+  component range of -2 to 2; mean direction error for the moving field is about
+  0.54 degrees when speeds below 0.2 are excluded;
+- the incompressible noise stress field degrades substantially, as expected;
+- encoding `nodata` beside valid values is unsafe with the initial `0..7` guard
+  band. A separate static mask plus filled invalid pixels is the preferred path.
+
+These are codec-only measurements. They validate continued exploration but do
+not yet satisfy the browser acceptance criteria below.
+
 ## Calibration prototype
 
 1. Generate a short local test video containing all 256 codes, smooth gradients,
@@ -61,6 +94,8 @@ to the public manifest immediately.
    - spatial errors at gradients and discontinuities;
    - decoded, buffered, skipped, uploaded, and browser-dropped frame counts.
 5. Compare direct video playback with MapLibre globe and Mercator playback.
+6. For vector data, compare reconstructed vectors and particle trajectories with
+   the equivalent Zarr field over several hundred simulation steps.
 
 Use a calibration lookup table only if it is stable across frames and browsers.
 Prefer wider reserved guard bands over browser-specific correction logic.
@@ -74,6 +109,8 @@ Prefer wider reserved guard bands over browser-specific correction logic.
   at least 99.9% of valid pixels; the remaining error must stay below one step.
 - Constant encoded pixels do not flicker between palette bins during playback.
 - Playback remains as smooth as the current buffered RGB GeoVideo implementation.
+- Vector RMSE, speed bias, angular error away from zero speed, and accumulated
+  particle-trajectory divergence remain within an explicitly reported budget.
 - The scalar video is materially smaller or more flexible than equivalent
   pre-styled renditions; otherwise retain the current RGB approach.
 
