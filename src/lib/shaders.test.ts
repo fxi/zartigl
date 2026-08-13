@@ -12,6 +12,11 @@ describe("particle shader invalid-state guards", () => {
     expect(geoVideoFrag).toContain("uniform sampler2D u_mask");
     expect(geoVideoFrag).toContain("texture2D(u_mask, uv).r");
     expect(geoVideoFrag).toContain("alpha * u_opacity");
+    expect(geoVideoFrag).toContain("u_scalar_luma");
+    expect(geoVideoFrag).toContain("u_code_range");
+    expect(geoVideoFrag).toContain("u_value_range");
+    expect(geoVideoFrag).toContain("u_color_domain");
+    expect(geoVideoFrag).toContain("texture2D(u_color_ramp");
   });
   it("respawns invalid particle state in the update shader", () => {
     expect(updateFrag).toContain("invalidNormalizedPosition");

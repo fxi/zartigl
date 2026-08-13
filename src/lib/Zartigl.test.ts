@@ -179,6 +179,12 @@ describe("Zartigl facade", () => {
     expect(z.getBackend()).toBe("geovideo");
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "degC" });
     expect(z.getTimeMeta()).toMatchObject({ size: 4 });
+    const querySpy = vi
+      .spyOn(ZarrSource.prototype, "sampleTimeSeries")
+      .mockResolvedValue({ longitude: 0, latitude: 0, points: [] });
+    await z.queryTimeSeries({ longitude: 1, latitude: 2 });
+    expect(ZarrSource.prototype.init).toHaveBeenCalledOnce();
+    expect(querySpy).toHaveBeenCalledOnce();
     vi.unstubAllGlobals();
   });
 

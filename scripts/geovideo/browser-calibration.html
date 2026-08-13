@@ -1,0 +1,132 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>GeoVideo browser calibration</title>
+<video id="video" muted playsinline></video>
+<canvas id="canvas"></canvas>
+<canvas id="glcanvas"></canvas>
+<pre id="result">running</pre>
+<script type="module">
+const query = new URLSearchParams(location.search);
+const width = Number(query.get("width"));
+const height = Number(query.get("height"));
+const frames = Number(query.get("frames"));
+const fps = Number(query.get("fps"));
+const video = document.querySelector("#video");
+const canvas = document.querySelector("#canvas");
+const glcanvas = document.querySelector("#glcanvas");
+const result = document.querySelector("#result");
+canvas.width = glcanvas.width = width;
+canvas.height = glcanvas.height = height;
+const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+
+function wait(target, event) {
+  return new Promise((resolve, reject) => {
+    target.addEventListener(event, resolve, { once: true });
+    target.addEventListener("error", () => reject(new Error(`Failed waiting for ${event}`)), { once: true });
+  });
+}
+
+function compile(gl, type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+  return shader;
+}
+
+function webglRoundTrip(source) {
+  const gl = glcanvas.getContext("webgl", { preserveDrawingBuffer: true });
+  if (!gl) throw new Error("WebGL unavailable");
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER,
+    "attribute vec2 p; varying vec2 uv; void main(){uv=(p+1.0)*0.5;gl_Position=vec4(p,0,1);}"));
+  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER,
+    "precision mediump float; varying vec2 uv; uniform sampler2D t; void main(){gl_FragColor=texture2D(t,uv);}"));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+  const location = gl.getAttribLocation(program, "p");
+  gl.enableVertexAttribArray(location);
+  gl.vertexAttribPointer(location, 2, gl.FLOAT, false, 0, 0);
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  gl.viewport(0, 0, width, height);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  const pixels = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  return pixels;
+}
+
+function luminance(data, offset) {
+  return Math.max(0, Math.min(255, Math.round(
+    data[offset] * .2126 + data[offset + 1] * .7152 + data[offset + 2] * .0722
+  )));
+}
+
+async function run() {
+  video.src = query.get("video") || "scalar.mp4";
+  await wait(video, "loadeddata");
+  if (video.videoWidth !== width || video.videoHeight !== height) {
+    throw new Error(`Unexpected video dimensions ${video.videoWidth}x${video.videoHeight}`);
+  }
+  const minima = new Uint8Array(256).fill(255);
+  const maxima = new Uint8Array(256);
+  const seen = new Set();
+  let maxError = 0;
+  let webglMismatchDirect = 0;
+  let webglMismatchFlipped = 0;
+  const y = Math.floor(height / 8);
+  for (let frame = 0; frame < frames; frame++) {
+    video.currentTime = Math.min(video.duration - 1 / fps / 4, (frame + .25) / fps);
+    await wait(video, "seeked");
+    context.drawImage(video, 0, 0, width, height);
+    const canvasPixels = context.getImageData(0, 0, width, height).data;
+    const glPixels = webglRoundTrip(canvas);
+    for (let code = 0; code < 256; code++) {
+      const x = Math.min(width - 1, Math.floor((code * 2 + 1) * width / 512));
+      const canvasOffset = (y * width + x) * 4;
+      const glOffsetDirect = (y * width + x) * 4;
+      const glOffsetFlipped = ((height - 1 - y) * width + x) * 4;
+      const decoded = luminance(canvasPixels, canvasOffset);
+      webglMismatchDirect = Math.max(
+        webglMismatchDirect, Math.abs(decoded - luminance(glPixels, glOffsetDirect))
+      );
+      webglMismatchFlipped = Math.max(
+        webglMismatchFlipped, Math.abs(decoded - luminance(glPixels, glOffsetFlipped))
+      );
+      minima[code] = Math.min(minima[code], decoded);
+      maxima[code] = Math.max(maxima[code], decoded);
+      seen.add(decoded);
+      maxError = Math.max(maxError, Math.abs(code - decoded));
+    }
+  }
+  const maxTemporalCodeSpan = Math.max(...maxima.map((value, index) => value - minima[index]));
+  const webglMismatch = Math.min(webglMismatchDirect, webglMismatchFlipped);
+  const report = {
+    userAgent: navigator.userAgent,
+    frames,
+    distinctStableRampCodes: seen.size,
+    maxStableRampCodeError: maxError,
+    maxTemporalCodeSpan,
+    maxCanvasWebglCodeMismatch: webglMismatch,
+    webglReadbackOrientation: webglMismatchDirect <= webglMismatchFlipped ? "direct" : "flipped",
+  };
+  report.accepted = seen.size >= 128 && maxError <= 2 && maxTemporalCodeSpan === 0 && webglMismatch === 0;
+  result.textContent = JSON.stringify(report);
+  document.title = report.accepted ? "PASS" : "FAIL";
+}
+
+run().catch((error) => {
+  result.textContent = JSON.stringify({ accepted: false, error: String(error?.stack || error) });
+  document.title = "ERROR";
+});
+</script>

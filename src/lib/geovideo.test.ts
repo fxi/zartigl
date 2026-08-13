@@ -3,8 +3,10 @@ import {
   geoVideoSecondsForTime,
   geoVideoTimeForSeconds,
   geoVideoTimelineValues,
+  loadGeoVideoManifest,
   validateGeoVideoManifest,
   type GeoVideoManifestV1,
+  type GeoVideoManifestV2,
 } from "./geovideo";
 
 const manifest: GeoVideoManifestV1 = {
@@ -40,6 +42,29 @@ const manifest: GeoVideoManifestV1 = {
   style: { palette: "balance", colorDomain: [-3, 3], unit: "degrees_C" },
 };
 
+const scalarLumaManifest: GeoVideoManifestV2 = {
+  schemaVersion: 2,
+  id: "sst-values",
+  type: "geovideo",
+  projection: "equirectangular",
+  bounds: [-180, -90, 180, 90],
+  media: {
+    url: "video.mp4", mimeType: "video/mp4", width: 2048, height: 1024,
+    fps: 24, durationSeconds: 30, codec: "h264",
+  },
+  encoding: {
+    kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247,
+    valueMin: -3, valueMax: 3, transfer: "linear", colorSpace: "bt709", colorRange: "limited",
+  },
+  mask: {
+    kind: "static-validity", url: "mask.png", mimeType: "image/png",
+    width: 2048, height: 1024, threshold: 0.5,
+  },
+  timeline: manifest.timeline,
+  provenance: manifest.provenance,
+  style: manifest.style,
+};
+
 describe("GeoVideo manifest", () => {
   it("validates a global side-by-side MP4", () => {
     expect(validateGeoVideoManifest(manifest)).toEqual(manifest);
@@ -50,6 +75,32 @@ describe("GeoVideo manifest", () => {
       ...manifest,
       media: { ...manifest.media, packedWidth: 2048 },
     })).toThrow(/dimensions/);
+  });
+
+  it("validates scalar-luma video with an external static mask", () => {
+    expect(validateGeoVideoManifest(scalarLumaManifest)).toEqual(scalarLumaManifest);
+  });
+
+  it("rejects scalar-luma masks whose dimensions differ from the media", () => {
+    expect(() => validateGeoVideoManifest({
+      ...scalarLumaManifest,
+      mask: { ...scalarLumaManifest.mask, width: 1024 },
+    })).toThrow(/mask/);
+  });
+
+  it("resolves both scalar-luma assets relative to the manifest", async () => {
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, json: async () => scalarLumaManifest }) as Response;
+    try {
+      const loaded = await loadGeoVideoManifest("https://cdn.test/artifact/manifest.json");
+      expect(loaded.media.url).toBe("https://cdn.test/artifact/video.mp4");
+      expect(loaded.schemaVersion).toBe(2);
+      if (loaded.schemaVersion === 2) {
+        expect(loaded.mask.url).toBe("https://cdn.test/artifact/mask.png");
+      }
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 
   it("maps scientific dates to media time and back", () => {

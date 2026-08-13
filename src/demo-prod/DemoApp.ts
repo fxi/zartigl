@@ -825,9 +825,10 @@ export class DemoApp {
 
   private syncColorDomainVisibility(): void {
     if (this.colorDomainControls.length === 0) return;
-    const visible = this.currentLayer.kind === "scalar" && this.currentBackend === "zarr";
+    const visible = this.currentLayer.kind === "scalar" &&
+      (this.currentBackend === "zarr" || this.z?.supportsDynamicStyle() === true);
     for (const control of this.colorDomainControls) control.hidden = !visible;
-    if (this.paletteSelectEl) this.paletteSelectEl.disabled = this.currentBackend === "geovideo";
+    if (this.paletteSelectEl) this.paletteSelectEl.disabled = this.z?.supportsDynamicStyle() === false;
   }
 
   private syncColorDomainControl(): void {
@@ -960,7 +961,7 @@ export class DemoApp {
           ? ` | ${formatTime(result.time)}`
           : "";
         meta.textContent =
-          `grid ${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
+          `source Zarr | grid ${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
           `value ${formatValue(nearest.value, unit)}${vectorText}`;
         renderPointChart(
           chart,

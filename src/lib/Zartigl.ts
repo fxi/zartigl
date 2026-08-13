@@ -17,7 +17,7 @@ import type { ZartiglStatus } from "./load-status";
 import {
   geoVideoTimelineValues,
   loadGeoVideoManifest,
-  type GeoVideoManifestV1,
+  type GeoVideoManifest,
 } from "./geovideo";
 
 export interface ZartiglSettings {
@@ -217,7 +217,7 @@ export class Zartigl {
   private verticalMeta: ZarrVerticalDimension | null = null;
   private variableUnit = "";
   private variableStandardName: string | undefined;
-  private geoVideoManifest: GeoVideoManifestV1 | null = null;
+  private geoVideoManifest: GeoVideoManifest | null = null;
   private fieldSources = new Map<string, ZarrSource>();
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
@@ -523,6 +523,11 @@ export class Zartigl {
     return backend === "wmts" || backend === "geovideo" ? backend : "zarr";
   }
 
+  /** Whether palette/domain styling is applied to values in the active renderer. */
+  supportsDynamicStyle(): boolean {
+    return this.activeBackendPreference() !== "geovideo" || this.geoVideoManifest?.schemaVersion === 2;
+  }
+
   getDebugInfo(): ZartiglDebugInfo {
     const canvas = this.map.getCanvas?.();
     return {
@@ -552,7 +557,7 @@ export class Zartigl {
 
   updateSettings(settings: Partial<ZartiglSettings>): void {
     this.assertAlive();
-    if (this.activeBackendPreference() === "geovideo") {
+    if (this.activeBackendPreference() === "geovideo" && this.geoVideoManifest?.schemaVersion === 1) {
       if (settings.opacity != null) {
         this.settings = { ...this.settings, opacity: settings.opacity };
         this.layer?.setOpacity(settings.opacity);
@@ -573,6 +578,12 @@ export class Zartigl {
     if (validatedSettings.colorDomain !== undefined) this.colorDomainOverridden = true;
     this.settings = { ...this.settings, ...validatedSettings };
     if (!this.layer) return;
+
+    if (paletteChanged && this.activeBackendPreference() === "geovideo") {
+      this.layer.setColorRamp(validatedSettings.palette!);
+      this.applyMutableSettings(this.layer, validatedSettings);
+      return;
+    }
 
     if (paletteChanged || particleStateChanged) {
       this.detach();

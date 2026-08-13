@@ -29,9 +29,11 @@ import math
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import sys
 from typing import Any
+import zlib
 
 import numpy as np
 import requests
@@ -39,7 +41,8 @@ import xarray as xr
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
-PALETTES_PATH = ROOT / "src" / "lib" / "palettes.json"
+P99_CODE_ERROR_LIMIT = 8
+MAX_CODE_ERROR_LIMIT = 16
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -77,7 +80,7 @@ def load_layer(layer_id: str) -> dict[str, Any]:
     for layer in catalog["layers"]:
         if layer["id"] == layer_id:
             if layer["kind"] != "scalar":
-                raise ValueError("GeoVideo v1 renderer supports scalar layers only")
+                raise ValueError("GeoVideo renderer supports scalar layers only")
             return layer
     raise ValueError(f"Unknown catalog layer: {layer_id}")
 
@@ -106,12 +109,15 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
     width = int(output.get("width", 2048))
     height = int(output.get("height", 1024))
     fps = float(output.get("fps", 24))
-    max_bitrate = str(output.get("maxBitrate", "8M"))
+    crf = int(output.get("crf", 12))
+    max_bitrate = str(output.get("maxBitrate", "16M"))
     preset = str(output.get("preset", "fast"))
     if preset not in {"medium", "fast", "faster", "veryfast"}:
         raise ValueError("output.preset must be medium, fast, faster, or veryfast")
     if width < 2 or height < 2 or width % 2 or height % 2 or fps <= 0:
         raise ValueError("Output width/height must be positive even numbers and fps must be positive")
+    if not 0 <= crf <= 51:
+        raise ValueError("output.crf must be within [0, 51]")
     style = raw.get("style", {})
     domain = style.get("colorDomain")
     if not isinstance(domain, list) or len(domain) != 2 or not float(domain[0]) < float(domain[1]):
@@ -129,6 +135,7 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
             "width": width,
             "height": height,
             "fps": fps,
+            "crf": crf,
             "maxBitrate": max_bitrate,
             "preset": preset,
             "directory": str(output.get("directory", "artifacts/geovideo")),
@@ -144,27 +151,13 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def artifact_hash(config: dict[str, Any], layer: dict[str, Any]) -> str:
-    material = {"config": config, "dataset": layer["dataset"], "store": layer["stores"]["field"]}
+    material = {
+        "format": "geovideo-v2-scalar-luma-static-mask",
+        "config": config,
+        "dataset": layer["dataset"],
+        "store": layer["stores"]["field"],
+    }
     return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()[:12]
-
-
-def hex_rgb(value: str) -> tuple[int, int, int]:
-    value = value.lstrip("#")
-    if len(value) == 3:
-        value = "".join(char * 2 for char in value)
-    if len(value) != 6:
-        raise ValueError(f"Unsupported palette color: {value}")
-    return tuple(int(value[index:index + 2], 16) for index in (0, 2, 4))
-
-
-def palette_lut(palette_id: str) -> np.ndarray:
-    palettes = json.loads(PALETTES_PATH.read_text())
-    if palette_id not in palettes:
-        raise ValueError(f"Unknown palette: {palette_id}")
-    colors = np.asarray([hex_rgb(color) for color in palettes[palette_id]["colors"]], dtype=np.float32)
-    stops = np.linspace(0, 255, len(colors))
-    target = np.arange(256)
-    return np.stack([np.interp(target, stops, colors[:, channel]) for channel in range(3)], axis=1)
 
 
 def normalize_times(values: np.ndarray) -> np.ndarray:
@@ -280,36 +273,72 @@ class ScalarFrames:
         return np.where(valid, first * (1 - weight) + second * weight, np.nan)
 
 
-def render_rgb(values: np.ndarray, config: dict[str, Any], lut: np.ndarray) -> np.ndarray:
+def fill_invalid_for_video(values: np.ndarray, valid: np.ndarray, passes: int = 8) -> np.ndarray:
+    """Extend nearby ocean values under the mask to limit codec ringing at coasts."""
+    result = np.where(valid, values, 0).astype(np.float32)
+    known = valid.copy()
+    for _ in range(passes):
+        total = np.zeros_like(result)
+        count = np.zeros(result.shape, dtype=np.uint8)
+        for shifted_values, shifted_known in (
+            (np.roll(result, 1, axis=1), np.roll(known, 1, axis=1)),
+            (np.roll(result, -1, axis=1), np.roll(known, -1, axis=1)),
+            (np.vstack([result[:1], result[:-1]]), np.vstack([known[:1], known[:-1]])),
+            (np.vstack([result[1:], result[-1:]]), np.vstack([known[1:], known[-1:]])),
+        ):
+            total += np.where(shifted_known, shifted_values, 0)
+            count += shifted_known
+        target = ~known & (count > 0)
+        if not np.any(target):
+            break
+        result[target] = total[target] / count[target]
+        known[target] = True
+    fallback = float(np.mean(values[valid])) if np.any(valid) else 0.0
+    result[~known] = fallback
+    return result
+
+
+def render_scalar_luma(values: np.ndarray, config: dict[str, Any]) -> np.ndarray:
     minimum, maximum = config["style"]["colorDomain"]
-    normalized = np.clip((values - minimum) / (maximum - minimum), 0, 1)
-    if config["style"]["logScale"]:
-        normalized = np.log1p(normalized * 9) / math.log(10)
-    colors = lut[np.nan_to_num(normalized * 255, nan=0).astype(np.uint8)].astype(np.float32)
-    vibrance = config["style"]["vibrance"]
-    if vibrance:
-        maximum_channel = colors.max(axis=2)
-        minimum_channel = colors.min(axis=2)
-        boost = vibrance * (1 - (maximum_channel - minimum_channel) / 255)
-        luma = colors @ np.asarray([0.299, 0.587, 0.114], dtype=np.float32)
-        colors = colors * (1 + boost[:, :, None]) - luma[:, :, None] * boost[:, :, None]
-    return np.clip(colors, 0, 255).astype(np.uint8)
+    valid = np.isfinite(values)
+    filled = fill_invalid_for_video(values, valid)
+    normalized = np.clip((filled - minimum) / (maximum - minimum), 0, 1)
+    codes = np.rint(8 + normalized * (247 - 8)).astype(np.uint8)
+    return np.repeat(codes[:, :, None], 3, axis=2)
+
+
+def write_mask_png(path: Path, valid: np.ndarray) -> None:
+    """Write an 8-bit grayscale PNG using only the Python standard library."""
+    height, width = valid.shape
+    pixels = np.where(valid, 255, 0).astype(np.uint8)
+    scanlines = b"".join(b"\x00" + pixels[row].tobytes() for row in range(height))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    png = b"\x89PNG\r\n\x1a\n"
+    png += chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0))
+    png += chunk(b"IDAT", zlib.compress(scanlines, level=9))
+    png += chunk(b"IEND", b"")
+    path.write_bytes(png)
 
 
 def ffmpeg_command(config: dict[str, Any], output: Path) -> list[str]:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         raise RuntimeError("ffmpeg is required but was not found in PATH")
-    width = config["output"]["width"] * 2
+    width = config["output"]["width"]
     height = config["output"]["height"]
     fps = config["output"]["fps"]
     return [
         ffmpeg, "-y", "-hide_banner", "-loglevel", "warning", "-stats",
         "-f", "rawvideo", "-pix_fmt", "rgb24",
         "-s", f"{width}x{height}", "-r", str(fps), "-i", "-", "-an",
-        "-c:v", "libx264", "-preset", config["output"]["preset"], "-crf", "20",
+        "-c:v", "libx264", "-preset", config["output"]["preset"], "-crf", str(config["output"]["crf"]),
         "-maxrate", config["output"]["maxBitrate"], "-bufsize", "16M",
         "-g", str(max(1, round(fps * 2))), "-pix_fmt", "yuv420p",
+        "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
+        "-color_range", "tv",
         "-movflags", "+faststart", str(output),
     ]
 
@@ -330,7 +359,7 @@ def probe_media(path: Path, config: dict[str, Any], expected_duration: float) ->
     )
     probe = json.loads(completed.stdout)
     stream = probe["streams"][0]
-    expected = (config["output"]["width"] * 2, config["output"]["height"])
+    expected = (config["output"]["width"], config["output"]["height"])
     if stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p":
         raise RuntimeError("GeoVideo output must be H.264 yuv420p")
     if (stream.get("width"), stream.get("height")) != expected:
@@ -349,11 +378,104 @@ def probe_media(path: Path, config: dict[str, Any], expected_duration: float) ->
     return probe
 
 
-def create_manifest(config: dict[str, Any], layer: dict[str, Any], media_name: str) -> dict[str, Any]:
+def validate_encoded_values(
+    path: Path,
+    expected_samples: list[tuple[np.ndarray, np.ndarray]],
+    width: int,
+    height: int,
+) -> dict[str, Any]:
+    """Decode the artifact and enforce a sampled scalar-code error budget."""
+    ffmpeg = shutil.which("ffmpeg")
+    assert ffmpeg is not None
+    process = subprocess.Popen(
+        [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(path),
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+        stdout=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    frame_bytes = width * height * 3
+    y_stride = max(1, height // 32)
+    x_stride = max(1, width // 64)
+    errors: list[np.ndarray] = []
+    decoded_count = 0
+    while True:
+        payload = process.stdout.read(frame_bytes)
+        if not payload:
+            break
+        if len(payload) != frame_bytes:
+            process.kill()
+            raise RuntimeError("Truncated frame while validating scalar-luma video")
+        if decoded_count >= len(expected_samples):
+            process.kill()
+            raise RuntimeError("Scalar-luma video contains more frames than expected")
+        rgb = np.frombuffer(payload, dtype=np.uint8).reshape(height, width, 3)
+        decoded = np.clip(np.rint(
+            rgb[:, :, 0].astype(np.float32) * .2126
+            + rgb[:, :, 1].astype(np.float32) * .7152
+            + rgb[:, :, 2].astype(np.float32) * .0722
+        ), 0, 255).astype(np.uint8)[::y_stride, ::x_stride]
+        expected, valid = expected_samples[decoded_count]
+        errors.append(np.abs(decoded.astype(np.int16) - expected.astype(np.int16))[valid])
+        decoded_count += 1
+    if process.wait() != 0:
+        raise RuntimeError("FFmpeg failed while validating scalar-luma video")
+    if decoded_count != len(expected_samples):
+        raise RuntimeError(f"Expected {len(expected_samples)} decoded frames, received {decoded_count}")
+    combined = np.concatenate(errors) if errors else np.empty(0, dtype=np.int16)
+    if combined.size == 0:
+        raise RuntimeError("Scalar-luma validation found no valid samples")
+    report = {
+        "samples": int(combined.size),
+        "meanAbsoluteCodeError": float(np.mean(combined)),
+        "p99AbsoluteCodeError": int(np.percentile(combined, 99, method="higher")),
+        "maxAbsoluteCodeError": int(np.max(combined)),
+        "limits": {
+            "p99AbsoluteCodeError": P99_CODE_ERROR_LIMIT,
+            "maxAbsoluteCodeError": MAX_CODE_ERROR_LIMIT,
+        },
+    }
+    if (
+        report["p99AbsoluteCodeError"] > P99_CODE_ERROR_LIMIT or
+        report["maxAbsoluteCodeError"] > MAX_CODE_ERROR_LIMIT
+    ):
+        raise RuntimeError(f"Scalar-luma artifact exceeds its code error budget: {report}")
+    return report
+
+
+def validate_value_report(report_path: Path) -> dict[str, Any]:
+    """Require a successful value-fidelity report before publishing an artifact."""
+    if not report_path.exists():
+        raise RuntimeError(f"Scalar-luma validation report not found: {report_path}")
+    report = json.loads(report_path.read_text())
+    validation = report.get("valueValidation")
+    if not isinstance(validation, dict):
+        raise RuntimeError("Scalar-luma artifact has no valueValidation result")
+    limits = validation.get("limits")
+    if not isinstance(limits, dict):
+        raise RuntimeError("Scalar-luma artifact has no valueValidation limits")
+    p99 = validation.get("p99AbsoluteCodeError")
+    maximum = validation.get("maxAbsoluteCodeError")
+    recorded_p99_limit = limits.get("p99AbsoluteCodeError")
+    recorded_maximum_limit = limits.get("maxAbsoluteCodeError")
+    if not all(
+        isinstance(value, (int, float))
+        for value in (p99, maximum, recorded_p99_limit, recorded_maximum_limit)
+    ):
+        raise RuntimeError("Scalar-luma artifact has an invalid valueValidation result")
+    if recorded_p99_limit != P99_CODE_ERROR_LIMIT or recorded_maximum_limit != MAX_CODE_ERROR_LIMIT:
+        raise RuntimeError("Scalar-luma artifact was validated against a different error budget")
+    if p99 > P99_CODE_ERROR_LIMIT or maximum > MAX_CODE_ERROR_LIMIT:
+        raise RuntimeError(f"Scalar-luma artifact exceeds its recorded code error budget: {validation}")
+    return report
+
+
+def create_manifest(
+    config: dict[str, Any], layer: dict[str, Any], media_name: str, mask_name: str,
+) -> dict[str, Any]:
     width = config["output"]["width"]
     height = config["output"]["height"]
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": config.get("id", f"{config['layerId']}-geovideo"),
         "type": "geovideo",
         "projection": "equirectangular",
@@ -363,12 +485,28 @@ def create_manifest(config: dict[str, Any], layer: dict[str, Any], media_name: s
             "mimeType": "video/mp4",
             "width": width,
             "height": height,
-            "packedWidth": width * 2,
-            "packedHeight": height,
             "fps": config["output"]["fps"],
             "durationSeconds": config["durationSeconds"],
             "codec": "h264",
-            "alpha": "side-by-side",
+        },
+        "encoding": {
+            "kind": "scalar-luma",
+            "bits": 8,
+            "codeMin": 8,
+            "codeMax": 247,
+            "valueMin": config["style"]["colorDomain"][0],
+            "valueMax": config["style"]["colorDomain"][1],
+            "transfer": "linear",
+            "colorSpace": "bt709",
+            "colorRange": "limited",
+        },
+        "mask": {
+            "kind": "static-validity",
+            "url": mask_name,
+            "mimeType": "image/png",
+            "width": width,
+            "height": height,
+            "threshold": 0.5,
         },
         "timeline": {
             "kind": "range",
@@ -421,12 +559,21 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
     prefix = config.get("upload", {}).get("prefix", "geovideo")
     object_prefix = f"{prefix.strip('/')}/{config['layerId']}/{artifact_id}"
     media = directory / "video.mp4"
+    mask = directory / "mask.png"
     manifest = directory / "manifest.json"
     client.upload_file(
         str(media), env["S3_BUCKET"], f"{object_prefix}/video.mp4",
         ExtraArgs={
             "ACL": "public-read",
             "ContentType": "video/mp4",
+            "CacheControl": "public,max-age=31536000,immutable",
+        },
+    )
+    client.upload_file(
+        str(mask), env["S3_BUCKET"], f"{object_prefix}/mask.png",
+        ExtraArgs={
+            "ACL": "public-read",
+            "ContentType": "image/png",
             "CacheControl": "public,max-age=31536000,immutable",
         },
     )
@@ -469,6 +616,14 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
             if "access-control-allow-origin" not in video_response.headers:
                 raise RuntimeError("S3 video response does not advertise CORS")
             video_response.close()
+            mask_url = f"{public_base.rstrip('/')}/{object_prefix}/mask.png"
+            mask_response = requests.get(mask_url, headers={"Origin": "https://example.org"}, timeout=20)
+            mask_response.raise_for_status()
+            if mask_response.headers.get("content-type", "").split(";", 1)[0] != "image/png":
+                raise RuntimeError("S3 mask response is not image/png")
+            if "access-control-allow-origin" not in mask_response.headers:
+                raise RuntimeError("S3 mask response does not advertise CORS")
+            mask_response.close()
             return manifest_url
         except Exception as exc:
             errors.append(f"{manifest_url}: {exc}")
@@ -498,8 +653,8 @@ def main() -> int:
         "artifactId": artifact_id,
         "directory": str(directory),
         "frames": frame_count,
-        "packedSize": [config["output"]["width"] * 2, config["output"]["height"]],
-        "estimatedRawBytes": frame_count * config["output"]["width"] * 2 * config["output"]["height"] * 3,
+        "mediaSize": [config["output"]["width"], config["output"]["height"]],
+        "estimatedRawBytes": frame_count * config["output"]["width"] * config["output"]["height"] * 3,
     }
     print(json.dumps(summary, indent=2))
     if args.dry_run:
@@ -507,28 +662,46 @@ def main() -> int:
 
     if args.upload_only:
         video_path = directory / "video.mp4"
+        mask_path = directory / "mask.png"
         manifest_path = directory / "manifest.json"
-        if not video_path.exists() or not manifest_path.exists():
+        report_path = directory / "report.json"
+        if not video_path.exists() or not mask_path.exists() or not manifest_path.exists():
             raise RuntimeError(f"Generated artifact not found: {directory}")
         probe_media(video_path, config, config["durationSeconds"])
+        validate_value_report(report_path)
         url = publish(directory, config, artifact_id)
         print(json.dumps({"manifestUrl": url}, indent=2))
         return 0
 
     directory.mkdir(parents=True, exist_ok=True)
     video_path = directory / "video.mp4"
+    mask_path = directory / "mask.png"
     frames = ScalarFrames(layer, config)
-    lut = palette_lut(config["style"]["palette"])
     command = ffmpeg_command(config, video_path)
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    static_mask: np.ndarray | None = None
+    expected_samples: list[tuple[np.ndarray, np.ndarray]] = []
+    y_stride = max(1, config["output"]["height"] // 32)
+    x_stride = max(1, config["output"]["width"] // 64)
     try:
         assert process.stdin is not None
         for index in range(frame_count):
             values = frames.frame(index, frame_count)
-            rgb = render_rgb(values, config, lut)
-            alpha = np.where(np.isfinite(values), 255, 0).astype(np.uint8)
-            packed = np.concatenate([rgb, np.repeat(alpha[:, :, None], 3, axis=2)], axis=1)
-            process.stdin.write(packed.tobytes())
+            valid = np.isfinite(values)
+            if static_mask is None:
+                static_mask = valid.copy()
+                write_mask_png(mask_path, static_mask)
+            elif not np.array_equal(valid, static_mask):
+                changed = int(np.count_nonzero(valid != static_mask))
+                raise RuntimeError(
+                    f"GeoVideo scalar-luma requires a static validity mask; frame {index} changes {changed} pixels"
+                )
+            encoded = render_scalar_luma(values, config)
+            expected_samples.append((
+                encoded[::y_stride, ::x_stride, 0].copy(),
+                valid[::y_stride, ::x_stride].copy(),
+            ))
+            process.stdin.write(encoded.tobytes())
             if index == 0 or (index + 1) % max(1, round(config["output"]["fps"])) == 0:
                 print(f"Rendered {index + 1}/{frame_count} frames", file=sys.stderr)
         process.stdin.close()
@@ -539,10 +712,20 @@ def main() -> int:
         process.kill()
         raise
 
-    manifest = create_manifest(config, layer, "video.mp4")
-    (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     probe = probe_media(video_path, config, frame_count / config["output"]["fps"])
-    report = {**summary, "videoBytes": video_path.stat().st_size, "probe": probe, "manifest": manifest}
+    value_validation = validate_encoded_values(
+        video_path, expected_samples, config["output"]["width"], config["output"]["height"],
+    )
+    manifest = create_manifest(config, layer, "video.mp4", "mask.png")
+    (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    report = {
+        **summary,
+        "videoBytes": video_path.stat().st_size,
+        "maskBytes": mask_path.stat().st_size,
+        "valueValidation": value_validation,
+        "probe": probe,
+        "manifest": manifest,
+    }
     (directory / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"video": str(video_path), "manifest": str(directory / "manifest.json")}, indent=2))
     if args.upload:

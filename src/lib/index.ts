@@ -59,7 +59,9 @@ export type { ScalarLayerDebugInfo } from "./ScalarLayer";
 export type { GeoVideoLayerDebugInfo, GeoVideoLayerOptions } from "./GeoVideoLayer";
 export type {
   GeoVideoBounds,
+  GeoVideoManifest,
   GeoVideoManifestV1,
+  GeoVideoManifestV2,
   GeoVideoRangeTimeline,
   GeoVideoSnapshotLoopTimeline,
 } from "./geovideo";

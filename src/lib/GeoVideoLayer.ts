@@ -3,7 +3,14 @@ import type {
   CustomRenderMethodInput,
   Map as MaplibreMap,
 } from "maplibre-gl";
-import { createProgram, restoreGLState, saveGLState } from "./gl-util";
+import {
+  createColorRampTexture,
+  createProgram,
+  resolveColorRamp,
+  restoreGLState,
+  saveGLState,
+  type ColorRampInput,
+} from "./gl-util";
 import { visibleWorldCopyOffsets } from "./geo-util";
 import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
@@ -12,7 +19,7 @@ import {
   geoVideoSecondsForTime,
   geoVideoTimeForSeconds,
   loadGeoVideoManifest,
-  type GeoVideoManifestV1,
+  type GeoVideoManifest,
 } from "./geovideo";
 import type { FieldMeta } from "./types";
 import type { ZartiglStatus } from "./load-status";
@@ -30,9 +37,13 @@ type GeoVideoEventMap = {
 
 export interface GeoVideoLayerOptions {
   id: string;
-  manifest: string | GeoVideoManifestV1;
+  manifest: string | GeoVideoManifest;
   opacity?: number;
   autoplay?: boolean;
+  colorRamp?: ColorRampInput;
+  colorDomain?: [number, number] | null;
+  logScale?: boolean;
+  vibrance?: number;
 }
 
 export interface GeoVideoLayerDebugInfo {
@@ -68,15 +79,20 @@ export class GeoVideoLayer implements CustomLayerInterface {
   readonly type = "custom" as const;
   readonly renderingMode = "3d" as const;
 
-  private readonly source: string | GeoVideoManifestV1;
+  private readonly source: string | GeoVideoManifest;
   private readonly autoplay: boolean;
   private opacity: number;
+  private colorRamp: ColorRampInput;
+  private colorDomain: [number, number] | null;
+  private logScale: boolean;
+  private vibrance: number;
   private map: MaplibreMap | null = null;
   private gl: WebGLRenderingContext | null = null;
-  private manifest: GeoVideoManifestV1 | null = null;
+  private manifest: GeoVideoManifest | null = null;
   private video: VideoWithFrameCallback | null = null;
   private colorTexture: WebGLTexture | null = null;
   private maskTexture: WebGLTexture | null = null;
+  private colorRampTexture: WebGLTexture | null = null;
   private colorCanvas: HTMLCanvasElement | null = null;
   private maskCanvas: HTMLCanvasElement | null = null;
   private colorContext: CanvasRenderingContext2D | null = null;
@@ -93,6 +109,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
   private colorTextureInitialized = false;
   private maskTextureInitialized = false;
   private maskCaptured = false;
+  private mediaReady = false;
+  private readyEmitted = false;
   private hasVideoFrameCallback = false;
   private lastBufferedMediaTime = -1;
   private lastUploadedMediaTime = -1;
@@ -110,6 +128,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.source = options.manifest;
     this.opacity = options.opacity ?? 1;
     this.autoplay = options.autoplay ?? true;
+    this.colorRamp = options.colorRamp ?? "balance";
+    this.colorDomain = options.colorDomain ?? null;
+    this.logScale = options.logScale ?? false;
+    this.vibrance = options.vibrance ?? 0;
   }
 
   async onAdd(map: MaplibreMap, gl: WebGLRenderingContext): Promise<void> {
@@ -120,6 +142,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.emit("status", { phase: "metadata" });
     try {
       this.manifest = await loadGeoVideoManifest(this.source, this.abortController.signal);
+      if (this.colorDomain == null) this.colorDomain = this.manifest.style.colorDomain;
       const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
       if (
         this.manifest.media.width > maxTextureSize ||
@@ -152,6 +175,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     const previousTexture0 = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
     gl.activeTexture(gl.TEXTURE1);
     const previousTexture1 = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
+    gl.activeTexture(gl.TEXTURE2);
+    const previousTexture2 = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
     try {
       if (this.maskDirty && this.maskCanvas) {
         gl.activeTexture(gl.TEXTURE1);
@@ -196,7 +221,26 @@ export class GeoVideoLayer implements CustomLayerInterface {
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, this.maskTexture);
       gl.uniform1i(gl.getUniformLocation(program, "u_mask"), 1);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, this.colorRampTexture);
+      gl.uniform1i(gl.getUniformLocation(program, "u_color_ramp"), 2);
       gl.uniform1f(gl.getUniformLocation(program, "u_opacity"), this.opacity);
+      const scalarLuma = manifest.schemaVersion === 2;
+      gl.uniform1f(gl.getUniformLocation(program, "u_scalar_luma"), scalarLuma ? 1 : 0);
+      gl.uniform1f(gl.getUniformLocation(program, "u_log_scale"), this.logScale ? 1 : 0);
+      gl.uniform1f(gl.getUniformLocation(program, "u_vibrance"), this.vibrance);
+      gl.uniform1f(
+        gl.getUniformLocation(program, "u_mask_threshold"),
+        scalarLuma ? manifest.mask.threshold : 0.003,
+      );
+      const codeMin = scalarLuma ? manifest.encoding.codeMin / 255 : 0;
+      const codeMax = scalarLuma ? manifest.encoding.codeMax / 255 : 1;
+      const valueMin = scalarLuma ? manifest.encoding.valueMin : 0;
+      const valueMax = scalarLuma ? manifest.encoding.valueMax : 1;
+      const domain = this.colorDomain ?? [valueMin, valueMax];
+      gl.uniform2f(gl.getUniformLocation(program, "u_code_range"), codeMin, codeMax);
+      gl.uniform2f(gl.getUniformLocation(program, "u_value_range"), valueMin, valueMax);
+      gl.uniform2f(gl.getUniformLocation(program, "u_color_domain"), domain[0], domain[1]);
       gl.uniform2f(
         gl.getUniformLocation(program, "u_texel_size"),
         1 / manifest.media.width,
@@ -227,6 +271,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
       }
       this.unbindGrid(gl, program);
     } finally {
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, previousTexture2);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, previousTexture1);
       gl.activeTexture(gl.TEXTURE0);
@@ -250,6 +296,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     if (this.gl) {
       if (this.colorTexture) this.gl.deleteTexture(this.colorTexture);
       if (this.maskTexture) this.gl.deleteTexture(this.maskTexture);
+      if (this.colorRampTexture) this.gl.deleteTexture(this.colorRampTexture);
       if (this.mercatorProgram) this.gl.deleteProgram(this.mercatorProgram);
       if (this.globeProgram) this.gl.deleteProgram(this.globeProgram);
       if (this.vertexBuffer) this.gl.deleteBuffer(this.vertexBuffer);
@@ -258,6 +305,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.video = null;
     this.colorTexture = null;
     this.maskTexture = null;
+    this.colorRampTexture = null;
     this.colorCanvas = null;
     this.maskCanvas = null;
     this.colorContext = null;
@@ -265,6 +313,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.colorTextureInitialized = false;
     this.maskTextureInitialized = false;
     this.maskCaptured = false;
+    this.mediaReady = false;
+    this.readyEmitted = false;
     this.hasVideoFrameCallback = false;
     this.lastBufferedMediaTime = -1;
     this.lastUploadedMediaTime = -1;
@@ -297,10 +347,20 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.resumePlayback = false;
   }
   setRgba8MaxParticleZoom(_value: number): void {}
-  setColorRamp(_ramp: unknown): void {}
-  setLogScale(_value: boolean): void {}
-  setVibrance(_value: number): void {}
-  setColorDomain(_domain: [number, number] | null): void {}
+  setColorRamp(ramp: ColorRampInput): void {
+    this.colorRamp = ramp;
+    if (this.gl) {
+      if (this.colorRampTexture) this.gl.deleteTexture(this.colorRampTexture);
+      this.colorRampTexture = createColorRampTexture(this.gl, resolveColorRamp(ramp));
+    }
+    this.map?.triggerRepaint();
+  }
+  setLogScale(value: boolean): void { this.logScale = value; this.map?.triggerRepaint(); }
+  setVibrance(value: number): void { this.vibrance = value; this.map?.triggerRepaint(); }
+  setColorDomain(domain: [number, number] | null): void {
+    this.colorDomain = domain ?? this.manifest?.style.colorDomain ?? null;
+    this.map?.triggerRepaint();
+  }
 
   setOpacity(value: number): void {
     this.opacity = Math.max(0, Math.min(1, value));
@@ -315,7 +375,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.video?.pause();
   }
 
-  getManifest(): GeoVideoManifestV1 | null { return this.manifest; }
+  getManifest(): GeoVideoManifest | null { return this.manifest; }
 
   getDebugInfo(): GeoVideoLayerDebugInfo {
     return {
@@ -349,8 +409,9 @@ export class GeoVideoLayer implements CustomLayerInterface {
   private initGl(gl: WebGLRenderingContext): void {
     this.mercatorProgram = createProgram(gl, gridMercatorVert, geoVideoFrag);
     this.globeProgram = createProgram(gl, gridGlobeVert, geoVideoFrag);
-    this.colorTexture = this.createVideoTexture(gl);
-    this.maskTexture = this.createVideoTexture(gl);
+    this.colorTexture = this.createVideoTexture(gl, gl.LINEAR);
+    this.maskTexture = this.createVideoTexture(gl, gl.NEAREST);
+    this.colorRampTexture = createColorRampTexture(gl, resolveColorRamp(this.colorRamp));
     const vertices = new Float32Array((GRID_LON_SEGMENTS + 1) * (GRID_LAT_SEGMENTS + 1) * 2);
     let vertex = 0;
     for (let y = 0; y <= GRID_LAT_SEGMENTS; y++) {
@@ -382,7 +443,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.indexCount = indices.length;
   }
 
-  private initVideo(manifest: GeoVideoManifestV1): void {
+  private initVideo(manifest: GeoVideoManifest): void {
     this.colorCanvas = document.createElement("canvas");
     this.maskCanvas = document.createElement("canvas");
     this.colorCanvas.width = this.maskCanvas.width = manifest.media.width;
@@ -392,6 +453,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     if (!this.colorContext || !this.maskContext) {
       throw new Error("Failed to create GeoVideo frame buffers");
     }
+    if (manifest.schemaVersion === 2) this.loadStaticMask(manifest);
     const video = document.createElement("video") as VideoWithFrameCallback;
     video.crossOrigin = "anonymous";
     video.muted = true;
@@ -400,29 +462,24 @@ export class GeoVideoLayer implements CustomLayerInterface {
     video.preload = "auto";
     video.src = manifest.media.url;
     video.addEventListener("loadeddata", () => {
-      if (
-        video.videoWidth !== manifest.media.packedWidth ||
-        video.videoHeight !== manifest.media.packedHeight
-      ) {
+      const expectedWidth = manifest.schemaVersion === 1
+        ? manifest.media.packedWidth
+        : manifest.media.width;
+      const expectedHeight = manifest.schemaVersion === 1
+        ? manifest.media.packedHeight
+        : manifest.media.height;
+      if (video.videoWidth !== expectedWidth || video.videoHeight !== expectedHeight) {
         const error = new Error(
           `GeoVideo media dimensions ${video.videoWidth}x${video.videoHeight} do not match manifest ` +
-          `${manifest.media.packedWidth}x${manifest.media.packedHeight}`,
+          `${expectedWidth}x${expectedHeight}`,
         );
         this.emit("status", { phase: "error", error });
         this.emit("error", error);
         return;
       }
       this.captureFrame();
-      const time = geoVideoTimeForSeconds(manifest, video.currentTime);
-      this.emit("loaded", {
-        min: manifest.style.colorDomain[0],
-        max: manifest.style.colorDomain[1],
-        unit: manifest.style.unit ?? "",
-        time: new Date(time).toISOString(),
-      });
-      this.emit("status", { phase: "ready", time });
-      this.map?.triggerRepaint();
-      if (this.autoplay) void video.play().catch(() => undefined);
+      this.mediaReady = true;
+      this.emitReady();
     }, { once: true });
     video.addEventListener("error", () => {
       const error = new Error(`Failed to load GeoVideo media: ${manifest.media.url}`);
@@ -461,7 +518,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     const { width, height } = manifest.media;
     try {
       colorContext.drawImage(video, 0, 0, width, height, 0, 0, width, height);
-      if (!this.maskCaptured) {
+      if (manifest.schemaVersion === 1 && !this.maskCaptured) {
         maskContext.drawImage(video, width, 0, width, height, 0, 0, width, height);
         this.maskCaptured = true;
         this.maskDirty = true;
@@ -476,14 +533,59 @@ export class GeoVideoLayer implements CustomLayerInterface {
     }
   }
 
-  private createVideoTexture(gl: WebGLRenderingContext): WebGLTexture {
+  private loadStaticMask(manifest: Extract<GeoVideoManifest, { schemaVersion: 2 }>): void {
+    const image = document.createElement("img");
+    image.crossOrigin = "anonymous";
+    image.addEventListener("load", () => {
+      if (!this.maskContext || !this.maskCanvas || this.abortController?.signal.aborted) return;
+      if (image.naturalWidth !== manifest.mask.width || image.naturalHeight !== manifest.mask.height) {
+        const error = new Error(
+          `GeoVideo mask dimensions ${image.naturalWidth}x${image.naturalHeight} do not match manifest ` +
+          `${manifest.mask.width}x${manifest.mask.height}`,
+        );
+        this.emit("status", { phase: "error", error });
+        this.emit("error", error);
+        return;
+      }
+      this.maskContext.drawImage(image, 0, 0, manifest.mask.width, manifest.mask.height);
+      this.maskCaptured = true;
+      this.maskDirty = true;
+      this.emitReady();
+      this.map?.triggerRepaint();
+    }, { once: true });
+    image.addEventListener("error", () => {
+      const error = new Error(`Failed to load GeoVideo mask: ${manifest.mask.url}`);
+      this.emit("status", { phase: "error", error });
+      this.emit("error", error);
+    }, { once: true });
+    image.src = manifest.mask.url;
+  }
+
+  private emitReady(): void {
+    const manifest = this.manifest;
+    const video = this.video;
+    if (!manifest || !video || !this.mediaReady || !this.maskCaptured || this.readyEmitted) return;
+    this.readyEmitted = true;
+    const time = geoVideoTimeForSeconds(manifest, video.currentTime);
+    this.emit("loaded", {
+      min: manifest.style.colorDomain[0],
+      max: manifest.style.colorDomain[1],
+      unit: manifest.style.unit ?? "",
+      time: new Date(time).toISOString(),
+    });
+    this.emit("status", { phase: "ready", time });
+    this.map?.triggerRepaint();
+    if (this.autoplay) void video.play().catch(() => undefined);
+  }
+
+  private createVideoTexture(gl: WebGLRenderingContext, filter: number): WebGLTexture {
     const texture = gl.createTexture();
     if (!texture) throw new Error("Failed to create GeoVideo texture");
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
     return texture;
   }
 

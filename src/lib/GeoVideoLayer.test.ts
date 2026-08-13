@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GeoVideoLayer } from "./GeoVideoLayer";
-import type { GeoVideoManifestV1 } from "./geovideo";
+import type { GeoVideoManifest, GeoVideoManifestV1, GeoVideoManifestV2 } from "./geovideo";
 
 const manifest: GeoVideoManifestV1 = {
   schemaVersion: 1,
@@ -33,6 +33,29 @@ const manifest: GeoVideoManifestV1 = {
     generatedAt: "2026-07-02T00:00:00Z",
   },
   style: { palette: "balance", colorDomain: [-3, 3] },
+};
+
+const scalarLumaManifest: GeoVideoManifestV2 = {
+  schemaVersion: 2,
+  id: "test-values",
+  type: "geovideo",
+  projection: "equirectangular",
+  bounds: [-180, -90, 180, 90],
+  media: {
+    url: "values.mp4", mimeType: "video/mp4", width: 16, height: 8,
+    fps: 24, durationSeconds: 30, codec: "h264",
+  },
+  encoding: {
+    kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247,
+    valueMin: -3, valueMax: 3, transfer: "linear", colorSpace: "bt709", colorRange: "limited",
+  },
+  mask: {
+    kind: "static-validity", url: "mask.png", mimeType: "image/png",
+    width: 16, height: 8, threshold: 0.5,
+  },
+  timeline: manifest.timeline,
+  provenance: manifest.provenance,
+  style: manifest.style,
 };
 
 type VideoFrameCallback = (
@@ -100,15 +123,32 @@ class FakeCanvas {
   }
 }
 
-function setup(withVideoFrameCallback = true) {
+class FakeImage extends EventTarget {
+  crossOrigin = "";
+  src = "";
+  naturalWidth = 16;
+  naturalHeight = 8;
+}
+
+function setup(withVideoFrameCallback = true, manifestValue: GeoVideoManifest = manifest) {
   const video = new FakeVideo(withVideoFrameCallback);
+  video.videoWidth = manifestValue.schemaVersion === 1
+    ? manifestValue.media.packedWidth
+    : manifestValue.media.width;
+  video.videoHeight = manifestValue.media.height;
   const triggerRepaint = vi.fn();
   const canvases: FakeCanvas[] = [];
+  const images: FakeImage[] = [];
   const animationFrames = new Map<number, FrameRequestCallback>();
   let nextFrame = 1;
   vi.stubGlobal("document", {
     createElement: vi.fn((tag: string) => {
       if (tag === "video") return video;
+      if (tag === "img") {
+        const image = new FakeImage();
+        images.push(image);
+        return image;
+      }
       const canvas = new FakeCanvas();
       canvases.push(canvas);
       return canvas;
@@ -124,16 +164,16 @@ function setup(withVideoFrameCallback = true) {
     animationFrames.delete(handle);
   }));
 
-  const layer = new GeoVideoLayer({ id: "test", manifest, autoplay: false });
+  const layer = new GeoVideoLayer({ id: "test", manifest: manifestValue, autoplay: false });
   const internal = layer as unknown as {
     map: { triggerRepaint: () => void };
-    manifest: GeoVideoManifestV1;
-    initVideo: (value: GeoVideoManifestV1) => void;
+    manifest: GeoVideoManifest;
+    initVideo: (value: GeoVideoManifest) => void;
   };
   internal.map = { triggerRepaint };
-  internal.manifest = manifest;
-  internal.initVideo(manifest);
-  return { layer, video, triggerRepaint, animationFrames, canvases };
+  internal.manifest = manifestValue;
+  internal.initVideo(manifestValue);
+  return { layer, video, triggerRepaint, animationFrames, canvases, images };
 }
 
 afterEach(() => {
@@ -141,6 +181,41 @@ afterEach(() => {
 });
 
 describe("GeoVideoLayer playback scheduling", () => {
+  it("loads a v2 mask independently and captures the full-width value video", () => {
+    const { video, images, canvases } = setup(true, scalarLumaManifest);
+    expect(images).toHaveLength(1);
+    expect(images[0].src).toBe("mask.png");
+    images[0].dispatchEvent(new Event("load"));
+    video.dispatchEvent(new Event("loadeddata"));
+
+    expect(canvases[1].drawImage).toHaveBeenCalledWith(images[0], 0, 0, 16, 8);
+    expect(canvases[0].drawImage).toHaveBeenCalledWith(video, 0, 0, 16, 8, 0, 0, 16, 8);
+    expect(canvases[1].drawImage).not.toHaveBeenCalledWith(video, expect.anything());
+  });
+
+  it("does not report v2 ready until both video and mask are loaded", () => {
+    const { layer, video, images } = setup(true, scalarLumaManifest);
+    const loaded = vi.fn();
+    layer.on("loaded", loaded);
+
+    video.dispatchEvent(new Event("loadeddata"));
+    expect(loaded).not.toHaveBeenCalled();
+
+    images[0].dispatchEvent(new Event("load"));
+    expect(loaded).toHaveBeenCalledOnce();
+  });
+
+  it("reports a v2 mask dimension mismatch", () => {
+    const { layer, images } = setup(true, scalarLumaManifest);
+    const error = vi.fn();
+    layer.on("error", error);
+    images[0].naturalWidth = 8;
+
+    images[0].dispatchEvent(new Event("load"));
+
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("dimensions") }));
+  });
+
   it("repaints continuously while playing and stops while paused or waiting", async () => {
     const { layer, video, triggerRepaint, animationFrames } = setup();
 

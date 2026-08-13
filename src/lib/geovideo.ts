@@ -46,6 +46,47 @@ export interface GeoVideoManifestV1 {
   };
 }
 
+export interface GeoVideoManifestV2 {
+  schemaVersion: 2;
+  id: string;
+  type: "geovideo";
+  projection: "equirectangular";
+  bounds: GeoVideoBounds;
+  media: {
+    url: string;
+    mimeType: "video/mp4" | string;
+    width: number;
+    height: number;
+    fps: number;
+    durationSeconds: number;
+    codec: "h264" | string;
+  };
+  encoding: {
+    kind: "scalar-luma";
+    bits: 8;
+    codeMin: number;
+    codeMax: number;
+    valueMin: number;
+    valueMax: number;
+    transfer: "linear";
+    colorSpace: "bt709";
+    colorRange: "limited" | "full";
+  };
+  mask: {
+    kind: "static-validity";
+    url: string;
+    mimeType: "image/png" | string;
+    width: number;
+    height: number;
+    threshold: number;
+  };
+  timeline: GeoVideoRangeTimeline | GeoVideoSnapshotLoopTimeline;
+  provenance: GeoVideoManifestV1["provenance"];
+  style: GeoVideoManifestV1["style"];
+}
+
+export type GeoVideoManifest = GeoVideoManifestV1 | GeoVideoManifestV2;
+
 function finite(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`Invalid GeoVideo manifest ${label}`);
@@ -60,10 +101,10 @@ function dateMs(value: unknown, label: string): number {
   return ms;
 }
 
-export function validateGeoVideoManifest(value: unknown): GeoVideoManifestV1 {
+export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
   if (!value || typeof value !== "object") throw new Error("Invalid GeoVideo manifest");
-  const manifest = value as GeoVideoManifestV1;
-  if (manifest.schemaVersion !== 1 || manifest.type !== "geovideo") {
+  const manifest = value as GeoVideoManifest;
+  if ((manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) || manifest.type !== "geovideo") {
     throw new Error("Unsupported GeoVideo manifest version or type");
   }
   if (manifest.projection !== "equirectangular") {
@@ -77,14 +118,41 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifestV1 {
     throw new Error("Invalid GeoVideo geographic bounds");
   }
   const media = manifest.media;
-  if (!media || typeof media.url !== "string" || !media.url || media.alpha !== "side-by-side") {
+  if (!media || typeof media.url !== "string" || !media.url) {
     throw new Error("Invalid GeoVideo media");
   }
-  for (const key of ["width", "height", "packedWidth", "packedHeight", "fps", "durationSeconds"] as const) {
+  for (const key of ["width", "height", "fps", "durationSeconds"] as const) {
     if (finite(media[key], `media.${key}`) <= 0) throw new Error(`Invalid GeoVideo media.${key}`);
   }
-  if (media.packedWidth !== media.width * 2 || media.packedHeight !== media.height) {
-    throw new Error("GeoVideo side-by-side media dimensions are inconsistent");
+  if (manifest.schemaVersion === 1) {
+    if (manifest.media.alpha !== "side-by-side") throw new Error("Invalid GeoVideo v1 alpha packing");
+    if (
+      finite(manifest.media.packedWidth, "media.packedWidth") !== manifest.media.width * 2 ||
+      finite(manifest.media.packedHeight, "media.packedHeight") !== manifest.media.height
+    ) {
+      throw new Error("GeoVideo side-by-side media dimensions are inconsistent");
+    }
+  } else {
+    const encoding = manifest.encoding;
+    if (
+      !encoding || encoding.kind !== "scalar-luma" || encoding.bits !== 8 ||
+      encoding.transfer !== "linear" || encoding.colorSpace !== "bt709" ||
+      (encoding.colorRange !== "limited" && encoding.colorRange !== "full")
+    ) throw new Error("Invalid GeoVideo scalar-luma encoding");
+    const codeMin = finite(encoding.codeMin, "encoding.codeMin");
+    const codeMax = finite(encoding.codeMax, "encoding.codeMax");
+    const valueMin = finite(encoding.valueMin, "encoding.valueMin");
+    const valueMax = finite(encoding.valueMax, "encoding.valueMax");
+    if (codeMin < 0 || codeMax > 255 || codeMin >= codeMax || valueMin >= valueMax) {
+      throw new Error("Invalid GeoVideo scalar-luma ranges");
+    }
+    const mask = manifest.mask;
+    if (
+      !mask || mask.kind !== "static-validity" || typeof mask.url !== "string" || !mask.url ||
+      finite(mask.width, "mask.width") !== media.width ||
+      finite(mask.height, "mask.height") !== media.height ||
+      finite(mask.threshold, "mask.threshold") < 0 || mask.threshold > 1
+    ) throw new Error("Invalid GeoVideo static mask");
   }
   if (manifest.timeline?.kind === "range") {
     const start = dateMs(manifest.timeline.dateStart, "timeline.dateStart");
@@ -106,25 +174,29 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifestV1 {
 }
 
 export async function loadGeoVideoManifest(
-  source: string | GeoVideoManifestV1,
+  source: string | GeoVideoManifest,
   signal?: AbortSignal,
-): Promise<GeoVideoManifestV1> {
+): Promise<GeoVideoManifest> {
   if (typeof source !== "string") return validateGeoVideoManifest(source);
   const response = await fetch(source, { signal });
   if (!response.ok) throw new Error(`GeoVideo manifest request failed (${response.status}): ${source}`);
   const raw = await response.json();
   const manifest = validateGeoVideoManifest(raw);
   const base = typeof document !== "undefined" ? new URL(source, document.baseURI).href : source;
+  if (manifest.schemaVersion === 1) {
+    return {
+      ...manifest,
+      media: { ...manifest.media, url: new URL(manifest.media.url, base).href },
+    };
+  }
   return {
     ...manifest,
-    media: {
-      ...manifest.media,
-      url: new URL(manifest.media.url, base).href,
-    },
+    media: { ...manifest.media, url: new URL(manifest.media.url, base).href },
+    mask: { ...manifest.mask, url: new URL(manifest.mask.url, base).href },
   };
 }
 
-export function geoVideoTimelineValues(manifest: GeoVideoManifestV1): number[] {
+export function geoVideoTimelineValues(manifest: GeoVideoManifest): number[] {
   if (manifest.timeline.kind === "snapshot-loop") {
     return [new Date(manifest.timeline.date).getTime()];
   }
@@ -134,7 +206,7 @@ export function geoVideoTimelineValues(manifest: GeoVideoManifestV1): number[] {
   return Array.from({ length: count }, (_, index) => start + (end - start) * index / (count - 1));
 }
 
-export function geoVideoSecondsForTime(manifest: GeoVideoManifestV1, timeMs: number): number {
+export function geoVideoSecondsForTime(manifest: GeoVideoManifest, timeMs: number): number {
   if (manifest.timeline.kind === "snapshot-loop") return 0;
   const start = new Date(manifest.timeline.dateStart).getTime();
   const end = new Date(manifest.timeline.dateEnd).getTime();
@@ -142,7 +214,7 @@ export function geoVideoSecondsForTime(manifest: GeoVideoManifestV1, timeMs: num
   return progress * playableDuration(manifest);
 }
 
-export function geoVideoTimeForSeconds(manifest: GeoVideoManifestV1, seconds: number): number {
+export function geoVideoTimeForSeconds(manifest: GeoVideoManifest, seconds: number): number {
   if (manifest.timeline.kind === "snapshot-loop") return new Date(manifest.timeline.date).getTime();
   const start = new Date(manifest.timeline.dateStart).getTime();
   const end = new Date(manifest.timeline.dateEnd).getTime();
@@ -151,6 +223,6 @@ export function geoVideoTimeForSeconds(manifest: GeoVideoManifestV1, seconds: nu
   return start + (end - start) * progress;
 }
 
-function playableDuration(manifest: GeoVideoManifestV1): number {
+function playableDuration(manifest: GeoVideoManifest): number {
   return Math.max(0, manifest.media.durationSeconds - 1 / manifest.media.fps);
 }

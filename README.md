@@ -15,7 +15,7 @@ Zartigl renders scalar rasters and vector particle fields from multidimensional 
 - Point queries for time series and vertical profiles when a point-series store is available
 - Catalog-backed datasets with automatic Zarr/WMTS backend selection for scalar layers
 - MapLibre custom layer integration, including Mercator and globe rendering paths
-- Pre-rendered GeoVideo backends with true polar globe draping and packed transparency
+- Pre-rendered GeoVideo backends with true polar globe draping and portable masks
 - No server component required for public CORS-enabled stores
 
 ## Quick Start
@@ -168,17 +168,17 @@ This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Cope
 
 ## GeoVideo
 
-GeoVideo pre-renders an expensive scalar Zarr timeline into a short,
-streamable H.264 MP4 while retaining spatial bounds, scientific dates,
-provenance, units, palette, and color domain in a sidecar manifest. It is a
-selectable backend of the original scalar catalog layer, so point queries can
-still use the authoritative Zarr point-series store.
+GeoVideo pre-renders an expensive scalar Zarr timeline into a short, streamable
+H.264 MP4 while retaining spatial bounds, scientific dates, provenance, units,
+palette, and color domain in a sidecar manifest. Version 2 transports quantized
+scalar values in luminance and a static lossless mask as a separate PNG, so the
+browser can apply palette and scalar styling in WebGL. It is a visualization
+backend only: point queries always use the authoritative Zarr point-series store.
 
 Unlike MapLibre's native four-corner video source, `GeoVideoLayer` maps an
 equirectangular texture through zartigl's subdivided lon/lat mesh. Globe mode
-therefore reaches both poles. Transparency is portable across modern browsers:
-RGB is stored in the left half of the MP4 and a grayscale alpha mask in the
-right half, then reconstructed in the custom shader.
+therefore reaches both poles. Version 1 side-by-side RGB/mask artifacts remain
+readable for compatibility.
 
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run

@@ -17,7 +17,8 @@
     "width": 2048,
     "height": 1024,
     "fps": 24,
-    "maxBitrate": "8M",
+    "crf": 12,
+    "maxBitrate": "16M",
     "preset": "fast",
     "directory": "artifacts/geovideo"
   },

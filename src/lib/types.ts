@@ -1,6 +1,6 @@
 import type { ZarrSource } from "./ZarrSource";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
-import type { GeoVideoManifestV1 } from "./geovideo";
+import type { GeoVideoManifest } from "./geovideo";
 
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
@@ -55,7 +55,7 @@ export interface ArcoLayerOptions
   backend?: ArcoLayerBackendPreference;
   /** Fixed physical-value domain for scalar colors. Null/omitted uses frame extrema. */
   colorDomain?: [number, number] | null;
-  geoVideoManifest?: GeoVideoManifestV1;
+  geoVideoManifest?: GeoVideoManifest;
   verticalLabel?: string;
   metadata?: Record<string, unknown>;
   before?: string;

@@ -195,6 +195,10 @@ export class ArcoLayer implements CustomLayerInterface {
         id: options.id,
         manifest: options.geoVideoManifest ?? render.manifestUrl,
         opacity: options.opacity,
+        colorRamp: options.colorRamp,
+        colorDomain: options.colorDomain,
+        logScale: options.logScale,
+        vibrance: options.vibrance,
       });
     }
   }
@@ -342,6 +346,7 @@ export class ArcoLayer implements CustomLayerInterface {
   setLogScale(v: boolean): void {
     if (this.delegate instanceof ScalarLayer) this.delegate.setLogScale(v);
     if (this.delegate instanceof VectorLayer) this.delegate.setLogScale(v);
+    if (this.delegate instanceof GeoVideoLayer) this.delegate.setLogScale(v);
   }
 
   setVibrance(v: number): void {
@@ -350,6 +355,7 @@ export class ArcoLayer implements CustomLayerInterface {
 
   setColorDomain(domain: [number, number] | null): void {
     if (this.delegate instanceof ScalarLayer) this.delegate.setColorDomain(domain);
+    if (this.delegate instanceof GeoVideoLayer) this.delegate.setColorDomain(domain);
   }
 
   async play(): Promise<void> {
