@@ -89,6 +89,7 @@ export interface TimeMeta {
   units?: string;
   current?: number;
   granularity: TimeGranularity;
+  timelineKind?: GeoVideoManifest["timeline"]["kind"];
 }
 
 export type TimeGranularity = "year" | "month" | "day" | "hour" | "minute" | "second";
@@ -335,6 +336,7 @@ export class Zartigl {
   private catalogLayer: CatalogLayer | null = null;
   private layer: ArcoLayer | null = null;
   private time: number = 0;
+  private pendingTime: number | null = null;
   private depth: number = 0;
   private settings: Partial<ZartiglSettings>;
   private colorDomainOverridden: boolean;
@@ -419,7 +421,10 @@ export class Zartigl {
         this.verticalMeta = null;
         this.variableUnit = manifest.style.unit ?? "";
         this.variableStandardName = manifest.provenance.variable;
-        this.time = this.timeMeta.values[0];
+        this.time = this.pendingTime == null
+          ? this.timeMeta.values[0]
+          : nearestValue(this.timeMeta.values, this.pendingTime);
+        this.pendingTime = null;
         this.depth = 0;
         const overriddenColorDomain = this.settings.colorDomain;
         this.settings = { ...layerDefaults, ...this.settings };
@@ -546,7 +551,9 @@ export class Zartigl {
 
   setTime(time: Date | string | number): void {
     this.assertAlive();
-    this.time = nearestValue(this.timeMeta?.values ?? [], timeToMs(time));
+    const requested = timeToMs(time);
+    if (!this.layer) this.pendingTime = requested;
+    this.time = nearestValue(this.timeMeta?.values ?? [], requested);
     this.layer?.setTime(this.time);
   }
 
@@ -639,6 +646,7 @@ export class Zartigl {
       units: dim.units,
       current: this.time,
       granularity: inferTimeGranularity(dim.values),
+      timelineKind: this.geoVideoManifest?.timeline.kind,
     };
   }
 
@@ -905,6 +913,7 @@ export class Zartigl {
       metadata: this.metadata ? { ...this.metadata } : undefined,
       before: this.before,
     });
+    this.pendingTime = null;
     layer.on("loading", () => this.emit("loading"));
     layer.on("loaded", (meta) => {
       this.lastMeta = meta;

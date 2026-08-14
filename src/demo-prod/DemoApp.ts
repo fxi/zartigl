@@ -8,6 +8,7 @@ import {
   Zartigl,
   deriveDirectionMagnitudeComponents,
   getPalettes,
+  resolveTimeInputSelection,
 } from "../lib";
 import type {
   RenderMode,
@@ -133,15 +134,6 @@ function authoringInputValue(time: number, granularity: TimeGranularity): string
   if (granularity === "month") return iso.slice(0, 7);
   if (granularity === "day") return iso.slice(0, 10);
   return iso.slice(0, granularity === "second" ? 19 : 16);
-}
-
-function authoringInputTime(value: string, granularity: TimeGranularity): number {
-  if (granularity === "year") return Date.UTC(Number(value), 0, 1);
-  if (granularity === "month") return new Date(`${value}-01T00:00:00Z`).getTime();
-  if (granularity === "day") {
-    return new Date(`${value}T00:00:00Z`).getTime();
-  }
-  return new Date(`${value}Z`).getTime();
 }
 
 function pointResultToData(
@@ -609,9 +601,12 @@ export class DemoApp {
         full.granularity,
       );
       input.addEventListener("change", () => {
-        const requested = authoringInputTime(input.value, full.granularity);
-        if (!Number.isFinite(requested)) return;
-        const snapped = full.values[nearestTimeIndex(full.values, requested)];
+        const snapped = resolveTimeInputSelection(
+          full.values,
+          input.value,
+          full.granularity,
+        );
+        if (snapped === undefined) return;
         if (side === "start") {
           this.params.allowedStart = snapped;
           if (snapped > this.params.allowedEnd) this.params.allowedEnd = snapped;

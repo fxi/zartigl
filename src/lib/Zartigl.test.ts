@@ -823,12 +823,58 @@ describe("Zartigl facade", () => {
       geoVideoLoop: false,
       geoVideoPlaybackRate: 5,
     });
+    expect(z.getTimeMeta()).toMatchObject({
+      timelineKind: "snapshot-loop",
+      size: 1,
+    });
     const loop = vi.spyOn(ArcoLayer.prototype, "setLoop");
     const rate = vi.spyOn(ArcoLayer.prototype, "setPlaybackRate");
     z.setLoop(true);
     z.setPlaybackRate(2);
     expect(loop).toHaveBeenCalledWith(true);
     expect(rate).toHaveBeenCalledWith(2);
+    vi.unstubAllGlobals();
+  });
+
+  it("retains a time requested while GeoVideo metadata is loading", async () => {
+    const layer = scalarLayer({
+      derived: {
+        geoVideos: [{ id: "preview", manifestUrl: "https://example.test/manifest.json" }],
+      },
+    });
+    const start = Date.parse("2026-01-01T00:00:00Z");
+    const end = Date.parse("2026-03-01T00:00:00Z");
+    const requested = start + (end - start) / 2;
+    const manifest = {
+      schemaVersion: 2,
+      id: "preview",
+      type: "geovideo",
+      projection: "equirectangular",
+      bounds: [-180, -90, 180, 90],
+      media: { url: "video.mp4", mimeType: "video/mp4", width: 16, height: 8, fps: 1, durationSeconds: 3, codec: "h264" },
+      encoding: { kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247, valueMin: 0, valueMax: 1, transfer: "linear", colorSpace: "bt709", colorRange: "limited" },
+      mask: { kind: "static-validity", url: "mask.png", mimeType: "image/png", width: 16, height: 8, threshold: 0.5 },
+      timeline: { kind: "range", dateStart: new Date(start).toISOString(), dateEnd: new Date(end).toISOString(), interpolation: "linear" },
+      provenance: { layerId: "scalar", datasetId: "dataset", variable: "temperature", generatedAt: "2026-01-01T00:00:00Z" },
+      style: { palette: "balance", colorDomain: [0, 1], unit: "K" },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => manifest,
+    }));
+    const map = new FakeMap();
+    map.ready = false;
+    const z = new Zartigl({
+      map: map as never,
+      catalog: catalog(layer),
+      backend: "geovideo",
+    });
+
+    const loading = z.setLayer("scalar");
+    z.setTime(requested);
+    await loading;
+
+    expect(z.getTimeMeta().current).toBe(requested);
     vi.unstubAllGlobals();
   });
 

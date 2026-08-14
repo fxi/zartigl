@@ -54,6 +54,7 @@ export interface GeoVideoLayerOptions {
   autoplay?: boolean;
   loop?: boolean;
   playbackRate?: number;
+  time?: string | number;
   timeRange?: [number, number];
   colorRamp?: ColorRampInput;
   colorDomain?: [number, number] | null;
@@ -103,6 +104,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
   private readonly autoplay: boolean;
   private loop: boolean;
   private playbackRate: number;
+  private requestedTime: number | null;
   private requestedTimeRange?: [number, number];
   private timeRange: [number, number] | null = null;
   private opacity: number;
@@ -155,6 +157,12 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.autoplay = options.autoplay ?? true;
     this.loop = options.loop ?? true;
     this.playbackRate = options.playbackRate ?? 1;
+    const requestedTime = options.time == null
+      ? NaN
+      : typeof options.time === "number"
+        ? options.time
+        : new Date(options.time).getTime();
+    this.requestedTime = Number.isFinite(requestedTime) ? requestedTime : null;
     this.requestedTimeRange = options.timeRange;
     this.colorRamp = options.colorRamp ?? "balance";
     this.colorDomain = options.colorDomain ?? null;
@@ -370,8 +378,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   setTime(time: string | number): void {
-    if (!this.video || !this.manifest) return;
     const requested = typeof time === "number" ? time : new Date(time).getTime();
+    if (!Number.isFinite(requested)) return;
+    this.requestedTime = requested;
+    if (!this.video || !this.manifest) return;
     const [min, max] = this.timeRange ?? geoVideoTimelineBounds(this.manifest);
     const ms = Math.max(min, Math.min(max, requested));
     this.video.currentTime = geoVideoSecondsForTime(this.manifest, ms);
@@ -545,6 +555,12 @@ export class GeoVideoLayer implements CustomLayerInterface {
     video.playsInline = true;
     video.preload = "auto";
     video.src = manifest.media.url;
+    video.addEventListener("loadedmetadata", () => {
+      const [min, max] = this.timeRange ?? geoVideoTimelineBounds(manifest);
+      const requested = this.requestedTime ?? min;
+      const initialTime = Math.max(min, Math.min(max, requested));
+      video.currentTime = geoVideoSecondsForTime(manifest, initialTime);
+    }, { once: true });
     video.addEventListener("loadeddata", () => {
       const expectedWidth = manifest.media.width;
       const expectedHeight = manifest.media.height;

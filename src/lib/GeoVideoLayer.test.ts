@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GeoVideoLayer } from "./GeoVideoLayer";
+import type { GeoVideoLayerOptions } from "./GeoVideoLayer";
+import { geoVideoSecondsForTime } from "./geovideo";
 import type { GeoVideoManifest } from "./geovideo";
 
 const manifest: GeoVideoManifest = {
@@ -114,7 +116,11 @@ class FakeImage extends EventTarget {
   naturalHeight = 8;
 }
 
-function setup(withVideoFrameCallback = true, manifestValue: GeoVideoManifest = manifest) {
+function setup(
+  withVideoFrameCallback = true,
+  manifestValue: GeoVideoManifest = manifest,
+  options: Partial<GeoVideoLayerOptions> = {},
+) {
   const video = new FakeVideo(withVideoFrameCallback);
   video.videoWidth = manifestValue.media.width;
   video.videoHeight = manifestValue.media.height;
@@ -146,14 +152,21 @@ function setup(withVideoFrameCallback = true, manifestValue: GeoVideoManifest = 
     animationFrames.delete(handle);
   }));
 
-  const layer = new GeoVideoLayer({ id: "test", manifest: manifestValue, autoplay: false });
+  const layer = new GeoVideoLayer({
+    id: "test",
+    manifest: manifestValue,
+    autoplay: false,
+    ...options,
+  });
   const internal = layer as unknown as {
     map: { triggerRepaint: () => void };
     manifest: GeoVideoManifest;
+    timeRange: [number, number] | null;
     initVideo: (value: GeoVideoManifest) => void;
   };
   internal.map = { triggerRepaint };
   internal.manifest = manifestValue;
+  internal.timeRange = options.timeRange ?? null;
   internal.initVideo(manifestValue);
   return { layer, video, triggerRepaint, animationFrames, canvases, images };
 }
@@ -163,6 +176,41 @@ afterEach(() => {
 });
 
 describe("GeoVideoLayer playback scheduling", () => {
+  it("seeks to the allowed range before the first frame is buffered", () => {
+    const start = Date.parse("2026-03-01T00:00:00Z");
+    const end = Date.parse("2026-05-01T00:00:00Z");
+    const { video } = setup(true, manifest, { timeRange: [start, end] });
+
+    video.dispatchEvent(new Event("loadedmetadata"));
+
+    expect(video.currentTime).toBeCloseTo(geoVideoSecondsForTime(manifest, start));
+  });
+
+  it("applies an initial time before the first frame and clamps it to the range", () => {
+    const start = Date.parse("2026-03-01T00:00:00Z");
+    const end = Date.parse("2026-05-01T00:00:00Z");
+    const requested = Date.parse("2026-06-01T00:00:00Z");
+    const { video } = setup(true, manifest, {
+      time: requested,
+      timeRange: [start, end],
+    });
+
+    video.dispatchEvent(new Event("loadedmetadata"));
+
+    expect(video.currentTime).toBeCloseTo(geoVideoSecondsForTime(manifest, end));
+  });
+
+  it("retains a time requested before media initialization", () => {
+    const requested = Date.parse("2026-04-01T00:00:00Z");
+    const { layer, video } = setup();
+
+    layer.setTime(requested);
+    video.currentTime = 0;
+    video.dispatchEvent(new Event("loadedmetadata"));
+
+    expect(video.currentTime).toBeCloseTo(geoVideoSecondsForTime(manifest, requested));
+  });
+
   it("loads a static mask independently without copying the value video through canvas", () => {
     const { layer, video, images, canvases } = setup();
     expect(images).toHaveLength(1);

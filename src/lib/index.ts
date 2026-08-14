@@ -1,4 +1,5 @@
 export { Zartigl } from "./Zartigl";
+export { resolveTimeInputSelection } from "./time-selection";
 export { ScalarLayer } from "./ScalarLayer";
 export { GeoVideoLayer } from "./GeoVideoLayer";
 export {

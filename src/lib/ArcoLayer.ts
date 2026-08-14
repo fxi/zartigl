@@ -198,6 +198,7 @@ export class ArcoLayer implements CustomLayerInterface {
         autoplay: options.geoVideoAutoplay,
         loop: options.geoVideoLoop,
         playbackRate: options.geoVideoPlaybackRate,
+        time: options.time,
         timeRange: options.geoVideoTimeRange,
         opacity: options.opacity,
         colorRamp: options.colorRamp,

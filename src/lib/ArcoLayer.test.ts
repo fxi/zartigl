@@ -170,6 +170,21 @@ describe("selectArcoLayerBackend", () => {
   });
 });
 
+describe("ArcoLayer GeoVideo initialization", () => {
+  it("forwards the requested initial time to the GeoVideo delegate", () => {
+    const time = Date.parse("2026-04-01T00:00:00Z");
+    const layer = new ArcoLayer(layerOptions(scalarGeoVideoLayer, {
+      backend: "geovideo",
+      time,
+    }));
+    const delegate = (layer as unknown as {
+      delegate: { requestedTime: number | null };
+    }).delegate;
+
+    expect(delegate.requestedTime).toBe(time);
+  });
+});
+
 describe("ArcoLayer suspension", () => {
   it("detaches WMTS requests and restores only the latest time", () => {
     const layers = new Map<string, unknown>();
