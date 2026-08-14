@@ -12,6 +12,13 @@ uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --u
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --upload-only
 ```
 
+The Arctic sea-ice example uses the same workflow with a polar crop:
+
+```bash
+uv run scripts/geovideo/render.py scripts/geovideo/examples/sea-ice-thickness-arctic.json --dry-run
+uv run scripts/geovideo/render.py scripts/geovideo/examples/sea-ice-thickness-arctic.json --upload
+```
+
 `ffmpeg` must be available in `PATH`. Upload reads S3 credentials from `.env`;
 credentials are never written to the artifact. Public endpoint and bucket
 defaults come from `.env.demo`. Override `upload.publicBaseUrl` for a CDN or a

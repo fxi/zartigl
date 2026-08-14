@@ -1,0 +1,28 @@
+{
+  "id": "sea-ice-thickness-arctic-six-months",
+  "layerId": "sea-ice-thickness",
+  "dateStart": "2026-02-01T00:00:00Z",
+  "dateEnd": "2026-08-01T00:00:00Z",
+  "durationSeconds": 20,
+  "interpolation": "linear",
+  "bounds": [-180, 45, 180, 90],
+  "style": {
+    "palette": "ice",
+    "colorDomain": [0, 5],
+    "unit": "m",
+    "logScale": false,
+    "vibrance": 0.1
+  },
+  "output": {
+    "width": 2048,
+    "height": 256,
+    "fps": 24,
+    "crf": 12,
+    "maxBitrate": "16M",
+    "preset": "fast",
+    "directory": "artifacts/geovideo"
+  },
+  "upload": {
+    "prefix": "geovideo"
+  }
+}

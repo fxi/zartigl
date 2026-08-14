@@ -450,6 +450,15 @@
           "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
         }
       },
+      "derived": {
+        "geoVideos": [
+          {
+            "id": "sea-ice-thickness-arctic-six-months-2026-scalar-luma",
+            "label": "Arctic six-month thickness animation (February–August 2026)",
+            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-ice-thickness/79d55879af89/manifest.json"
+          }
+        ]
+      },
       "variables": {
         "kind": "scalar",
         "value": "sithick"
