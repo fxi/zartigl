@@ -1,0 +1,105 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1.55cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+\setlength{\parindent}{0.8em}
+\setlength{\parskip}{0pt}
+\raggedbottom
+
+\title{\vspace{-1.4em}\textbf{GeoVideo: A Browser-Oriented Scalar Video Profile for\
+Interactive Spatiotemporal Raster Visualization}\vspace{-0.4em}}
+\author{F. Moser\\
+\small University of Geneva (UNIGE) / UNEP--GRID Geneva, Switzerland}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\begin{abstract}
+Cloud-native arrays retain the numeric structure of Earth-system data, but dense raster animations remain expensive in Web clients. Independent images and map tiles, conversely, are easy to display but do not exploit temporal redundancy and usually fix the cartographic styling. We describe \emph{GeoVideo}, an experimental visualization profile that quantizes a scalar field into video luma, decodes it with the browser media stack, and reconstructs approximate values in a GPU shader before applying an interactive palette. An external manifest carries space, time, units, numeric encoding, mask, and provenance, while the authoritative Zarr source remains responsible for exact queries and analysis. A six-month sea-surface-temperature-anomaly prototype reduces a 4.53~GB raw video stream to a 60.1~MB H.264 file and plays at 24 frames per second in current Chrome, Firefox, and Safari implementations. GeoVideo is not proposed as a new scientific archive format. It is a working browser profile that may converge with the earlier Cloud Optimized Raster Encoding (CORE) concept and the emerging OGC GeoHEIF work.
+\end{abstract}
+
+\section{Problem and scope}
+Global model and observation products commonly form dense arrays over longitude, latitude, time, and sometimes depth, ensemble, or spectral dimensions. Zarr provides a cloud-oriented representation for chunked multidimensional arrays \cite{zarrv3}. Cloud Optimized GeoTIFF (COG) similarly enables spatial range access and overviews for individual rasters \cite{ogccog}. These representations are well suited to scientific access, yet their chunking does not necessarily match continuous browser playback. Animating hundreds of global states can require many requests, decompressions, allocations, and texture uploads.
+
+WMS and WMTS offer highly interoperable rendered maps \cite{ogcwms,ogcwmts}, but consecutive dates are normally independent images or tiles. This discards inter-frame redundancy, and server-side colors prevent local changes of palette, clipping range, or nonlinear scale. Scientific compressors such as SZ and ZFP instead provide explicit numeric error controls \cite{sz,zfp}, but do not currently benefit from the browser's native media delivery, scheduling, hardware decoding, and frame-to-texture path.
+
+GeoVideo addresses only the visualization case. It is a lossy derived representation for rapid exploration; it does not replace a coverage, Zarr store, or scientific compressor. Exact point values, time series, profiles, and area statistics continue to query the authoritative numeric source.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Related approaches and their primary trade-off.}
+\begin{tabular}{@{}p{0.17\textwidth}p{0.31\textwidth}p{0.44\textwidth}@{}}
+\toprule
+Approach & Strength & Gap for this use case \\
+\midrule
+Zarr/COG & Numeric or spatially selective access & Playback spans many independently decoded chunks \\
+WMS, WMTS & Mature Web-map interoperability & Independent, pre-styled images \\
+SZ/ZFP & Bounded scientific error & No native browser media pipeline \\
+CORE, xarrayvideo & Temporal video compression & Limited browser-side scalar styling semantics \\
+GeoHEIF & Geospatial metadata in ISOBMFF/HEIF & Emerging tooling; predicted sequences remain future work \\
+GeoVideo & Browser playback and scalar GPU styling & Lossy visualization product, not an analytical store \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Prior and converging work}
+CORE is the closest direct precedent. It defines a Web-native video container for environmental raster series, fast-start metadata, one frame per second, spatial tiles ordered either by layer or by location, and lower-resolution overviews \cite{core}. Its published prototype concentrates on RGB/Byte imagery and describes preliminary specifications rather than a broadly deployed reader ecosystem. GeoVideo adopts CORE's central observation while focusing on a continuously playing scalar field, reconstruction in physical units, and client-side scientific styling.
+
+The recent \texttt{xarrayvideo} work independently demonstrates that conventional codecs exploit redundancy in Earth-system tensors, reporting large rate reductions with high reconstruction fidelity \cite{xarrayvideo}. Its principal goal is compact storage and machine-learning distribution. GeoVideo targets a different endpoint: an interactive map or globe driven directly by Web media and GPU APIs.
+
+GeoHEIF is a stronger candidate for long-term convergence than a new standalone container. The OGC Testbed-20 draft adds CRS, transforms, extra dimensions, cell properties, units, extrema, and nil values to HEIF/ISOBMFF and explicitly includes model outputs through time \cite{geoheif}. Open-source experiments have added tiling and sequence support to libheif and Apache SIS, but the implementations remain partial; the report identifies motion-predicted video sequences and broader streaming support as future work \cite{geoheifoss}. An OGC GeoHEIF Standards Working Group was proposed in 2026 \cite{geoheifswg}. GeoVideo can therefore serve as evidence and requirements for a browser-oriented scalar profile rather than compete with that metadata model.
+
+Motion-imagery standards such as MISB/STANAG solve another problem: locating a moving camera footprint and its observations. Here the raster grid is georectified, each video frame is a state of the same coverage, and pixel intensity carries an approximate measured value.
+
+\section{Experimental profile}
+Let $x$ be a scalar value and $[v_{min},v_{max}]$ the fixed encoding domain. The prototype maps it to a decoded code interval $[c_{min},c_{max}]$:
+\begin{equation}
+\begin{split}
+q &= \mathrm{clip}\!\left(\frac{x-v_{min}}{v_{max}-v_{min}},0,1\right),\\
+c &= \mathrm{round}\!\left[c_{min}+q(c_{max}-c_{min})\right].
+\end{split}
+\end{equation}
+The shader approximately reconstructs
+\begin{equation}
+\hat{x}=v_{min}+\frac{c-c_{min}}{c_{max}-c_{min}}(v_{max}-v_{min}).
+\end{equation}
+The encoding domain is independent of the display domain: the user may narrow the latter or change palette and transfer function without downloading another raster. The current 8-bit profile uses decoded codes 8--247. A calibration step is essential because a video codec and browser color pipeline are not scalar-preserving by design.
+
+Source grids are spatially resampled to pixel-centred equirectangular frames. Scientific timestamps are interpolated onto a regular video clock. Invalid cells are filled from nearby valid values before encoding to reduce ringing across coasts, but visibility comes from a separate lossless PNG mask. The current mask is the intersection of validity over the whole sequence; changing-validity pixels are conservatively hidden.
+
+The producer emits H.264/YUV~4:2:0 in an MP4 with BT.709 limited-range signaling, a two-second group of pictures, and the movie metadata before media data for HTTP range startup. A sidecar manifest minimally declares media dimensions and codec, geographic projection and bounds, code and value ranges, color signaling, mask, scientific timeline, variable, unit, provenance, and default style. These fields are an experimental contract, not a normative schema.
+
+At runtime an HTML video element provides buffering, seeking, and decoding. Frame notifications schedule one texture update per presented frame; the decoded video is uploaded directly to WebGL, and a shader reconstructs the scalar, applies the selected display domain and palette, and drapes it over a subdivided longitude--latitude mesh. This supports both Web Mercator and a globe extending to the poles. WebCodecs could later expose tighter control over encoded chunks and \texttt{VideoFrame} lifetimes \cite{webcodecs}, but it is not required by the prototype.
+
+\section{Case study}
+The test product represents daily global sea-surface-temperature anomaly from 1 February to 1 August 2026. Approximately 182 source grids of $2041\times4320$ float32 cells have a logical uncompressed volume of 6.42~GB. This is not measured network traffic: Zarr chunk compression, cache state, and the interaction path determine actual transferred bytes.
+
+The derived animation contains 720 interpolated frames at $2048\times1024$, 24~fps, and 30~s duration. Its RGB input stream is 4.53~GB; H.264 output is 60,066,279 bytes and the mask is 22,621 bytes, a $75.4\times$ reduction from that video input. Comparison with the 6.42~GB scientific subset is illustrative only because GeoVideo also changes resolution, precision, and temporal sampling.
+
+Round-trip validation sampled 996,480 valid pixels. Absolute codec error relative to the expected quantized code had a mean of 1.94 codes, a 99th percentile of 5, and a maximum of 12. Over the $[-3,3],^{\circ}$C domain and 239-code span, these correspond to approximately 0.049, 0.126, and 0.301$\,^{\circ}$C. They exclude spatial and temporal resampling error; linear quantization alone adds at most half a code, about 0.013$\,^{\circ}$C before codec error.
+
+The full-resolution product played visually smoothly and stably at 24~fps in Chrome, Firefox, and Safari during manual tests. This establishes feasibility, not comparative performance: startup latency, transferred bytes, random-seek latency, power, memory, dropped frames, and frame-upload cost require a controlled multi-dataset benchmark.
+
+\section{Limits and path to interoperability}
+GeoVideo is best suited to dense, smoothly evolving scalar fields and overview interaction. Video prediction weakens arbitrary seeking; a global frame cannot provide efficient spatial subsets; masks that change rapidly are poorly represented by a static intersection; 8-bit codes may be inadequate; and each variable, level, or ensemble can multiply derived products. No decoded value should be exposed as an exact scientific observation. Codec availability, color conversion, hardware paths, licensing, and error characteristics also vary by browser and device.
+
+A cloud-oriented profile should eventually reference segments by space, time, spatial resolution, temporal resolution, and codec rendition. This would allow a low-rate fallback for constrained devices and denser segments for detailed exploration. The manifest should reuse GeoHEIF concepts for CRS, dimensions, cell properties, units, and nil values, while discovery may remain external and exact data remain linked as Zarr. Until browsers can consume such GeoHEIF sequences directly, ordinary MP4 plus a small manifest preserves the key deployment advantage.
+
+The contribution is consequently not a new codec and need not become an independent format. It is a reproducible browser pipeline, a scalar encoding contract, and a set of requirements that can extend CORE's visualization concept and inform GeoHEIF standardization. The next evidence needed is an open conformance corpus and a rate--distortion--latency comparison across variables, codecs, devices, and alternative delivery strategies.
+
+\footnotesize
+\bibliographystyle{plain}
+\bibliography{geovideo}
+
+\end{document}
