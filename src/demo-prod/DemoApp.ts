@@ -307,6 +307,9 @@ export class DemoApp {
   private particlesFolder!: FolderApi;
   private trailFolder!: FolderApi;
   private dataBindings: { dispose(): void }[] = [];
+  private timeSliderBinding: BindingApi | null = null;
+  private timeLabelBinding: BindingApi | null = null;
+  private syncingVideoTimeControls = false;
 
   // DOM refs
   private layerSelectEl!: HTMLSelectElement;
@@ -406,7 +409,13 @@ export class DemoApp {
       const values = activeZartigl.getTimeMeta().values;
       this.params.timeIndex = nearestTimeIndex(values, time);
       this.params.timeLabel = formatTime(time);
-      this.pane.refresh();
+      this.syncingVideoTimeControls = true;
+      try {
+        this.timeSliderBinding?.refresh();
+        this.timeLabelBinding?.refresh();
+      } finally {
+        this.syncingVideoTimeControls = false;
+      }
     });
 
     await activeZartigl.setLayer(layer.id);
@@ -456,26 +465,27 @@ export class DemoApp {
   private rebuildDataUI(): void {
     for (const b of this.dataBindings) b.dispose();
     this.dataBindings = [];
+    this.timeSliderBinding = null;
+    this.timeLabelBinding = null;
 
     const timeMeta = this.z!.getTimeMeta();
     const times = timeMeta.values ?? [];
     const tSize = times.length;
 
-    let labelBinding: BindingApi;
-
-    const sliderBinding = this.dataFolder.addBinding(this.params, "timeIndex", {
+    this.timeSliderBinding = this.dataFolder.addBinding(this.params, "timeIndex", {
       min: 0,
       max: Math.max(0, tSize - 1),
       step: 1,
       label: "time",
     }).on("change", (ev) => {
+      if (this.syncingVideoTimeControls) return;
       const ms = times[ev.value];
       this.params.timeLabel = formatTime(ms);
-      labelBinding.refresh();
+      this.timeLabelBinding?.refresh();
       this.z?.setTime(ms);
-    });
+    }) as BindingApi;
 
-    labelBinding = this.dataFolder.addBinding(this.params, "timeLabel", {
+    this.timeLabelBinding = this.dataFolder.addBinding(this.params, "timeLabel", {
       readonly: true,
       label: "",
     }) as BindingApi;
@@ -493,8 +503,8 @@ export class DemoApp {
     }
 
     this.dataBindings.push(
-      sliderBinding,
-      labelBinding,
+      this.timeSliderBinding,
+      this.timeLabelBinding,
     );
     if (depthBinding) this.dataBindings.push(depthBinding);
     if (this.currentBackend === "geovideo") {
