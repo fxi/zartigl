@@ -15,6 +15,7 @@ import type {
   ZartiglDebugInfo,
   ZartiglSettings,
   ZartiglStatus,
+  TimeGranularity,
 } from "../lib";
 import { formatTime, formatVertical } from "../catalog";
 import type { CatalogLayer, Catalog } from "../catalog";
@@ -24,6 +25,11 @@ import type { CatalogLayer, Catalog } from "../catalog";
 interface DemoParams {
   timeIndex: number;
   timeLabel: string;
+  allowedStart: number;
+  allowedEnd: number;
+  geoVideoAutoplay: boolean;
+  geoVideoLoop: boolean;
+  geoVideoPlaybackRate: number;
   depth: number;
   particleDensity: number;
   speed: number;
@@ -57,6 +63,10 @@ interface HashState {
   ls: boolean;
   vb: number;
   cd?: [number, number] | null;
+  tr?: [number, number];
+  ga?: boolean;
+  gl?: boolean;
+  gr?: number;
 }
 
 type PopupMode = "time" | "depth";
@@ -109,6 +119,29 @@ function nearestTimeIndex(values: readonly number[], target: number): number {
     if (Math.abs(values[i] - target) < Math.abs(values[best] - target)) best = i;
   }
   return best;
+}
+
+function authoringInputType(granularity: TimeGranularity): "month" | "date" | "datetime-local" {
+  if (granularity === "month") return "month";
+  if (granularity === "day" || granularity === "year") return "date";
+  return "datetime-local";
+}
+
+function authoringInputValue(time: number, granularity: TimeGranularity): string {
+  const iso = new Date(time).toISOString();
+  if (granularity === "year") return iso.slice(0, 4);
+  if (granularity === "month") return iso.slice(0, 7);
+  if (granularity === "day") return iso.slice(0, 10);
+  return iso.slice(0, granularity === "second" ? 19 : 16);
+}
+
+function authoringInputTime(value: string, granularity: TimeGranularity): number {
+  if (granularity === "year") return Date.UTC(Number(value), 0, 1);
+  if (granularity === "month") return new Date(`${value}-01T00:00:00Z`).getTime();
+  if (granularity === "day") {
+    return new Date(`${value}T00:00:00Z`).getTime();
+  }
+  return new Date(`${value}Z`).getTime();
 }
 
 function pointResultToData(
@@ -389,6 +422,14 @@ export class DemoApp {
       map: this.map,
       catalog: this.cat,
       backend: this.currentBackend,
+      timeRange: hashState?.tr
+        ? { start: hashState.tr[0], end: hashState.tr[1] }
+        : undefined,
+      geoVideo: {
+        autoplay: hashState?.ga ?? this.params.geoVideoAutoplay,
+        loop: hashState?.gl ?? this.params.geoVideoLoop,
+        playbackRate: hashState?.gr ?? this.params.geoVideoPlaybackRate,
+      },
       visible: true,
     });
     const activeZartigl = this.z;
@@ -425,6 +466,11 @@ export class DemoApp {
     const depthMeta = this.z.getDepthMeta();
     const times = timeMeta.values ?? [];
     const tSize = times.length;
+    this.params.allowedStart = timeMeta.min;
+    this.params.allowedEnd = timeMeta.max;
+    this.params.geoVideoAutoplay = hashState?.ga ?? this.params.geoVideoAutoplay;
+    this.params.geoVideoLoop = hashState?.gl ?? this.params.geoVideoLoop;
+    this.params.geoVideoPlaybackRate = hashState?.gr ?? this.params.geoVideoPlaybackRate;
 
     if (hashState) {
       this.params.timeIndex = Math.max(0, Math.min(
@@ -472,6 +518,8 @@ export class DemoApp {
     const times = timeMeta.values ?? [];
     const tSize = times.length;
 
+    this.dataBindings.push(this.buildAllowedRangeControls());
+
     this.timeSliderBinding = this.dataFolder.addBinding(this.params, "timeIndex", {
       min: 0,
       max: Math.max(0, tSize - 1),
@@ -508,12 +556,99 @@ export class DemoApp {
     );
     if (depthBinding) this.dataBindings.push(depthBinding);
     if (this.currentBackend === "geovideo") {
-      const playButton = this.dataFolder.addButton({ title: "Play GeoVideo" })
-        .on("click", () => void this.z?.play());
-      const pauseButton = this.dataFolder.addButton({ title: "Pause GeoVideo" })
-        .on("click", () => this.z?.pause());
-      this.dataBindings.push(playButton, pauseButton);
+      const autoplay = this.dataFolder.addBinding(this.params, "geoVideoAutoplay", {
+        label: "autoplay",
+      }).on("change", (event) => {
+        if (event.value) void this.z?.play();
+        else this.z?.pause();
+      });
+      const loop = this.dataFolder.addBinding(this.params, "geoVideoLoop", {
+        label: "loop",
+      }).on("change", (event) => this.z?.setLoop(event.value));
+      const rate = this.dataFolder.addBinding(this.params, "geoVideoPlaybackRate", {
+        label: "playback rate",
+        options: [0.5, 1, 2, 5, 10].map((value) => ({ text: `${value}×`, value })),
+      }).on("change", (event) => this.z?.setPlaybackRate(event.value));
+      this.dataBindings.push(autoplay, loop, rate);
     }
+  }
+
+  private buildAllowedRangeControls(): FolderApi {
+    const folder = this.dataFolder.addFolder({ title: "Allowed range" });
+    const full = this.z!.getTimeMeta({ full: true });
+    const row = document.createElement("div");
+    row.className = "allowed-range";
+
+    const makeInput = (side: "start" | "end"): HTMLInputElement | HTMLSelectElement => {
+      const label = document.createElement("label");
+      label.textContent = side;
+      const input = full.granularity === "year"
+        ? document.createElement("select")
+        : document.createElement("input");
+      if (input instanceof HTMLInputElement) {
+        input.type = authoringInputType(full.granularity);
+        input.min = authoringInputValue(full.min, full.granularity);
+        input.max = authoringInputValue(full.max, full.granularity);
+        input.step = full.granularity === "second"
+          ? String(Math.max(1, (full.step ?? 1_000) / 1_000))
+          : full.granularity === "minute" || full.granularity === "hour"
+            ? String(Math.max(60, (full.step ?? 60_000) / 1_000))
+            : "1";
+      } else {
+        const years = [...new Set(full.values.map((time) => new Date(time).getUTCFullYear()))];
+        for (const year of years) {
+          const option = document.createElement("option");
+          option.value = String(year);
+          option.textContent = String(year);
+          input.appendChild(option);
+        }
+      }
+      input.className = "allowed-range-input";
+      input.value = authoringInputValue(
+        side === "start" ? this.params.allowedStart : this.params.allowedEnd,
+        full.granularity,
+      );
+      input.addEventListener("change", () => {
+        const requested = authoringInputTime(input.value, full.granularity);
+        if (!Number.isFinite(requested)) return;
+        const snapped = full.values[nearestTimeIndex(full.values, requested)];
+        if (side === "start") {
+          this.params.allowedStart = snapped;
+          if (snapped > this.params.allowedEnd) this.params.allowedEnd = snapped;
+        } else {
+          this.params.allowedEnd = snapped;
+          if (snapped < this.params.allowedStart) this.params.allowedStart = snapped;
+        }
+        this.applyAuthoredRange();
+      });
+      label.appendChild(input);
+      row.appendChild(label);
+      return input;
+    };
+    makeInput("start");
+    makeInput("end");
+    folder.element.appendChild(row);
+    folder.addButton({ title: "Full range" }).on("click", () => {
+      this.params.allowedStart = full.min;
+      this.params.allowedEnd = full.max;
+      this.applyAuthoredRange();
+    });
+    return folder;
+  }
+
+  private applyAuthoredRange(): void {
+    if (!this.z) return;
+    const full = this.z.getTimeMeta({ full: true });
+    const isFull = this.params.allowedStart === full.min && this.params.allowedEnd === full.max;
+    const meta = this.z.setTimeRange(isFull ? null : {
+      start: this.params.allowedStart,
+      end: this.params.allowedEnd,
+    });
+    this.params.allowedStart = meta.min;
+    this.params.allowedEnd = meta.max;
+    this.params.timeIndex = nearestTimeIndex(meta.values, meta.current ?? meta.min);
+    this.params.timeLabel = formatTime(meta.values[this.params.timeIndex]);
+    this.rebuildDataUI();
   }
 
   // ── Static UI (built once) ──────────────────────────────────────────
@@ -1049,6 +1184,8 @@ export class DemoApp {
         backend: this.currentBackend,
         layerId: this.currentLayer.id,
         layerLabel: this.currentLayer.label,
+        timeRange: this.currentTimeRange(),
+        geoVideo: this.currentGeoVideoOptions(),
         center: [center.lng, center.lat],
         zoom: this.map.getZoom(),
         bearing: this.map.getBearing(),
@@ -1107,6 +1244,8 @@ export class DemoApp {
       layerId: layer.id,
       backend: this.currentBackend,
       time: new Date(timeMs),
+      timeRange: this.currentTimeRange(),
+      geoVideo: this.currentBackend === "geovideo" ? this.currentGeoVideoOptions() : undefined,
       depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
       settings: this.buildSettings(),
     };
@@ -1140,6 +1279,12 @@ export class DemoApp {
       ls: this.params.logScale,
       vb: this.params.vibrance,
       cd: this.params.colorDomain,
+      tr: this.currentTimeRange()
+        ? [this.params.allowedStart, this.params.allowedEnd]
+        : undefined,
+      ga: this.params.geoVideoAutoplay,
+      gl: this.params.geoVideoLoop,
+      gr: this.params.geoVideoPlaybackRate,
     };
     const hash = btoa(JSON.stringify(state));
     const url = `${location.origin}${location.pathname}#${hash}`;
@@ -1215,6 +1360,11 @@ export class DemoApp {
     return {
       timeIndex: 0,
       timeLabel: "",
+      allowedStart: 0,
+      allowedEnd: 0,
+      geoVideoAutoplay: false,
+      geoVideoLoop: true,
+      geoVideoPlaybackRate: 1,
       depth: 0,
       particleDensity: 0.05,
       speed: 1.0,
@@ -1227,6 +1377,25 @@ export class DemoApp {
       colorDomain: null,
       colorDomainMin: 0,
       colorDomainMax: 1,
+    };
+  }
+
+  private currentTimeRange(): { start: string; end: string } | undefined {
+    const full = this.z?.getTimeMeta({ full: true });
+    if (!full || (this.params.allowedStart === full.min && this.params.allowedEnd === full.max)) {
+      return undefined;
+    }
+    return {
+      start: new Date(this.params.allowedStart).toISOString(),
+      end: new Date(this.params.allowedEnd).toISOString(),
+    };
+  }
+
+  private currentGeoVideoOptions() {
+    return {
+      autoplay: this.params.geoVideoAutoplay,
+      loop: this.params.geoVideoLoop,
+      playbackRate: this.params.geoVideoPlaybackRate,
     };
   }
 

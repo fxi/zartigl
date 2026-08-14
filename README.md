@@ -41,6 +41,9 @@ const z = new Zartigl({
   map,
   catalog,
   backend: "auto",
+  // Optional: expose only the month ending at the latest available timestamp.
+  timeRange: { trailing: "P1M" },
+  geoVideo: { autoplay: false, loop: true, playbackRate: 1 },
 });
 
 await z.setLayer("ocean-current-velocity");
@@ -95,6 +98,12 @@ z.on("status", (status) => {
   // metadata → fetching → rendering → ready, or blocked/error
   console.log(status.phase);
 });
+
+// GeoVideo uses native media playback and reports scientific time updates.
+z.on("timeChange", (time) => console.log(new Date(time)));
+z.on("playbackChange", (playing) => console.log({ playing }));
+z.setPlaybackRate(2);
+z.setLoop(false);
 
 // Embedding applications can stop rendering and abort field requests while
 // retaining the latest requested time/depth for one reload on resume.
@@ -176,9 +185,9 @@ browser can apply palette and scalar styling in WebGL. It is a visualization
 backend only: point queries always use the authoritative Zarr point-series store.
 
 Unlike MapLibre's native four-corner video source, `GeoVideoLayer` maps an
-equirectangular texture through zartigl's subdivided lon/lat mesh. Globe mode
-therefore reaches both poles. Version 1 side-by-side RGB/mask artifacts remain
-readable for compatibility.
+equirectangular scalar-luma texture through zartigl's subdivided lon/lat mesh.
+Globe mode therefore reaches both poles. A separate lossless image supplies the
+static validity mask without doubling the video width.
 
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run

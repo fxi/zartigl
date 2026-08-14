@@ -40,10 +40,18 @@ export interface ZartiglOptions {
   map: MaplibreMap;
   catalog: Catalog;
   backend?: "auto" | "zarr" | "geovideo" | "wmts";
+  timeRange?: TimeRange;
+  geoVideo?: GeoVideoOptions;
   visible?: boolean;
   settings?: Partial<ZartiglSettings>;
   metadata?: Record<string, unknown>;
   before?: string;
+}
+
+export interface GeoVideoOptions {
+  autoplay?: boolean;
+  loop?: boolean;
+  playbackRate?: number;
 }
 
 export interface ZartiglDebugInfo {
@@ -67,6 +75,8 @@ export interface ZartiglDebugInfo {
   time: number;
   depth: number;
   settings: Partial<ZartiglSettings>;
+  timeRange?: TimeRange;
+  geoVideo: Required<GeoVideoOptions>;
   layer: ArcoLayerDebugInfo | null;
 }
 
@@ -78,7 +88,13 @@ export interface TimeMeta {
   values: number[];
   units?: string;
   current?: number;
+  granularity: TimeGranularity;
 }
+
+export type TimeGranularity = "year" | "month" | "day" | "hour" | "minute" | "second";
+export type TimeRange =
+  | { start?: Date | string | number; end?: Date | string | number; trailing?: never }
+  | { trailing: string; start?: never; end?: never };
 
 export interface DepthMeta {
   values: number[];
@@ -128,6 +144,7 @@ type ZartiglEventMap = {
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
   timeChange: (time: number) => void;
+  playbackChange: (playing: boolean) => void;
 };
 
 function latestTimeAtOrBefore(values: readonly number[], now: number): number {
@@ -145,6 +162,110 @@ function latestTimeAtOrBefore(values: readonly number[], now: number): number {
 
 function timeToMs(time: Date | string | number): number {
   return time instanceof Date ? time.getTime() : typeof time === "number" ? time : new Date(time).getTime();
+}
+
+function parseTime(time: Date | string | number, label: string): number {
+  const value = timeToMs(time);
+  if (!Number.isFinite(value)) throw new Error(`Invalid ${label}`);
+  return value;
+}
+
+function subtractIsoDuration(anchor: number, duration: string): number {
+  const match = duration.match(
+    /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
+  );
+  if (!match) throw new Error(`Invalid trailing time duration: ${duration}`);
+  const values = match.slice(1).map((value) => Number(value ?? 0));
+  if (!values.some((value) => value > 0)) {
+    throw new Error("Trailing time duration must be positive");
+  }
+  const [years, months, weeks, days, hours, minutes, seconds] = values;
+  const source = new Date(anchor);
+  const monthIndex = source.getUTCFullYear() * 12 + source.getUTCMonth() - years * 12 - months;
+  const year = Math.floor(monthIndex / 12);
+  const month = ((monthIndex % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const result = Date.UTC(
+    year,
+    month,
+    Math.min(source.getUTCDate(), lastDay),
+    source.getUTCHours(),
+    source.getUTCMinutes(),
+    source.getUTCSeconds(),
+    source.getUTCMilliseconds(),
+  );
+  return result - (((weeks * 7 + days) * 24 + hours) * 60 + minutes) * 60_000 - seconds * 1000;
+}
+
+function inferTimeGranularity(values: readonly number[]): TimeGranularity {
+  const dates = values.map((value) => new Date(value));
+  const sameParts = (parts: Array<(date: Date) => number>) =>
+    parts.every((part) => dates.every((date) => part(date) === part(dates[0])));
+  const timeParts = [
+    (date: Date) => date.getUTCHours(),
+    (date: Date) => date.getUTCMinutes(),
+    (date: Date) => date.getUTCSeconds(),
+    (date: Date) => date.getUTCMilliseconds(),
+  ];
+  if (dates.length > 1) {
+    if (sameParts([(d) => d.getUTCMonth(), (d) => d.getUTCDate(), ...timeParts])) return "year";
+    if (sameParts([(d) => d.getUTCDate(), ...timeParts])) return "month";
+    const steps = values.slice(1).map((value, index) => value - values[index]);
+    if (sameParts(timeParts) && steps.every((step) => step % 86_400_000 === 0)) return "day";
+    if (sameParts(timeParts.slice(1)) && steps.every((step) => step % 3_600_000 === 0)) return "hour";
+    if (sameParts(timeParts.slice(2)) && steps.every((step) => step % 60_000 === 0)) return "minute";
+    return "second";
+  }
+  const date = dates[0];
+  if (!date) return "second";
+  const midnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
+  if (midnight && date.getUTCMonth() === 0 && date.getUTCDate() === 1) return "year";
+  if (midnight && date.getUTCDate() === 1) return "month";
+  if (midnight) return "day";
+  if (date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0) return "hour";
+  if (date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0) return "minute";
+  return "second";
+}
+
+function uniformStep(values: readonly number[]): number | undefined {
+  if (values.length < 2) return undefined;
+  const step = values[1] - values[0];
+  return values.every((value, index) => index === 0 || value - values[index - 1] === step)
+    ? step
+    : undefined;
+}
+
+function resolveTimeRange(meta: ZarrTimeDimension, range?: TimeRange): [number, number] | null {
+  if (!range) return null;
+  const sourceMin = meta.values[0];
+  const sourceMax = meta.values[meta.values.length - 1];
+  let min = sourceMin;
+  let max = sourceMax;
+  if (typeof range.trailing === "string") {
+    min = subtractIsoDuration(sourceMax, range.trailing);
+  } else {
+    if (range.start != null) min = parseTime(range.start, "time range start");
+    if (range.end != null) max = parseTime(range.end, "time range end");
+  }
+  if (min > max) throw new Error("Time range start must not follow its end");
+  return [Math.max(sourceMin, min), Math.min(sourceMax, max)];
+}
+
+function applyTimeRange(meta: ZarrTimeDimension, range?: TimeRange): ZarrTimeDimension {
+  const resolved = resolveTimeRange(meta, range);
+  if (!resolved) return meta;
+  const [min, max] = resolved;
+  const values = meta.values.filter((value) => value >= min && value <= max);
+  if (values.length === 0) throw new Error("Time range does not contain any available timestamps");
+  return {
+    ...meta,
+    min: values[0],
+    max: values[values.length - 1],
+    size: values.length,
+    step: uniformStep(values),
+    values,
+  };
 }
 
 function variableNames(catalogLayer: CatalogLayer): string[] {
@@ -203,6 +324,11 @@ export class Zartigl {
   private readonly map: MaplibreMap;
   private readonly catalog: Catalog;
   private readonly backendPreference: PublicBackend;
+  private timeRange?: TimeRange;
+  private fullTimeMeta: ZarrTimeDimension | null = null;
+  private readonly autoplay: boolean;
+  private loop: boolean;
+  private playbackRate: number;
   private readonly metadata?: Record<string, unknown>;
   private readonly before?: string;
   private visible: boolean;
@@ -214,6 +340,7 @@ export class Zartigl {
   private colorDomainOverridden: boolean;
   private lastMeta: FieldMeta | null = null;
   private timeMeta: ZarrTimeDimension | null = null;
+  private resolvedTimeRange: [number, number] | null = null;
   private verticalMeta: ZarrVerticalDimension | null = null;
   private variableUnit = "";
   private variableStandardName: string | undefined;
@@ -236,6 +363,10 @@ export class Zartigl {
     this.map = options.map;
     this.catalog = options.catalog;
     this.backendPreference = options.backend ?? "auto";
+    this.timeRange = options.timeRange ? { ...options.timeRange } : undefined;
+    this.autoplay = options.geoVideo?.autoplay ?? true;
+    this.loop = options.geoVideo?.loop ?? true;
+    this.playbackRate = options.geoVideo?.playbackRate ?? 1;
     this.metadata = options.metadata ? { ...options.metadata } : undefined;
     this.before = options.before;
     this.visible = options.visible ?? true;
@@ -268,11 +399,7 @@ export class Zartigl {
           throw new DOMException("Layer selection was superseded", "AbortError");
         }
         const values = geoVideoTimelineValues(manifest);
-        this.detach();
-        this.catalogLayer = catalogLayer;
-        this.activeFieldSource = null;
-        this.geoVideoManifest = manifest;
-        this.timeMeta = {
+        const geoVideoTimeMeta = {
           min: values[0],
           max: values[values.length - 1],
           step: values.length > 1 ? values[1] - values[0] : undefined,
@@ -280,10 +407,19 @@ export class Zartigl {
           units: "milliseconds since 1970-01-01T00:00:00Z",
           values,
         };
+        const resolvedTimeRange = resolveTimeRange(geoVideoTimeMeta, this.timeRange);
+        const filteredTimeMeta = applyTimeRange(geoVideoTimeMeta, this.timeRange);
+        this.detach();
+        this.catalogLayer = catalogLayer;
+        this.activeFieldSource = null;
+        this.geoVideoManifest = manifest;
+        this.fullTimeMeta = geoVideoTimeMeta;
+        this.resolvedTimeRange = resolvedTimeRange;
+        this.timeMeta = filteredTimeMeta;
         this.verticalMeta = null;
         this.variableUnit = manifest.style.unit ?? "";
         this.variableStandardName = manifest.provenance.variable;
-        this.time = values[0];
+        this.time = this.timeMeta.values[0];
         this.depth = 0;
         const overriddenColorDomain = this.settings.colorDomain;
         this.settings = { ...layerDefaults, ...this.settings };
@@ -306,6 +442,8 @@ export class Zartigl {
 
     const source = this.getFieldSource(catalogLayer.stores.field.url);
     let timeMeta: ZarrTimeDimension;
+    let fullTimeMeta: ZarrTimeDimension;
+    let resolvedTimeRange: [number, number] | null;
     let verticalMeta: ZarrVerticalDimension | null;
     let unitAttrs: ReturnType<ZarrSource["getVariableAttrs"]>;
     this.emit("status", { phase: "metadata" });
@@ -316,8 +454,10 @@ export class Zartigl {
           throw new Error(`Configured variable not found in Zarr store: ${variable}`);
         }
       }
-      timeMeta = source.getTimeDimension();
-      if (timeMeta.values.length === 0) throw new Error("Zarr time coordinate is empty");
+      fullTimeMeta = source.getTimeDimension();
+      if (fullTimeMeta.values.length === 0) throw new Error("Zarr time coordinate is empty");
+      resolvedTimeRange = resolveTimeRange(fullTimeMeta, this.timeRange);
+      timeMeta = applyTimeRange(fullTimeMeta, this.timeRange);
       verticalMeta = source.getVerticalDimension() ?? null;
       const configuredVariables = variableNames(catalogLayer);
       unitAttrs = source.getVariableAttrs(configuredVariables[configuredVariables.length - 1]);
@@ -335,13 +475,15 @@ export class Zartigl {
     this.catalogLayer = catalogLayer;
     this.activeFieldSource = source;
     this.geoVideoManifest = null;
+    this.fullTimeMeta = fullTimeMeta;
+    this.resolvedTimeRange = resolvedTimeRange;
     this.timeMeta = timeMeta;
     this.verticalMeta = verticalMeta;
     this.variableUnit = typeof unitAttrs.units === "string" ? unitAttrs.units : "";
     this.variableStandardName = typeof unitAttrs.standard_name === "string"
       ? unitAttrs.standard_name
       : undefined;
-    this.time = latestTimeAtOrBefore(timeMeta.values, Date.now());
+    this.time = latestTimeAtOrBefore(this.timeMeta.values, Date.now());
     this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
     const overriddenColorDomain = this.settings.colorDomain;
     this.settings = { ...layerDefaults, ...this.settings };
@@ -418,6 +560,38 @@ export class Zartigl {
     this.layer?.pause();
   }
 
+  setLoop(loop: boolean): void {
+    this.assertAlive();
+    this.loop = loop;
+    this.layer?.setLoop(loop);
+  }
+
+  setPlaybackRate(rate: number): void {
+    this.assertAlive();
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error("Playback rate must be positive");
+    this.playbackRate = rate;
+    this.layer?.setPlaybackRate(rate);
+  }
+
+  /** Apply or clear a time window without rebuilding source metadata or the map layer. */
+  setTimeRange(range?: TimeRange | null): TimeMeta {
+    this.assertAlive();
+    if (!this.fullTimeMeta) throw new Error("Set a layer before changing its time range");
+
+    const nextRange = range == null ? undefined : { ...range };
+    const nextResolved = resolveTimeRange(this.fullTimeMeta, nextRange);
+    const nextMeta = applyTimeRange(this.fullTimeMeta, nextRange);
+    const nextTime = nearestValue(nextMeta.values, this.time);
+
+    this.timeRange = nextRange;
+    this.resolvedTimeRange = nextResolved;
+    this.timeMeta = nextMeta;
+    this.time = nextTime;
+    this.layer?.setTimeRange([nextMeta.min, nextMeta.max]);
+    this.layer?.setTime(nextTime);
+    return this.getTimeMeta();
+  }
+
   setDepth(depth: number): void {
     this.assertAlive();
     this.depth = nearestValue(this.verticalMeta?.values ?? [], depth);
@@ -444,9 +618,18 @@ export class Zartigl {
     return this;
   }
 
-  getTimeMeta(): TimeMeta {
-    const dim = this.timeMeta;
-    if (!dim) return { min: NaN, max: NaN, size: 0, values: [], current: undefined };
+  getTimeMeta(options: { full?: boolean } = {}): TimeMeta {
+    const dim = options.full ? this.fullTimeMeta : this.timeMeta;
+    if (!dim) {
+      return {
+        min: NaN,
+        max: NaN,
+        size: 0,
+        values: [],
+        current: undefined,
+        granularity: "second",
+      };
+    }
     return {
       min: dim.min,
       max: dim.max,
@@ -455,6 +638,7 @@ export class Zartigl {
       values: dim.values,
       units: dim.units,
       current: this.time,
+      granularity: inferTimeGranularity(dim.values),
     };
   }
 
@@ -525,7 +709,8 @@ export class Zartigl {
 
   /** Whether palette/domain styling is applied to values in the active renderer. */
   supportsDynamicStyle(): boolean {
-    return this.activeBackendPreference() !== "geovideo" || this.geoVideoManifest?.schemaVersion === 2;
+    const backend = this.activeBackendPreference();
+    return backend === "zarr" || backend === "geovideo";
   }
 
   getDebugInfo(): ZartiglDebugInfo {
@@ -551,19 +736,18 @@ export class Zartigl {
       time: this.time,
       depth: this.depth,
       settings: { ...this.settings },
+      timeRange: this.timeRange ? { ...this.timeRange } : undefined,
+      geoVideo: {
+        autoplay: this.autoplay,
+        loop: this.loop,
+        playbackRate: this.playbackRate,
+      },
       layer: this.layer?.getDebugInfo() ?? null,
     };
   }
 
   updateSettings(settings: Partial<ZartiglSettings>): void {
     this.assertAlive();
-    if (this.activeBackendPreference() === "geovideo" && this.geoVideoManifest?.schemaVersion === 1) {
-      if (settings.opacity != null) {
-        this.settings = { ...this.settings, opacity: settings.opacity };
-        this.layer?.setOpacity(settings.opacity);
-      }
-      return;
-    }
     const validatedSettings = settings.colorDomain === undefined
       ? settings
       : {
@@ -603,12 +787,34 @@ export class Zartigl {
     const maxPoints = Math.max(1, Math.floor(options.maxPoints ?? 512));
     const source = this.getQuerySource(store.url);
     await source.init();
-    const stride = Math.max(1, Math.ceil(source.getTimeDimension().size / maxPoints));
+    const queryTimes = source.getTimeDimension().values;
+    if (!this.timeRange) {
+      const stride = Math.max(1, Math.ceil(queryTimes.length / maxPoints));
+      return source.sampleTimeSeries({
+        variables: variableNames(catalogLayer),
+        longitude: options.longitude,
+        latitude: options.latitude,
+        depth: options.depth ?? this.depth,
+        stride,
+        stopAfterMissingSamples: 12,
+      });
+    }
+    const min = this.resolvedTimeRange?.[0] ?? this.timeMeta?.min ?? queryTimes[0];
+    const max = this.resolvedTimeRange?.[1] ?? this.timeMeta?.max ?? queryTimes[queryTimes.length - 1];
+    const startIndex = queryTimes.findIndex((value) => value >= min);
+    let endIndex = queryTimes.length - 1;
+    while (endIndex >= 0 && queryTimes[endIndex] > max) endIndex--;
+    if (startIndex < 0 || endIndex < startIndex) {
+      throw new Error("Time range does not overlap the point-series store");
+    }
+    const stride = Math.max(1, Math.ceil((endIndex - startIndex + 1) / maxPoints));
     return source.sampleTimeSeries({
       variables: variableNames(catalogLayer),
       longitude: options.longitude,
       latitude: options.latitude,
       depth: options.depth ?? this.depth,
+      timeStartIndex: startIndex,
+      timeEndIndex: endIndex,
       stride,
       stopAfterMissingSamples: 12,
     });
@@ -686,6 +892,10 @@ export class Zartigl {
       vibrance: this.settings.vibrance,
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
+      geoVideoAutoplay: this.autoplay,
+      geoVideoLoop: this.loop,
+      geoVideoPlaybackRate: this.playbackRate,
+      geoVideoTimeRange: this.timeMeta ? [this.timeMeta.min, this.timeMeta.max] : undefined,
       particleState: this.settings.particleState,
       rgba8MaxParticleZoom: this.settings.rgba8MaxParticleZoom,
       zarrSource: this.activeFieldSource ?? undefined,
@@ -705,9 +915,10 @@ export class Zartigl {
     layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
     layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
     layer.on("timeChange", (time) => {
-      this.time = time;
-      this.emit("timeChange", time);
+      this.time = nearestValue(this.timeMeta?.values ?? [], time);
+      this.emit("timeChange", this.time);
     });
+    layer.on("playbackChange", (playing) => this.emit("playbackChange", playing));
     this.layer = layer;
     const before = this.getBeforeLayerId();
     if (before) {

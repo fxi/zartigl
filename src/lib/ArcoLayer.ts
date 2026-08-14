@@ -27,6 +27,7 @@ type LayerEventMap = {
   frameBuffered: (ms: number) => void;
   cacheInvalidated: () => void;
   timeChange: (time: number) => void;
+  playbackChange: (playing: boolean) => void;
 };
 
 export type ArcoLayerDebugInfo = {
@@ -194,6 +195,10 @@ export class ArcoLayer implements CustomLayerInterface {
       this.delegate = new GeoVideoLayer({
         id: options.id,
         manifest: options.geoVideoManifest ?? render.manifestUrl,
+        autoplay: options.geoVideoAutoplay,
+        loop: options.geoVideoLoop,
+        playbackRate: options.geoVideoPlaybackRate,
+        timeRange: options.geoVideoTimeRange,
         opacity: options.opacity,
         colorRamp: options.colorRamp,
         colorDomain: options.colorDomain,
@@ -364,6 +369,18 @@ export class ArcoLayer implements CustomLayerInterface {
 
   pause(): void {
     if (this.delegate instanceof GeoVideoLayer) this.delegate.pause();
+  }
+
+  setLoop(loop: boolean): void {
+    if (this.delegate instanceof GeoVideoLayer) this.delegate.setLoop(loop);
+  }
+
+  setPlaybackRate(rate: number): void {
+    if (this.delegate instanceof GeoVideoLayer) this.delegate.setPlaybackRate(rate);
+  }
+
+  setTimeRange(range: [number, number]): void {
+    if (this.delegate instanceof GeoVideoLayer) this.delegate.setTimeRange(range);
   }
 
   async samplePoint(options: { longitude: number; latitude: number; time?: string | number; depth?: number }) {

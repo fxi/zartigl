@@ -1,9 +1,11 @@
-import type { ZartiglSettings } from "../lib/Zartigl";
+import type { GeoVideoOptions, TimeRange, ZartiglSettings } from "../lib/Zartigl";
 
 export interface MapxWidgetSnippetOptions {
   layerId: string;
   backend?: "auto" | "zarr" | "geovideo" | "wmts";
   time?: string | number | Date;
+  timeRange?: TimeRange;
+  geoVideo?: GeoVideoOptions;
   depth?: number;
   settings?: Partial<ZartiglSettings>;
 }
@@ -65,6 +67,12 @@ export function buildMapxWidgetSnippet(options: MapxWidgetSnippetOptions): strin
   if (options.time != null) {
     optionLines.push(`        time: ${codeTime(options.time)},`);
   }
+  if (options.timeRange != null) {
+    optionLines.push(`        timeRange: ${indentedValue(options.timeRange, 10)},`);
+  }
+  if (options.geoVideo != null) {
+    optionLines.push(`        geoVideo: ${indentedValue(options.geoVideo, 10)},`);
+  }
   if (options.depth != null) {
     optionLines.push(`        depth: ${options.depth},`);
   }
@@ -110,6 +118,12 @@ export function buildStandaloneDemoSnippet(options: StandaloneDemoSnippetOptions
   const moduleBaseUrl =
     options.moduleBaseUrl ?? "https://cdn.jsdelivr.net/npm/@fxi/zartigl@0.2.1/dist";
   const backend = options.backend ?? "auto";
+  const timeRangeLine = options.timeRange == null
+    ? ""
+    : `  timeRange: ${indentedValue(options.timeRange, 2)},\n`;
+  const geoVideoLine = options.geoVideo == null
+    ? ""
+    : `  geoVideo: ${indentedValue(options.geoVideo, 2)},\n`;
   const setTimeLine = options.time == null
     ? ""
     : options.depth == null
@@ -138,7 +152,7 @@ const z = new Zartigl({
   map,
   catalog,
   backend: ${codeString(backend)},
-});
+${timeRangeLine}${geoVideoLine}});
 
 await z.setLayer(${codeString(options.layerId)});${standaloneSettingsBlock(options.settings)}${setTimeLine}`;
 }

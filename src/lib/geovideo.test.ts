@@ -5,44 +5,10 @@ import {
   geoVideoTimelineValues,
   loadGeoVideoManifest,
   validateGeoVideoManifest,
-  type GeoVideoManifestV1,
-  type GeoVideoManifestV2,
+  type GeoVideoManifest,
 } from "./geovideo";
 
-const manifest: GeoVideoManifestV1 = {
-  schemaVersion: 1,
-  id: "sst-six-months",
-  type: "geovideo",
-  projection: "equirectangular",
-  bounds: [-180, -90, 180, 90],
-  media: {
-    url: "sst.mp4",
-    mimeType: "video/mp4",
-    width: 2048,
-    height: 1024,
-    packedWidth: 4096,
-    packedHeight: 1024,
-    fps: 24,
-    durationSeconds: 30,
-    codec: "h264",
-    alpha: "side-by-side",
-  },
-  timeline: {
-    kind: "range",
-    dateStart: "2026-01-01T00:00:00Z",
-    dateEnd: "2026-07-01T00:00:00Z",
-    interpolation: "linear",
-  },
-  provenance: {
-    layerId: "sea-surface-temperature-anomaly",
-    datasetId: "dataset",
-    variable: "sea_surface_temperature_anomaly",
-    generatedAt: "2026-07-02T00:00:00Z",
-  },
-  style: { palette: "balance", colorDomain: [-3, 3], unit: "degrees_C" },
-};
-
-const scalarLumaManifest: GeoVideoManifestV2 = {
+const manifest: GeoVideoManifest = {
   schemaVersion: 2,
   id: "sst-values",
   type: "geovideo",
@@ -60,44 +26,48 @@ const scalarLumaManifest: GeoVideoManifestV2 = {
     kind: "static-validity", url: "mask.png", mimeType: "image/png",
     width: 2048, height: 1024, threshold: 0.5,
   },
-  timeline: manifest.timeline,
-  provenance: manifest.provenance,
-  style: manifest.style,
+  timeline: {
+    kind: "range",
+    dateStart: "2026-01-01T00:00:00Z",
+    dateEnd: "2026-07-01T00:00:00Z",
+    interpolation: "linear",
+  },
+  provenance: {
+    layerId: "sea-surface-temperature-anomaly",
+    datasetId: "dataset",
+    variable: "sea_surface_temperature_anomaly",
+    generatedAt: "2026-07-02T00:00:00Z",
+  },
+  style: { palette: "balance", colorDomain: [-3, 3], unit: "degrees_C" },
 };
 
 describe("GeoVideo manifest", () => {
-  it("validates a global side-by-side MP4", () => {
+  it("validates a scalar-luma video with an external static mask", () => {
     expect(validateGeoVideoManifest(manifest)).toEqual(manifest);
   });
 
-  it("rejects inconsistent packed dimensions", () => {
+  it("rejects the removed v1 format", () => {
     expect(() => validateGeoVideoManifest({
       ...manifest,
-      media: { ...manifest.media, packedWidth: 2048 },
-    })).toThrow(/dimensions/);
-  });
-
-  it("validates scalar-luma video with an external static mask", () => {
-    expect(validateGeoVideoManifest(scalarLumaManifest)).toEqual(scalarLumaManifest);
+      schemaVersion: 1,
+    })).toThrow(/version/);
   });
 
   it("rejects scalar-luma masks whose dimensions differ from the media", () => {
     expect(() => validateGeoVideoManifest({
-      ...scalarLumaManifest,
-      mask: { ...scalarLumaManifest.mask, width: 1024 },
+      ...manifest,
+      mask: { ...manifest.mask, width: 1024 },
     })).toThrow(/mask/);
   });
 
   it("resolves both scalar-luma assets relative to the manifest", async () => {
     const previousFetch = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: true, json: async () => scalarLumaManifest }) as Response;
+    globalThis.fetch = async () => ({ ok: true, json: async () => manifest }) as Response;
     try {
       const loaded = await loadGeoVideoManifest("https://cdn.test/artifact/manifest.json");
       expect(loaded.media.url).toBe("https://cdn.test/artifact/video.mp4");
       expect(loaded.schemaVersion).toBe(2);
-      if (loaded.schemaVersion === 2) {
-        expect(loaded.mask.url).toBe("https://cdn.test/artifact/mask.png");
-      }
+      expect(loaded.mask.url).toBe("https://cdn.test/artifact/mask.png");
     } finally {
       globalThis.fetch = previousFetch;
     }

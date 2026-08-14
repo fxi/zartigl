@@ -48,7 +48,7 @@ Candidate manifest metadata:
 }
 ```
 
-This is implemented as GeoVideo manifest schema v2. Schema v1 remains readable.
+This is implemented as GeoVideo manifest schema v2, the sole supported format.
 
 ## Preliminary FFmpeg results
 
@@ -65,13 +65,13 @@ With H.264 `yuv420p`, CRF 12, and a 16 Mbit/s ceiling:
 - encoding `nodata` beside valid values is unsafe with the initial `0..7` guard
   band. A separate static mask plus filled invalid pixels is the preferred path.
 
-Chrome's video → canvas → WebGL readback retains 212 stable ramp codes, with a
+Chrome's video → WebGL readback retains 212 stable ramp codes, with a
 maximum ramp error of one code and no temporal variation over the tested clip.
 Safari and Firefox remain publication gates.
 
 GeoVideo v2 uploads the video element directly to WebGL and repaints only when
 the decoder presents a new frame. The browser calibration covers this direct
-path alongside the schema-v1 canvas compatibility path.
+path used by the production renderer.
 
 A two-frame 2048×1024 Copernicus SST anomaly extraction encoded with the
 production CRF 12 / 16 Mbit/s profile occupies 482 KiB. On sampled valid pixels,
@@ -109,8 +109,7 @@ Do not introduce browser-specific correction logic.
 
 ## Follow-up if successful
 
-- Add scalar-luma as a new media encoding supported alongside the current
-  pre-styled GeoVideo representation.
+- Use scalar-luma as the sole GeoVideo representation.
 - Reuse the scalar layer's palette texture and style controls in the GeoVideo
   shader, with catalog style values as defaults rather than baked colors.
 - Add generator round-trip validation and reject artifacts that fail their error

@@ -1,10 +1,9 @@
 # GeoVideo renderer
 
 GeoVideo turns a scalar catalog layer into an equirectangular, streamable MP4
-plus a spatial/temporal JSON manifest. Version 2 stores quantized values in H.264
+plus a spatial/temporal JSON manifest. GeoVideo stores quantized values in H.264
 luminance and keeps a static validity mask in a separate lossless PNG. The
-browser applies palette and scalar styling in WebGL. Published version 1 RGB
-side-by-side artifacts remain readable.
+browser applies palette and scalar styling in WebGL.
 
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run
@@ -59,8 +58,7 @@ settings; for example:
 uv run scripts/geovideo/calibrate.py --frames 12 --crf 12 --max-bitrate 16M
 ```
 
-Then exercise both browser paths, video → WebGL directly (GeoVideo v2) and the
-legacy video → canvas → WebGL route, through readback:
+Then exercise the production video → WebGL path through readback:
 
 ```bash
 uv run scripts/geovideo/browser_calibrate.py

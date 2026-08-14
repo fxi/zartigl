@@ -11,6 +11,8 @@ describe("buildMapxWidgetSnippet", () => {
       backend: "zarr",
       time: new Date("2026-06-04T00:00:00.000Z"),
       depth: 10,
+      timeRange: { trailing: "P1M" },
+      geoVideo: { autoplay: false, loop: true, playbackRate: 2 },
       settings: {
         palette: "rdylbu",
         opacity: 0.8,
@@ -35,6 +37,10 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).toContain('"renderMode": "raster+particles"');
     expect(snippet).toContain("time: new Date(\"2026-06-04T00:00:00.000Z\")");
     expect(snippet).toContain("depth: 10");
+    expect(snippet).toContain('"trailing": "P1M"');
+    expect(snippet).toContain("geoVideo: {");
+    expect(snippet).toContain('"playbackRate": 2');
+    expect(snippet).not.toMatch(/\n\s+(autoplay|loop|playbackRate):/);
     expect(snippet).toContain("local.arco?.destroy()");
     expect(snippet).toContain("local.arco = null");
     expect(snippet).not.toContain("widget._arco");
@@ -54,6 +60,8 @@ describe("buildStandaloneDemoSnippet", () => {
       layerId: "surface-wind",
       backend: "wmts",
       time: new Date("2026-06-04T00:00:00.000Z"),
+      timeRange: { start: "2026-06-01T00:00:00Z", end: "2026-06-30T00:00:00Z" },
+      geoVideo: { autoplay: true, loop: false, playbackRate: 5 },
       depth: 10,
       settings: { opacity: 0.8, renderMode: "raster" },
       center: [6.1, 46.2],
@@ -70,6 +78,8 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet).toContain("map.setProjection({ type: \"globe\" })");
     expect(snippet).toContain("new Zartigl({");
     expect(snippet).toContain("backend: \"wmts\"");
+    expect(snippet).toContain('"start": "2026-06-01T00:00:00Z"');
+    expect(snippet).toContain("geoVideo: {");
     expect(snippet).toContain("await z.setLayer(\"surface-wind\")");
     expect(snippet).toContain("z.updateSettings({");
     expect(snippet).toContain('"renderMode": "raster"');

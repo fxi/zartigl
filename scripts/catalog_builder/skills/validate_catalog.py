@@ -97,7 +97,7 @@ def main():
 
         geo_videos = (layer.get("derived") or {}).get("geoVideos") or []
         if geo_videos and layer["kind"] != "scalar":
-            fail(f"{layer['id']}: GeoVideo v1 is only valid on scalar layers")
+            fail(f"{layer['id']}: GeoVideo is only valid on scalar layers")
         render_ids = [render["id"] for render in geo_videos]
         duplicate_render_ids = {item for item in render_ids if render_ids.count(item) > 1}
         if duplicate_render_ids:

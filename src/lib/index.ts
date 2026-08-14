@@ -60,19 +60,20 @@ export type { GeoVideoLayerDebugInfo, GeoVideoLayerOptions } from "./GeoVideoLay
 export type {
   GeoVideoBounds,
   GeoVideoManifest,
-  GeoVideoManifestV1,
-  GeoVideoManifestV2,
   GeoVideoRangeTimeline,
   GeoVideoSnapshotLoopTimeline,
 } from "./geovideo";
 export type { VectorLayerDebugInfo } from "./VectorLayer";
 export type {
   DepthMeta,
+  GeoVideoOptions,
   ZartiglDebugInfo,
   Legend,
   QueryDepthProfileOptions,
   QueryPointOptions,
   TimeMeta,
+  TimeGranularity,
+  TimeRange,
   VariableMeta,
   ZartiglOptions,
   ZartiglSettings,

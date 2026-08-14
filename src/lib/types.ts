@@ -56,6 +56,10 @@ export interface ArcoLayerOptions
   /** Fixed physical-value domain for scalar colors. Null/omitted uses frame extrema. */
   colorDomain?: [number, number] | null;
   geoVideoManifest?: GeoVideoManifest;
+  geoVideoAutoplay?: boolean;
+  geoVideoLoop?: boolean;
+  geoVideoPlaybackRate?: number;
+  geoVideoTimeRange?: [number, number];
   verticalLabel?: string;
   metadata?: Record<string, unknown>;
   before?: string;

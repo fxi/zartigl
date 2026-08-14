@@ -1,24 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GeoVideoLayer } from "./GeoVideoLayer";
-import type { GeoVideoManifest, GeoVideoManifestV1, GeoVideoManifestV2 } from "./geovideo";
+import type { GeoVideoManifest } from "./geovideo";
 
-const manifest: GeoVideoManifestV1 = {
-  schemaVersion: 1,
-  id: "test-video",
+const manifest: GeoVideoManifest = {
+  schemaVersion: 2,
+  id: "test-values",
   type: "geovideo",
   projection: "equirectangular",
   bounds: [-180, -90, 180, 90],
   media: {
-    url: "test.mp4",
+    url: "values.mp4",
     mimeType: "video/mp4",
     width: 16,
     height: 8,
-    packedWidth: 32,
-    packedHeight: 8,
     fps: 24,
     durationSeconds: 30,
     codec: "h264",
-    alpha: "side-by-side",
+  },
+  encoding: {
+    kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247,
+    valueMin: -3, valueMax: 3, transfer: "linear", colorSpace: "bt709", colorRange: "limited",
+  },
+  mask: {
+    kind: "static-validity", url: "mask.png", mimeType: "image/png",
+    width: 16, height: 8, threshold: 0.5,
   },
   timeline: {
     kind: "range",
@@ -35,29 +40,6 @@ const manifest: GeoVideoManifestV1 = {
   style: { palette: "balance", colorDomain: [-3, 3] },
 };
 
-const scalarLumaManifest: GeoVideoManifestV2 = {
-  schemaVersion: 2,
-  id: "test-values",
-  type: "geovideo",
-  projection: "equirectangular",
-  bounds: [-180, -90, 180, 90],
-  media: {
-    url: "values.mp4", mimeType: "video/mp4", width: 16, height: 8,
-    fps: 24, durationSeconds: 30, codec: "h264",
-  },
-  encoding: {
-    kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247,
-    valueMin: -3, valueMax: 3, transfer: "linear", colorSpace: "bt709", colorRange: "limited",
-  },
-  mask: {
-    kind: "static-validity", url: "mask.png", mimeType: "image/png",
-    width: 16, height: 8, threshold: 0.5,
-  },
-  timeline: manifest.timeline,
-  provenance: manifest.provenance,
-  style: manifest.style,
-};
-
 type VideoFrameCallback = (
   now: number,
   metadata: { mediaTime?: number; presentedFrames?: number },
@@ -67,9 +49,10 @@ class FakeVideo extends EventTarget {
   paused = true;
   ended = false;
   currentTime = 0;
+  playbackRate = 1;
   readyState = 2;
   networkState = 1;
-  videoWidth = 32;
+  videoWidth = 16;
   videoHeight = 8;
   crossOrigin = "";
   muted = false;
@@ -133,9 +116,7 @@ class FakeImage extends EventTarget {
 
 function setup(withVideoFrameCallback = true, manifestValue: GeoVideoManifest = manifest) {
   const video = new FakeVideo(withVideoFrameCallback);
-  video.videoWidth = manifestValue.schemaVersion === 1
-    ? manifestValue.media.packedWidth
-    : manifestValue.media.width;
+  video.videoWidth = manifestValue.media.width;
   video.videoHeight = manifestValue.media.height;
   const triggerRepaint = vi.fn();
   const canvases: FakeCanvas[] = [];
@@ -182,8 +163,8 @@ afterEach(() => {
 });
 
 describe("GeoVideoLayer playback scheduling", () => {
-  it("loads a v2 mask independently without copying the value video through canvas", () => {
-    const { layer, video, images, canvases } = setup(true, scalarLumaManifest);
+  it("loads a static mask independently without copying the value video through canvas", () => {
+    const { layer, video, images, canvases } = setup();
     expect(images).toHaveLength(1);
     expect(canvases).toHaveLength(1);
     expect(images[0].src).toBe("mask.png");
@@ -193,11 +174,11 @@ describe("GeoVideoLayer playback scheduling", () => {
     expect(canvases[0].drawImage).toHaveBeenCalledWith(images[0], 0, 0, 16, 8);
     expect(canvases[0].drawImage).not.toHaveBeenCalledWith(video, expect.anything());
     expect(layer.getDebugInfo().bufferedFrames).toBe(1);
-    expect((layer as unknown as { colorCanvas: unknown }).colorCanvas).toBeNull();
+    expect((layer as unknown as { colorCanvas?: unknown }).colorCanvas).toBeUndefined();
   });
 
   it("accepts the video element itself as a WebGL texture source", () => {
-    const { layer, video } = setup(true, scalarLumaManifest);
+    const { layer, video } = setup();
     const gl = {
       TEXTURE_2D: 0x0de1, RGBA: 0x1908, UNSIGNED_BYTE: 0x1401, UNPACK_FLIP_Y_WEBGL: 0x9240,
       getParameter: vi.fn(() => false), pixelStorei: vi.fn(),
@@ -218,8 +199,8 @@ describe("GeoVideoLayer playback scheduling", () => {
     );
   });
 
-  it("does not report v2 ready until both video and mask are loaded", () => {
-    const { layer, video, images } = setup(true, scalarLumaManifest);
+  it("does not report ready until both video and mask are loaded", () => {
+    const { layer, video, images } = setup();
     const loaded = vi.fn();
     layer.on("loaded", loaded);
 
@@ -230,8 +211,8 @@ describe("GeoVideoLayer playback scheduling", () => {
     expect(loaded).toHaveBeenCalledOnce();
   });
 
-  it("reports a v2 mask dimension mismatch", () => {
-    const { layer, images } = setup(true, scalarLumaManifest);
+  it("reports a mask dimension mismatch", () => {
+    const { layer, images } = setup();
     const error = vi.fn();
     layer.on("error", error);
     images[0].naturalWidth = 8;
@@ -303,39 +284,49 @@ describe("GeoVideoLayer playback scheduling", () => {
     expect(layer.getDebugInfo().decodedFrames).toBe(1);
   });
 
-  it("crops every color frame but captures the packed mask only once", () => {
-    const { video, canvases } = setup();
-    const [colorCanvas, maskCanvas] = canvases;
+  it("applies playback rate and reports playback state", async () => {
+    const { layer, video } = setup();
+    const states: boolean[] = [];
+    layer.on("playbackChange", (playing) => states.push(playing));
 
-    video.dispatchEvent(new Event("loadeddata"));
-    video.currentTime = 1;
-    video.frameCallback!(10, { presentedFrames: 1 });
-    video.currentTime = 2;
-    video.frameCallback!(20, { presentedFrames: 2 });
+    layer.setPlaybackRate(5);
+    await layer.play();
+    layer.pause();
 
-    expect(colorCanvas.drawImage).toHaveBeenCalledTimes(3);
-    expect(colorCanvas.drawImage).toHaveBeenLastCalledWith(
-      video, 0, 0, 16, 8, 0, 0, 16, 8,
-    );
-    expect(maskCanvas.drawImage).toHaveBeenCalledTimes(1);
-    expect(maskCanvas.drawImage).toHaveBeenCalledWith(
-      video, 16, 0, 16, 8, 0, 0, 16, 8,
-    );
+    expect(video.playbackRate).toBe(5);
+    expect(states).toEqual([true, false]);
   });
 
-  it("keeps the previous buffered frame when a canvas snapshot fails", () => {
-    const { layer, video, canvases } = setup();
-    video.dispatchEvent(new Event("loadeddata"));
-    const before = layer.getDebugInfo().bufferedFrames;
-    canvases[0].drawImage.mockImplementationOnce(() => { throw new Error("decoder busy"); });
+  it("stops at the timeline end when looping is disabled", async () => {
+    const { layer, video } = setup();
+    const times: number[] = [];
+    layer.on("timeChange", (time) => times.push(time));
+    layer.setLoop(false);
+    await layer.play();
 
-    video.currentTime = 1;
-    video.frameCallback!(10, { presentedFrames: 1 });
+    video.frameCallback!(10, { mediaTime: 30, presentedFrames: 1 });
 
-    expect(layer.getDebugInfo()).toMatchObject({
-      bufferedFrames: before,
-      skippedFrames: 1,
-    });
+    expect(video.paused).toBe(true);
+    expect(times[times.length - 1]).toBe(new Date("2026-07-01T00:00:00Z").getTime());
+  });
+
+  it("restarts at the allowed range start when the media ends while looping", async () => {
+    const { layer, video } = setup();
+    const states: boolean[] = [];
+    layer.on("playbackChange", (playing) => states.push(playing));
+    layer.setLoop(true);
+    await layer.play();
+
+    video.currentTime = 30;
+    video.paused = true;
+    video.ended = true;
+    video.dispatchEvent(new Event("pause"));
+    video.dispatchEvent(new Event("ended"));
+    await Promise.resolve();
+
+    expect(video.currentTime).toBe(0);
+    expect(video.paused).toBe(false);
+    expect(states).not.toContain(false);
   });
 
   it("cancels video and animation callbacks when removed", async () => {
