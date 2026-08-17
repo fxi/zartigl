@@ -2,7 +2,7 @@
 
 A MapLibre GL JS plugin for exploring cloud-hosted Zarr geoscience data directly in the browser.
 
-[![Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue)](https://fxi.github.io/zartigl/)
+[![Demo](https://img.shields.io/badge/demo-live-blue)](https://fxi.io/zartigl/)
 
 Zartigl renders scalar rasters and vector particle fields from multidimensional Zarr stores without a dedicated tile server. It is aimed at expert analysis workflows where time, depth or pressure level, point inspection, and reproducible map state matter as much as the visual layer.
 
@@ -60,14 +60,15 @@ The root import does not bundle the catalog presets. Import catalog data from `@
 
 ## Demo
 
-The production demo is the default Vite app and is published to GitHub Pages.
+The production demo is the default Vite app and is published at
+[`fxi.io/zartigl`](https://fxi.io/zartigl/).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build the same app that GitHub Pages publishes:
+Build the same app that the public demo publishes:
 
 ```bash
 npm run build:prod
@@ -189,11 +190,56 @@ equirectangular scalar-luma texture through zartigl's subdivided lon/lat mesh.
 Globe mode therefore reaches both poles. A separate lossless image supplies the
 static validity mask without doubling the video width.
 
+### Displaying a GeoVideo
+
+The built-in catalog includes an Arctic sea-ice thickness animation. Select the
+GeoVideo backend explicitly and enable autoplay when creating the `Zartigl`
+instance:
+
+```ts
+import maplibregl from "maplibre-gl";
+import { Zartigl } from "@fxi/zartigl";
+import { catalog } from "@fxi/zartigl/catalog";
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: "https://demotiles.maplibre.org/style.json",
+  center: [-132.454826, 85.051129],
+  zoom: 0.511,
+});
+
+map.setProjection({ type: "globe" });
+
+const z = new Zartigl({
+  map,
+  catalog,
+  backend: "geovideo",
+  geoVideo: {
+    autoplay: true,
+    loop: true,
+    playbackRate: 1,
+  },
+});
+
+await z.setLayer("sea-ice-thickness");
+```
+
+`backend: "geovideo"` selects the published GeoVideo manifest from the
+catalog's `sea-ice-thickness` entry. Globe projection demonstrates its polar
+coverage. `loop` and `playbackRate` are optional playback settings. Browsers
+may restrict autoplay, so embedding applications should provide a user-gesture
+fallback when necessary.
+
+Try the configured instance directly in the [Arctic sea-ice GeoVideo example](https://fxi.io/zartigl/#eyJkIjoxMSwidCI6MTc4MTAwNDMyNTY3OC40OTY4LCJ2IjowLCJwIjoiaWNlIiwicyI6Imdlb3ZpZGVvIiwicHIiOiJnbG9iZSIsImMiOlstMTMyLjQ1NDgyNiw4NS4wNTExMjldLCJ6IjowLjUxMSwiYiI6MCwicGkiOjAsInBkIjowLjA1LCJzcCI6MSwiZiI6MC43LCJybSI6InBhcnRpY2xlcyIsIm9wIjowLjksImxzIjp0cnVlLCJ2YiI6LTEsImNkIjpudWxsLCJnYSI6dHJ1ZSwiZ2wiOnRydWUsImdyIjoxMH0=).
+
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --upload
 ```
+
+The Arctic sea-ice configuration is available at
+[`scripts/geovideo/examples/sea-ice-thickness-arctic.json`](scripts/geovideo/examples/sea-ice-thickness-arctic.json).
 
 Generation requires FFmpeg. Upload credentials remain in `.env`; no private
 key is bundled into the demo or written to a manifest. See
