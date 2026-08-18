@@ -2,6 +2,10 @@
   "name": "@fxi/zartigl",
   "version": "0.2.13",
   "description": "MapLibre GL JS plugin for animated particle flow from Zarr ocean current data",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fxi/zartigl.git"
+  },
   "type": "module",
   "main": "./dist/zartigl.js",
   "module": "./dist/zartigl.js",
