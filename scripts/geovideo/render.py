@@ -95,8 +95,8 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
     if end_ns <= start_ns:
         raise ValueError("dateEnd must follow dateStart")
     duration = float(required(raw, "durationSeconds"))
-    if not 0 < duration <= 30:
-        raise ValueError("durationSeconds must be within (0, 30]")
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError("durationSeconds must be a finite positive number")
     interpolation = raw.get("interpolation", "linear")
     if interpolation not in {"linear", "nearest"}:
         raise ValueError("interpolation must be linear or nearest")

@@ -1,9 +1,9 @@
 {
-  "id": "sea-ice-thickness-arctic-six-months",
+  "id": "sea-ice-thickness-arctic-2022-2026",
   "layerId": "sea-ice-thickness",
-  "dateStart": "2026-02-01T00:00:00Z",
-  "dateEnd": "2026-08-01T00:00:00Z",
-  "durationSeconds": 20,
+  "dateStart": "2022-06-01T00:00:00Z",
+  "dateEnd": "2026-08-27T00:00:00Z",
+  "durationSeconds": 80,
   "interpolation": "linear",
   "bounds": [-180, 45, 180, 90],
   "style": {

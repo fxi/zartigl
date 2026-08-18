@@ -453,9 +453,9 @@
       "derived": {
         "geoVideos": [
           {
-            "id": "sea-ice-thickness-arctic-six-months-2026-scalar-luma",
-            "label": "Arctic six-month thickness animation (February–August 2026)",
-            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-ice-thickness/79d55879af89/manifest.json"
+            "id": "sea-ice-thickness-arctic-2022-2026-scalar-luma",
+            "label": "Arctic thickness animation (June 2022–August 2026)",
+            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-ice-thickness/145bb354eb87/manifest.json"
           }
         ]
       },

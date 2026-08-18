@@ -12,7 +12,8 @@ uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --u
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --upload-only
 ```
 
-The Arctic sea-ice example uses the same workflow with a polar crop:
+The Arctic sea-ice example covers the full currently available daily timeline
+(`2022-06-01` through `2026-08-27`) in an 80-second polar animation:
 
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sea-ice-thickness-arctic.json --dry-run
@@ -23,6 +24,12 @@ uv run scripts/geovideo/render.py scripts/geovideo/examples/sea-ice-thickness-ar
 credentials are never written to the artifact. Public endpoint and bucket
 defaults come from `.env.demo`. Override `upload.publicBaseUrl` for a CDN or a
 virtual-hosted bucket URL.
+
+GeoVideo duration is not limited to 30 seconds. Longer videos increase render
+time and artifact size linearly; the current Arctic profile produces 1,920
+frames at 24 fps and may reach roughly 160 MB at the 16 Mbit/s bitrate ceiling.
+The renderer keeps one static validity mask for the whole animation, so pixels
+whose validity changes over time are conservatively excluded.
 
 The production scalar profile defaults to CRF 12 and a 16 Mbit/s ceiling. Both
 are part of the immutable artifact configuration; generated media is decoded

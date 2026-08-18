@@ -238,7 +238,8 @@ uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --upload
 ```
 
-The Arctic sea-ice configuration is available at
+The Arctic sea-ice configuration covers June 2022 through August 2026 and is
+available at
 [`scripts/geovideo/examples/sea-ice-thickness-arctic.json`](scripts/geovideo/examples/sea-ice-thickness-arctic.json).
 
 Generation requires FFmpeg. Upload credentials remain in `.env`; no private
