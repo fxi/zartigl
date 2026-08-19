@@ -195,6 +195,8 @@ describe("Zartigl facade", () => {
     expect(z.getBackend()).toBe("geovideo");
     expect(z.supportsDynamicStyle()).toBe(true);
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "degC" });
+    z.updateSettings({ palette: "ice", colorDomain: [0, 5] });
+    expect(z.getLegend()).toMatchObject({ palette: "ice", min: 0, max: 5 });
     expect(z.getTimeMeta()).toMatchObject({ size: 4 });
     const querySpy = vi
       .spyOn(ZarrSource.prototype, "sampleTimeSeries")

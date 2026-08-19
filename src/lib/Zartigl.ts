@@ -686,11 +686,13 @@ export class Zartigl {
       };
     }
     if (this.activeBackendPreference() === "geovideo" && this.geoVideoManifest) {
+      const palette = typeof this.settings.palette === "string" ? this.settings.palette : "custom";
+      const colorDomain = this.settings.colorDomain ?? this.geoVideoManifest.style.colorDomain;
       return {
         type: "gradient",
-        palette: this.geoVideoManifest.style.palette,
-        min: this.geoVideoManifest.style.colorDomain[0],
-        max: this.geoVideoManifest.style.colorDomain[1],
+        palette,
+        min: colorDomain[0],
+        max: colorDomain[1],
         unit: this.geoVideoManifest.style.unit,
       };
     }
