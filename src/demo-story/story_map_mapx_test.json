@@ -1,0 +1,2483 @@
+{
+  "settings": {
+    "theme": "default",
+    "projection_name": "default",
+    "class_wrapper": "mx-story-screen-720p",
+    "dashboards_panel_behaviour": "default",
+    "legends_panel_behaviour": "open",
+    "opacity_auto_timeout": 3000
+  },
+  "steps": [
+    {
+      "name": "Cover",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" data-ce-max-width=\"1200\" height=\"900\" src=\"/userdata/2812/181f6b3e655a55dd9fb6a0e50a743a41\" width=\"1200\">\n<img alt=\"img\" data-ce-max-width=\"1200\" height=\"799\" src=\"/userdata/2812/51184158f9dcae8d17cab2f823c6d3b5\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#050505",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [
+            {
+              "s": 0,
+              "e": 100,
+              "o": 0,
+              "f": 1,
+              "t": 0
+            }
+          ],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<p>\n<br>\n<br>\n    <b>UNEP in Afghanistan</b>\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 70,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "image-cover"
+            },
+            {
+              "name": "text-center"
+            }
+          ]
+        },
+        {
+          "name": "Intro phrase",
+          "html": {
+            "en": "<p class=\"margin-right-10p margin-left-10p\">\n    Since 2002, the United Nations Environment Programme (UNEP) has played an active role in laying the environmental foundations for sustainable development in Afghanistan.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "text-center"
+            }
+          ]
+        },
+        {
+          "name": "Photo Credit",
+          "html": {
+            "en": "<p class=\"absolute-right absolute-bottom\">\n    Pamir mountains looming over Ishkashem and Qazi Deh, Wakhan . \nPhoto Credit: Alec Knuerr, UN Environment, 2016.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "text-left"
+            },
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "image-cover"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 5.713,
+        "lat": 34.205,
+        "lng": 63.567,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 39.402,
+        "s": 28.667,
+        "e": 75.116,
+        "w": 52.018
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "Info",
+      "views": [],
+      "slides": [
+        {
+          "name": "Info",
+          "html": {
+            "en": "<br>\n<br>\n<br>\n<br>\n<p>\n    The story map is best viewed using Google Chrome.\n</p>\n<br>\n<p>\n    To navigate the story map, use the directional arrows to move forward or backward, or click on the buttons at the bottom of the screen to move to a specific step.\n</p>\n<br>\n<p>\n    The legend of the data displayed in the map can be viewed by clicking on the button located in the upper right corner <i class=\"fa fa-list-ul\" aria-hidden=\"true\"></i>.\n</p>\n<br>\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.5,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 1.621,
+        "lat": 21.626,
+        "lng": 7.57,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 80.992,
+        "s": -70.623,
+        "e": 227.019,
+        "w": -211.879
+      },
+      "animation": {
+        "duration": 1000,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 1000,
+        "duration": 1000,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "Impacts on livelihoods (Night Lights)",
+      "views": [
+        "MX-PNAPG-EJAYI-50GTH"
+      ],
+      "slides": [
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>Decades of degradation</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-left"
+            },
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-horizontal-center"
+            }
+          ]
+        },
+        {
+          "name": "Map description",
+          "html": {
+            "en": "<p class=\"align-left absolute-bottom\">\n    The map shows Afghanistan by night. Click the lock at the top left corner of the map to compare it's infrastructure to the neighbouring countries and other parts of the world. Data Source: UNEP\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 15,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "text-left"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<br>\n<br>\n    Years of conflict and violence, coupled with drought and earthquakes, have had devastating impacts on the infrastructure, development and the livelihoods on the people of Afghanistan.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-left"
+            },
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-horizontal-center"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 5.579,
+        "lat": 33.884,
+        "lng": 62.293,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 39.59,
+        "s": 27.769,
+        "e": 74.965,
+        "w": 49.621
+      },
+      "animation": {
+        "duration": 3000,
+        "method": "flyTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "Impacts on Biodiversity (BDL)",
+      "views": [],
+      "slides": [
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<br>\n<br>\n<br>\n<br>\nThe natural environment has been greatly affected by the constant uncertainty in both political and ecological contexts. Biodiversity, habitats and natural resources have been over-exploited in the last couple of decades resulting in an urgent necessity for change in management methods and for new ecoregion restoration projects. ",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "card"
+            }
+          ]
+        },
+        {
+          "name": "Map description",
+          "html": {
+            "en": "<br>\n<br>\n<br>\n<br>\n<br>\n<br>\n<br>\n<br>\n<br>\n<br>\n<p>\n    Map: This layer shows the percentage of Ecoregion lost at the national level between 1993 and 2009. It is calculated using a proxy for estimating loss: areas where the Human Footprint values went from under 4 to greater than 4 during the chosen period. See <a href=\"https://www.unbiodiversitylab.org/\"><i><u>UN Biodiversity Lab</u></i></a> for more details.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "half-bottom"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<br>\n<br>\n<h4>\n    <b>Loss of Biodiversity</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 5.35,
+        "lat": 33.479,
+        "lng": 72.338,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 38.981,
+        "s": 27.603,
+        "e": 84.474,
+        "w": 60.201
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2003: first report",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<br>\n<br>\n<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"799\" src=\"/userdata/2812/91f9e271baeece99ac5fadc688a8e251\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": []
+        },
+        {
+          "name": "Photo Credits",
+          "html": {
+            "en": "<p class=\"block-center absolute-bottom\">\n    Photo credits: Golden wheat fields after harvest in the Wakhan Corridor, Afghanistan. By Alec Knuerr - UNEP, 2016.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-center"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>Environmental Impact Assessment</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-horizontal-center"
+            },
+            {
+              "name": "text-center"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<br>\n<p>\n    In 2003, UNEP published <a href=\"https://postconflict.unep.ch/publications/afghanistanpcajanuary2003.pdf\"><u>Afghanistan's first post-conflict environmental assessment.</u></a> The report underlined the impacts of conflicts and natural disasters on the economy, livelihoods and natural resources. It also urges to act for sustainable growth of the country. The publication is the start of many national, regional and local projects for sustainable development of Afghanistan.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-horizontal-center"
+            },
+            {
+              "name": "text-center"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 0,
+        "lat": 0,
+        "lng": 0,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 0,
+        "s": 0,
+        "e": 0,
+        "w": 0
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2004 GAIN",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/a61b983733c7560a3875fc0030608dc0\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4 class=\"margin-top-5p margin-top-10p\">\n<br>\n    <b>GAIN: A Community-based solution</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-left"
+            },
+            {
+              "name": "half-right"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<blockquote>\n   In 2004, together with Afghanistan’s National Environment Protection Agency (NEPA), UNEP provides technical expertise for community-based natural resource management. The Green Afghanistan Initiative (GAIN) promotes projects focusing on Afghan communities using their knowledge of the local environment and traditions combined with scientific practices to optimize sustainable development.  \n</blockquote>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 23,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "half-horizontal-center"
+            }
+          ]
+        },
+        {
+          "name": "Photo Credit",
+          "html": {
+            "en": "<p class=\"text-right absolute-bottom\">\n    Photo Credit: Maxime Paquin, United Nations Environment Programme, 2019.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#f2f2f2",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-left"
+            },
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "half-right"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 0,
+        "lat": 0,
+        "lng": 0,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 0,
+        "s": 0,
+        "e": 0,
+        "w": 0
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2007: NEPA",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"900\" src=\"/userdata/2812/b6943125b8e899c628f5aa1670f1dff4\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>A New Environmental Protection Agency</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            }
+          ]
+        },
+        {
+          "name": "Photo Credit ",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Photo Credit: Afghan Flag. By Alec Kneurr - UNEP 2016\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<p class=\"margin-top-5p\">\n    In 2007, with the assistance of UNEP, the Afghanistan authorities formally established and recognised the National Environment Protection Agency (NEPA) of Afghanistan. This was another step towards effective integration of environmental considerations into government policies and public life.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 5.475,
+        "lat": 33.628,
+        "lng": 70.664,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 38.321,
+        "s": 28.665,
+        "e": 80.988,
+        "w": 60.339
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2008 SoE Report",
+      "views": [
+        "MX-O9BQI-A8QZJ-HR2Q5"
+      ],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"770\" src=\"/userdata/2812/c08e64c5161cd64989d4c0962b340146\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            },
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4 class=\"margin-bottom-5p\">\n    <b>Five-Year Milestone</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<p class=\"margin-top-10p\">\n<br>\n    In 2008, UNEP publishes a new <a href=\"https://www.weadapt.org/sites/weadapt.org/files/2017/november/551a95b2ac64f04-afghanistan-state-of-environment-2008.pdf\">State of the Environment Report</a>. In five years, the country made substantial progress by implementing NEPA and its first environmental law in 2005. These two steps were essential in the sustainable development of the country. Although very positive, a lot of work still needed to be done to ensure long-term positive growth.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Map Abstract",
+          "html": {
+            "en": "<br>\n<p class=\"absolute-bottom\">\n    Map: Overall inequality by province (Gini Index: coefficient that measures the extent to which distribution of consumption among individuals or households within a country deviates from an equal distribution. A value of 0 represents absolute equality where everybody consumes the same amount, a value of 100 represents absolute inequality), NRVA (2009). Unlock the map (top left lock-button) and the legend (Top right corner menu-button) to explore values of individual Afghan provinces.\n<br>\nPhoto: Aerial view of the mountainous region in Aghanistan by UNEP, 2015.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 15,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "half-left"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 4.693,
+        "lat": 32.646,
+        "lng": 57.672,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 41.233,
+        "s": 23.15,
+        "e": 76.809,
+        "w": 38.535
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2013: LDCF 1",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/70bd488bffc9ae79a7f5eb1a0f5f0910\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0.4,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "text",
+          "html": {
+            "en": "<p>\n    With support from the Global Environment Facility (GEF), UNEP and the National Environmental Protection Agency (NEPA) jointly executed Afghanistan’s first-ever full-sized climate change adaptation project, titled “<b>Building Adaptive Capacity and Resilience to Climate Change</b>.” This four-year project (2013 - 2017) aimed to increase the resilience of vulnerable rural communities and build the capacity of national and local institutions to address climate change risks in Afghanistan, particularly those related to precipitation and temperature fluctuations. \n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            }
+          ]
+        },
+        {
+          "name": "Photo Credit",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Photo credit: Deforested region of Afghanistan. By Anssi Kullberg, UNEP 2002\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 15,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 0,
+        "lat": 0,
+        "lng": 0,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 0,
+        "s": 0,
+        "e": 0,
+        "w": 0
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2009 and 2014: New National parks ",
+      "views": [
+        "MX-E0C30-K480J-EIRZX"
+      ],
+      "slides": [
+        {
+          "name": "Text",
+          "html": {
+            "en": "<p class=\"absolute-bottom absolute-50-top\">\nIn 2009, NEPA and WCS create the Band-e-Amir, Afghanistan's first National Park. This was followed by the Wakhan Wildlife Corridor in 2014. Both areas are essential to the protection of natural resources, biodiversity and the creation of economic and development opportunities. </p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Map Abstract",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Unlock the map, zoom out and navigate to explore Afghanistan's protected areas as of 2019. Source: WDPA and UNEP-WCMC.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-bottom"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>New National Parks</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-horizontal-center"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": true,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 9.544,
+        "lat": 34.87,
+        "lng": 66.94,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 35.156,
+        "s": 34.583,
+        "e": 67.562,
+        "w": 66.318
+      },
+      "animation": {
+        "duration": 3300,
+        "method": "flyTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2015 Shah Foladi",
+      "views": [
+        "MX-9RH4M-DXMRC-T8RUE",
+        "MX-E0C30-K480J-EIRZX"
+      ],
+      "slides": [
+        {
+          "name": "Photo Landscape",
+          "html": {
+            "en": "<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"801\" src=\"/userdata/2812/cef61a2970d95d97131bb0bbd5a41f07\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "image-cover"
+            },
+            {
+              "name": "half-bottom"
+            }
+          ]
+        },
+        {
+          "name": "Photo horserider",
+          "html": {
+            "en": "<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/b601bfc40618eb7e80ed1c6400e2c792\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#fffafa",
+          "color_bg": "#000000",
+          "opacity_bg": 0.2,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            },
+            {
+              "name": "half-top"
+            },
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Top Photo Credit",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Photo: Spreading the message of peace and the importance of natural resources in maintaining it, this Jawzari leader took part a Peace Trek in the mountains of Shah Foladi protected area. By Kelly Franklin - UN Environment 2015.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-top"
+            }
+          ]
+        },
+        {
+          "name": "Bottom photo credit",
+          "html": {
+            "en": "<p>\n    Photo: Mountains provide fresh water, energy and food - resources that will be increasingly scarce in coming decades. By Alec Knuerr - UNEP 2014.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "half-bottom"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<p class=\"text-left margin-bottom-5p\">\n    The following year, NEPA declared Afghanistan's third protected area: The <b><u>Shah Foladi Protected Area</u></b> . Its rich diversity is important for maintaining both global biodiversity and ensuring the longevity of local livelihood practices, which includes a rich traditional knowledge and usage of a high diversity of medicinal and edible plants. It is a key component to ensure sustainable growth locally and nationally.\n</p>\n<p>\n    \n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "half-top"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": true,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 9.239,
+        "lat": 34.829,
+        "lng": 67.448,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 35.206,
+        "s": 34.45,
+        "e": 68.268,
+        "w": 66.629
+      },
+      "animation": {
+        "duration": 3000,
+        "method": "flyTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2016 World Env Day",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/d6f68b7b98afb2c469d62ba9e962a051\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<p>\n<br>\n<br>\n<br>\n<br>\n    To celebrate their achievements, NEPA together with UNEP, <u><a href=\"https://www.unenvironment.org/news-and-stories/story/afghanistan-celebrates-world-environment-day-2016\">organised and hosted activities across four Afghan provinces</a></u>. The aim was to strengthen natural environment outreach, advocate for biodiversity conservation and promote the protection of the natural environment and natural resources. The events, conferences and symbolic treks, acting as a climate campaign and a symbol of peace and equality were successfully attended by government officials, provincial council members, academics, and local communities.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": []
+        },
+        {
+          "name": "Photo Credits",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Photo credits: One of the six lakes in the beautiful Band-e Amir National Park in the Bamyan province. By Maxime Paquin - UNEP 2019.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>Afghanistan Celebrates World Environmental Day 2016</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": []
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 0,
+        "lat": 0,
+        "lng": 0,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 0,
+        "s": 0,
+        "e": 0,
+        "w": 0
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2017 Climate Report",
+      "views": [],
+      "slides": [
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>Publication of the <u><a href=\"https://www.unenvironment.org/resources/publication/afghanistan-climate-change-science-perspectives\">Climate Change Science Perspective Report</a>&nbsp;2017</u></b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<p class=\"absolute-top margin-right-5p\">\n    15 years after the first environmental assessment, Afghanistan publishes its most up-to-date and detailed climate change projections report. Global warming is having serious impacts on Afghanistan’s people and ecosystems. This valuable information is crucial for leaders, decision-makers, and environmental groups to help build Afghanistan’s resilience and adaptation to climate change.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "half-horizontal-center"
+            }
+          ]
+        },
+        {
+          "name": "Map description",
+          "html": {
+            "en": "<p class=\"absolute-bottom margin-right-5p\">\n    Map: Due to the geographic heterogeneity of Afghanistan, the country has been divided into five regions for the needs of UNEP's climate change research.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 14,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "half-right"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 5.066,
+        "lat": 34.927,
+        "lng": 74.774,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 41.452,
+        "s": 27.839,
+        "e": 89.552,
+        "w": 59.997
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2018 FREESIA",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/c30a8020fd4c8a850eeee815251050cd\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>FREESIA to empower local communities</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": []
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<p class=\"margin-top-10p\">\n    In 2018, with a changing climate, Afghanistan’s forests face new threats. However, they also have the potential to help build resilience to global warming and changes in rainfall patterns. In order to re-build the resilience of these forests and of the people that depend on them, this project aims to build capacity for watershed and forest management through strategic institutional strengthening, environmental research and advocacy, and pilot demonstration of community-based forest ecosystem restoration. Actions include:\n</p>\n<ul>\n    <li>\n        The Construction of terraces to reduce the risk of landslides, avalanches and flash floods\n    </li>\n    <li>\n        Setting up kitchen gardens\n    </li>\n    <li>\n        Planting trees to provide fresh food and timber\n    </li>\n    <li>\n        The implementation of 384 Greenhouses for a year-round provision fruit and vegetables and additional income.\n    </li>\n    <li>\n        Teaching Watershed Management\n    </li>\n</ul>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": []
+        },
+        {
+          "name": "Photo Credit",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Photo credits: Lemon trees in the Bamyan Province of Afghanistan. By Maxime Paquin - UNEP 2019.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 4.188,
+        "lat": 35.244,
+        "lng": 53.689,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 46.728,
+        "s": 21.875,
+        "e": 80.848,
+        "w": 26.53
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "FREESIA Success story: Greenhouse",
+      "views": [
+        "MX-EPGMX-BF692-5VGM9",
+        "MX-QH30C-ED9G6-FWLOF"
+      ],
+      "slides": [
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n    <b>FREESIA Success Stories</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.2,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-right"
+            }
+          ]
+        },
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" class=\"block-center\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/64b160ea11f2696a6e8a6b278ff40090\" width=\"1200\">\n<img alt=\"img\" data-ce-max-width=\"1200\" height=\"1097\" src=\"/userdata/2812/f5246ea42fd280ab51e4d8be5f0ecff3\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 20,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Statement 2",
+          "html": {
+            "en": "<br>\n<blockquote class=\"text-left block-center absolute-bottom margin-bottom-10p\">\n    “<i>Because of limited economic opportunities, we decided to work hard on the construction and management of the greenhouse. Maybe it’s because of the motivation to prevent my 10 years old son from working as a shepherd and not going to school. This activity seemed like an opportunity to support my child’s education expenses and give him a better future. When, we produced enough vegetables, my husband supplied 380kg to Aulqan and Khakshai markets earning AFS11,400. This year, we managed to send our son to school, because greenhouse is starting to be a profitable alternative</i>.\" - Ms. Zarbakht owner of the local greenhouse in Ghasor village, Shahristan\n</blockquote>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 20,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-right"
+            }
+          ]
+        },
+        {
+          "name": "Photo credits",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    The chief of the Community Development Council, Abdul Ghani, takes the UNEP team through Jawkar, showing FREESIA project interventions. By Maxime Paquin – UNEP, 2019.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-left"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": true,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 9.493,
+        "lat": 33.729,
+        "lng": 66.046,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 34.122,
+        "s": 33.335,
+        "e": 66.887,
+        "w": 65.205
+      },
+      "animation": {
+        "duration": 5000,
+        "method": "flyTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "Success story watershed",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/0111e59ba68e7858339aa36c498c891b\" width=\"1200\">\n<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/4f00e2fbd772c8f97e204929ff6fb85d\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0.4,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "image-cover"
+            }
+          ]
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h5>\n    <b>Watershed Management: Small Structures for Big Changes</b>\n</h5>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.2,
+          "size_text": 35,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "card"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<br>\n<p class=\"margin-top-5p\">\n    Since August 2019, Aga Khan Foundation, under (FREESIA) has initiated a watershed management project covering 120 (ha) land and has supported communities in restoration of the land and biomass through building 2530 soil banding and 420 stone banding structures.As a result of these interventions, local population witness:\n</p>\n<ul>\n    <li>\n        Reduced effects of water run-off &amp; avalanche\n    </li>\n    <li>\n        Decrease in soil erosioniii)\n    </li>\n    <li>\n        Improvement in vegetation cover\n    </li>\n</ul>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 20,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "card"
+            }
+          ]
+        },
+        {
+          "name": "Statement ",
+          "html": {
+            "en": "<blockquote class=\"text-left absolute-bottom margin-right-5p margin-bottom-5p\">\n    <i>“When watershed management interventions started, the people were not very sure about the effectiveness of such a small structure like contour trenches or gully plug and thought they can barely reduce the effects of a natural disaster. The incidence of neighboring Charkh village, made the people better understand the need of better management of the watersheds for the well-being of everyone. Today, you hear people saying we could have saved many lives if such projects had been implemented few years back.</i>” - Sher Ali, Nilage\n</blockquote>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 17,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "half-left"
+            }
+          ]
+        },
+        {
+          "name": "Photo credit ",
+          "html": {
+            "en": "<p class=\"absolute-bottom\">\n    Photo credit: Man over-looking fields in the Bamyan region. By Zahra Khodadadi – UNEP 2018.\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-right"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 0,
+        "lat": 0,
+        "lng": 0,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 0,
+        "s": 0,
+        "e": 0,
+        "w": 0
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "2019 - 2021: Chemicals and hazard waste ",
+      "views": [
+        "MX-QZL0A-E1IW6-JY891"
+      ],
+      "slides": [
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h5>\n    <b>Enhancing Sustainable Toxic Chemical Management Capacities</b>\n</h5>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 50,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-right"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<br>\n<br>\n<br>\n<br>\nNEPA and UNEP are collaborating to strengthen the country’s ability to manage toxic chemicals and hazardous waste properly. This Special Programme, going from 2019 to 2021, aims to support institutions to address the challenges caused by the mismanagement of chemicals and waste whilst still considering the nation’s development strategies, plans and priorities. ",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#000000",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-right"
+            }
+          ]
+        },
+        {
+          "name": "Map Description ",
+          "html": {
+            "en": "<br>\n<p class=\"absolute-bottom\">\n    Map: Mine zones that still present an active threat to the population and the natural environment. Source: UNMACCA (United Nations Mine Action Coordination Centre of Afghanistan).\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "card"
+            },
+            {
+              "name": "half-right"
+            },
+            {
+              "name": "half-bottom"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 5.397,
+        "lat": 33.585,
+        "lng": 72.074,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 38.91,
+        "s": 27.91,
+        "e": 83.821,
+        "w": 60.326
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    },
+    {
+      "name": "Final Slide",
+      "views": [],
+      "slides": [
+        {
+          "name": "Photo",
+          "html": {
+            "en": "<img alt=\"img\" class=\"mx-image-cover\" data-ce-max-width=\"1200\" height=\"800\" src=\"/userdata/2812/cc243d266344b733f16bc2722cb31d52\" width=\"1200\">",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#000000",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 40,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": []
+        },
+        {
+          "name": "Title",
+          "html": {
+            "en": "<h4>\n<br>\n<br>\n<br>\n<br>\n    <b>To learn more visit:</b>\n</h4>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#f5f8ff",
+          "color_bg": "#000000",
+          "opacity_bg": 0.4,
+          "size_text": 45,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "text-center"
+            },
+            {
+              "name": "image-cover"
+            },
+            {
+              "name": "card"
+            }
+          ]
+        },
+        {
+          "name": "Text",
+          "html": {
+            "en": "<br>\n<br>\n<br>\n<p>\n    <a href=\"https://www.unenvironment.org/explore-topics/disasters-conflicts/where-we-work/afghanistan\">Afghanistan Country Programme Web Page</a>\n</p>\n<p>\n    <a href=\"https://afghanistan-uneplive.hub.arcgis.com/\">Afghanistan data Hub</a>\n</p>\n<p>\n    <a href=\"https://www.mapx.org/afghanistan-aedc/\">Afghanistan on MapX</a>\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#81a6df",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 25,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-horizontal-center"
+            },
+            {
+              "name": "text-center"
+            }
+          ]
+        },
+        {
+          "name": "Photo credits",
+          "html": {
+            "en": "<p class=\"absolute-bottom margin-bottom-5p\">\n    Photo: Community boy acting as a photograph. Zahra Khodadadi – UNEP 2018\n</p>",
+            "fr": "",
+            "es": "",
+            "ar": "",
+            "ru": "",
+            "zh": "",
+            "de": "",
+            "bn": "",
+            "fa": "",
+            "ps": ""
+          },
+          "color_fg": "#ffffff",
+          "color_bg": "#ffffff",
+          "opacity_bg": 0,
+          "size_text": 13,
+          "effects": [],
+          "scroll_enable": false,
+          "classes": [
+            {
+              "name": "half-bottom"
+            },
+            {
+              "name": "half-left"
+            },
+            {
+              "name": "card"
+            }
+          ]
+        }
+      ],
+      "base_layer": {
+        "add_aerial": false,
+        "add_3d_terrain": false
+      },
+      "position": {
+        "z": 0,
+        "lat": 0,
+        "lng": 0,
+        "pitch": 0,
+        "bearing": 0,
+        "n": 0,
+        "s": 0,
+        "e": 0,
+        "w": 0
+      },
+      "animation": {
+        "duration": 1,
+        "method": "jumpTo",
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "autoplay": {
+        "timeout": 3000,
+        "duration": 1,
+        "easing": "easeIn",
+        "easing_power": 1
+      },
+      "dashboards_panel_behaviour": "default",
+      "legends_panel_behaviour": "closed"
+    }
+  ]
+}

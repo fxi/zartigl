@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://zartigl.dev/schemas/story-view-zartigl-map-v1.json",
+  "title": "Zartigl story view config",
+  "type": "object",
+  "required": ["camera"],
+  "properties": {
+    "layerId": { "type": "string" },
+    "camera": {
+      "type": "object",
+      "required": ["center", "zoom"],
+      "properties": {
+        "center": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "zoom": { "type": "number" },
+        "pitch": { "type": "number", "minimum": 0, "maximum": 85 },
+        "bearing": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "method": { "enum": ["flyTo", "jumpTo"] },
+        "durationMs": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "anchor": { "enum": ["center", "top-left", "top-right", "bottom-left", "bottom-right"] },
+    "timeRange": { "type": "object" },
+    "settings": { "type": "object" },
+    "overlays": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  },
+  "additionalProperties": false
+}

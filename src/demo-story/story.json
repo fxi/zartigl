@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "fallbackLocales": ["en"],
+  "title": { "en": "Planetary Signal", "fr": "Signal planétaire" },
+  "chrome": {
+    "verticalMark": {
+      "en": "ZARTIGL · CLOUD-NATIVE ZARR · PLANETARY SIGNAL",
+      "fr": "ZARTIGL · ZARR CLOUD-NATIVE · SIGNAL PLANÉTAIRE"
+    }
+  },
+  "themes": {
+    "intro": {
+      "background": "#111018",
+      "foreground": "#f7f3ff",
+      "muted": "rgba(247,243,255,.7)",
+      "accent": "oklch(78% 0.19 300)",
+      "accentSoft": "oklch(70% 0.15 300 / .28)",
+      "surface": "rgba(16,14,23,.72)",
+      "glowAnchor": "top-right"
+    },
+    "arctic": {
+      "background": "#111018",
+      "foreground": "#f7f3ff",
+      "muted": "rgba(247,243,255,.7)",
+      "accent": "oklch(78% 0.19 210)",
+      "accentSoft": "oklch(70% 0.15 210 / .28)",
+      "surface": "rgba(16,14,23,.72)",
+      "glowAnchor": "top-right"
+    },
+    "enso": {
+      "background": "#111018",
+      "foreground": "#f7f3ff",
+      "muted": "rgba(247,243,255,.7)",
+      "accent": "oklch(78% 0.19 28)",
+      "accentSoft": "oklch(70% 0.15 28 / .28)",
+      "surface": "rgba(16,14,23,.72)",
+      "glowAnchor": "top-right"
+    },
+    "mayotte": {
+      "background": "#111018",
+      "foreground": "#f7f3ff",
+      "muted": "rgba(247,243,255,.7)",
+      "accent": "oklch(78% 0.19 145)",
+      "accentSoft": "oklch(70% 0.15 145 / .28)",
+      "surface": "rgba(16,14,23,.72)",
+      "glowAnchor": "top-right"
+    }
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "name": { "en": "Introduction", "fr": "Introduction" },
+      "theme": "intro",
+      "layout": "overlay",
+      "playback": { "mode": "none" },
+      "blocks": [
+        {
+          "id": "intro-map",
+          "type": "view",
+          "slot": "stage",
+          "anchor": "center",
+          "presentation": "background",
+          "view": "intro-globe"
+        },
+        {
+          "id": "intro-copy",
+          "type": "copy",
+          "slot": "copy",
+          "variant": "hero",
+          "label": {
+            "en": "Planetary Signal — A live-data story",
+            "fr": "Signal planétaire — Une histoire de données vivantes"
+          },
+          "heading": {
+            "en": "The ocean is speaking",
+            "fr": "L’océan nous parle"
+          },
+          "text": {
+            "en": "Three signals, read directly from cloud-native environmental data.",
+            "fr": "Trois signaux lus directement dans des données environnementales cloud-native."
+          }
+        }
+      ]
+    },
+    {
+      "id": "arctic",
+      "name": { "en": "Arctic", "fr": "Arctique" },
+      "theme": "arctic",
+      "layout": "split-left",
+      "playback": { "mode": "autoplay" },
+      "blocks": [
+        {
+          "id": "arctic-map",
+          "type": "view",
+          "slot": "stage",
+          "anchor": "top-right",
+          "presentation": "background",
+          "view": "arctic-ice"
+        },
+        {
+          "id": "arctic-copy",
+          "type": "copy",
+          "slot": "copy",
+          "variant": "hero",
+          "backdrop": "dark-gradient",
+          "showTime": true,
+          "label": { "en": "Signal 01 — Arctic", "fr": "Signal 01 — Arctique" },
+          "heading": {
+            "en": "Ice,\nframe by frame",
+            "fr": "La glace,\nimage par image"
+          },
+          "text": {
+            "en": "Daily sea-ice thickness across the Arctic, paired with the record at 5.667°W, 81.833°N.",
+            "fr": "Épaisseur quotidienne de la glace arctique, associée aux mesures à 5,667°O, 81,833°N."
+          }
+        },
+        {
+          "id": "arctic-chart",
+          "type": "widget",
+          "slot": "analysis",
+          "anchor": "bottom-right",
+          "widget": "arctic-series",
+          "config": { "view": "arctic-ice" }
+        }
+      ]
+    },
+    {
+      "id": "enso",
+      "name": { "en": "ENSO", "fr": "ENSO" },
+      "theme": "enso",
+      "layout": "split-left",
+      "playback": { "mode": "autoplay" },
+      "blocks": [
+        {
+          "id": "enso-map",
+          "type": "view",
+          "slot": "stage",
+          "anchor": "top-right",
+          "presentation": "background",
+          "view": "enso-pacific"
+        },
+        {
+          "id": "enso-copy",
+          "type": "copy",
+          "slot": "copy",
+          "variant": "hero",
+          "showTime": true,
+          "label": {
+            "en": "Signal 02 — Equatorial Pacific",
+            "fr": "Signal 02 — Pacifique équatorial"
+          },
+          "heading": {
+            "en": "Four windows\non ENSO",
+            "fr": "Quatre fenêtres\nsur ENSO"
+          },
+          "text": {
+            "en": "Sea-surface temperature anomalies across the Niño 1+2, 3, 3.4 and 4 monitoring regions.",
+            "fr": "Anomalies de température de surface dans les régions de suivi Niño 1+2, 3, 3.4 et 4."
+          }
+        },
+        {
+          "id": "enso-chart",
+          "type": "widget",
+          "slot": "analysis",
+          "anchor": "bottom-right",
+          "widget": "enso-series",
+          "config": { "view": "enso-pacific" }
+        }
+      ]
+    },
+    {
+      "id": "mayotte",
+      "name": { "en": "Mayotte", "fr": "Mayotte" },
+      "theme": "mayotte",
+      "layout": "split-left",
+      "playback": {
+        "mode": "sequence",
+        "times": [
+          "2024-12-14T00:00:00.000Z",
+          "2024-12-14T03:00:00.000Z",
+          "2024-12-14T06:00:00.000Z",
+          "2024-12-14T09:00:00.000Z",
+          "2024-12-14T12:00:00.000Z",
+          "2024-12-14T15:00:00.000Z",
+          "2024-12-14T18:00:00.000Z",
+          "2024-12-14T21:00:00.000Z"
+        ],
+        "intervalMs": 2000,
+        "direction": "loop"
+      },
+      "blocks": [
+        {
+          "id": "mayotte-map",
+          "type": "view",
+          "slot": "stage",
+          "anchor": "center",
+          "presentation": "background",
+          "view": "mayotte-wind"
+        },
+        {
+          "id": "mayotte-copy",
+          "type": "copy",
+          "slot": "copy",
+          "variant": "hero",
+          "showTime": true,
+          "label": {
+            "en": "Signal 03 — Mayotte, 14 December 2024",
+            "fr": "Signal 03 — Mayotte, 14 décembre 2024"
+          },
+          "heading": {
+            "en": "Following Chido west",
+            "fr": "Suivre Chido vers l’ouest"
+          },
+          "text": {
+            "en": "Hourly sea-surface wind follows Chido west across Mayotte and onward.",
+            "fr": "Le vent horaire à la surface de la mer suit Chido vers l’ouest, à travers Mayotte puis au-delà."
+          }
+        },
+        {
+          "id": "mayotte-chart",
+          "type": "widget",
+          "slot": "analysis",
+          "anchor": "bottom-right",
+          "widget": "mayotte-wind",
+          "config": { "view": "mayotte-wind" }
+        }
+      ]
+    },
+    {
+      "id": "outro",
+      "name": { "en": "Conclusion", "fr": "Conclusion" },
+      "theme": "intro",
+      "layout": "overlay",
+      "playback": { "mode": "none" },
+      "blocks": [
+        {
+          "id": "outro-map",
+          "type": "view",
+          "slot": "stage",
+          "anchor": "center",
+          "presentation": "background",
+          "view": "outro-globe"
+        },
+        {
+          "id": "outro-copy",
+          "type": "copy",
+          "slot": "copy",
+          "variant": "hero",
+          "label": {
+            "en": "Zartigl — Browser-native Zarr",
+            "fr": "Zartigl — Zarr natif dans le navigateur"
+          },
+          "heading": { "en": "Follow the signal", "fr": "Suivez le signal" },
+          "text": {
+            "en": "Maps, timelines and measurements share one source of truth: the dataset itself.",
+            "fr": "Cartes, chronologies et mesures partagent une même source de vérité : le jeu de données."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "storm": {
+    "id": "2024341S12086",
+    "name": "CHIDO"
+  },
+  "source": {
+    "name": "NOAA International Best Track Archive for Climate Stewardship",
+    "version": "v04r01",
+    "url": "https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.last3years.list.v04r01.csv",
+    "accessedAt": "2026-08-23",
+    "positionColumns": ["LAT", "LON"]
+  },
+  "points": [
+    { "time": "2024-12-14T00:00:00.000Z", "label": "00 UTC", "longitude": 46.6, "latitude": -12.1 },
+    { "time": "2024-12-14T03:00:00.000Z", "label": "03 UTC", "longitude": 46.1, "latitude": -12.3 },
+    { "time": "2024-12-14T06:00:00.000Z", "label": "06 UTC", "longitude": 45.4, "latitude": -12.6 },
+    { "time": "2024-12-14T09:00:00.000Z", "label": "09 UTC", "longitude": 44.8, "latitude": -12.8 },
+    { "time": "2024-12-14T12:00:00.000Z", "label": "12 UTC", "longitude": 44.1, "latitude": -13.1 },
+    { "time": "2024-12-14T15:00:00.000Z", "label": "15 UTC", "longitude": 43.5, "latitude": -13.2 },
+    { "time": "2024-12-14T18:00:00.000Z", "label": "18 UTC", "longitude": 42.8, "latitude": -13.2 },
+    { "time": "2024-12-14T21:00:00.000Z", "label": "21 UTC", "longitude": 42.1, "latitude": -13.2 }
+  ]
+}

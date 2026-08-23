@@ -17,20 +17,18 @@
       <div id="enso-regions" class="map-labels" aria-hidden="true"></div>
 
       <section class="content">
-        <div class="copy">
+        <div id="copy" class="copy">
           <p id="signal" class="signal"></p>
           <h1 id="title"></h1>
           <p id="description" class="description"></p>
           <p id="timestamp" class="timestamp"></p>
         </div>
-        <aside id="analysis" class="analysis" hidden>
-          <div id="chart" class="chart"></div>
-          <footer id="provenance" class="provenance"></footer>
-        </aside>
+        <aside id="analysis" class="analysis" hidden></aside>
       </section>
+      <div id="story-extras" class="story-extras"></div>
 
       <div id="status" class="status" role="status">Loading map…</div>
-      <div class="vertical-mark" aria-hidden="true">ZARTIGL · CLOUD-NATIVE ZARR · PLANETARY SIGNAL</div>
+      <div id="vertical-mark" class="vertical-mark" aria-hidden="true"></div>
       <nav class="navigation" aria-label="Story navigation">
         <button id="previous" type="button" aria-label="Previous scene">←</button>
         <span id="counter"></span>
@@ -43,4 +41,3 @@
     <script type="module" src="/main.ts"></script>
   </body>
 </html>
-

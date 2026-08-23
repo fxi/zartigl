@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://zartigl.dev/schemas/story-views-v1.json",
+  "title": "Story view registry",
+  "type": "object",
+  "required": ["schemaVersion", "views"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "views": { "type": "array", "items": { "type": "object", "required": ["id", "type", "config"], "properties": { "id": { "type": "string", "minLength": 1 }, "type": { "type": "string", "minLength": 1 }, "config": { "type": "object" } }, "additionalProperties": false } }
+  },
+  "additionalProperties": false
+}
