@@ -7,6 +7,15 @@ import type { EnsoStoryData } from "../types";
 import { renderArcticChart, renderChartStatus, renderEnsoChart, renderMayotteChart } from "../charts/StoryCharts";
 import { ZartiglStoryView } from "../adapters/ZartiglStoryView";
 
+function chartOptions(config: Record<string, unknown>, context: StoryWidgetContext) {
+  return {
+    interactiveTime: config.interactiveTime === true,
+    onStart: () => context.beginTimeInteraction(),
+    onSeek: (time: number) => context.requestTime(time),
+    onEnd: () => context.endTimeInteraction(),
+  };
+}
+
 function requiredView(config: Record<string, unknown>, context: StoryWidgetContext): ZartiglStoryView {
   const viewId = config.view;
   if (typeof viewId !== "string") throw new Error("Widget config.view is required");
@@ -35,15 +44,19 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     renderChartStatus(chart, "Loading measurements…");
     const result = await view.zartigl.queryTimeSeries({ longitude: ARCTIC_POINT.longitude, latitude: ARCTIC_POINT.latitude, maxPoints: 420 });
     if (context.signal.aborted) return;
-    context.setTimeCursor(renderArcticChart(chart, result, "sithick", view.zartigl.getVariableMeta().units ?? "m"));
+    const controller = renderArcticChart(chart, result, "sithick", view.zartigl.getVariableMeta().units ?? "m", chartOptions(config, context));
+    context.setTimeCursor(controller.setCursor);
     provenance.textContent = `${requireCatalogLayer("sea-ice-thickness").dataset.id} · nearest grid point ${result.latitude.toFixed(3)}°, ${result.longitude.toFixed(3)}° · ${result.points.length} samples`;
+    return () => controller.destroy();
   });
-  registry.registerWidgetType("enso-series", (host, _config, context) => {
+  registry.registerWidgetType("enso-series", (host, config, context) => {
     if (context.signal.aborted) return;
     const { chart, provenance } = widgetShell(host);
     const data = ensoJson as EnsoStoryData;
-    context.setTimeCursor(renderEnsoChart(chart, data));
+    const controller = renderEnsoChart(chart, data, chartOptions(config, context));
+    context.setTimeCursor(controller.setCursor);
     provenance.textContent = `Area-weighted native-grid means · ${data.source.datasetId} · generated ${formatTime(Date.parse(data.generatedAt))}`;
+    return () => controller.destroy();
   });
   registry.registerWidgetType("mayotte-wind", async (host, config, context) => {
     const { chart, provenance } = widgetShell(host);
@@ -51,7 +64,9 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     renderChartStatus(chart, "Loading measurements…");
     const result = await view.zartigl.queryTimeSeries({ longitude: MAYOTTE_POINT.longitude, latitude: MAYOTTE_POINT.latitude, maxPoints: 180 });
     if (context.signal.aborted) return;
-    context.setTimeCursor(renderMayotteChart(chart, result));
+    const controller = renderMayotteChart(chart, result, chartOptions(config, context));
+    context.setTimeCursor(controller.setCursor);
     provenance.textContent = `Hourly sea-surface wind (not station gust): ${requireCatalogLayer("surface-wind").dataset.id} · nearest grid point ${result.latitude.toFixed(4)}°, ${result.longitude.toFixed(4)}° · Track: ${chidoTrackJson.source.name} ${chidoTrackJson.source.version}`;
+    return () => controller.destroy();
   });
 }

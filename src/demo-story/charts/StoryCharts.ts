@@ -6,6 +6,18 @@ import type { EnsoStoryData } from "../types";
 type Datum = { time: number; value: number };
 type Series = { id: string; label: string; color: string; values: Datum[] };
 
+export interface StoryChartController {
+  setCursor(time: number): void;
+  destroy(): void;
+}
+
+export interface StoryChartOptions {
+  interactiveTime?: boolean;
+  onStart?(): void;
+  onSeek?(time: number): void;
+  onEnd?(): void;
+}
+
 const COLORS = ["#e995ff", "#67d9ff", "#ffbf69", "#75e39a"];
 
 function valid(value: unknown): value is number {
@@ -23,12 +35,27 @@ function status(host: HTMLElement, message: string): void {
   host.textContent = message;
 }
 
-function lineChart(host: HTMLElement, series: Series[], unit: string): (time: number) => void {
+export function nearestChartTime(times: readonly number[], target: number): number | undefined {
+  if (times.length === 0 || !Number.isFinite(target)) return undefined;
+  if (target <= times[0]) return times[0];
+  const last = times.length - 1;
+  if (target >= times[last]) return times[last];
+  let low = 0;
+  let high = last;
+  while (low + 1 < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (times[middle] <= target) low = middle;
+    else high = middle;
+  }
+  return target - times[low] <= times[high] - target ? times[low] : times[high];
+}
+
+function lineChart(host: HTMLElement, series: Series[], unit: string, options: StoryChartOptions = {}): StoryChartController {
   clear(host);
   const all = series.flatMap((entry) => entry.values);
   if (!all.length) {
     status(host, "No samples available in this snapshot.");
-    return () => undefined;
+    return { setCursor: () => undefined, destroy: () => undefined };
   }
 
   const width = 680;
@@ -89,25 +116,116 @@ function lineChart(host: HTMLElement, series: Series[], unit: string): (time: nu
   cursor.append("line").attr("y1", margin.top).attr("y2", height - margin.bottom);
   cursor.append("text").attr("y", margin.top + 12);
 
-  return (time: number) => {
+  let cursorTime: number | null = null;
+  const setCursor = (time: number): void => {
     if (!Number.isFinite(time)) return;
     const clamped = Math.max(x.domain()[0].getTime(), Math.min(x.domain()[1].getTime(), time));
+    cursorTime = clamped;
     cursor.style("display", null).attr("transform", `translate(${x(clamped)},0)`);
     cursor.select("text")
       .attr("x", x(clamped) > width * 0.7 ? -8 : 8)
       .attr("text-anchor", x(clamped) > width * 0.7 ? "end" : "start")
       .text(d3.utcFormat("%d %b %Y %H:%M")(new Date(clamped)));
+    hitArea?.setAttribute("aria-valuenow", String(clamped));
+    hitArea?.setAttribute("aria-valuetext", d3.utcFormat("%d %b %Y %H:%M UTC")(new Date(clamped)));
   };
+
+  let hitArea: SVGRectElement | null = null;
+  let destroy = (): void => undefined;
+  if (options.interactiveTime) {
+    const times = [...new Set(all.map((datum) => datum.time))].sort((a, b) => a - b);
+    hitArea = svg.append("rect")
+      .attr("class", "chart-hit-area")
+      .attr("x", margin.left)
+      .attr("y", margin.top)
+      .attr("width", width - margin.left - margin.right)
+      .attr("height", height - margin.top - margin.bottom)
+      .attr("fill", "transparent")
+      .attr("role", "slider")
+      .attr("tabindex", 0)
+      .attr("aria-label", "Time")
+      .attr("aria-orientation", "horizontal")
+      .attr("aria-valuemin", String(times[0]))
+      .attr("aria-valuemax", String(times[times.length - 1]))
+      .node();
+
+    let pointerId: number | null = null;
+    const seekAt = (event: PointerEvent): void => {
+      if (!hitArea) return;
+      const bounds = hitArea.ownerSVGElement!.getBoundingClientRect();
+      const localX = bounds.width > 0 ? (event.clientX - bounds.left) * width / bounds.width : margin.left;
+      const requested = x.invert(Math.max(margin.left, Math.min(width - margin.right, localX))).getTime();
+      const snapped = nearestChartTime(times, requested);
+      if (snapped === undefined) return;
+      setCursor(snapped);
+      options.onSeek?.(snapped);
+    };
+    const onPointerDown = (event: PointerEvent): void => {
+      if (pointerId !== null || event.button !== 0) return;
+      pointerId = event.pointerId;
+      hitArea?.setPointerCapture?.(pointerId);
+      options.onStart?.();
+      seekAt(event);
+    };
+    const onPointerMove = (event: PointerEvent): void => {
+      if (event.pointerId === pointerId) seekAt(event);
+    };
+    const finishPointer = (event: PointerEvent, seek: boolean): void => {
+      if (event.pointerId !== pointerId) return;
+      if (seek) seekAt(event);
+      const completed = pointerId;
+      pointerId = null;
+      if (completed !== null && hitArea?.hasPointerCapture?.(completed)) hitArea.releasePointerCapture(completed);
+      options.onEnd?.();
+    };
+    const onPointerUp = (event: PointerEvent): void => finishPointer(event, true);
+    const onPointerCancel = (event: PointerEvent): void => finishPointer(event, false);
+    const onLostPointerCapture = (event: PointerEvent): void => finishPointer(event, false);
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const current = nearestChartTime(times, cursorTime ?? times[0]) ?? times[0];
+      const currentIndex = Math.max(0, times.indexOf(current));
+      let nextIndex: number | null = null;
+      if (event.key === "ArrowLeft" || event.key === "ArrowDown") nextIndex = Math.max(0, currentIndex - 1);
+      else if (event.key === "ArrowRight" || event.key === "ArrowUp") nextIndex = Math.min(times.length - 1, currentIndex + 1);
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = times.length - 1;
+      if (nextIndex === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const time = times[nextIndex];
+      options.onStart?.();
+      setCursor(time);
+      options.onSeek?.(time);
+      options.onEnd?.();
+    };
+    hitArea?.addEventListener("pointerdown", onPointerDown);
+    hitArea?.addEventListener("pointermove", onPointerMove);
+    hitArea?.addEventListener("pointerup", onPointerUp);
+    hitArea?.addEventListener("pointercancel", onPointerCancel);
+    hitArea?.addEventListener("lostpointercapture", onLostPointerCapture);
+    hitArea?.addEventListener("keydown", onKeyDown);
+    destroy = () => {
+      hitArea?.removeEventListener("pointerdown", onPointerDown);
+      hitArea?.removeEventListener("pointermove", onPointerMove);
+      hitArea?.removeEventListener("pointerup", onPointerUp);
+      hitArea?.removeEventListener("pointercancel", onPointerCancel);
+      hitArea?.removeEventListener("lostpointercapture", onLostPointerCapture);
+      hitArea?.removeEventListener("keydown", onKeyDown);
+      pointerId = null;
+    };
+  }
+
+  return { setCursor, destroy };
 }
 
-export function renderArcticChart(host: HTMLElement, result: ZarrPointSeriesResult, variable: string, unit: string): (time: number) => void {
+export function renderArcticChart(host: HTMLElement, result: ZarrPointSeriesResult, variable: string, unit: string, options?: StoryChartOptions): StoryChartController {
   const values = result.points
     .map((point) => ({ time: point.time ?? point.axisValue, value: point.values[variable] }))
     .filter((point): point is Datum => valid(point.time) && valid(point.value));
-  return lineChart(host, [{ id: "ice", label: "Sea-ice thickness", color: COLORS[1], values }], unit);
+  return lineChart(host, [{ id: "ice", label: "Sea-ice thickness", color: COLORS[1], values }], unit, options);
 }
 
-export function renderEnsoChart(host: HTMLElement, data: EnsoStoryData): (time: number) => void {
+export function renderEnsoChart(host: HTMLElement, data: EnsoStoryData, options?: StoryChartOptions): StoryChartController {
   const series = data.regions.map((region, index) => ({
     id: region.id,
     label: region.label,
@@ -116,13 +234,14 @@ export function renderEnsoChart(host: HTMLElement, data: EnsoStoryData): (time: 
       .filter((point) => valid(point.mean))
       .map((point) => ({ time: Date.parse(point.time), value: point.mean! })),
   }));
-  return lineChart(host, series, data.source.unit);
+  return lineChart(host, series, data.source.unit, options);
 }
 
 export function renderMayotteChart(
   host: HTMLElement,
   wind: ZarrPointSeriesResult,
-): (time: number) => void {
+  options?: StoryChartOptions,
+): StoryChartController {
   const windValues = wind.points.map((point) => {
     const u = point.values.eastward_wind;
     const v = point.values.northward_wind;
@@ -130,7 +249,7 @@ export function renderMayotteChart(
   }).filter((point): point is Datum => valid(point.time) && valid(point.value));
   return lineChart(host, [
     { id: "wind", label: "Wind speed", color: COLORS[1], values: windValues },
-  ], "m s⁻¹");
+  ], "m s⁻¹", options);
 }
 
 export function renderChartStatus(host: HTMLElement, message: string): void {

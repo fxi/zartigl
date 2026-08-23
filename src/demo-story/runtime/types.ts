@@ -108,6 +108,9 @@ export interface StoryWidgetContext {
   signal: AbortSignal;
   getViewAdapter(viewId: string): StoryViewAdapter | undefined;
   setTimeCursor(cursor: (time: number) => void): void;
+  beginTimeInteraction(): void;
+  requestTime(time: number): void;
+  endTimeInteraction(): void;
 }
 
 export type StoryWidgetRenderer = (

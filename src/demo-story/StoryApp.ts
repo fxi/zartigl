@@ -6,7 +6,8 @@ import viewsJson from "./views.json";
 import { ZartiglStoryView } from "./adapters/ZartiglStoryView";
 import {
   advanceStorySequence, initializeAfterStaticRender, nextStoryIndex, parseStoryDocuments,
-  resolveLocalizedText, sceneViewId, StoryRegistry, StoryTimePresentation, StoryWidgetLifecycle,
+  resolveLocalizedText, sceneViewId, sequenceIndexAtOrBefore, StoryRegistry, StoryTimeInteraction,
+  StoryTimePresentation, StoryWidgetLifecycle,
   type StoryCopyBlock, type StoryScene, type StoryViewAdapter, type StoryWidgetRun,
 } from "./runtime";
 import { registerStoryWidgets } from "./widgets/storyWidgets";
@@ -75,6 +76,16 @@ export class StoryApp {
   private playing = true;
   private wheelLockedUntil = 0;
   private ready = false;
+  private readonly timeInteraction = new StoryTimeInteraction({
+    isPlaying: () => this.playing,
+    pause: () => this.pausePlayback(),
+    apply: (time) => this.activeAdapter?.setTime?.(time),
+    present: (time) => this.presentActiveTime(time),
+    finish: (time, resume) => {
+      if (time !== null) this.anchorSequenceAt(time);
+      if (resume) this.resumePlayback(true);
+    },
+  });
 
   async start(): Promise<void> {
     this.bindEvents();
@@ -136,7 +147,7 @@ export class StoryApp {
     }, { passive: false });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.pausePlayback();
-      else if (this.playing) this.resumePlayback();
+      else if (this.playing && !this.timeInteraction.interacting) this.resumePlayback();
     });
   }
 
@@ -149,6 +160,7 @@ export class StoryApp {
   private async activate(index: number, render = true): Promise<void> {
     const scene = documents.story.scenes[index];
     const generation = ++this.generation;
+    this.timeInteraction.cancel();
     const widgetRun = this.widgetLifecycle.begin();
     this.index = index;
     this.sequenceSceneIndex = -1;
@@ -191,6 +203,15 @@ export class StoryApp {
       getViewAdapter: (viewId) => viewId === this.activeViewId ? this.activeAdapter ?? undefined : undefined,
       setTimeCursor: (cursor) => void run.runIfCurrent(() => {
         if (generation === this.generation) this.chartCursor = cursor;
+      }),
+      beginTimeInteraction: () => void run.runIfCurrent(() => {
+        if (generation === this.generation) this.timeInteraction.begin();
+      }),
+      requestTime: (time) => void run.runIfCurrent(() => {
+        if (generation === this.generation) this.timeInteraction.request(time);
+      }),
+      endTimeInteraction: () => void run.runIfCurrent(() => {
+        if (generation === this.generation) this.timeInteraction.end();
       }),
     });
     run.settle(cleanup);
@@ -276,7 +297,7 @@ export class StoryApp {
     this.setActiveTime(time);
   }
 
-  private resumePlayback(): void {
+  private resumePlayback(afterTimeInteraction = false): void {
     if (!this.playing || document.hidden) return;
     const playback = documents.story.scenes[this.index].playback;
     if (!playback || playback.mode === "none") return;
@@ -294,7 +315,7 @@ export class StoryApp {
       this.activeAdapter?.setTime?.(time);
       this.setActiveTime(time);
     };
-    setSequenceTime();
+    if (!afterTimeInteraction) setSequenceTime();
     this.sequenceTimer = window.setInterval(() => {
       const next = advanceStorySequence(
         this.sequenceIndex,
@@ -309,6 +330,11 @@ export class StoryApp {
   }
 
   private setActiveTime(time: number): void {
+    if (this.timeInteraction.interacting) return;
+    this.presentActiveTime(time);
+  }
+
+  private presentActiveTime(time: number): void {
     const accepted = this.timePresentation.accept(time);
     if (accepted === null) {
       this.timestamp.textContent = "";
@@ -318,6 +344,14 @@ export class StoryApp {
     this.timestamp.hidden = false;
     this.timestamp.textContent = formatTime(accepted, this.locale);
     this.chartCursor(accepted);
+  }
+
+  private anchorSequenceAt(time: number): void {
+    const playback = documents.story.scenes[this.index].playback;
+    if (!playback || playback.mode !== "sequence" || playback.times.length === 0) return;
+    this.sequenceSceneIndex = this.index;
+    this.sequenceIndex = sequenceIndexAtOrBefore(playback.times, time);
+    this.sequenceDirection = 1;
   }
 
   private text(value: Record<string, string>): string {

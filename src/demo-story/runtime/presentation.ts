@@ -31,3 +31,13 @@ export function advanceStorySequence(
   const nextDirection = direction === 1 ? -1 : 1;
   return { index: index + nextDirection, direction: nextDirection };
 }
+
+export function sequenceIndexAtOrBefore(times: readonly string[], time: number): number {
+  if (times.length === 0) return 0;
+  let index = 0;
+  for (let candidate = 1; candidate < times.length; candidate++) {
+    if (Date.parse(times[candidate]) > time) break;
+    index = candidate;
+  }
+  return index;
+}

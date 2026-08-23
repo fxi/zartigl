@@ -121,7 +121,7 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "arctic-series",
-          "config": { "view": "arctic-ice" }
+          "config": { "view": "arctic-ice", "interactiveTime": true }
         }
       ]
     },
@@ -165,7 +165,7 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "enso-series",
-          "config": { "view": "enso-pacific" }
+          "config": { "view": "enso-pacific", "interactiveTime": true }
         }
       ]
     },
@@ -223,7 +223,7 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "mayotte-wind",
-          "config": { "view": "mayotte-wind" }
+          "config": { "view": "mayotte-wind", "interactiveTime": true }
         }
       ]
     },

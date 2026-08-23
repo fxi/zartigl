@@ -144,6 +144,8 @@ h1 {
 .chart-line { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .chart-cursor line { stroke: rgba(255, 255, 255, .75); stroke-width: 1; stroke-dasharray: 3 3; }
 .chart-cursor text { fill: #fff; font-family: inherit; font-size: 10px; font-weight: 600; }
+.chart-hit-area { cursor: ew-resize; touch-action: none; outline: none; }
+.chart-hit-area:focus-visible { stroke: var(--accent); stroke-width: 2; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 0 52px; color: rgba(247, 243, 255, .72); font-size: 11px; }
 .chart-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 14px; height: 3px; border-radius: 2px; }
