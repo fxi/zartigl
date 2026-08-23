@@ -3,6 +3,7 @@
 A MapLibre GL JS plugin for exploring cloud-hosted Zarr geoscience data directly in the browser.
 
 [![Demo](https://img.shields.io/badge/demo-live-blue)](https://fxi.io/zartigl/)
+[![Story](https://img.shields.io/badge/story-explore-8b5cf6)](https://fxi.io/zartigl/story/)
 
 Zartigl renders scalar rasters and vector particle fields from multidimensional Zarr stores without a dedicated tile server. It is aimed at expert analysis workflows where time, depth or pressure level, point inspection, and reproducible map state matter as much as the visual layer.
 
@@ -63,6 +64,11 @@ The root import does not bundle the catalog presets. Import catalog data from `@
 The production demo is the default Vite app and is published at
 [`fxi.io/zartigl`](https://fxi.io/zartigl/).
 
+The narrative story combines Arctic sea ice, ENSO, and Cyclone Chido in a
+scene-based experience at [`fxi.io/zartigl/story`](https://fxi.io/zartigl/story/).
+It is built from the same repository so that its catalog, runtime, and Zartigl
+version remain synchronized with the technical demo.
+
 ```bash
 npm install
 npm run dev
@@ -72,6 +78,13 @@ Build the same app that the public demo publishes:
 
 ```bash
 npm run build:prod
+```
+
+Run or build the story locally:
+
+```bash
+npm run dev:story
+npm run build:story
 ```
 
 For the smaller public API demo:
