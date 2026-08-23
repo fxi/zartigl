@@ -13,6 +13,7 @@ dist-demo/
 dist-demo-minimal/
 dist-demo-mapbox/
 dist-demo-prod/
+dist-story/
 
 # Vite
 *.local

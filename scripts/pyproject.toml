@@ -4,5 +4,12 @@ version = "0.3.0"
 description = "Catalog builder skills for zartigl"
 requires-python = ">=3.12"
 dependencies = [
+    "aiohttp>=3.10",
     "copernicusmarine>=2.0",
+    "dask[array]>=2025.1",
+    "fsspec>=2025.1",
+    "jsonschema>=4.20",
+    "numpy>=2.0",
+    "xarray>=2025.1",
+    "zarr>=2.18,<3",
 ]
