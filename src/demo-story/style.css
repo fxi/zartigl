@@ -112,6 +112,7 @@ h1 {
 .timestamp { min-height: 1.3em; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 
 .analysis {
+  --analysis-gradient-angle: 145deg;
   position: relative;
   z-index: 2;
   align-self: end;
@@ -121,17 +122,22 @@ h1 {
   overflow: auto;
   padding: 20px 24px 16px;
   pointer-events: auto;
-  background: var(--story-surface);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: 30px 16px 38px 18px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .35);
-  backdrop-filter: blur(16px) saturate(1.2);
+  background: linear-gradient(
+    var(--analysis-gradient-angle),
+    transparent 0%,
+    color-mix(in srgb, var(--story-bg) 38%, transparent) 38%,
+    color-mix(in srgb, var(--story-bg) 72%, transparent) 100%
+  );
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
   animation: chart-in .9s .12s cubic-bezier(.16, 1, .3, 1) both;
 }
 .analysis[hidden] { display: none; }
 .story[data-layout="overlay"] .analysis { width: min(43vw, 680px); }
 .story[data-layout="split-right"] .copy { grid-column: 2; }
-.story[data-layout="split-right"] .analysis { grid-column: 1; grid-row: 1; justify-self: start; }
+.story[data-layout="split-right"] .analysis { --analysis-gradient-angle: 215deg; grid-column: 1; grid-row: 1; justify-self: start; }
 .story[data-layout="full"] .content { grid-template-columns: 1fr; }
 .story[data-layout="full"] .copy { justify-self: center; text-align: center; }
 .chart { min-height: 180px; }
@@ -238,7 +244,10 @@ h1 {
     line-height: 1.36;
   }
   .timestamp { margin: 12px 0 0; font-size: clamp(10px, 2.8vw, 12px); }
-  .analysis, .story[data-layout="overlay"] .analysis {
+  .analysis,
+  .story[data-layout="overlay"] .analysis,
+  .story[data-layout="split-right"] .analysis {
+    --analysis-gradient-angle: 180deg;
     grid-row: 3;
     align-self: end;
     justify-self: stretch;
@@ -246,11 +255,6 @@ h1 {
     max-height: none;
     overflow: visible;
     padding: clamp(8px, 1.4vh, 14px) 0 0;
-    border: 0;
-    border-radius: 0;
-    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--story-bg) 62%, transparent));
-    box-shadow: none;
-    backdrop-filter: none;
   }
   .chart { min-height: 0; }
   .chart[data-density="compact"] svg { max-height: min(24vh, 210px); }
