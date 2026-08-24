@@ -8,8 +8,11 @@ import { renderArcticChart, renderChartStatus, renderEnsoChart, renderMayotteCha
 import { ZartiglStoryView } from "../adapters/ZartiglStoryView";
 
 function chartOptions(config: Record<string, unknown>, context: StoryWidgetContext) {
+  const compact = matchMedia("(max-width: 850px)").matches;
   return {
     interactiveTime: config.interactiveTime === true,
+    compact,
+    directLabels: compact,
     onStart: () => context.beginTimeInteraction(),
     onSeek: (time: number) => context.requestTime(time),
     onEnd: () => context.endTimeInteraction(),

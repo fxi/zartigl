@@ -13,12 +13,35 @@ export interface StoryChartController {
 
 export interface StoryChartOptions {
   interactiveTime?: boolean;
+  compact?: boolean;
+  directLabels?: boolean;
   onStart?(): void;
   onSeek?(time: number): void;
   onEnd?(): void;
 }
 
 const COLORS = ["#e995ff", "#67d9ff", "#ffbf69", "#75e39a"];
+
+export function spreadChartLabels(values: readonly number[], min: number, max: number, gap: number): number[] {
+  if (!values.length) return [];
+  const effectiveGap = values.length > 1 ? Math.min(gap, (max - min) / (values.length - 1)) : 0;
+  const indexed = values.map((value, index) => ({ value: Math.max(min, Math.min(max, value)), index }))
+    .sort((a, b) => a.value - b.value);
+  for (let index = 1; index < indexed.length; index += 1) {
+    indexed[index].value = Math.max(indexed[index].value, indexed[index - 1].value + effectiveGap);
+  }
+  indexed[indexed.length - 1].value = Math.min(max, indexed[indexed.length - 1].value);
+  for (let index = indexed.length - 2; index >= 0; index -= 1) {
+    indexed[index].value = Math.min(indexed[index].value, indexed[index + 1].value - effectiveGap);
+  }
+  indexed[0].value = Math.max(min, indexed[0].value);
+  for (let index = 1; index < indexed.length; index += 1) {
+    indexed[index].value = Math.max(indexed[index].value, indexed[index - 1].value + effectiveGap);
+  }
+  const result = new Array<number>(values.length);
+  for (const entry of indexed) result[entry.index] = entry.value;
+  return result;
+}
 
 function valid(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -52,15 +75,21 @@ export function nearestChartTime(times: readonly number[], target: number): numb
 
 function lineChart(host: HTMLElement, series: Series[], unit: string, options: StoryChartOptions = {}): StoryChartController {
   clear(host);
+  series = series.filter((entry) => entry.values.length > 0);
   const all = series.flatMap((entry) => entry.values);
   if (!all.length) {
     status(host, "No samples available in this snapshot.");
     return { setCursor: () => undefined, destroy: () => undefined };
   }
 
+  const compact = options.compact === true;
+  const directLabels = options.directLabels === true;
   const width = 680;
-  const height = 250;
-  const margin = { top: 20, right: 22, bottom: 36, left: 52 };
+  const height = compact ? 210 : 250;
+  const margin = compact
+    ? { top: 18, right: directLabels ? 92 : 18, bottom: 32, left: 44 }
+    : { top: 20, right: 22, bottom: 36, left: 52 };
+  host.dataset.density = compact ? "compact" : "standard";
   const x = d3.scaleUtc()
     .domain(d3.extent(all, (d) => d.time) as [number, number])
     .range([margin.left, width - margin.right]);
@@ -79,15 +108,15 @@ function lineChart(host: HTMLElement, series: Series[], unit: string, options: S
   svg.append("g")
     .attr("class", "chart-grid")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickSize(-(width - margin.left - margin.right)).tickFormat(() => ""));
+    .call(d3.axisLeft(y).ticks(compact ? 4 : 5).tickSize(-(width - margin.left - margin.right)).tickFormat(() => ""));
   svg.append("g")
     .attr("class", "chart-axis")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).ticks(5).tickSizeOuter(0));
+    .call(d3.axisBottom(x).ticks(compact ? 4 : 5).tickSizeOuter(0));
   svg.append("g")
     .attr("class", "chart-axis")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5));
+    .call(d3.axisLeft(y).ticks(compact ? 4 : 5));
   svg.append("text")
     .attr("class", "chart-unit")
     .attr("x", margin.left)
@@ -105,7 +134,34 @@ function lineChart(host: HTMLElement, series: Series[], unit: string, options: S
       .attr("d", makeLine);
   }
 
+  if (directLabels) {
+    const finalPoints = series.map((entry) => entry.values[entry.values.length - 1]);
+    const labelY = spreadChartLabels(
+      finalPoints.map((point) => y(point.value)),
+      margin.top + 7,
+      height - margin.bottom - 7,
+      15,
+    );
+    series.forEach((entry, index) => {
+      svg.append("line")
+        .attr("class", "chart-end-leader")
+        .attr("x1", x(finalPoints[index].time) + 4)
+        .attr("x2", width - margin.right + 6)
+        .attr("y1", y(finalPoints[index].value))
+        .attr("y2", labelY[index])
+        .attr("stroke", entry.color);
+      svg.append("text")
+        .attr("class", "chart-end-label")
+        .attr("x", width - margin.right + 10)
+        .attr("y", labelY[index])
+        .attr("fill", entry.color)
+        .attr("dominant-baseline", "middle")
+        .text(entry.label);
+    });
+  }
+
   const legend = d3.select(host).append("div").attr("class", "chart-legend");
+  if (directLabels) legend.attr("hidden", "");
   for (const entry of series) {
     const item = legend.append("span");
     item.append("i").style("background", entry.color);

@@ -30,4 +30,13 @@ describe("resolveCameraTransition", () => {
     expect(transition.options.duration).toBe(0);
     expect(transition.options.center).toEqual([22, 8]);
   });
+
+  it("reserves the lower canvas for copy and analysis in portrait viewports", () => {
+    const transition = resolveCameraTransition({
+      camera: { center: [-145, 0], zoom: 1.55 },
+      anchor: "top-right",
+    }, { width: 390, height: 844 }, false);
+
+    expect(transition.options.padding).toEqual({ top: 0, right: 0, bottom: 287, left: 62 });
+  });
 });

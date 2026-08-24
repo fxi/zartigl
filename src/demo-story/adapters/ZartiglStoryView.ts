@@ -84,6 +84,18 @@ function assertConfig(config: Record<string, unknown>): asserts config is Zartig
 }
 
 export function cameraPadding(anchor: StoryAnchor | undefined, width: number, height: number): maplibregl.PaddingOptions {
+  if (height > width * 1.15) {
+    const x = Math.round(width * 0.16);
+    const top = Math.round(height * 0.3);
+    const bottom = Math.round(height * 0.34);
+    switch (anchor) {
+      case "top-right": return { top: 0, right: 0, bottom, left: x };
+      case "top-left": return { top: 0, right: x, bottom, left: 0 };
+      case "bottom-right": return { top, right: 0, bottom: 0, left: x };
+      case "bottom-left": return { top, right: x, bottom: 0, left: 0 };
+      default: return { top: 0, right: 0, bottom: 0, left: 0 };
+    }
+  }
   const x = Math.round(width * 0.22);
   const y = Math.round(height * 0.12);
   switch (anchor) {

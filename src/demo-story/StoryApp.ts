@@ -97,6 +97,7 @@ export class StoryApp {
       this.renderStatic(initialScene);
     }, async () => {
       const nextMap = new maplibregl.Map({ container: "map", style: mapStyle(), center: initialCamera.center, zoom: initialCamera.zoom, maxZoom: 9, attributionControl: false });
+      window.map = nextMap;
       nextMap.scrollZoom.disable();
       nextMap.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
       await new Promise<void>((resolve, reject) => {
