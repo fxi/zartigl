@@ -39,7 +39,34 @@ export interface ChidoTrackData {
   points: Array<{ time: string; label: string; longitude: number; latitude: number }>;
 }
 
+export interface ArcticMeasurementPoint {
+  longitude: number;
+  latitude: number;
+}
+
 const chidoTrack = chidoTrackJson as ChidoTrackData;
+
+export function arcticMeasurementFeature(point: ArcticMeasurementPoint): GeoJSON.Feature<GeoJSON.Point> {
+  const latitude = `${Math.abs(point.latitude).toFixed(3)}°${point.latitude >= 0 ? "N" : "S"}`;
+  const longitude = `${Math.abs(point.longitude).toFixed(3)}°${point.longitude >= 0 ? "E" : "W"}`;
+  return {
+    type: "Feature",
+    properties: { label: `${latitude} · ${longitude}` },
+    geometry: { type: "Point", coordinates: [point.longitude, point.latitude] },
+  };
+}
+
+export function storyOverlayVisibility(overlays: readonly string[]): {
+  arcticMeasurement: boolean;
+  ensoRegions: boolean;
+  chidoTrack: boolean;
+} {
+  return {
+    arcticMeasurement: overlays.includes("arctic-measurement"),
+    ensoRegions: overlays.includes("enso-regions"),
+    chidoTrack: overlays.includes("chido-track"),
+  };
+}
 
 export function nearestChidoTrackPoint(points: ChidoTrackData["points"], time: number): ChidoTrackData["points"][number] {
   let nearest = points[0];
@@ -55,6 +82,7 @@ export function nearestChidoTrackPoint(points: ChidoTrackData["points"], time: n
 }
 
 const ENSO_LAYER_IDS = ["enso-region-fill", "enso-region-line", "enso-region-label"] as const;
+const ARCTIC_MEASUREMENT_LAYER_IDS = ["arctic-measurement-ring", "arctic-measurement-crosshair", "arctic-measurement-label"] as const;
 const CHIDO_LAYER_IDS = ["chido-track-line", "chido-track-points", "chido-track-labels", "chido-track-active"] as const;
 const ENSO_COLOR_EXPRESSION: PropertyValueSpecification<string> = [
   "match", ["get", "id"],
@@ -170,6 +198,12 @@ export class ZartiglStoryView implements StoryViewAdapter {
     this.updateChidoTrack(time);
     this.zartigl.setTime(time);
   }
+  setArcticMeasurementPoint(point?: ArcticMeasurementPoint): void {
+    const source = this.map.getSource("arctic-measurement") as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const features = point ? [arcticMeasurementFeature(point)] : [];
+    source.setData({ type: "FeatureCollection", features });
+  }
   destroy(): void { this.zartigl.destroy(); }
 
   private moveCamera(config: ZartiglViewConfig): void {
@@ -184,12 +218,13 @@ export class ZartiglStoryView implements StoryViewAdapter {
   }
 
   private showOverlays(overlays: readonly string[]): void {
-    const enso = overlays.includes("enso-regions");
-    const chido = overlays.includes("chido-track");
-    for (const id of ENSO_LAYER_IDS) this.map.setLayoutProperty(id, "visibility", enso ? "visible" : "none");
-    for (const id of CHIDO_LAYER_IDS) this.map.setLayoutProperty(id, "visibility", chido ? "visible" : "none");
-    if (enso) ENSO_LAYER_IDS.forEach((id) => this.map.moveLayer(id));
-    if (chido) CHIDO_LAYER_IDS.forEach((id) => this.map.moveLayer(id));
+    const visibility = storyOverlayVisibility(overlays);
+    for (const id of ARCTIC_MEASUREMENT_LAYER_IDS) this.map.setLayoutProperty(id, "visibility", visibility.arcticMeasurement ? "visible" : "none");
+    for (const id of ENSO_LAYER_IDS) this.map.setLayoutProperty(id, "visibility", visibility.ensoRegions ? "visible" : "none");
+    for (const id of CHIDO_LAYER_IDS) this.map.setLayoutProperty(id, "visibility", visibility.chidoTrack ? "visible" : "none");
+    if (visibility.arcticMeasurement) ARCTIC_MEASUREMENT_LAYER_IDS.forEach((id) => this.map.moveLayer(id));
+    if (visibility.ensoRegions) ENSO_LAYER_IDS.forEach((id) => this.map.moveLayer(id));
+    if (visibility.chidoTrack) CHIDO_LAYER_IDS.forEach((id) => this.map.moveLayer(id));
   }
 
   private addReferenceLayers(): void {
@@ -206,6 +241,11 @@ export class ZartiglStoryView implements StoryViewAdapter {
     this.map.addLayer({ id: "enso-region-fill", type: "fill", source: "enso-regions", paint: { "fill-color": ENSO_COLOR_EXPRESSION, "fill-opacity": 0.12 }, layout: { visibility: "none" } });
     this.map.addLayer({ id: "enso-region-line", type: "line", source: "enso-regions", paint: { "line-color": ENSO_COLOR_EXPRESSION, "line-width": 2, "line-opacity": 0.88 }, layout: { visibility: "none" } });
     this.map.addLayer({ id: "enso-region-label", type: "symbol", source: "enso-regions", layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 12 }, paint: { "text-color": ENSO_COLOR_EXPRESSION, "text-halo-color": "#100b16", "text-halo-width": 1.5 } });
+
+    this.map.addSource("arctic-measurement", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+    this.map.addLayer({ id: "arctic-measurement-ring", type: "circle", source: "arctic-measurement", layout: { visibility: "none" }, paint: { "circle-radius": 9, "circle-color": "rgba(17, 16, 24, 0.28)", "circle-stroke-color": "#67d9ff", "circle-stroke-width": 2 } });
+    this.map.addLayer({ id: "arctic-measurement-crosshair", type: "symbol", source: "arctic-measurement", layout: { visibility: "none", "text-field": "+", "text-size": 22, "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#f7f3ff", "text-halo-color": "#111018", "text-halo-width": 1 } });
+    this.map.addLayer({ id: "arctic-measurement-label", type: "symbol", source: "arctic-measurement", layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 10, "text-offset": [0, 1.8], "text-anchor": "top", "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#dff8ff", "text-halo-color": "#111018", "text-halo-width": 1.5 } });
 
     const track: GeoJSON.FeatureCollection<GeoJSON.LineString | GeoJSON.Point> = { type: "FeatureCollection", features: [
       {

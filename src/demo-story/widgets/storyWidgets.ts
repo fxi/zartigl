@@ -44,9 +44,11 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
   registry.registerWidgetType("arctic-series", async (host, config, context) => {
     const { chart, provenance } = widgetShell(host);
     const view = requiredView(config, context);
+    view.setArcticMeasurementPoint();
     renderChartStatus(chart, "Loading measurements…");
     const result = await view.zartigl.queryTimeSeries({ longitude: ARCTIC_POINT.longitude, latitude: ARCTIC_POINT.latitude, maxPoints: 420 });
     if (context.signal.aborted) return;
+    view.setArcticMeasurementPoint({ longitude: result.longitude, latitude: result.latitude });
     const controller = renderArcticChart(chart, result, "sithick", view.zartigl.getVariableMeta().units ?? "m", chartOptions(config, context));
     context.setTimeCursor(controller.setCursor);
     provenance.textContent = `${requireCatalogLayer("sea-ice-thickness").dataset.id} · nearest grid point ${result.latitude.toFixed(3)}°, ${result.longitude.toFixed(3)}° · ${result.points.length} samples`;

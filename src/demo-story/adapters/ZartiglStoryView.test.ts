@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { resolveCameraTransition } from "./ZartiglStoryView";
+import { arcticMeasurementFeature, resolveCameraTransition, storyOverlayVisibility } from "./ZartiglStoryView";
+
+describe("story reference overlays", () => {
+  it("formats the returned Arctic grid point for its map target", () => {
+    const feature = arcticMeasurementFeature({ latitude: 81.833, longitude: -5.667 });
+
+    expect(feature.geometry.coordinates).toEqual([-5.667, 81.833]);
+    expect(feature.properties?.label).toBe("81.833°N · 5.667°W");
+  });
+
+  it("shows only overlays configured for the active view", () => {
+    expect(storyOverlayVisibility(["arctic-measurement"])).toEqual({
+      arcticMeasurement: true,
+      ensoRegions: false,
+      chidoTrack: false,
+    });
+    expect(storyOverlayVisibility([])).toEqual({
+      arcticMeasurement: false,
+      ensoRegions: false,
+      chidoTrack: false,
+    });
+  });
+});
 
 describe("resolveCameraTransition", () => {
   it("always resolves the exact target camera for a scene", () => {

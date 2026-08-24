@@ -34,7 +34,8 @@
           "logScale": false,
           "vibrance": 0.1,
           "colorDomain": [0, 5]
-        }
+        },
+        "overlays": ["arctic-measurement"]
       }
     },
     {
