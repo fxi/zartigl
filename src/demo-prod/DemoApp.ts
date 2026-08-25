@@ -404,7 +404,7 @@ export class DemoApp {
 
     // Apply params: layer defaults, then optional hash overrides
     this.applyLayerDefaults(layer);
-    if (hashState) this.applyHashState(hashState);
+    if (hashState) this.applyHashState(hashState, layer);
 
     this.currentLayer = layer;
 
@@ -1237,6 +1237,7 @@ export class DemoApp {
     const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
     return {
       layerId: layer.id,
+      layerKind: layer.kind,
       backend: this.currentBackend,
       time: new Date(timeMs),
       timeRange: this.currentTimeRange(),
@@ -1399,7 +1400,9 @@ export class DemoApp {
     this.params.particleDensity = d.particles?.density ?? 0.05;
     this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fade = d.particles?.fade ?? 0.7;
-    this.params.renderMode = d.renderMode ?? "particles";
+    this.params.renderMode = layer.kind === "scalar"
+      ? "raster"
+      : (d.renderMode ?? "particles");
     this.params.opacity = d.raster?.opacity ?? 1;
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
@@ -1409,11 +1412,13 @@ export class DemoApp {
     this.params.palette = d.palette ?? "rdylbu";
   }
 
-  private applyHashState(hash: HashState): void {
+  private applyHashState(hash: HashState, layer: CatalogLayer): void {
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;
-    this.params.renderMode = hash.rm ?? this.params.renderMode;
+    this.params.renderMode = layer.kind === "scalar"
+      ? "raster"
+      : (hash.rm ?? this.params.renderMode);
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;

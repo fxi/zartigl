@@ -8,6 +8,7 @@ describe("buildMapxWidgetSnippet", () => {
   it("builds a MapX widget handler using the ARCO extension", () => {
     const snippet = buildMapxWidgetSnippet({
       layerId: "surface-wind",
+      layerKind: "vector",
       backend: "zarr",
       time: new Date("2026-06-04T00:00:00.000Z"),
       depth: 10,
@@ -47,10 +48,40 @@ describe("buildMapxWidgetSnippet", () => {
   });
 
   it("does not use the direct zartigl API in MapX widget code", () => {
-    const snippet = buildMapxWidgetSnippet({ layerId: "scalar" });
+    const snippet = buildMapxWidgetSnippet({
+      layerId: "scalar",
+      layerKind: "scalar",
+    });
 
     expect(snippet).not.toContain("new Zartigl({");
     expect(snippet).not.toContain("cc._zartigl");
+  });
+
+  it("omits particle-only settings from scalar GeoVideo snippets", () => {
+    const snippet = buildMapxWidgetSnippet({
+      layerId: "sea-temperature",
+      layerKind: "scalar",
+      backend: "geovideo",
+      settings: {
+        palette: "balance",
+        opacity: 0.8,
+        logScale: false,
+        vibrance: 0.2,
+        colorDomain: [-3, 3],
+        particleDensity: 0.05,
+        speed: 1,
+        fade: 0.7,
+        renderMode: "particles",
+      },
+    });
+
+    expect(snippet).toContain('backend: "geovideo"');
+    expect(snippet).toContain('"palette": "balance"');
+    expect(snippet).toContain('"colorDomain"');
+    expect(snippet).not.toContain("particleDensity");
+    expect(snippet).not.toContain('"speed"');
+    expect(snippet).not.toContain('"fade"');
+    expect(snippet).not.toContain("renderMode");
   });
 });
 
@@ -58,6 +89,7 @@ describe("buildStandaloneDemoSnippet", () => {
   it("builds a standalone zartigl script for external demos", () => {
     const snippet = buildStandaloneDemoSnippet({
       layerId: "surface-wind",
+      layerKind: "scalar",
       backend: "wmts",
       time: new Date("2026-06-04T00:00:00.000Z"),
       timeRange: { start: "2026-06-01T00:00:00Z", end: "2026-06-30T00:00:00Z" },
@@ -82,7 +114,8 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet).toContain("geoVideo: {");
     expect(snippet).toContain("await z.setLayer(\"surface-wind\")");
     expect(snippet).toContain("z.updateSettings({");
-    expect(snippet).toContain('"renderMode": "raster"');
+    expect(snippet).toContain('"opacity": 0.8');
+    expect(snippet).not.toContain("renderMode");
     expect(snippet).toContain("z.setTimeAndDepth(new Date(\"2026-06-04T00:00:00.000Z\"), 10)");
   });
 });

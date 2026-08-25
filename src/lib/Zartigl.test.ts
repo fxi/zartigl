@@ -279,6 +279,23 @@ describe("Zartigl facade", () => {
     ).toBe("raster");
   });
 
+  it("defaults scalar layers to raster and vector layers to particles", async () => {
+    for (const [layer, expected] of [
+      [scalarLayer(), "raster"],
+      [vectorLayer(), "particles"],
+    ] as const) {
+      const map = new FakeMap();
+      const z = new Zartigl({ map: map as never, catalog: catalog(layer) });
+      await z.setLayer(layer.id);
+
+      expect(
+        (map.getLayer("zartigl") as unknown as {
+          options: { renderMode: string };
+        }).options.renderMode,
+      ).toBe(expected);
+    }
+  });
+
   it("propagates runtime render mode updates", async () => {
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });

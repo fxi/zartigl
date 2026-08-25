@@ -1,8 +1,12 @@
 import type { GeoVideoOptions, TimeRange, ZartiglSettings } from "../lib/Zartigl";
+import type { CatalogLayer } from "../catalog/types";
+
+type SnippetBackend = "auto" | "zarr" | "geovideo" | "wmts";
 
 export interface MapxWidgetSnippetOptions {
   layerId: string;
-  backend?: "auto" | "zarr" | "geovideo" | "wmts";
+  layerKind: CatalogLayer["kind"];
+  backend?: SnippetBackend;
   time?: string | number | Date;
   timeRange?: TimeRange;
   geoVideo?: GeoVideoOptions;
@@ -53,16 +57,60 @@ function standaloneSettingsBlock(settings?: Partial<ZartiglSettings>): string {
   return `\n      z.updateSettings(${body});`;
 }
 
+function pickSettings(
+  settings: Partial<ZartiglSettings>,
+  keys: Array<keyof ZartiglSettings>,
+): Partial<ZartiglSettings> {
+  return Object.fromEntries(
+    keys
+      .filter((key) => Object.prototype.hasOwnProperty.call(settings, key))
+      .map((key) => [key, settings[key]]),
+  ) as Partial<ZartiglSettings>;
+}
+
+/** Keep only settings supported by the selected layer and transport. */
+export function effectiveSnippetSettings(
+  layerKind: CatalogLayer["kind"],
+  backend: SnippetBackend,
+  settings?: Partial<ZartiglSettings>,
+): Partial<ZartiglSettings> | undefined {
+  if (!settings) return undefined;
+  const keys: Array<keyof ZartiglSettings> = layerKind === "vector"
+    ? [
+        "palette",
+        "opacity",
+        "logScale",
+        "vibrance",
+        "particleDensity",
+        "speed",
+        "fade",
+        "renderMode",
+        "particleState",
+        "rgba8MaxParticleZoom",
+      ]
+    : backend === "wmts"
+      ? ["opacity"]
+      : ["palette", "opacity", "logScale", "vibrance", "colorDomain"];
+  const effective = pickSettings(settings, keys);
+  return Object.keys(effective).length > 0 ? effective : undefined;
+}
+
 export function buildMapxWidgetSnippet(options: MapxWidgetSnippetOptions): string {
+  const backend = options.backend ?? "auto";
+  const settings = effectiveSnippetSettings(
+    options.layerKind,
+    backend,
+    options.settings,
+  );
   const optionLines = [
     "        idView: widget.opt.view.id,",
     "        map: widget.opt.map,",
     `        layer: ${codeString(options.layerId)},`,
-    `        backend: ${codeString(options.backend ?? "auto")},`,
+    `        backend: ${codeString(backend)},`,
   ];
 
-  if (options.settings && Object.keys(options.settings).length > 0) {
-    optionLines.push(`        settings: ${indentedValue(options.settings, 10)},`);
+  if (settings) {
+    optionLines.push(`        settings: ${indentedValue(settings, 10)},`);
   }
   if (options.time != null) {
     optionLines.push(`        time: ${codeTime(options.time)},`);
@@ -118,6 +166,11 @@ export function buildStandaloneDemoSnippet(options: StandaloneDemoSnippetOptions
   const moduleBaseUrl =
     options.moduleBaseUrl ?? "https://cdn.jsdelivr.net/npm/@fxi/zartigl@0.2.1/dist";
   const backend = options.backend ?? "auto";
+  const settings = effectiveSnippetSettings(
+    options.layerKind,
+    backend,
+    options.settings,
+  );
   const timeRangeLine = options.timeRange == null
     ? ""
     : `  timeRange: ${indentedValue(options.timeRange, 2)},\n`;
@@ -154,5 +207,5 @@ const z = new Zartigl({
   backend: ${codeString(backend)},
 ${timeRangeLine}${geoVideoLine}});
 
-await z.setLayer(${codeString(options.layerId)});${standaloneSettingsBlock(options.settings)}${setTimeLine}`;
+await z.setLayer(${codeString(options.layerId)});${standaloneSettingsBlock(settings)}${setTimeLine}`;
 }

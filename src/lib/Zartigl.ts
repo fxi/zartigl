@@ -310,7 +310,9 @@ function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> 
     particleDensity: defaults?.particles?.density ?? 0.05,
     speed: defaults?.particles?.speed ?? 1.0,
     fade: defaults?.particles?.fade ?? 0.7,
-    renderMode: defaults?.renderMode ?? "particles",
+    renderMode: catalogLayer?.kind === "scalar"
+      ? "raster"
+      : (defaults?.renderMode ?? "particles"),
     opacity: defaults?.raster?.opacity ?? 1,
     logScale: defaults?.raster?.logScale ?? false,
     vibrance: defaults?.raster?.vibrance ?? 0,
