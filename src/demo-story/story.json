@@ -37,6 +37,15 @@
       "surface": "rgba(16,14,23,.72)",
       "glowAnchor": "top-right"
     },
+    "baltic": {
+      "background": "#111018",
+      "foreground": "#fff7ed",
+      "muted": "rgba(255,247,237,.7)",
+      "accent": "oklch(76% 0.17 48)",
+      "accentSoft": "oklch(66% 0.16 32 / .28)",
+      "surface": "rgba(16,14,23,.72)",
+      "glowAnchor": "top-right"
+    },
     "mayotte": {
       "background": "#111018",
       "foreground": "#f7f3ff",
@@ -77,8 +86,8 @@
             "fr": "L’océan nous parle"
           },
           "text": {
-            "en": "Three signals, read directly from cloud-native environmental data.",
-            "fr": "Trois signaux lus directement dans des données environnementales cloud-native."
+            "en": "Four signals, read directly from cloud-native environmental data.",
+            "fr": "Quatre signaux lus directement dans des données environnementales cloud-native."
           }
         }
       ]
@@ -170,6 +179,51 @@
       ]
     },
     {
+      "id": "baltic",
+      "name": { "en": "Baltic hypoxia", "fr": "Hypoxie baltique" },
+      "theme": "baltic",
+      "layout": "split-left",
+      "playback": { "mode": "autoplay" },
+      "blocks": [
+        {
+          "id": "baltic-map",
+          "type": "view",
+          "slot": "stage",
+          "anchor": "top-right",
+          "presentation": "background",
+          "view": "baltic-oxygen"
+        },
+        {
+          "id": "baltic-copy",
+          "type": "copy",
+          "slot": "copy",
+          "variant": "hero",
+          "backdrop": "dark-gradient",
+          "showTime": true,
+          "label": {
+            "en": "Signal 03 — Baltic Sea",
+            "fr": "Signal 03 — Mer Baltique"
+          },
+          "heading": {
+            "en": "When the seabed\nruns out of oxygen",
+            "fr": "Quand l’oxygène\nquitte les fonds"
+          },
+          "text": {
+            "en": "Each frame is one real monthly mean. The graph compares September only. Nutrient enrichment drives oxygen loss; warming and stratification can intensify it, while saline inflows shape each year.",
+            "fr": "Chaque image est une moyenne mensuelle réelle. Le graphe compare uniquement septembre. L’excès de nutriments entraîne la raréfaction de l’oxygène ; réchauffement et stratification peuvent l’aggraver, tandis que les apports d’eau saline modulent chaque année."
+          }
+        },
+        {
+          "id": "baltic-chart",
+          "type": "widget",
+          "slot": "analysis",
+          "anchor": "bottom-right",
+          "widget": "baltic-hypoxia",
+          "config": { "view": "baltic-oxygen", "interactiveTime": true }
+        }
+      ]
+    },
+    {
       "id": "mayotte",
       "name": { "en": "Mayotte", "fr": "Mayotte" },
       "theme": "mayotte",
@@ -205,8 +259,8 @@
           "variant": "hero",
           "showTime": true,
           "label": {
-            "en": "Signal 03 — Mayotte, 14 December 2024",
-            "fr": "Signal 03 — Mayotte, 14 décembre 2024"
+            "en": "Signal 04 — Mayotte, 14 December 2024",
+            "fr": "Signal 04 — Mayotte, 14 décembre 2024"
           },
           "heading": {
             "en": "Following Chido west",

@@ -62,6 +62,7 @@ export type {
   GeoVideoBounds,
   GeoVideoManifest,
   GeoVideoRangeTimeline,
+  GeoVideoSampleSequenceTimeline,
   GeoVideoSnapshotLoopTimeline,
 } from "./geovideo";
 export type { VectorLayerDebugInfo } from "./VectorLayer";

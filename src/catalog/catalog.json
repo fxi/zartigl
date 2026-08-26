@@ -315,6 +315,48 @@
       }
     },
     {
+      "id": "baltic-bottom-oxygen",
+      "label": "Baltic Bottom Oxygen",
+      "description": "Monthly dissolved oxygen concentration at the Baltic Sea floor from a regional biogeochemical reanalysis.",
+      "category": "Biology",
+      "kind": "scalar",
+      "dataset": {
+        "id": "cmems_mod_bal_bgc_my_P1M-m",
+        "provider": "copernicus",
+        "productId": "BALTICSEA_MULTIYEAR_BGC_003_012"
+      },
+      "stores": {
+        "field": {
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/timeChunked.zarr"
+        },
+        "pointSeries": {
+          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/geoChunked.zarr"
+        }
+      },
+      "derived": {
+        "geoVideos": [
+          {
+            "id": "baltic-bottom-oxygen-monthly-1993-2025",
+            "label": "Monthly bottom oxygen, Sep 1993–Sep 2025",
+            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/baltic-bottom-oxygen/078b058ff8a5/manifest.json"
+          }
+        ]
+      },
+      "variables": {
+        "kind": "scalar",
+        "value": "o2b"
+      },
+      "defaults": {
+        "palette": "oxygen",
+        "raster": {
+          "opacity": 0.92,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [0, 375]
+        }
+      }
+    },
+    {
       "id": "nitrate",
       "label": "Nitrate",
       "description": "Daily nitrate concentration from global biogeochemistry analysis and forecast.",

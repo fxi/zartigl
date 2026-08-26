@@ -20,6 +20,22 @@ uv run scripts/geovideo/render.py scripts/geovideo/examples/sea-ice-thickness-ar
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sea-ice-thickness-arctic.json --upload
 ```
 
+The Baltic bottom-oxygen example selects every exact monthly mean from September
+1993 through September 2025 and records those timestamps as a discrete
+`sample-sequence` timeline:
+
+```bash
+uv run scripts/geovideo/render.py scripts/geovideo/examples/baltic-bottom-oxygen-monthly.json --dry-run
+uv run scripts/geovideo/render.py scripts/geovideo/examples/baltic-bottom-oxygen-monthly.json --upload
+```
+
+Its `sampling.kind: "monthly"` configuration requires `dateStart`, `dateEnd`,
+and a positive integer `framesPerSample`. This profile repeats each real monthly
+field for two frames at 24 fps: 12 months per second and about 32 seconds total.
+Missing or duplicate months abort the render instead of inventing dates or
+interpolating values. The reusable `annual-month` mode remains available for
+one exact calendar month per year.
+
 `ffmpeg` must be available in `PATH`. Upload reads S3 credentials from `.env`;
 credentials are never written to the artifact. Public endpoint and bucket
 defaults come from `.env.demo`. Override `upload.publicBaseUrl` for a CDN or a

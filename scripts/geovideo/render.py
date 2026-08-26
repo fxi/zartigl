@@ -88,15 +88,57 @@ def load_layer(layer_id: str) -> dict[str, Any]:
 
 def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
     layer_id = str(required(raw, "layerId"))
-    start = str(required(raw, "dateStart"))
-    end = str(required(raw, "dateEnd"))
-    start_ns = parse_iso(start)
-    end_ns = parse_iso(end)
-    if end_ns <= start_ns:
-        raise ValueError("dateEnd must follow dateStart")
-    duration = float(required(raw, "durationSeconds"))
-    if not math.isfinite(duration) or duration <= 0:
-        raise ValueError("durationSeconds must be a finite positive number")
+    sampling = raw.get("sampling")
+    if sampling is None:
+        start = str(required(raw, "dateStart"))
+        end = str(required(raw, "dateEnd"))
+        start_ns = parse_iso(start)
+        end_ns = parse_iso(end)
+        if end_ns <= start_ns:
+            raise ValueError("dateEnd must follow dateStart")
+        duration = float(required(raw, "durationSeconds"))
+        if not math.isfinite(duration) or duration <= 0:
+            raise ValueError("durationSeconds must be a finite positive number")
+    else:
+        if not isinstance(sampling, dict) or sampling.get("kind") not in {"annual-month", "monthly"}:
+            raise ValueError("sampling.kind must be annual-month or monthly")
+        if sampling["kind"] == "annual-month":
+            month = int(required(sampling, "month"))
+            year_start = int(required(sampling, "yearStart"))
+            year_end = int(required(sampling, "yearEnd"))
+            seconds_per_sample = float(sampling.get("secondsPerSample", 1))
+            if not 1 <= month <= 12 or year_end < year_start:
+                raise ValueError("Invalid annual-month sampling range")
+            if not math.isfinite(seconds_per_sample) or seconds_per_sample <= 0:
+                raise ValueError("sampling.secondsPerSample must be positive")
+            sampling = {
+                **sampling,
+                "month": month,
+                "yearStart": year_start,
+                "yearEnd": year_end,
+                "secondsPerSample": seconds_per_sample,
+            }
+        else:
+            sample_start = str(required(sampling, "dateStart"))
+            sample_end = str(required(sampling, "dateEnd"))
+            sample_count = monthly_sample_count(sample_start, sample_end)
+            raw_frames_per_sample = sampling.get("framesPerSample", 1)
+            if (
+                isinstance(raw_frames_per_sample, bool)
+                or not isinstance(raw_frames_per_sample, int)
+                or raw_frames_per_sample < 1
+            ):
+                raise ValueError("sampling.framesPerSample must be a positive integer")
+            frames_per_sample = raw_frames_per_sample
+            sampling = {
+                **sampling,
+                "dateStart": sample_start,
+                "dateEnd": sample_end,
+                "sampleCount": sample_count,
+                "framesPerSample": frames_per_sample,
+            }
+        start = end = None
+        duration = 0
     interpolation = raw.get("interpolation", "linear")
     if interpolation not in {"linear", "nearest"}:
         raise ValueError("interpolation must be linear or nearest")
@@ -119,17 +161,25 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Output width/height must be positive even numbers and fps must be positive")
     if not 0 <= crf <= 51:
         raise ValueError("output.crf must be within [0, 51]")
+    if sampling is not None:
+        frames_per_sample = sampling.get("framesPerSample")
+        if frames_per_sample is None:
+            frames_per_sample = round(sampling["secondsPerSample"] * fps)
+        if frames_per_sample < 1:
+            raise ValueError("sampling.secondsPerSample must encode at least one frame")
+        sampling["framesPerSample"] = frames_per_sample
+        sample_count = sampling.get("sampleCount", sampling.get("yearEnd", 0) - sampling.get("yearStart", 0) + 1)
+        duration = sample_count * frames_per_sample / fps
     style = raw.get("style", {})
     domain = style.get("colorDomain")
     if not isinstance(domain, list) or len(domain) != 2 or not float(domain[0]) < float(domain[1]):
         raise ValueError("style.colorDomain must contain an increasing pair")
-    return {
+    result = {
         **raw,
         "layerId": layer_id,
-        "dateStart": start,
-        "dateEnd": end,
         "durationSeconds": duration,
         "interpolation": interpolation,
+        "sampling": sampling,
         "bounds": [west, south, east, north],
         "output": {
             **output,
@@ -149,11 +199,15 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
             "vibrance": float(style.get("vibrance", 0)),
         },
     }
+    if sampling is None:
+        result["dateStart"] = start
+        result["dateEnd"] = end
+    return result
 
 
 def artifact_hash(config: dict[str, Any], layer: dict[str, Any]) -> str:
     material = {
-        "format": "geovideo-v2-scalar-luma-static-mask-intersection-v1",
+        "format": "geovideo-v2-scalar-luma-static-mask-intersection-exact-samples-v2",
         "config": config,
         "dataset": layer["dataset"],
         "store": layer["stores"]["field"],
@@ -166,6 +220,33 @@ def normalize_times(values: np.ndarray) -> np.ndarray:
         return values.astype("datetime64[ns]")
     except (TypeError, ValueError) as exc:
         raise ValueError("GeoVideo renderer requires a standard decoded datetime time axis") from exc
+
+
+def monthly_sample_count(start: str, end: str) -> int:
+    start_ns = parse_iso(start)
+    end_ns = parse_iso(end)
+    if end_ns < start_ns:
+        raise ValueError("sampling.dateEnd must not precede sampling.dateStart")
+    start_month = start_ns.astype("datetime64[M]")
+    end_month = end_ns.astype("datetime64[M]")
+    return int((end_month - start_month).astype(int)) + 1
+
+
+def validate_monthly_samples(values: np.ndarray, start: np.datetime64, end: np.datetime64) -> np.ndarray:
+    normalized = normalize_times(values)
+    expected_months = np.arange(
+        start.astype("datetime64[M]"),
+        end.astype("datetime64[M]") + np.timedelta64(1, "M"),
+        dtype="datetime64[M]",
+    )
+    found_months = normalized.astype("datetime64[M]")
+    if len(normalized) != len(expected_months) or not np.array_equal(found_months, expected_months):
+        found = [str(value) for value in found_months]
+        raise ValueError(
+            "monthly sampling expected exactly one value for every calendar month; "
+            f"found months {found}"
+        )
+    return normalized
 
 
 class ScalarFrames:
@@ -183,16 +264,46 @@ class ScalarFrames:
                 self.data = self.data.isel({dimension: 0})
         self.data = self.data.transpose("time", "latitude", "longitude")
         self.times = normalize_times(np.asarray(self.dataset["time"].values))
-        self.start = parse_iso(config["dateStart"])
-        self.end = parse_iso(config["dateEnd"])
-        if self.start < self.times.min() or self.end > self.times.max():
-            raise ValueError(
-                f"Requested range is outside dataset time axis: {self.times.min()} to {self.times.max()}"
-            )
+        self.samples = self._resolve_sample_times()
+        if self.samples is None:
+            self.start = parse_iso(config["dateStart"])
+            self.end = parse_iso(config["dateEnd"])
+            if self.start < self.times.min() or self.end > self.times.max():
+                raise ValueError(
+                    f"Requested range is outside dataset time axis: {self.times.min()} to {self.times.max()}"
+                )
+        else:
+            self.start = self.samples[0]
+            self.end = self.samples[-1]
         self.source_lat = np.asarray(self.dataset["latitude"].values, dtype=np.float64)
         self.source_lon = np.asarray(self.dataset["longitude"].values, dtype=np.float64)
         self.cache: dict[int, np.ndarray] = {}
         self._prepare_spatial_indices()
+
+    def _resolve_sample_times(self) -> np.ndarray | None:
+        sampling = self.config.get("sampling")
+        if sampling is None:
+            return None
+        timestamps = self.dataset["time"]
+        if sampling["kind"] == "monthly":
+            start = parse_iso(sampling["dateStart"])
+            end = parse_iso(sampling["dateEnd"])
+            selected = timestamps.where((timestamps >= start) & (timestamps <= end), drop=True)
+            return validate_monthly_samples(np.asarray(selected.values), start, end)
+        selected = timestamps.where(
+            (timestamps.dt.month == sampling["month"])
+            & (timestamps.dt.year >= sampling["yearStart"])
+            & (timestamps.dt.year <= sampling["yearEnd"]),
+            drop=True,
+        )
+        values = normalize_times(np.asarray(selected.values))
+        expected = sampling["yearEnd"] - sampling["yearStart"] + 1
+        years = selected.dt.year.values.astype(int).tolist()
+        if len(values) != expected or years != list(range(sampling["yearStart"], sampling["yearEnd"] + 1)):
+            raise ValueError(
+                f"annual-month sampling expected one value for every year; found years {years}"
+            )
+        return values
 
     def _prepare_spatial_indices(self) -> None:
         west, south, raw_east, north = self.config["bounds"]
@@ -267,11 +378,11 @@ class ScalarFrames:
             del self.cache[next(iter(self.cache))]
         return result
 
-    def frame(self, index: int, count: int) -> np.ndarray:
-        fraction = index / max(1, count - 1)
-        target = self.start + (self.end - self.start) * fraction
+    def _frame_at(self, target: np.datetime64) -> np.ndarray:
         upper = int(np.searchsorted(self.times, target, side="left"))
         upper = min(max(upper, 0), len(self.times) - 1)
+        if self.times[upper] == target:
+            return self._slice(upper)
         lower = max(0, upper - 1)
         if self.config["interpolation"] == "nearest":
             chosen = lower if target - self.times[lower] <= self.times[upper] - target else upper
@@ -285,6 +396,14 @@ class ScalarFrames:
         second = self._slice(upper)
         valid = np.isfinite(first) & np.isfinite(second)
         return np.where(valid, first * (1 - weight) + second * weight, np.nan)
+
+    def frame(self, index: int, count: int) -> np.ndarray:
+        if self.samples is not None:
+            frames_per_sample = self.config["sampling"]["framesPerSample"]
+            sample_index = min(len(self.samples) - 1, index // frames_per_sample)
+            return self._frame_at(self.samples[sample_index])
+        fraction = index / max(1, count - 1)
+        return self._frame_at(self.start + (self.end - self.start) * fraction)
 
 
 def fill_invalid_for_video(values: np.ndarray, valid: np.ndarray, passes: int = 8) -> np.ndarray:
@@ -485,9 +604,22 @@ def validate_value_report(report_path: Path) -> dict[str, Any]:
 
 def create_manifest(
     config: dict[str, Any], layer: dict[str, Any], media_name: str, mask_name: str,
+    sample_times: np.ndarray | None = None,
 ) -> dict[str, Any]:
     width = config["output"]["width"]
     height = config["output"]["height"]
+    timeline = {
+        "kind": "sample-sequence",
+        "values": [
+            np.datetime_as_string(value, unit="s", timezone="UTC")
+            for value in sample_times
+        ],
+    } if sample_times is not None else {
+        "kind": "range",
+        "dateStart": config["dateStart"],
+        "dateEnd": config["dateEnd"],
+        "interpolation": config["interpolation"],
+    }
     return {
         "schemaVersion": 2,
         "id": config.get("id", f"{config['layerId']}-geovideo"),
@@ -522,12 +654,7 @@ def create_manifest(
             "height": height,
             "threshold": 0.5,
         },
-        "timeline": {
-            "kind": "range",
-            "dateStart": config["dateStart"],
-            "dateEnd": config["dateEnd"],
-            "interpolation": config["interpolation"],
-        },
+        "timeline": timeline,
         "provenance": {
             "layerId": layer["id"],
             "datasetId": layer["dataset"]["id"],
@@ -740,7 +867,7 @@ def main() -> int:
     value_validation = validate_encoded_values(
         video_path, expected_samples, config["output"]["width"], config["output"]["height"],
     )
-    manifest = create_manifest(config, layer, "video.mp4", "mask.png")
+    manifest = create_manifest(config, layer, "video.mp4", "mask.png", frames.samples)
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     report = {
         **summary,

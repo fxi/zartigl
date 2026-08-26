@@ -158,6 +158,8 @@ h1 {
 .chart-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 14px; height: 3px; border-radius: 2px; }
 .provenance { margin-top: 12px; color: rgba(247, 243, 255, .42); font-size: 10px; line-height: 1.4; }
+.provenance a { color: inherit; text-decoration-color: rgba(247, 243, 255, .25); }
+.hypoxia-readout { margin: 0 0 -8px 52px; color: #fff4e7; font-size: 14px; font-weight: 700; letter-spacing: .01em; }
 
 .navigation {
   position: fixed;
@@ -262,6 +264,7 @@ h1 {
   .chart-line { stroke-width: 3; }
   .chart-grid line { stroke: rgba(255, 255, 255, .065); }
   .chart-legend[hidden] { display: none; }
+  .hypoxia-readout { margin: 0 0 -6px 44px; font-size: 12px; }
   .provenance {
     display: -webkit-box;
     margin-top: 6px;

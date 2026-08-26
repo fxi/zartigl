@@ -35,3 +35,38 @@ export interface EnsoStoryData {
   };
   regions: EnsoRegionSeries[];
 }
+
+export interface BalticHypoxiaPoint {
+  time: string;
+  hypoxicAreaKm2: number;
+  validAreaKm2: number;
+  hypoxicFractionPct: number;
+  trailingFiveYearMeanKm2: number | null;
+}
+
+export interface BalticHypoxiaStoryData {
+  schemaVersion: 1;
+  generatedAt: string;
+  source: {
+    layerId: string;
+    datasetId: string;
+    productId: string;
+    storeUrl: string;
+    variable: string;
+    unit: string;
+    timeStart: string;
+    timeEnd: string;
+  };
+  analysis: {
+    label: string;
+    sampling: string;
+    thresholdMmolM3: number;
+    thresholdMgL: number;
+    comparison: string;
+    areaMethod: string;
+    rollingMean: string;
+    limitations: string[];
+  };
+  references: Array<{ label: string; url: string }>;
+  points: BalticHypoxiaPoint[];
+}

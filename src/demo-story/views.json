@@ -62,6 +62,28 @@
       }
     },
     {
+      "id": "baltic-oxygen",
+      "type": "zartigl-map",
+      "config": {
+        "layerId": "baltic-bottom-oxygen",
+        "camera": {
+          "center": [20.2, 59.4],
+          "zoom": 3.5,
+          "pitch": 0,
+          "bearing": 0
+        },
+        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "anchor": "top-right",
+        "settings": {
+          "palette": "matter",
+          "opacity": 0.92,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": null
+        }
+      }
+    },
+    {
       "id": "mayotte-wind",
       "type": "zartigl-map",
       "config": {

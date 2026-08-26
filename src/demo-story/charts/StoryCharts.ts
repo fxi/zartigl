@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import type { ZarrPointSeriesResult } from "../../lib";
 import { ENSO_REGION_COLORS } from "../scenes";
-import type { EnsoStoryData } from "../types";
+import type { BalticHypoxiaStoryData, EnsoStoryData } from "../types";
 
 type Datum = { time: number; value: number };
 type Series = { id: string; label: string; color: string; values: Datum[] };
@@ -13,6 +13,7 @@ export interface StoryChartController {
 
 export interface StoryChartOptions {
   interactiveTime?: boolean;
+  interactionTimes?: readonly number[];
   compact?: boolean;
   directLabels?: boolean;
   onStart?(): void;
@@ -189,7 +190,9 @@ function lineChart(host: HTMLElement, series: Series[], unit: string, options: S
   let hitArea: SVGRectElement | null = null;
   let destroy = (): void => undefined;
   if (options.interactiveTime) {
-    const times = [...new Set(all.map((datum) => datum.time))].sort((a, b) => a - b);
+    const times = [...new Set(options.interactionTimes ?? all.map((datum) => datum.time))]
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
     hitArea = svg.append("rect")
       .attr("class", "chart-hit-area")
       .attr("x", margin.left)
@@ -306,6 +309,50 @@ export function renderMayotteChart(
   return lineChart(host, [
     { id: "wind", label: "Wind speed", color: COLORS[1], values: windValues },
   ], "m s⁻¹", options);
+}
+
+export function renderBalticHypoxiaChart(
+  host: HTMLElement,
+  data: BalticHypoxiaStoryData,
+  options?: StoryChartOptions,
+  locale = "en",
+): StoryChartController {
+  const monthlyTimes = data.points.map((point) => Date.parse(point.time));
+  const annual = data.points.filter((point) => new Date(point.time).getUTCMonth() === 8).map((point) => ({
+    time: Date.parse(point.time),
+    value: point.hypoxicAreaKm2,
+  }));
+  const trailing = data.points
+    .filter((point) => valid(point.trailingFiveYearMeanKm2))
+    .map((point) => ({ time: Date.parse(point.time), value: point.trailingFiveYearMeanKm2! }));
+  const controller = lineChart(host, [
+    { id: "annual", label: locale.startsWith("fr") ? "Étendue en septembre" : "September extent", color: "#f39b3d", values: annual },
+    { id: "five-year", label: locale.startsWith("fr") ? "Moyenne mobile sur 5 ans" : "Trailing 5-year mean", color: "#79cbd1", values: trailing },
+  ], "km² below 2 mg/L O₂", { ...options, interactionTimes: monthlyTimes });
+  const readout = document.createElement("div");
+  readout.className = "hypoxia-readout";
+  host.prepend(readout);
+  const times = monthlyTimes;
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const setCursor = (time: number): void => {
+    controller.setCursor(time);
+    const nearest = nearestChartTime(times, time);
+    const point = data.points.find((candidate) => Date.parse(candidate.time) === nearest);
+    if (!point) return;
+    readout.textContent = formatHypoxiaReadout(point, number, locale);
+  };
+  setCursor(times[0]);
+  return { setCursor, destroy: controller.destroy };
+}
+
+export function formatHypoxiaReadout(
+  point: { time: string; hypoxicAreaKm2: number; hypoxicFractionPct: number },
+  number = new Intl.NumberFormat("en", { maximumFractionDigits: 0 }),
+  locale = "en",
+): string {
+  const month = new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" })
+    .format(new Date(point.time)).toLocaleUpperCase(locale);
+  return `${month} · ${number.format(point.hypoxicAreaKm2)} km² · ${number.format(point.hypoxicFractionPct)}%`;
 }
 
 export function renderChartStatus(host: HTMLElement, message: string): void {

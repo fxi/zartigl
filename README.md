@@ -255,6 +255,11 @@ The Arctic sea-ice configuration covers June 2022 through August 2026 and is
 available at
 [`scripts/geovideo/examples/sea-ice-thickness-arctic.json`](scripts/geovideo/examples/sea-ice-thickness-arctic.json).
 
+For exact scientific timelines, GeoVideo also supports discrete sample
+sequences. The Baltic bottom-oxygen example shows every real monthly mean from
+September 1993 through September 2025 without interpolating values; it is available
+at [`scripts/geovideo/examples/baltic-bottom-oxygen-monthly.json`](scripts/geovideo/examples/baltic-bottom-oxygen-monthly.json).
+
 Generation requires FFmpeg. Upload credentials remain in `.env`; no private
 key is bundled into the demo or written to a manifest. See
 [`scripts/geovideo/README.md`](scripts/geovideo/README.md) for the configuration

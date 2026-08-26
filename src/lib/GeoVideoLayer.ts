@@ -32,10 +32,25 @@ function geoVideoTimelineBounds(manifest: GeoVideoManifest): [number, number] {
     const time = new Date(manifest.timeline.date).getTime();
     return [time, time];
   }
+  if (manifest.timeline.kind === "sample-sequence") {
+    const values = manifest.timeline.values;
+    return [new Date(values[0]).getTime(), new Date(values[values.length - 1]).getTime()];
+  }
   return [
     new Date(manifest.timeline.dateStart).getTime(),
     new Date(manifest.timeline.dateEnd).getTime(),
   ];
+}
+
+function geoVideoEndSecondsForTime(manifest: GeoVideoManifest, time: number): number {
+  if (manifest.timeline.kind !== "sample-sequence") return geoVideoSecondsForTime(manifest, time);
+  const values = manifest.timeline.values.map((value) => new Date(value).getTime());
+  let nearest = 0;
+  for (let index = 1; index < values.length; index += 1) {
+    if (Math.abs(values[index] - time) < Math.abs(values[nearest] - time)) nearest = index;
+  }
+  const segment = manifest.media.durationSeconds / values.length;
+  return Math.max(0, (nearest + 1) * segment - 0.5 / manifest.media.fps);
 }
 
 type GeoVideoEventMap = {
@@ -425,8 +440,9 @@ export class GeoVideoLayer implements CustomLayerInterface {
   async play(): Promise<void> {
     if (!this.video || !this.manifest) return;
     const [, max] = this.timeRange ?? geoVideoTimelineBounds(this.manifest);
-    const current = geoVideoTimeForSeconds(this.manifest, this.video.currentTime);
-    if (current >= max) this.setTime((this.timeRange ?? geoVideoTimelineBounds(this.manifest))[0]);
+    if (this.video.currentTime >= geoVideoEndSecondsForTime(this.manifest, max)) {
+      this.setTime((this.timeRange ?? geoVideoTimelineBounds(this.manifest))[0]);
+    }
     await this.video.play();
   }
 
@@ -622,7 +638,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
         return;
       }
       const [min, max] = this.timeRange ?? geoVideoTimelineBounds(manifest);
-      if (time >= max) {
+      const reachedEnd = manifest.timeline.kind === "sample-sequence"
+        ? mediaTime >= geoVideoEndSecondsForTime(manifest, max)
+        : time >= max;
+      if (reachedEnd) {
         this.emit("timeChange", max);
         if (this.loop && !video.paused) {
           video.currentTime = geoVideoSecondsForTime(manifest, min);

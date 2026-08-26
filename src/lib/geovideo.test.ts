@@ -92,4 +92,41 @@ describe("GeoVideo manifest", () => {
     expect(values[0]).toBe(new Date("2026-01-01T00:00:00Z").getTime());
     expect(values[values.length - 1]).toBe(new Date("2026-07-01T00:00:00Z").getTime());
   });
+
+  it("maps discrete sample sequences without inventing intermediate dates", () => {
+    const samples: GeoVideoManifest = {
+      ...manifest,
+      media: { ...manifest.media, durationSeconds: 3 },
+      timeline: {
+        kind: "sample-sequence",
+        values: [
+          "1993-09-01T00:00:00Z",
+          "1994-09-01T00:00:00Z",
+          "1995-09-01T00:00:00Z",
+        ],
+      },
+    };
+    const values = geoVideoTimelineValues(samples);
+    expect(values).toEqual(samples.timeline.kind === "sample-sequence"
+      ? samples.timeline.values.map(Date.parse)
+      : []);
+    expect(geoVideoTimeForSeconds(samples, 0)).toBe(values[0]);
+    expect(geoVideoTimeForSeconds(samples, 1.2)).toBe(values[1]);
+    expect(geoVideoTimeForSeconds(samples, 2.99)).toBe(values[2]);
+    expect(geoVideoSecondsForTime(samples, Date.parse("1994-08-01T00:00:00Z"))).toBeCloseTo(1 + 1 / 48);
+  });
+
+  it("rejects empty or unordered sample sequences", () => {
+    expect(() => validateGeoVideoManifest({
+      ...manifest,
+      timeline: { kind: "sample-sequence", values: [] },
+    })).toThrow(/contain values/);
+    expect(() => validateGeoVideoManifest({
+      ...manifest,
+      timeline: {
+        kind: "sample-sequence",
+        values: ["1995-09-01T00:00:00Z", "1994-09-01T00:00:00Z"],
+      },
+    })).toThrow(/strictly increasing/);
+  });
 });

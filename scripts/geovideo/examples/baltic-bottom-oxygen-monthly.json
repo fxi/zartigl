@@ -1,0 +1,30 @@
+{
+  "id": "baltic-bottom-oxygen-monthly-1993-2025",
+  "layerId": "baltic-bottom-oxygen",
+  "sampling": {
+    "kind": "monthly",
+    "dateStart": "1993-09-01T00:00:00Z",
+    "dateEnd": "2025-09-01T00:00:00Z",
+    "framesPerSample": 2
+  },
+  "bounds": [9.04, 53.01, 30.21, 65.89],
+  "style": {
+    "palette": "oxygen",
+    "colorDomain": [0, 187.5],
+    "unit": "mmol m-3",
+    "logScale": false,
+    "vibrance": 0.1
+  },
+  "output": {
+    "width": 1024,
+    "height": 1024,
+    "fps": 24,
+    "crf": 12,
+    "maxBitrate": "16M",
+    "preset": "fast",
+    "directory": "artifacts/geovideo"
+  },
+  "upload": {
+    "prefix": "geovideo"
+  }
+}

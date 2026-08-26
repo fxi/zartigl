@@ -1,0 +1,2743 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-26T12:42:41Z",
+  "source": {
+    "layerId": "baltic-bottom-oxygen",
+    "datasetId": "cmems_mod_bal_bgc_my_P1M-m",
+    "productId": "BALTICSEA_MULTIYEAR_BGC_003_012",
+    "storeUrl": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/timeChunked.zarr",
+    "variable": "o2b",
+    "unit": "mmol m-3",
+    "timeStart": "1993-09-01T00:00:00.000Z",
+    "timeEnd": "2025-09-01T00:00:00.000Z"
+  },
+  "analysis": {
+    "label": "Modelled seafloor area below the operational hypoxia threshold",
+    "sampling": "Every monthly mean from September 1993 through September 2025; plotted comparison uses September only.",
+    "thresholdMmolM3": 62.5,
+    "thresholdMgL": 2,
+    "comparison": "strictly less than",
+    "areaMethod": "Exact spherical area of each native rectilinear lon/lat cell; missing cells excluded.",
+    "rollingMean": "Trailing five-year arithmetic mean of September values only; omitted until five complete Septembers are available.",
+    "limitations": [
+      "This is a model reanalysis, not an in-situ observation.",
+      "Copernicus reports a positive dissolved-oxygen bias in deep basins, where anoxia is not reproduced everywhere.",
+      "The animation shows variability and evolution; it does not attribute individual years to a single driver."
+    ]
+  },
+  "references": [
+    {
+      "label": "Copernicus Marine product",
+      "url": "https://data.marine.copernicus.eu/product/BALTICSEA_MULTIYEAR_BGC_003_012/description"
+    },
+    {
+      "label": "Copernicus quality information",
+      "url": "https://documentation.marine.copernicus.eu/QUID/CMEMS-BAL-QUID-003-012.pdf"
+    },
+    {
+      "label": "HELCOM shallow-water oxygen",
+      "url": "https://indicators.helcom.fi/indicator/shallow-water-oxygen/"
+    },
+    {
+      "label": "HELCOM eutrophication",
+      "url": "https://stateofthebalticsea.helcom.fi/findings/pressures/pollution/eutrophication/"
+    }
+  ],
+  "points": [
+    {
+      "time": "1993-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 26085.753,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.98,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1993-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 24193.254,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.546,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1993-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23199.08,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.318,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1993-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 22277.029,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.107,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 20144.499,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.618,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15564.323,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.568,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11767.399,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.698,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7921.448,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.816,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7369.703,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.689,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7323.072,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.679,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6934.901,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.59,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5887.848,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.35,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5990.668,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.373,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5036.18,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.154,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3851.794,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.883,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1994-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2890.741,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.663,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 626.062,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.144,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 263.209,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.06,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 340.08,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.078,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 581.822,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.133,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 727.131,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.167,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 890.244,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.204,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1202.35,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.276,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2026.397,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.465,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2324.455,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.533,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2500.181,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.573,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1891.173,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.434,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1995-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2635.329,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.604,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3405.515,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.781,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2534.488,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.581,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1505.826,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.345,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1844.663,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.423,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1813.632,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.416,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1844.673,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.423,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1801.294,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.413,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2140.378,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.491,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2965.129,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.68,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2925.171,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.671,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2024.786,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.464,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1996-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1948.724,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.447,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2275.531,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.522,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2421.903,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.555,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1638.262,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.376,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1338.552,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.307,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1171.016,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.268,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1257.015,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.288,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1379.905,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.316,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1497.22,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.343,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1425.157,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.327,
+      "trailingFiveYearMeanKm2": 7758.232
+    },
+    {
+      "time": "1997-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1642.797,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.377,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1577.816,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.362,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1997-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1378.298,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.316,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1152.34,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.264,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 991.198,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.227,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 539.675,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.124,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 67.591,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.015,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 71.119,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.016,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 216.583,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.05,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 548.272,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.126,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 564.282,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.129,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1068.509,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.245,
+      "trailingFiveYearMeanKm2": 2754.784
+    },
+    {
+      "time": "1998-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 855.404,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.196,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 652.753,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.15,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1998-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 635.833,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.146,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 451.322,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.103,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 892.312,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.205,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1042.466,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.239,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1067.564,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.245,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1297.446,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.297,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1765.06,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.405,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3006.208,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.689,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3968.329,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.91,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5438.031,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.247,
+      "trailingFiveYearMeanKm2": 2644.256
+    },
+    {
+      "time": "1999-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4623.579,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.06,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5647.919,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.295,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "1999-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4004.18,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.918,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3459.082,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.793,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2902.97,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.665,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2682.261,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.615,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2196.426,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.504,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2940.706,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.674,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3504.23,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.803,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4278.661,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.981,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5068.378,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.162,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5419.009,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.242,
+      "trailingFiveYearMeanKm2": 3263.167
+    },
+    {
+      "time": "2000-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5559.101,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.274,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5439.299,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.247,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2000-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5835.026,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.338,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6103.592,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.399,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6195.956,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.42,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5117.912,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.173,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5670.951,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.3,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5147.162,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.18,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5456.596,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.251,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6234.378,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.429,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6756.102,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.549,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6980.004,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.6,
+      "trailingFiveYearMeanKm2": 4066.142
+    },
+    {
+      "time": "2001-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7841.387,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.798,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6022.485,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.381,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2001-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5446.65,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.249,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5332.739,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.222,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4222.905,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.968,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3989.747,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.915,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4400.516,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.009,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4578.457,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.05,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5136.591,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.178,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6031.649,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.383,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7429.089,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.703,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8640.018,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.981,
+      "trailingFiveYearMeanKm2": 5509.114
+    },
+    {
+      "time": "2002-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8355.33,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.915,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8171.835,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.873,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2002-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8030.994,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.841,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6692.758,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.534,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6726.882,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.542,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6736.002,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.544,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4138.462,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.949,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1732.626,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.397,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2232.616,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.512,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2796.804,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.641,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3834.634,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.879,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5416.331,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.242,
+      "trailingFiveYearMeanKm2": 6378.679
+    },
+    {
+      "time": "2003-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4455.727,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.021,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5625.929,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.29,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2003-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4985.161,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.143,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3020.335,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.692,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1989.103,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.456,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1260.815,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.289,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1938.028,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.444,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2373.617,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.544,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3232.663,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.741,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2295.419,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.526,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2388.489,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.548,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2418.496,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.554,
+      "trailingFiveYearMeanKm2": 5774.772
+    },
+    {
+      "time": "2004-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1519.992,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.348,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1134.315,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.26,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2004-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 292.736,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.067,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 26.214,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.006,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 29.096,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.007,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 20.395,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.005,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 20.395,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.005,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23.65,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.005,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23.527,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.005,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 151.713,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.035,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 442.973,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.102,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1894.139,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.434,
+      "trailingFiveYearMeanKm2": 5069.798
+    },
+    {
+      "time": "2005-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2855.527,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.655,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1122.755,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.257,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2005-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 369.625,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.085,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 250.065,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.057,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 77.57,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.018,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 95.241,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.022,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 428.958,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.098,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 694.656,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.159,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 953.796,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.219,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1480.027,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.339,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1615.569,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.37,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2522.202,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.578,
+      "trailingFiveYearMeanKm2": 4178.237
+    },
+    {
+      "time": "2006-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4128.84,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.946,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2667.859,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.612,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2006-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2469.131,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.566,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2118.388,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.486,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1907.66,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.437,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1823.853,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.418,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1519.832,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.348,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1606.888,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.368,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2186.713,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.501,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3240.605,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.743,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6147.034,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.409,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6952.66,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.594,
+      "trailingFiveYearMeanKm2": 3840.766
+    },
+    {
+      "time": "2007-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7086.354,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.624,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7294.144,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.672,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2007-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7237.222,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.659,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6075.564,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.393,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5507.256,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.262,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4645.849,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.065,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4662.482,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.069,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5475.127,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.255,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7003.681,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.606,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10294.97,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.36,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10955.563,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.511,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13330.442,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.056,
+      "trailingFiveYearMeanKm2": 5423.588
+    },
+    {
+      "time": "2008-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13494.739,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.094,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13024.901,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.986,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2008-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13142.507,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.013,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10310.969,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.364,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10486.439,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.404,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11045.356,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.532,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11587.786,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.656,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14393.252,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.3,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18207.246,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.174,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 20984.295,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.81,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23651.177,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.422,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 24677.411,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.657,
+      "trailingFiveYearMeanKm2": 9875.371
+    },
+    {
+      "time": "2009-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23233.965,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.326,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23279.609,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.337,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2009-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 24016.874,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.506,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 22310.278,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.114,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18686.75,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.284,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 17397.978,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.988,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 17700.95,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.058,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 17636.062,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.043,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18652.642,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.276,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 21289.683,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.88,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 19836.572,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.547,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18725.917,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.293,
+      "trailingFiveYearMeanKm2": 13241.726
+    },
+    {
+      "time": "2010-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18713.11,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.29,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15893.457,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.643,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2010-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 12511.719,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.868,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11821.811,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.71,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11061.646,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.536,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11348.181,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.601,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10969.07,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.515,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 11780.943,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.701,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14659.406,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.361,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15924.351,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.651,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 17143.951,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.93,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18468.663,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.234,
+      "trailingFiveYearMeanKm2": 16431.019
+    },
+    {
+      "time": "2011-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18558.456,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.254,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14185.491,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.252,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2011-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9690.654,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.221,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8776.284,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.012,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8001.514,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.834,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7486.021,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.716,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6220.902,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.426,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6860.182,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.573,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7572.808,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.736,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10486.947,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.404,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13319.004,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.053,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14744.172,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.38,
+      "trailingFiveYearMeanKm2": 17989.321
+    },
+    {
+      "time": "2012-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 16462.812,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.774,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 16993.377,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.896,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2012-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15088.863,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.459,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14052.898,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.221,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 12689.843,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.909,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 12262.659,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.811,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9048.72,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.074,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9073.152,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.08,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9948.088,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.281,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13809.792,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.166,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15538.311,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.562,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 19395.432,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.446,
+      "trailingFiveYearMeanKm2": 19202.319
+    },
+    {
+      "time": "2013-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18683.461,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.283,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18471.168,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.234,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2013-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 17170.879,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.936,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 16130.342,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.698,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14442.809,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.311,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13960.163,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.2,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13884.463,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.183,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 16254.31,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.726,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 16059.151,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.681,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 16890.837,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.872,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15967.075,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.66,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 14957.647,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.429,
+      "trailingFiveYearMeanKm2": 17258.366
+    },
+    {
+      "time": "2014-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 13631.236,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.125,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10116.012,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.319,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2014-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8906.917,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.042,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7978.695,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.829,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7666.275,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.757,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6572.583,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.507,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6439.406,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.476,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7492.819,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.718,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7987.952,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.831,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8472.747,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.942,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7777.897,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.783,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7028.299,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.611,
+      "trailingFiveYearMeanKm2": 14918.842
+    },
+    {
+      "time": "2015-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7646.172,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.753,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6470.494,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.483,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2015-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5070.731,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.162,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2295.712,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.526,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 992.214,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.227,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 188.786,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.043,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 246.991,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.057,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 815.575,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.187,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1704.445,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.391,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2891.379,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.663,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2608.34,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.598,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4766.916,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.093,
+      "trailingFiveYearMeanKm2": 12178.493
+    },
+    {
+      "time": "2016-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3131.304,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.718,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 894.349,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.205,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2016-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 319.798,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.073,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 191.074,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.044,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 289.06,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.066,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 642.464,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.147,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1618.421,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.371,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2033.193,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.466,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2832.82,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.649,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2294.191,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.526,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2974.547,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.682,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3559.31,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.816,
+      "trailingFiveYearMeanKm2": 9941.521
+    },
+    {
+      "time": "2017-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2989.506,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.685,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 875.616,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.201,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2017-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 758.533,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.174,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 893.914,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.205,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 140.5,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.032,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 41.953,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.01,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 893.01,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.205,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1399.898,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.321,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 1852.308,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.425,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3023.392,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.693,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4170.869,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.956,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7515.948,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.723,
+      "trailingFiveYearMeanKm2": 7565.624
+    },
+    {
+      "time": "2018-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 5918.497,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.357,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4897.459,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.123,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2018-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4368.996,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.002,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 4335.668,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.994,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3373.739,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.773,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2256.131,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.517,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2583.917,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.592,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 2185.877,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.501,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3402.312,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.78,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6177.252,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.416,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7899.865,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.811,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9595.837,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.2,
+      "trailingFiveYearMeanKm2": 6493.262
+    },
+    {
+      "time": "2019-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9808.112,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.248,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 9810.58,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.249,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2019-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8437.438,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.934,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 8656.379,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.984,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7763.271,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.78,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3856.291,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.884,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 3932.128,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 0.901,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 6018.844,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.38,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7276.414,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.668,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 7354.375,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 1.686,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 10337.314,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.37,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 12317.515,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 2.824,
+      "trailingFiveYearMeanKm2": 7551.105
+    },
+    {
+      "time": "2020-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 15221.456,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.489,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 17174.084,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 3.937,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2020-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18965.111,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.348,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18923.168,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.338,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 20644.157,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.732,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 19597.695,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.493,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 18921.008,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.337,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23350.342,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.353,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 27710.959,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.352,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 31798.143,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.289,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 29520.95,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.767,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 34268.054,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.856,
+      "trailingFiveYearMeanKm2": 13451.333
+    },
+    {
+      "time": "2021-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 34604.259,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.933,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 34115.063,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.821,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2021-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 33240.572,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.62,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 32107.934,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.36,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 26240.657,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.015,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23166.057,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.311,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 20508.232,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 4.701,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 22663.648,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.195,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 23817.769,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 5.46,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 28684.327,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.576,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 31981.755,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.332,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 32699.715,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.496,
+      "trailingFiveYearMeanKm2": 19279.414
+    },
+    {
+      "time": "2022-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 28392.818,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.509,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 30322.478,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.951,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2022-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 31985.683,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.332,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 30867.896,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.076,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 31688.674,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.264,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 30429.519,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.976,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 29841.376,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.841,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 32044.556,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.346,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 30326.753,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.952,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 29489.252,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.76,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 33955.713,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.784,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 39546.351,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 9.066,
+      "trailingFiveYearMeanKm2": 25685.494
+    },
+    {
+      "time": "2023-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 37048.151,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.493,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 36936.339,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.467,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2023-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 33661.591,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.717,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 27034.281,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.197,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 26314.791,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.032,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 28325.592,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.493,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 26943.495,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 6.177,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 32617.202,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.477,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 37440.67,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.583,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 42976.283,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 9.852,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 47590.877,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 10.91,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 49553.55,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 11.36,
+      "trailingFiveYearMeanKm2": 33677.037
+    },
+    {
+      "time": "2024-10-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 50854.962,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 11.658,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-11-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 48546.054,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 11.129,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2024-12-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 45595.207,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 10.452,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-01-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 37750.592,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.654,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-02-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 36375.106,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.339,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-03-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 31898.093,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.312,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-04-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 33500.416,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.68,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-05-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 33804.214,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.749,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-06-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 33940.223,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 7.78,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-07-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 35132.178,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.054,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-08-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 38311.908,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 8.783,
+      "trailingFiveYearMeanKm2": null
+    },
+    {
+      "time": "2025-09-01T00:00:00.000Z",
+      "hypoxicAreaKm2": 42078.03,
+      "validAreaKm2": 436223.82,
+      "hypoxicFractionPct": 9.646,
+      "trailingFiveYearMeanKm2": 39629.14
+    }
+  ]
+}

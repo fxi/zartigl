@@ -104,6 +104,19 @@
       "#122414"
     ]
   },
+  "oxygen": {
+    "label": "Oxygen",
+    "tags": ["sequential", "biology", "hypoxia"],
+    "colors": [
+      "#09060f",
+      "#5b1028",
+      "#d43d2f",
+      "#f39b3d",
+      "#f3e7b3",
+      "#79cbd1",
+      "#176b9c"
+    ]
+  },
   "matter": {
     "label": "Matter",
     "tags": ["sequential", "biology"],

@@ -6,10 +6,12 @@ import { parseStoryDocuments, resolveLocalizedText, validateStoryDocument } from
 describe("story documents", () => {
   it("accepts the migrated story and view registry", () => {
     const documents = parseStoryDocuments(storyJson, viewsJson);
-    expect(documents.story.scenes).toHaveLength(5);
-    expect(documents.views.views).toHaveLength(5);
+    expect(documents.story.scenes).toHaveLength(6);
+    expect(documents.views.views).toHaveLength(6);
     expect(documents.story.scenes.find((scene) => scene.id === "arctic")?.blocks)
       .toContainEqual(expect.objectContaining({ type: "copy", backdrop: "dark-gradient" }));
+    expect(documents.story.scenes.find((scene) => scene.id === "baltic")?.blocks)
+      .toContainEqual(expect.objectContaining({ type: "widget", widget: "baltic-hypoxia" }));
   });
 
   it("rejects an unknown copy backdrop", () => {

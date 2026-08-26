@@ -2,9 +2,10 @@ import { requireCatalogLayer } from "../../catalog";
 import type { StoryRegistry, StoryWidgetContext } from "../runtime";
 import { ARCTIC_POINT, MAYOTTE_POINT } from "../scenes";
 import ensoJson from "../data/enso.json";
+import balticHypoxiaJson from "../data/baltic-hypoxia.json";
 import chidoTrackJson from "../data/chido-track.json";
-import type { EnsoStoryData } from "../types";
-import { renderArcticChart, renderChartStatus, renderEnsoChart, renderMayotteChart } from "../charts/StoryCharts";
+import type { BalticHypoxiaStoryData, EnsoStoryData } from "../types";
+import { renderArcticChart, renderBalticHypoxiaChart, renderChartStatus, renderEnsoChart, renderMayotteChart } from "../charts/StoryCharts";
 import { ZartiglStoryView } from "../adapters/ZartiglStoryView";
 
 function chartOptions(config: Record<string, unknown>, context: StoryWidgetContext) {
@@ -61,6 +62,27 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     const controller = renderEnsoChart(chart, data, chartOptions(config, context));
     context.setTimeCursor(controller.setCursor);
     provenance.textContent = `Area-weighted native-grid means · ${data.source.datasetId} · generated ${formatTime(Date.parse(data.generatedAt))}`;
+    return () => controller.destroy();
+  });
+  registry.registerWidgetType("baltic-hypoxia", (host, config, context) => {
+    if (context.signal.aborted) return;
+    const { chart, provenance } = widgetShell(host);
+    const data = balticHypoxiaJson as BalticHypoxiaStoryData;
+    const controller = renderBalticHypoxiaChart(chart, data, chartOptions(config, context), context.locale);
+    context.setTimeCursor(controller.setCursor);
+    const limitation = context.locale.startsWith("fr")
+      ? "réanalyse modélisée; l’O₂ profond peut être surestimé"
+      : "model reanalysis; deep O₂ may be overestimated";
+    provenance.append(`${data.source.datasetId} · ${limitation} · `);
+    data.references.forEach((reference, index) => {
+      const link = document.createElement("a");
+      link.href = reference.url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = reference.label;
+      provenance.append(link);
+      if (index < data.references.length - 1) provenance.append(" · ");
+    });
     return () => controller.destroy();
   });
   registry.registerWidgetType("mayotte-wind", async (host, config, context) => {

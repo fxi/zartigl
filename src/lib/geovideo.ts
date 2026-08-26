@@ -12,6 +12,11 @@ export interface GeoVideoSnapshotLoopTimeline {
   date: string;
 }
 
+export interface GeoVideoSampleSequenceTimeline {
+  kind: "sample-sequence";
+  values: string[];
+}
+
 export interface GeoVideoManifest {
   schemaVersion: 2;
   id: string;
@@ -46,7 +51,7 @@ export interface GeoVideoManifest {
     height: number;
     threshold: number;
   };
-  timeline: GeoVideoRangeTimeline | GeoVideoSnapshotLoopTimeline;
+  timeline: GeoVideoRangeTimeline | GeoVideoSnapshotLoopTimeline | GeoVideoSampleSequenceTimeline;
   provenance: {
     layerId: string;
     datasetId: string;
@@ -128,6 +133,14 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
     }
   } else if (manifest.timeline?.kind === "snapshot-loop") {
     dateMs(manifest.timeline.date, "timeline.date");
+  } else if (manifest.timeline?.kind === "sample-sequence") {
+    if (!Array.isArray(manifest.timeline.values) || manifest.timeline.values.length === 0) {
+      throw new Error("GeoVideo sample sequence must contain values");
+    }
+    const values = manifest.timeline.values.map((value, index) => dateMs(value, `timeline.values[${index}]`));
+    if (values.some((value, index) => index > 0 && value <= values[index - 1])) {
+      throw new Error("GeoVideo sample sequence values must be strictly increasing");
+    }
   } else {
     throw new Error("Invalid GeoVideo timeline");
   }
@@ -159,6 +172,9 @@ export function geoVideoTimelineValues(manifest: GeoVideoManifest): number[] {
   if (manifest.timeline.kind === "snapshot-loop") {
     return [new Date(manifest.timeline.date).getTime()];
   }
+  if (manifest.timeline.kind === "sample-sequence") {
+    return manifest.timeline.values.map((value) => new Date(value).getTime());
+  }
   const start = new Date(manifest.timeline.dateStart).getTime();
   const end = new Date(manifest.timeline.dateEnd).getTime();
   const count = Math.max(2, Math.round(manifest.media.durationSeconds * manifest.media.fps));
@@ -167,6 +183,15 @@ export function geoVideoTimelineValues(manifest: GeoVideoManifest): number[] {
 
 export function geoVideoSecondsForTime(manifest: GeoVideoManifest, timeMs: number): number {
   if (manifest.timeline.kind === "snapshot-loop") return 0;
+  if (manifest.timeline.kind === "sample-sequence") {
+    const values = geoVideoTimelineValues(manifest);
+    let nearest = 0;
+    for (let index = 1; index < values.length; index += 1) {
+      if (Math.abs(values[index] - timeMs) < Math.abs(values[nearest] - timeMs)) nearest = index;
+    }
+    const segment = manifest.media.durationSeconds / values.length;
+    return nearest * segment + Math.min(segment / 2, 0.5 / manifest.media.fps);
+  }
   const start = new Date(manifest.timeline.dateStart).getTime();
   const end = new Date(manifest.timeline.dateEnd).getTime();
   const progress = Math.max(0, Math.min(1, (timeMs - start) / (end - start)));
@@ -175,6 +200,13 @@ export function geoVideoSecondsForTime(manifest: GeoVideoManifest, timeMs: numbe
 
 export function geoVideoTimeForSeconds(manifest: GeoVideoManifest, seconds: number): number {
   if (manifest.timeline.kind === "snapshot-loop") return new Date(manifest.timeline.date).getTime();
+  if (manifest.timeline.kind === "sample-sequence") {
+    const values = geoVideoTimelineValues(manifest);
+    const progress = manifest.media.durationSeconds > 0
+      ? Math.max(0, Math.min(1 - Number.EPSILON, seconds / manifest.media.durationSeconds))
+      : 0;
+    return values[Math.min(values.length - 1, Math.floor(progress * values.length))];
+  }
   const start = new Date(manifest.timeline.dateStart).getTime();
   const end = new Date(manifest.timeline.dateEnd).getTime();
   const duration = playableDuration(manifest);
