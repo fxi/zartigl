@@ -18,7 +18,7 @@ import type {
   ZartiglStatus,
   TimeGranularity,
 } from "../lib";
-import { formatTime, formatVertical, resolveLocalizedText } from "../catalog";
+import { formatTime, formatVertical, resolveLocalizedText, searchCatalog } from "../catalog";
 import type { CatalogEntry, Catalog, CatalogSource, CatalogZarrSource } from "../catalog";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -349,7 +349,12 @@ export class DemoApp {
   private syncingVideoTimeControls = false;
 
   // DOM refs
-  private layerSelectEl!: HTMLSelectElement;
+  private layerSearchInput!: HTMLInputElement;
+  private layerResultsEl!: HTMLDivElement;
+  private layerResultCountEl!: HTMLSpanElement;
+  private layerDetailsEl!: HTMLDivElement;
+  private layerResults: CatalogEntry[] = [];
+  private layerActiveIndex = -1;
   private paletteSelectEl!: HTMLSelectElement;
   private sourceContainer!: HTMLDivElement;
   private sourceSelectEl!: HTMLSelectElement;
@@ -739,21 +744,173 @@ export class DemoApp {
 
   private buildLayerFolder(): void {
     const folder = this.pane.addFolder({ title: "Layer" });
-    const select = document.createElement("select");
-    select.className = "layer-select";
-    for (const entry of this.cat.layers) {
-      const option = new Option(resolveLocalizedText(entry.title, this.locale, this.cat.defaultLocale), entry.id);
-      option.title = entry.id;
-      select.appendChild(option);
+    const picker = document.createElement("div");
+    picker.className = "catalog-picker";
+
+    const searchRow = document.createElement("div");
+    searchRow.className = "catalog-search-row";
+    const input = document.createElement("input");
+    input.className = "catalog-search-input";
+    input.type = "search";
+    input.placeholder = "Search catalog…";
+    input.setAttribute("aria-label", "Search catalog");
+    input.setAttribute("aria-controls", "zartigl-catalog-results");
+    const clear = document.createElement("button");
+    clear.className = "catalog-search-clear";
+    clear.type = "button";
+    clear.textContent = "×";
+    clear.title = "Clear search";
+    clear.setAttribute("aria-label", "Clear catalog search");
+    searchRow.append(input, clear);
+
+    const resultHeader = document.createElement("div");
+    resultHeader.className = "catalog-result-header";
+    const resultLabel = document.createElement("span");
+    resultLabel.textContent = "Layers";
+    const resultCount = document.createElement("span");
+    resultCount.className = "catalog-result-count";
+    resultHeader.append(resultLabel, resultCount);
+
+    const results = document.createElement("div");
+    results.id = "zartigl-catalog-results";
+    results.className = "catalog-results";
+    results.setAttribute("role", "listbox");
+
+    const details = document.createElement("div");
+    details.className = "catalog-details";
+
+    picker.append(searchRow, resultHeader, results, details);
+    folder.element.appendChild(picker);
+    this.layerSearchInput = input;
+    this.layerResultsEl = results;
+    this.layerResultCountEl = resultCount;
+    this.layerDetailsEl = details;
+
+    input.addEventListener("input", () => {
+      this.layerActiveIndex = 0;
+      this.renderLayerPicker();
+    });
+    input.addEventListener("keydown", (event) => this.onLayerSearchKeyDown(event));
+    clear.addEventListener("click", () => {
+      input.value = "";
+      input.focus();
+      this.layerActiveIndex = 0;
+      this.renderLayerPicker();
+    });
+    this.renderLayerPicker();
+  }
+
+  private onLayerSearchKeyDown(event: KeyboardEvent): void {
+    if (event.key === "Escape") {
+      this.layerSearchInput.value = "";
+      this.layerActiveIndex = 0;
+      this.renderLayerPicker();
+      return;
     }
-    select.value = this.currentLayer.id;
-    select.addEventListener("change", () => {
-      const layer = this.cat.layers.find((entry) => entry.id === select.value);
+    if (!this.layerResults.length) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      this.layerActiveIndex = (this.layerActiveIndex + delta + this.layerResults.length) % this.layerResults.length;
+      this.renderLayerPicker();
+      const active = this.layerResultsEl.children[this.layerActiveIndex] as HTMLElement | undefined;
+      active?.scrollIntoView({ block: "nearest" });
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const layer = this.layerResults[this.layerActiveIndex] ?? this.layerResults[0];
       if (layer) void this.switchLayer(layer);
+    }
+  }
+
+  private renderLayerPicker(): void {
+    if (!this.layerResultsEl) return;
+    const query = this.layerSearchInput.value;
+    this.layerResults = query.trim()
+      ? searchCatalog(query, { locale: this.locale }, this.cat)
+      : [...this.cat.layers];
+    this.layerActiveIndex = this.layerResults.length
+      ? Math.max(0, Math.min(this.layerActiveIndex, this.layerResults.length - 1))
+      : -1;
+    this.layerResultCountEl.textContent = `${this.layerResults.length}/${this.cat.layers.length}`;
+    this.layerResultsEl.replaceChildren();
+
+    if (!this.layerResults.length) {
+      const empty = document.createElement("div");
+      empty.className = "catalog-empty";
+      empty.textContent = "No matching catalog layers.";
+      this.layerResultsEl.appendChild(empty);
+    }
+
+    this.layerResults.forEach((entry, index) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "catalog-result";
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", String(entry.id === this.currentLayer.id));
+      item.classList.toggle("active", index === this.layerActiveIndex);
+      item.classList.toggle("selected", entry.id === this.currentLayer.id);
+      const title = document.createElement("span");
+      title.className = "catalog-result-title";
+      title.textContent = resolveLocalizedText(entry.title, this.locale, this.cat.defaultLocale);
+      const meta = document.createElement("span");
+      meta.className = "catalog-result-meta";
+      meta.textContent = `${entry.category} · ${entry.kind} · ${entry.id}`;
+      item.append(title, meta);
+      item.title = resolveLocalizedText(entry.description, this.locale, this.cat.defaultLocale) || entry.id;
+      item.addEventListener("mouseenter", () => {
+        this.layerActiveIndex = index;
+        for (const child of Array.from(this.layerResultsEl.children)) child.classList.remove("active");
+        item.classList.add("active");
+      });
+      item.addEventListener("click", () => void this.switchLayer(entry));
+      this.layerResultsEl.appendChild(item);
     });
 
-    folder.element.appendChild(select);
-    this.layerSelectEl = select;
+    this.renderLayerDetails(this.currentLayer);
+  }
+
+  private renderLayerDetails(layer: CatalogEntry): void {
+    this.layerDetailsEl.replaceChildren();
+    const heading = document.createElement("div");
+    heading.className = "catalog-details-title";
+    heading.textContent = resolveLocalizedText(layer.title, this.locale, this.cat.defaultLocale);
+    this.layerDetailsEl.appendChild(heading);
+    const description = resolveLocalizedText(layer.description, this.locale, this.cat.defaultLocale);
+    if (description) {
+      const text = document.createElement("div");
+      text.className = "catalog-details-description";
+      text.textContent = description;
+      this.layerDetailsEl.appendChild(text);
+    }
+    const fields: [string, string][] = [["id", layer.id], ["category", layer.category], ["kind", layer.kind]];
+    if (layer.aliases?.length) fields.push(["aliases", layer.aliases.join(", ")]);
+    for (const source of layer.sources) {
+      const provider = source.provenance?.provider;
+      if (provider) fields.push(["provider", provider]);
+      for (const [key, value] of Object.entries(source.provenance?.identifiers ?? {})) fields.push([key, value]);
+      if (source.temporal?.mode) fields.push(["temporal", [source.temporal.mode, source.temporal.cadence].filter(Boolean).join(" · ")]);
+      if (source.type === "zarr") {
+        const vars = source.variables.kind === "scalar"
+          ? [source.variables.value]
+          : source.variables.derivation
+            ? [source.variables.derivation.direction_variable, source.variables.derivation.magnitude_variable]
+            : [source.variables.u, source.variables.v].filter((value): value is string => !!value);
+        if (vars.length) fields.push(["variables", vars.join(", ")]);
+      }
+      fields.push(["source", source.type]);
+    }
+    const grid = document.createElement("div");
+    grid.className = "catalog-details-grid";
+    for (const [label, value] of fields) {
+      const key = document.createElement("span");
+      key.className = "catalog-details-label";
+      key.textContent = label;
+      const val = document.createElement("span");
+      val.className = "catalog-details-value";
+      val.textContent = value;
+      grid.append(key, val);
+    }
+    this.layerDetailsEl.appendChild(grid);
   }
 
   private buildSourceFolder(): void {
@@ -1271,8 +1428,7 @@ export class DemoApp {
   // ── UI helpers ──────────────────────────────────────────────────────
 
   private updateLayerSelect(): void {
-    if (!this.layerSelectEl) return;
-    this.layerSelectEl.value = this.currentLayer.id;
+    this.renderLayerPicker();
   }
 
   private updateSourceVisibility(): void {

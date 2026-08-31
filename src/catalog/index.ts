@@ -49,11 +49,11 @@ export function findCatalogEntries(selector: CatalogEntrySelector, data: Catalog
 
 function searchableText(entry: CatalogEntry, locale: string, defaultLocale: string): string {
   const sourceText = entry.sources.flatMap((source) => [
-    source.type, resolveLocalizedText(source.title, locale, defaultLocale), source.provenance?.provider,
+    source.id, source.type, resolveLocalizedText(source.title, locale, defaultLocale), source.provenance?.provider,
     ...Object.entries(source.provenance?.identifiers ?? {}).flat(), source.temporal?.cadence, source.temporal?.mode,
     ...(source.type === "zarr" ? sourceVariables(source) : []), ...(source.type === "wmts" ? [source.layer] : []),
   ]);
-  return [resolveLocalizedText(entry.title, locale, defaultLocale), resolveLocalizedText(entry.description, locale, defaultLocale),
+  return [entry.id, resolveLocalizedText(entry.title, locale, defaultLocale), resolveLocalizedText(entry.description, locale, defaultLocale),
     entry.category, ...(entry.aliases ?? []), ...(entry.tags ?? []), ...sourceText]
     .filter(Boolean).join(" ").toLocaleLowerCase(locale);
 }

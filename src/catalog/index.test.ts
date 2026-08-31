@@ -15,6 +15,14 @@ describe("catalog v2 discovery", () => {
     expect(searchCatalog("geovideo").length).toBe(3);
   });
 
+  it("searches catalog and source identifiers", () => {
+    const entry = catalog.layers[0];
+    const source = entry.sources[0];
+    expect(searchCatalog(entry.id)[0]).toBe(entry);
+    expect(searchCatalog(source.id)[0]).toBe(entry);
+    expect(searchCatalog("global 6-hourly physics")[0]).toBe(entry);
+  });
+
   it("filters exact source provenance", () => {
     const results = findCatalogEntries({ provider: "copernicus-marine", variableId: "sithick", identifiers: { product: "GLOBAL_ANALYSISFORECAST_PHY_001_024" } });
     expect(results).toHaveLength(1);
