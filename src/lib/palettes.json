@@ -130,6 +130,19 @@
       "#1c0c3f"
     ]
   },
+  "viridis": {
+    "label": "Viridis",
+    "tags": ["sequential", "perceptual"],
+    "colors": [
+      "#440154",
+      "#443983",
+      "#31688e",
+      "#21918c",
+      "#35b779",
+      "#90d743",
+      "#fde725"
+    ]
+  },
   "turbid": {
     "label": "Turbid",
     "tags": ["sequential", "biology", "log"],

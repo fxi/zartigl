@@ -5,6 +5,12 @@ plus a spatial/temporal JSON manifest. GeoVideo stores quantized values in H.264
 luminance and keeps a static validity mask in a separate lossless PNG. The
 browser applies palette and scalar styling in WebGL.
 
+GeoVideo configurations do not duplicate scalar style. Palette, color domain,
+log scale, and vibrance resolve from the catalog entry; units resolve from the
+underlying Zarr variable. For Copernicus entries those catalog defaults come
+from the provider's default WMTS JSON legend. `--dry-run` prints the resolved
+style.
+
 Published manifests use GeoVideo schema version 3. Their provenance records the
 catalog entry UUID, the input source UUID, provider/native identifiers, source
 variable IDs, and generation timestamp. Catalog aliases and translated labels
@@ -58,6 +64,25 @@ and sampled against the input codes, and publication is refused unless its
 recorded field-error budget passes (p99 at most eight codes and maximum at most
 16). This field budget is separate from the stricter two-code browser criterion
 for stable ramps.
+
+If a render fails the field-error budget on a visually busy or high-variance
+dataset, try raising `output.maxBitrate` before lowering `crf`. A lower CRF
+asks for more bits than a fixed bitrate ceiling allows, so on a hard frame it
+can starve the encoder further and increase the max error rather than
+reduce it; giving the encoder more headroom at the standard CRF fixes this
+class of failure. `sst-anomaly.json`'s `maxBitrate: "24M"` is a resolved
+instance of this.
+
+`report.json` also records source extrema and counts outside the provider
+display domain. Those values follow the provider's declared clamp semantics;
+GeoVideo reports them without inventing a scientific correction.
+
+`validate_remote.py` checks catalog defaults against the live provider WMTS
+legend, but nothing checks a deployed artifact's `manifestUrl` against the
+catalog's current `defaults.raster`/`palette`. After changing those defaults
+for an entry with a GeoVideo source, re-render, re-upload, and update
+`manifestUrl` by hand — there is no automated check that catches drift
+between a published artifact and current catalog defaults.
 
 For a cheap end-to-end check, copy the example, lower its resolution/duration,
 and pass `--max-frames 2`. `--max-frames` is intentionally a smoke-test option:

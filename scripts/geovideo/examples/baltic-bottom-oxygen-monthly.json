@@ -8,21 +8,11 @@
     "framesPerSample": 2
   },
   "bounds": [
-    9.04,
-    53.01,
-    30.21,
-    65.89
+    9.041542053222656,
+    53.008296966552734,
+    30.207401275634766,
+    65.8909912109375
   ],
-  "style": {
-    "palette": "oxygen",
-    "colorDomain": [
-      0,
-      187.5
-    ],
-    "unit": "mmol m-3",
-    "logScale": false,
-    "vibrance": 0.1
-  },
   "output": {
     "width": 1024,
     "height": 1024,

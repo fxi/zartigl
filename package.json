@@ -40,6 +40,8 @@
     "release:major": "npm version major && git push origin main --follow-tags",
     "catalog": "npm run catalog:validate",
     "catalog:validate": "uv run scripts/catalog_builder/skills/validate_catalog.py",
+    "catalog:validate:remote": "uv run scripts/catalog_builder/skills/validate_remote.py",
+    "catalog:test-tools": "uv run python -m unittest discover -s scripts/catalog_builder/skills -p 'test_*.py'",
     "story:data": "uv run --project scripts python scripts/story_data/build.py",
     "test:story-data": "uv run --project scripts python -m unittest discover -s scripts/story_data -p 'test_*.py'",
     "geovideo:dry-run": "uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run",

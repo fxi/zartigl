@@ -13,7 +13,7 @@ The agent should:
 1. Read the repository instructions and catalog developer contract
 2. Run `list_layers.py` to check for duplicates
 3. Run `search_products.py` to find candidates
-4. Run `query_dataset.py` on the chosen dataset
+4. Run `query_dataset.py <dataset> --variable <id>` for a scalar dataset
 5. Propose a layer entry for your approval
 6. Append it to `catalog.json` and run `validate_catalog.py`
 
@@ -28,5 +28,12 @@ Each layer has:
 - `defaults.sourceId`, optional `defaults.querySourceId`, and rendering defaults
 
 Time, vertical, spatial, and variable metadata are resolved live from each Zarr store. They are intentionally not duplicated in the catalog.
+
+Scalar discovery follows provider metadata rather than visual trial and error.
+`query_dataset.py` follows the Copernicus WMTS service to its default JSON
+legend and returns catalog-ready palette, range, scale, unit, and extent. When
+upstream statistics are unavailable, use `analyze_variable.py`; Zarr-declared
+valid bounds are only its final fallback. `validate_remote.py` compares
+committed defaults with the live provider contract.
 
 See `DEVELOPERS.md` and `schema.json` for the full contract.

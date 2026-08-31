@@ -182,9 +182,14 @@ To add or update catalog entries:
 ```bash
 uv run scripts/catalog_builder/skills/list_layers.py
 uv run scripts/catalog_builder/skills/search_products.py wave
-uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
+uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
 uv run scripts/catalog_builder/skills/validate_catalog.py
+uv run scripts/catalog_builder/skills/validate_remote.py --entry <uuid-or-alias>
 ```
+
+Copernicus scalar defaults are derived from the provider's WMTS JSON legend.
+Use the maintained `analyze_variable.py` fallback only when upstream
+visualization statistics are unavailable.
 
 This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Copernicus Marine](https://data.marine.copernicus.eu/register) account.
 

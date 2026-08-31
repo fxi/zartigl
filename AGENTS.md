@@ -21,9 +21,21 @@ Use these scripts first:
 ```bash
 uv run scripts/catalog_builder/skills/list_layers.py
 uv run scripts/catalog_builder/skills/search_products.py <keyword> [keyword2 ...]
-uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
+uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
 uv run scripts/catalog_builder/skills/validate_catalog.py
+uv run scripts/catalog_builder/skills/validate_remote.py --entry <uuid-or-alias>
 ```
+
+For scalar discovery, resolve metadata in this order: Copernicus Toolbox
+service/coordinate metadata, the default WMTS JSON legend (palette, range,
+scale, unit, extent), deterministic local statistics from
+`analyze_variable.py` when upstream statistics are unavailable, and Zarr
+`valid_min`/`valid_max` only as a final fallback. Never select the first scalar
+variable implicitly.
+
+Do not write one-off analysis programs when maintained scripts can answer the
+question. If a deterministic operation is missing, extend an existing helper
+or add a tested reusable helper and document it here before continuing.
 
 Do not use general web search for catalog candidates unless the user explicitly
 asks for broader dataset research, or the local Copernicus Marine ARCO workflow

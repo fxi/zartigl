@@ -11,21 +11,11 @@
     180,
     90
   ],
-  "style": {
-    "palette": "ice",
-    "colorDomain": [
-      0,
-      5
-    ],
-    "unit": "m",
-    "logScale": false,
-    "vibrance": 0.1
-  },
   "output": {
     "width": 2048,
     "height": 256,
     "fps": 24,
-    "crf": 12,
+    "crf": 8,
     "maxBitrate": "16M",
     "preset": "fast",
     "directory": "artifacts/geovideo"

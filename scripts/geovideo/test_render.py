@@ -18,7 +18,6 @@ class GeoVideoSamplingTest(unittest.TestCase):
                 "secondsPerSample": 1,
             },
             "bounds": [9.04, 53.01, 30.21, 65.89],
-            "style": {"colorDomain": [0, 187.5]},
             "output": {"width": 1024, "height": 1024, "fps": 24},
         }
 
@@ -57,6 +56,12 @@ class GeoVideoSamplingTest(unittest.TestCase):
         config = self.config()
         config["catalogEntryId"] = "baltic-bottom-oxygen"
         with self.assertRaisesRegex(ValueError, "UUIDv4"):
+            validate_config(config)
+
+    def test_rejects_style_duplicated_outside_catalog(self):
+        config = self.config()
+        config["style"] = {"palette": "matter", "colorDomain": [0, 1]}
+        with self.assertRaisesRegex(ValueError, "resolved from catalog defaults"):
             validate_config(config)
 
     def test_rejects_uppercase_uuid_identity_fields(self):

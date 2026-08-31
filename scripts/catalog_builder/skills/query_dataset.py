@@ -7,17 +7,20 @@
 Query a Copernicus Marine dataset and emit a structured JSON summary.
 
 Usage:
-    uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
+    uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
 
 Output: JSON with zarr URLs, variables, dimensions, and suggested layer fields.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
 from urllib.parse import urlparse
+
+from copernicus_metadata import discover_wmts_visualization, palette_id
 
 
 def select_geo_service(part):
@@ -95,12 +98,29 @@ def detect_vector_vars(svc) -> tuple[str, str] | None:
     return None
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: query_dataset.py <dataset_id>", file=sys.stderr)
-        sys.exit(1)
+def select_kind_and_variable(
+    variables: dict[str, dict],
+    requested: str | None,
+    vector: tuple[str, str] | None,
+) -> tuple[str, str | None, tuple[str, str] | None]:
+    if requested:
+        if requested not in variables:
+            raise ValueError(f"unknown variable: {requested}")
+        return "scalar", requested, None
+    if vector:
+        return "vector", None, vector
+    raise ValueError("scalar discovery requires --variable")
 
-    dataset_id = sys.argv[1]
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("dataset_id")
+    parser.add_argument(
+        "--variable",
+        help="Explicit scalar variable. Required for scalar catalog candidates.",
+    )
+    args = parser.parse_args()
+    dataset_id = args.dataset_id
 
     import copernicusmarine
     try:
@@ -135,11 +155,32 @@ def main():
     }
 
     vec = detect_vector_vars(svc_geo)
-    suggested_type = "vector" if vec else "scalar"
+    try:
+        suggested_type, suggested_variable, vec = select_kind_and_variable(variables, args.variable, vec)
+    except ValueError as exc:
+        print(json.dumps({
+            "error": str(exc),
+            "available_variables": sorted(variables),
+        }))
+        sys.exit(1)
     suggested_variable_u = vec[0] if vec else None
     suggested_variable_v = vec[1] if vec else None
-    suggested_variable = list(variables.keys())[0] if not vec else None
     wmts = build_wmts_metadata(svc_wmts, prod.product_id, suggested_variable)
+
+    visualization = None
+    visualization_error = None
+    if suggested_type == "scalar" and svc_wmts is not None:
+        try:
+            visualization = discover_wmts_visualization(svc_wmts.uri, suggested_variable)
+            colors = visualization.pop("colors", None)
+            if isinstance(colors, list):
+                visualization["colorCount"] = len(colors)
+        except Exception as exc:
+            visualization_error = str(exc)
+    selected_service_variable = next(
+        (item for item in svc_geo.variables if item.short_name == suggested_variable),
+        None,
+    ) if suggested_variable else None
 
     variables_meta = {}
     temporal = temporal_summary(dataset_id)
@@ -172,8 +213,23 @@ def main():
             "provenance": {"provider": "copernicus-marine", "identifiers": {"product": prod.product_id, "dataset": dataset_id}},
             "temporal": temporal,
             "capabilitiesUrl": wmts["capabilities_url"], "baseUrl": wmts["base_url"], "layer": wmts["layer"],
-            "tileMatrixSet": wmts["tileMatrixSet"], "format": wmts["format"], **({"style": wmts["style"]} if wmts.get("style") else {}),
+            "tileMatrixSet": wmts["tileMatrixSet"], "format": wmts["format"],
+            **({"style": visualization["style"]} if visualization else {}),
         } if wmts else None),
+        "selected_variable": ({
+            "id": suggested_variable,
+            **variables[suggested_variable],
+            "bbox": list(getattr(selected_service_variable, "bbox", []) or []),
+        } if suggested_variable else None),
+        "visualization": visualization,
+        **({"visualization_error": visualization_error} if visualization_error else {}),
+        "defaults_candidate": ({
+            "palette": palette_id(visualization.get("style"), visualization.get("palette")),
+            "raster": {
+                "colorDomain": visualization["colorDomain"],
+                "logScale": visualization["logScale"],
+            },
+        } if visualization else None),
         "all_variables": variables,
         "suggested_kind": suggested_type,
     }

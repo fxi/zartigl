@@ -608,7 +608,7 @@
               "dataset": "cmems_mod_bal_bgc_my_P1M-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/5ec77551af95/manifest.json",
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/0b53441dac16/manifest.json",
           "temporal": {
             "mode": "fixed",
             "cadence": "P1M",
@@ -619,14 +619,14 @@
       ],
       "defaults": {
         "sourceId": "e6412d90-decd-46b2-9794-66f21cbf3893",
-        "palette": "oxygen",
+        "palette": "matter",
         "raster": {
           "opacity": 0.92,
           "logScale": false,
           "vibrance": 0.1,
           "colorDomain": [
-            0,
-            375
+            65.22491943359375,
+            445.3613275146484
           ]
         },
         "querySourceId": "e6412d90-decd-46b2-9794-66f21cbf3893"
@@ -910,7 +910,7 @@
               "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/bae0bf42bb9a/manifest.json",
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/d4ca59b665c4/manifest.json",
           "temporal": {
             "mode": "fixed",
             "cadence": "P1D",
@@ -925,7 +925,11 @@
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.1
+          "vibrance": 0.1,
+          "colorDomain": [
+            0,
+            1.9419054961204512
+          ]
         },
         "querySourceId": "3b544800-9d97-4217-a0b6-95dacd56ca1a"
       }
@@ -1087,7 +1091,7 @@
               "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/3af85ef846cb/manifest.json",
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/a4ba031cf7f3/manifest.json",
           "temporal": {
             "mode": "fixed",
             "cadence": "P1D",
@@ -1098,14 +1102,14 @@
       ],
       "defaults": {
         "sourceId": "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0",
-        "palette": "balance",
+        "palette": "viridis",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.1,
           "colorDomain": [
-            -3,
-            3
+            -1.488086223602295,
+            2.952540159225464
           ]
         },
         "querySourceId": "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0"

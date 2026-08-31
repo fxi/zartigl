@@ -102,9 +102,29 @@ def zarr_source(layer: dict[str, Any]) -> dict[str, Any]:
     return next(source for source in layer["sources"] if source["type"] == "zarr")
 
 
-def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
+def catalog_style(layer: dict[str, Any]) -> dict[str, Any]:
+    defaults = layer.get("defaults") or {}
+    raster = defaults.get("raster") or {}
+    domain = raster.get("colorDomain")
+    if not isinstance(domain, list) or len(domain) != 2 or not float(domain[0]) < float(domain[1]):
+        raise ValueError("GeoVideo catalog entry requires defaults.raster.colorDomain")
+    palette = defaults.get("palette")
+    if not isinstance(palette, str) or not palette:
+        raise ValueError("GeoVideo catalog entry requires defaults.palette")
+    return {
+        "palette": palette,
+        "colorDomain": [float(domain[0]), float(domain[1])],
+        "logScale": bool(raster.get("logScale", False)),
+        "vibrance": float(raster.get("vibrance", 0)),
+    }
+
+
+def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) -> dict[str, Any]:
     layer_id = uuid4(required(raw, "catalogEntryId"), "catalogEntryId")
     artifact_id = uuid4(required(raw, "id"), "id")
+    if "style" in raw:
+        raise ValueError("GeoVideo style is resolved from catalog defaults; remove config.style")
+    layer = layer or load_layer(layer_id)
     sampling = raw.get("sampling")
     if sampling is None:
         start = str(required(raw, "dateStart"))
@@ -187,10 +207,7 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
         sampling["framesPerSample"] = frames_per_sample
         sample_count = sampling.get("sampleCount", sampling.get("yearEnd", 0) - sampling.get("yearStart", 0) + 1)
         duration = sample_count * frames_per_sample / fps
-    style = raw.get("style", {})
-    domain = style.get("colorDomain")
-    if not isinstance(domain, list) or len(domain) != 2 or not float(domain[0]) < float(domain[1]):
-        raise ValueError("style.colorDomain must contain an increasing pair")
+    style = catalog_style(layer)
     result = {
         **raw,
         "catalogEntryId": layer_id,
@@ -209,13 +226,7 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
             "preset": preset,
             "directory": str(output.get("directory", "artifacts/geovideo")),
         },
-        "style": {
-            **style,
-            "colorDomain": [float(domain[0]), float(domain[1])],
-            "palette": str(style.get("palette", "balance")),
-            "logScale": bool(style.get("logScale", False)),
-            "vibrance": float(style.get("vibrance", 0)),
-        },
+        "style": style,
     }
     if sampling is None:
         result["dateStart"] = start
@@ -278,6 +289,7 @@ class ScalarFrames:
         if self.variable not in self.dataset:
             raise ValueError(f"Variable not found in store: {self.variable}")
         self.data = self.dataset[self.variable]
+        self.unit = str(self.data.attrs.get("units", ""))
         for dimension in list(self.data.dims):
             if dimension not in {"time", "latitude", "longitude"}:
                 self.data = self.data.isel({dimension: 0})
@@ -801,8 +813,9 @@ def main() -> int:
     parser.add_argument("--max-frames", type=int, help="Render only the first N frames for smoke tests")
     args = parser.parse_args()
 
-    config = validate_config(json.loads(args.config.read_text()))
-    layer = load_layer(config["catalogEntryId"])
+    raw_config = json.loads(args.config.read_text())
+    layer = load_layer(str(required(raw_config, "catalogEntryId")))
+    config = validate_config(raw_config, layer)
     artifact_id = artifact_hash(config, layer)
     output_root = Path(config["output"]["directory"])
     if not output_root.is_absolute():
@@ -817,6 +830,7 @@ def main() -> int:
         "frames": frame_count,
         "mediaSize": [config["output"]["width"], config["output"]["height"]],
         "estimatedRawBytes": frame_count * config["output"]["width"] * config["output"]["height"] * 3,
+        "resolvedStyle": config["style"],
     }
     print(json.dumps(summary, indent=2))
     if args.dry_run:
@@ -839,11 +853,18 @@ def main() -> int:
     video_path = directory / "video.mp4"
     mask_path = directory / "mask.png"
     frames = ScalarFrames(layer, config)
+    config["style"]["unit"] = frames.unit
     command = ffmpeg_command(config, video_path)
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
     static_mask: np.ndarray | None = None
     union_mask: np.ndarray | None = None
     expected_samples: list[tuple[np.ndarray, np.ndarray]] = []
+    source_minimum = math.inf
+    source_maximum = -math.inf
+    below_domain = 0
+    above_domain = 0
+    finite_values = 0
+    domain_minimum, domain_maximum = config["style"]["colorDomain"]
     y_stride = max(1, config["output"]["height"] // 32)
     x_stride = max(1, config["output"]["width"] // 64)
     try:
@@ -851,6 +872,13 @@ def main() -> int:
         for index in range(frame_count):
             values = frames.frame(index, frame_count)
             valid = np.isfinite(values)
+            finite = values[valid]
+            if finite.size:
+                source_minimum = min(source_minimum, float(finite.min()))
+                source_maximum = max(source_maximum, float(finite.max()))
+                below_domain += int(np.count_nonzero(finite < domain_minimum))
+                above_domain += int(np.count_nonzero(finite > domain_maximum))
+                finite_values += int(finite.size)
             if static_mask is None:
                 static_mask = valid.copy()
                 union_mask = valid.copy()
@@ -895,6 +923,14 @@ def main() -> int:
         "videoBytes": video_path.stat().st_size,
         "maskBytes": mask_path.stat().st_size,
         "maskValidation": mask_report,
+        "sourceValues": {
+            "minimum": source_minimum,
+            "maximum": source_maximum,
+            "finiteCount": finite_values,
+            "belowProviderDomain": below_domain,
+            "aboveProviderDomain": above_domain,
+            "domainAuthority": "catalog defaults discovered from provider metadata",
+        },
         "valueValidation": value_validation,
         "probe": probe,
         "manifest": manifest,

@@ -14,6 +14,8 @@ Sources are discriminated and independently renderable:
 
 Every source has its own UUID and localized title. Put provider-native names under `provenance.provider` and `provenance.identifiers`; Copernicus uses `product` and `dataset`. Put discovery-only cadence and coverage mode under `temporal`. Live source metadata remains authoritative.
 
+For Copernicus scalar entries, the default WMTS JSON legend is the authoritative visualization contract: palette, color domain, scale, clamp behavior, units, and extent. Deterministic locally derived univariate statistics are the fallback when upstream statistics are unavailable. Zarr `valid_min`/`valid_max` are validity bounds and are used only as the final range fallback.
+
 `defaults.querySourceId` may reference only a Zarr source with a point-series endpoint. Vector entries are Zarr-only. WMTS and GeoVideo entries are scalar.
 
 ## Source policy
@@ -27,14 +29,17 @@ Do not add GRIB/netCDF/HDF-only products, bespoke APIs, or sources requiring ing
 ```bash
 uv run scripts/catalog_builder/skills/list_layers.py
 uv run scripts/catalog_builder/skills/search_products.py <keyword> [keyword2 ...]
-uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id>
+uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
+uv run scripts/catalog_builder/skills/analyze_variable.py <zarr_url> --variable <scalar_id>
 uv run scripts/catalog_builder/skills/validate_catalog.py
+uv run scripts/catalog_builder/skills/validate_remote.py --entry <uuid-or-alias>
 ```
 
 1. Search the current catalog by aliases/native identifiers to avoid duplicates.
-2. Query the selected dataset and compose a complete v2 entry/source.
-3. Generate UUIDv4 values once; never regenerate them during ordinary metadata updates.
-4. Ask for approval before appending a built-in entry.
-5. Validate the catalog and smoke-test remote rendering/query behavior.
+2. Query the selected dataset with an explicit scalar variable; vector pairs remain auto-detected. Use the returned provider visualization defaults.
+3. If upstream visualization statistics are unavailable, run the maintained local analyzer rather than an ad hoc program.
+4. Generate UUIDv4 values once; never regenerate them during ordinary metadata updates.
+5. Ask for approval before appending a built-in entry.
+6. Validate the catalog, compare it with live provider metadata, and smoke-test remote rendering/query behavior.
 
 Catalog validation checks structure and cross-references, not remote availability.

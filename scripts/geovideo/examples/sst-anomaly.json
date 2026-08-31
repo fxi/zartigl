@@ -7,26 +7,16 @@
   "interpolation": "linear",
   "bounds": [
     -180,
-    -90,
-    180,
+    -80,
+    179.9166717529297,
     90
   ],
-  "style": {
-    "palette": "balance",
-    "colorDomain": [
-      -3,
-      3
-    ],
-    "unit": "degrees_C",
-    "logScale": false,
-    "vibrance": 0.1
-  },
   "output": {
     "width": 2048,
     "height": 1024,
     "fps": 24,
     "crf": 12,
-    "maxBitrate": "16M",
+    "maxBitrate": "24M",
     "preset": "fast",
     "directory": "artifacts/geovideo"
   },
