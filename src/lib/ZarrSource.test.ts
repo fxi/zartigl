@@ -97,6 +97,24 @@ function dataChunk(timeIdx: number, depthIdx: number, multiplier = 1) {
   return response(chunk(values));
 }
 
+function multidimensionalChunk(order: "C" | "F", timeStart: number) {
+  const shape = [2, 2, 2, 3];
+  const values = new Array<number>(shape.reduce((total, size) => total * size, 1));
+  for (let time = 0; time < shape[0]; time++) {
+    for (let depth = 0; depth < shape[1]; depth++) {
+      for (let latitude = 0; latitude < shape[2]; latitude++) {
+        for (let longitude = 0; longitude < shape[3]; longitude++) {
+          const offset = order === "F"
+            ? time + shape[0] * (depth + shape[1] * (latitude + shape[2] * longitude))
+            : (((time * shape[1] + depth) * shape[2] + latitude) * shape[3]) + longitude;
+          values[offset] = dataValue(timeStart + time, depth, latitude, longitude);
+        }
+      }
+    }
+  }
+  return response(chunk(values));
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -288,6 +306,96 @@ describe("ZarrSource point sampling", () => {
       units: "m",
       values: [-100, -10, -0.5],
     });
+  });
+
+  it.each(["C", "F"] as const)(
+    "extracts logical time and depth planes from %s-order multidimensional chunks",
+    async (order) => {
+      const routes: Record<string, Response> = baseRoutes();
+      const metadata = await routes[`${root}/.zmetadata`].json() as {
+        metadata: Record<string, Record<string, unknown>>;
+      };
+      metadata.metadata["u/.zarray"] = zarray([4, 2, 2, 3], [2, 2, 2, 3], order);
+      metadata.metadata["u/.zattrs"] = attrs(["time", "depth", "latitude", "longitude"]);
+      metadata.metadata["latitude/.zarray"] = zarray([2], [2]);
+      metadata.metadata["longitude/.zarray"] = zarray([3], [3]);
+      metadata.metadata["depth/.zarray"] = zarray([2], [2]);
+      routes[`${root}/latitude/0`] = response(chunk([10, 20]));
+      routes[`${root}/longitude/0`] = response(chunk([-10, 0, 10]));
+      routes[`${root}/depth/0`] = response(chunk([0, 100]));
+      routes[`${root}/u/1.0.0.0`] = multidimensionalChunk(order, 2);
+      const fetchMock = installFetch(routes);
+
+      const source = new ZarrSource(root);
+      await source.init();
+      const first = await source.fetchSpatialChunkResult("u", {
+        timeIndex: 2,
+        verticalIndex: 1,
+        latitudeChunkIndex: 0,
+        longitudeChunkIndex: 0,
+      });
+      const second = await source.fetchSpatialChunkResult("u", {
+        timeIndex: 3,
+        verticalIndex: 1,
+        latitudeChunkIndex: 0,
+        longitudeChunkIndex: 0,
+      });
+
+      expect(first.url).toBe(`${root}/u/1.0.0.0`);
+      expect(Array.from(first.data)).toEqual([2100, 2101, 2102, 2110, 2111, 2112]);
+      expect(Array.from(second.data)).toEqual([3100, 3101, 3102, 3110, 3111, 3112]);
+      expect(fetchMock.mock.calls.filter(([url]) => url === `${root}/u/1.0.0.0`)).toHaveLength(1);
+    },
+  );
+
+  it("ignores store-level vertical coordinates for surface variables", async () => {
+    const routes: Record<string, Response> = baseRoutes();
+    const metadata = await routes[`${root}/.zmetadata`].json() as {
+      metadata: Record<string, Record<string, unknown>>;
+    };
+    metadata.metadata["surface/.zarray"] = zarray([4, 2, 3], [2, 2, 3]);
+    metadata.metadata["surface/.zattrs"] = attrs(["time", "latitude", "longitude"]);
+    metadata.metadata["latitude/.zarray"] = zarray([2], [2]);
+    metadata.metadata["longitude/.zarray"] = zarray([3], [3]);
+    routes[`${root}/latitude/0`] = response(chunk([10, 20]));
+    routes[`${root}/longitude/0`] = response(chunk([-10, 0, 10]));
+    routes[`${root}/surface/1.0.0`] = response(chunk([
+      2000, 2001, 2002, 2010, 2011, 2012,
+      3000, 3001, 3002, 3010, 3011, 3012,
+    ]));
+    installFetch(routes);
+
+    const source = new ZarrSource(root);
+    await source.init();
+    const result = await source.fetchSpatialChunkResult("surface", {
+      timeIndex: 3,
+      verticalIndex: 2,
+      latitudeChunkIndex: 0,
+      longitudeChunkIndex: 0,
+    });
+
+    expect(source.getVerticalDimension("surface")).toBeUndefined();
+    expect(result.url).toBe(`${root}/surface/1.0.0`);
+    expect(Array.from(result.data)).toEqual([3000, 3001, 3002, 3010, 3011, 3012]);
+  });
+
+  it("preserves missing status and URL when extracting a spatial plane", async () => {
+    installFetch(baseRoutes({
+      [`${root}/u/2.1.0.0`]: response(new ArrayBuffer(0), false, 403),
+    }));
+    const source = new ZarrSource(root);
+    await source.init();
+
+    const result = await source.fetchSpatialChunkResult("u", {
+      timeIndex: 2,
+      verticalIndex: 1,
+      latitudeChunkIndex: 0,
+      longitudeChunkIndex: 0,
+    });
+
+    expect(result).toMatchObject({ missing: true, status: 403, url: `${root}/u/2.1.0.0` });
+    expect(result.data).toHaveLength(12);
+    expect(result.data.every(Number.isNaN)).toBe(true);
   });
 
   it("samples a time series at the nearest lon/lat/depth grid point", async () => {

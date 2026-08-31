@@ -702,6 +702,19 @@ describe("Zartigl facade", () => {
     expect(z.getDepthMeta().current).toBe(-0.5);
   });
 
+  it("requests vertical metadata for the active variable and hides absent dimensions", async () => {
+    const vertical = vi.mocked(ZarrSource.prototype.getVerticalDimension);
+    vertical.mockReturnValue(undefined);
+    const map = new FakeMap();
+    const z = new Zartigl({ map: map as never, catalog: catalog(scalarLayer()) });
+
+    await z.setLayer("scalar");
+
+    expect(vertical).toHaveBeenCalledWith("temperature");
+    expect(z.getDepthMeta().values).toEqual([]);
+    expect(z.getDepthMeta().current).toBeUndefined();
+  });
+
   it("forwards atomic time/depth changes to the active layer", async () => {
     const spy = vi.spyOn(CatalogRenderLayer.prototype, "setTimeAndDepth");
     const map = new FakeMap();

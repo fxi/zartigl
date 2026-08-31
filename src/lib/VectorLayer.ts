@@ -245,9 +245,6 @@ export class VectorLayer implements CustomLayerInterface {
     );
 
     const dims = this.zarrSource.getDimensions(baseVariable);
-    const timeDim = dims.indexOf("time");
-    const vertName = this.zarrSource.getVerticalDimName();
-    const depthDim = dims.indexOf(vertName);
     const latDim = dims.indexOf("latitude");
     const lonDim = dims.indexOf("longitude");
 
@@ -260,12 +257,12 @@ export class VectorLayer implements CustomLayerInterface {
     // Fetch U and V chunks in parallel
     const makeChunkFetch = (variable: string) =>
       uChunkInfos.map(async (info) => {
-        const indices: number[] = [];
-        indices[timeDim] = info.timeIdx;
-        indices[depthDim] = info.depthIdx;
-        indices[latDim] = info.latIdx;
-        indices[lonDim] = info.lonIdx;
-        const result = await this.zarrSource.fetchChunkResult(variable, indices);
+        const result = await this.zarrSource.fetchSpatialChunkResult(variable, {
+          timeIndex: info.timeIdx,
+          verticalIndex: info.depthIdx,
+          latitudeChunkIndex: info.latIdx,
+          longitudeChunkIndex: info.lonIdx,
+        });
         if (result.missing) {
           if (result.status != null) missingStatuses.push(result.status);
           missingUrls.push(result.url);

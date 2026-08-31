@@ -503,7 +503,8 @@ export class Zartigl {
     this.emit("status", { phase: "metadata" });
     try {
       await source.init();
-      for (const variable of variableNames(requestedSource)) {
+      const configuredVariables = variableNames(requestedSource);
+      for (const variable of configuredVariables) {
         if (!source.hasVariable(variable)) {
           throw new Error(`Configured variable not found in Zarr store: ${variable}`);
         }
@@ -512,8 +513,7 @@ export class Zartigl {
       if (fullTimeMeta.values.length === 0) throw new Error("Zarr time coordinate is empty");
       resolvedTimeRange = resolveTimeRange(fullTimeMeta, this.timeRange);
       timeMeta = applyTimeRange(fullTimeMeta, this.timeRange);
-      verticalMeta = source.getVerticalDimension() ?? null;
-      const configuredVariables = variableNames(requestedSource);
+      verticalMeta = source.getVerticalDimension(configuredVariables[0]) ?? null;
       unitAttrs = source.getVariableAttrs(configuredVariables[configuredVariables.length - 1]);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));

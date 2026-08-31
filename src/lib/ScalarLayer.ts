@@ -419,9 +419,6 @@ export class ScalarLayer implements CustomLayerInterface {
       geoBounds,
     );
     const dims = this.zarrSource.getDimensions(this.variable);
-    const timeDim = dims.indexOf("time");
-    const vertName = this.zarrSource.getVerticalDimName();
-    const depthDim = dims.indexOf(vertName);
     const latDim = dims.indexOf("latitude");
     const lonDim = dims.indexOf("longitude");
     const chunkShape = this.zarrSource.getChunkShape(this.variable);
@@ -432,12 +429,12 @@ export class ScalarLayer implements CustomLayerInterface {
     const missingUrls: string[] = [];
     onProgress?.(completed, total);
     const chunks = await Promise.all(chunkInfos.map(async (info) => {
-      const indices: number[] = [];
-      indices[timeDim] = info.timeIdx;
-      indices[depthDim] = info.depthIdx;
-      indices[latDim] = info.latIdx;
-      indices[lonDim] = info.lonIdx;
-      const result = await this.zarrSource.fetchChunkResult(this.variable, indices);
+      const result = await this.zarrSource.fetchSpatialChunkResult(this.variable, {
+        timeIndex: info.timeIdx,
+        verticalIndex: info.depthIdx,
+        latitudeChunkIndex: info.latIdx,
+        longitudeChunkIndex: info.lonIdx,
+      });
       if (result.missing) {
         if (result.status != null) missingStatuses.push(result.status);
         missingUrls.push(result.url);

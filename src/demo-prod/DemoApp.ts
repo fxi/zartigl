@@ -515,6 +515,7 @@ export class DemoApp {
     this.params.allowedStart = timeMeta.min;
     this.params.allowedEnd = timeMeta.max;
     this.params.timeIndex = nearestTimeIndex(timeMeta.values, timeMeta.current ?? timeMeta.max);
+    this.params.timeLabel = formatTime(timeMeta.values[this.params.timeIndex]);
     this.params.depth = this.z.getDepthMeta().current ?? 0;
     this.rebuildDataUI();
     this.renderSourceSelect();

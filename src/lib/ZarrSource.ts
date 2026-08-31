@@ -132,8 +132,11 @@ export class ZarrSource {
     };
   }
 
-  getVerticalDimension(): ZarrVerticalDimension | undefined {
+  getVerticalDimension(variable?: string): ZarrVerticalDimension | undefined {
     if (!this.verticalName) return undefined;
+    if (variable && !this.getDimensions(variable).includes(this.verticalName)) {
+      return undefined;
+    }
     const attrs = this.getAttrs(this.verticalName);
     const units = typeof attrs.units === "string" ? attrs.units : undefined;
     const standardName = typeof attrs.standard_name === "string" ? attrs.standard_name : "";
@@ -531,6 +534,72 @@ export class ZarrSource {
     indices: number[],
   ): Promise<Float32Array> {
     return (await this.fetchChunkResult(variable, indices)).data;
+  }
+
+  /**
+   * Fetch one latitude/longitude chunk and extract the requested time/vertical
+   * plane from it. Logical coordinate indices are converted to physical Zarr
+   * chunk indices before fetching.
+   */
+  async fetchSpatialChunkResult(
+    variable: string,
+    selection: {
+      timeIndex: number;
+      verticalIndex: number;
+      latitudeChunkIndex: number;
+      longitudeChunkIndex: number;
+    },
+  ): Promise<ZarrChunkFetchResult> {
+    const dims = this.getDimensions(variable);
+    const chunkShape = this.getChunkShape(variable);
+    const latDim = dims.indexOf("latitude");
+    const lonDim = dims.indexOf("longitude");
+    if (latDim < 0 || lonDim < 0) {
+      throw new Error(`Variable ${variable} must have latitude and longitude dimensions`);
+    }
+
+    const chunkIndices = new Array(dims.length).fill(0);
+    const localIndices = new Array(dims.length).fill(0);
+    for (let dimIdx = 0; dimIdx < dims.length; dimIdx++) {
+      const dim = dims[dimIdx];
+      let globalIndex = 0;
+      if (dim === "time") {
+        globalIndex = selection.timeIndex;
+      } else if (
+        dim === this.verticalName ||
+        VERTICAL_NAMES.includes(dim as typeof VERTICAL_NAMES[number])
+      ) {
+        globalIndex = selection.verticalIndex;
+      } else if (dim === "latitude") {
+        chunkIndices[dimIdx] = selection.latitudeChunkIndex;
+        continue;
+      } else if (dim === "longitude") {
+        chunkIndices[dimIdx] = selection.longitudeChunkIndex;
+        continue;
+      }
+
+      chunkIndices[dimIdx] = Math.floor(globalIndex / chunkShape[dimIdx]);
+      localIndices[dimIdx] = globalIndex % chunkShape[dimIdx];
+    }
+
+    const result = await this.fetchChunkResult(variable, chunkIndices);
+    const latitudeChunkSize = chunkShape[latDim];
+    const longitudeChunkSize = chunkShape[lonDim];
+    const data = new Float32Array(latitudeChunkSize * longitudeChunkSize);
+    data.fill(NaN);
+
+    for (let latitude = 0; latitude < latitudeChunkSize; latitude++) {
+      localIndices[latDim] = latitude;
+      for (let longitude = 0; longitude < longitudeChunkSize; longitude++) {
+        localIndices[lonDim] = longitude;
+        const sourceOffset = this.getFlatOffset(variable, localIndices);
+        if (sourceOffset < result.data.length) {
+          data[latitude * longitudeChunkSize + longitude] = result.data[sourceOffset];
+        }
+      }
+    }
+
+    return { ...result, data };
   }
 
   async fetchChunkResult(
