@@ -41,14 +41,11 @@
         },
         "anchor": "top-right",
         "settings": {
-          "palette": "ice",
+          "palette": "oxygen",
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.1,
-          "colorDomain": [
-            0,
-            5
-          ]
+          "colorDomain": null
         },
         "overlays": [
           "arctic-measurement"
@@ -76,14 +73,11 @@
         },
         "anchor": "top-right",
         "settings": {
-          "palette": "balance",
-          "opacity": 0.9,
+          "palette": "oxygen",
+          "opacity": 1,
           "logScale": false,
           "vibrance": 0.1,
-          "colorDomain": [
-            -3,
-            3
-          ]
+          "colorDomain": null
         },
         "overlays": [
           "enso-regions"
@@ -111,7 +105,7 @@
         },
         "anchor": "top-right",
         "settings": {
-          "palette": "matter",
+          "palette": "oxygen",
           "opacity": 0.92,
           "logScale": false,
           "vibrance": 0.1,
