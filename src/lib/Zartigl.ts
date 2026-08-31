@@ -342,6 +342,7 @@ export class Zartigl {
   private depth: number = 0;
   private settings: Partial<ZartiglSettings>;
   private colorDomainOverridden: boolean;
+  private paletteOverridden: boolean;
   private lastMeta: FieldMeta | null = null;
   private timeMeta: ZarrTimeDimension | null = null;
   private resolvedTimeRange: [number, number] | null = null;
@@ -380,6 +381,7 @@ export class Zartigl {
       this.settings.colorDomain = validateScalarColorDomain(options.settings.colorDomain);
     }
     this.colorDomainOverridden = options.settings?.colorDomain !== undefined;
+    this.paletteOverridden = options.settings?.palette !== undefined;
 
     this.map.on("load", this.onMapLoad);
     this.map.on("styledata", this.onStyleData);
@@ -439,7 +441,9 @@ export class Zartigl {
         this.settings.colorDomain = this.colorDomainOverridden
           ? (overriddenColorDomain ?? null)
           : manifest.style.colorDomain;
-        this.settings.palette = manifest.style.palette;
+        this.settings.palette = this.paletteOverridden
+          ? this.settings.palette
+          : manifest.style.palette;
         this.lastMeta = null;
         this.attachWhenReady();
         return;
@@ -836,6 +840,7 @@ export class Zartigl {
       validatedSettings.particleState != null &&
       validatedSettings.particleState !== this.settings.particleState;
     if (validatedSettings.colorDomain !== undefined) this.colorDomainOverridden = true;
+    if (validatedSettings.palette !== undefined) this.paletteOverridden = true;
     this.settings = { ...this.settings, ...validatedSettings };
     if (!this.layer) return;
 

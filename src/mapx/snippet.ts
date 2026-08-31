@@ -1,5 +1,6 @@
 import type { GeoVideoOptions, TimeRange, ZartiglSettings } from "../lib/Zartigl";
 import type { CatalogEntry } from "../catalog/types";
+import pkg from "../../package.json";
 
 type SnippetSourceType = "zarr" | "geovideo" | "wmts";
 
@@ -165,7 +166,7 @@ ${optionLines.join("\n")}
 
 export function buildStandaloneDemoSnippet(options: StandaloneDemoSnippetOptions): string {
   const moduleBaseUrl =
-    options.moduleBaseUrl ?? "https://cdn.jsdelivr.net/npm/@fxi/zartigl@0.2.1/dist";
+    options.moduleBaseUrl ?? `https://cdn.jsdelivr.net/npm/@fxi/zartigl@${pkg.version}/dist`;
   const source = options.source ?? "auto";
   const settings = effectiveSnippetSettings(
     options.layerKind,

@@ -3,6 +3,7 @@ import {
   buildMapxWidgetSnippet,
   buildStandaloneDemoSnippet,
 } from "./snippet";
+import pkg from "../../package.json";
 
 describe("buildMapxWidgetSnippet", () => {
   it("builds a MapX widget handler using the ARCO extension", () => {
@@ -117,5 +118,14 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet).toContain('"opacity": 0.8');
     expect(snippet).not.toContain("renderMode");
     expect(snippet).toContain("z.setTimeAndDepth(new Date(\"2026-06-04T00:00:00.000Z\"), 10)");
+  });
+
+  it("pins the default module URL to the current package version", () => {
+    const snippet = buildStandaloneDemoSnippet({
+      layerId: "layer",
+      layerKind: "scalar",
+    });
+
+    expect(snippet).toContain(`@fxi/zartigl@${pkg.version}/dist`);
   });
 });

@@ -189,6 +189,78 @@ describe("Zartigl facade", () => {
     vi.unstubAllGlobals();
   });
 
+  it("keeps a caller-requested palette for a GeoVideo layer instead of the manifest default", async () => {
+    const layer = scalarLayer({
+      id: GEO_ENTRY_ID,
+      zarrId: GEO_ZARR_ID,
+      derived: {
+        geoVideos: [{ id: GEO_VIDEO_ID, manifestUrl: "https://example.test/manifest.json" }],
+      },
+    });
+    const manifest = {
+      schemaVersion: 3,
+      id: GEO_VIDEO_ID,
+      type: "geovideo",
+      projection: "equirectangular",
+      bounds: [-180, -90, 180, 90],
+      media: {
+        url: "video.mp4",
+        mimeType: "video/mp4",
+        width: 16,
+        height: 8,
+        fps: 2,
+        durationSeconds: 2,
+        codec: "h264",
+      },
+      encoding: {
+        kind: "scalar-luma",
+        bits: 8,
+        codeMin: 8,
+        codeMax: 247,
+        valueMin: -3,
+        valueMax: 3,
+        transfer: "linear",
+        colorSpace: "bt709",
+        colorRange: "limited",
+      },
+      mask: {
+        kind: "static-validity",
+        url: "mask.png",
+        mimeType: "image/png",
+        width: 16,
+        height: 8,
+        threshold: 0.5,
+      },
+      timeline: {
+        kind: "range",
+        dateStart: "2026-01-01T00:00:00Z",
+        dateEnd: "2026-01-02T00:00:00Z",
+        interpolation: "linear",
+      },
+      provenance: {
+        catalogEntryId: GEO_ENTRY_ID,
+        inputSourceId: GEO_ZARR_ID,
+        identifiers: { dataset: "dataset" },
+        variables: ["temperature"],
+        generatedAt: "2026-01-03T00:00:00Z",
+      },
+      style: { palette: "balance", colorDomain: [-3, 3], unit: "degC" },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
+    const map = new FakeMap();
+    const z = new Zartigl({
+      map: map as never,
+      catalog: catalog(layer),
+      source: "geovideo",
+      settings: { palette: "oxygen" },
+    });
+
+    await z.setLayer(GEO_ENTRY_ID);
+
+    expect(z.getLegend()).toMatchObject({ palette: "oxygen" });
+    vi.unstubAllGlobals();
+  });
+
   it("defaults to the latest advertised time that is not in the future", async () => {
     const now = Date.UTC(2026, 7, 5, 9);
     const values = [now - 6 * 3600_000, now, now + 6 * 3600_000];
