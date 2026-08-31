@@ -95,15 +95,20 @@ body {
   color: #e99;
 }
 
-/* Render mode buttons (inside Tweakpane folder) */
-.render-mode-btns {
+/* Custom DOM blades participate in Tweakpane ordering and folding. */
+.tp-zartigl-domv {
+  width: 100%;
+}
+
+/* Projection buttons (inside Display) */
+.projection-buttons {
   display: flex;
   gap: 4px;
   padding: 6px 8px;
   flex-wrap: wrap;
 }
 
-.render-mode-btn {
+.projection-button {
   flex: 1;
   padding: 4px 6px;
   background: rgba(255, 255, 255, 0.06);
@@ -118,25 +123,25 @@ body {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.render-mode-btn:hover {
+.projection-button:hover {
   background: rgba(255, 255, 255, 0.12);
   color: #ccc;
 }
 
-.render-mode-btn.active {
+.projection-button.active {
   background: rgba(100, 180, 100, 0.2);
   border-color: rgba(100, 180, 100, 0.5);
   color: #6a6;
 }
 
-.render-mode-btn:disabled {
+.projection-button:disabled {
   opacity: 0.25;
   cursor: not-allowed;
 }
 
-/* Palette / Layer selects (inside Tweakpane folder) */
+/* Palette / source selects (inside Tweakpane folders) */
 .palette-select,
-.layer-select {
+.source-select {
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -152,7 +157,7 @@ body {
 }
 
 .palette-select:focus,
-.layer-select:focus {
+.source-select:focus {
   outline: none;
   border-color: rgba(100, 180, 100, 0.5);
 }
@@ -343,7 +348,7 @@ body {
   font: inherit;
 }
 
-/* Legend (inside Appearance folder) */
+/* Legend (inside Display folder) */
 .pane-legend {
   padding: 6px 8px 4px;
 }

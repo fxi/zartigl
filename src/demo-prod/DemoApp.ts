@@ -1,7 +1,7 @@
 import type { Map as MaplibreMap, LngLat } from "maplibre-gl";
 import maplibregl from "maplibre-gl";
 import { Pane } from "tweakpane";
-import type { FolderApi, BindingApi } from "@tweakpane/core";
+import type { FolderApi, BindingApi, BladeApi } from "@tweakpane/core";
 import {
   buildMapxWidgetSnippet,
   buildStandaloneDemoSnippet,
@@ -20,6 +20,7 @@ import type {
 } from "../lib";
 import { formatTime, formatVertical, resolveLocalizedText, searchCatalog } from "../catalog";
 import type { CatalogEntry, Catalog, CatalogSource, CatalogZarrSource } from "../catalog";
+import { addDomBlade, DomBladePlugin } from "./DomBladePlugin";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -341,9 +342,9 @@ export class DemoApp {
 
   // Folder refs
   private dataFolder!: FolderApi;
-  private particlesFolder!: FolderApi;
-  private trailFolder!: FolderApi;
+  private vectorFolder!: FolderApi;
   private dataBindings: { dispose(): void }[] = [];
+  private dataStatusBlade!: BladeApi;
   private timeSliderBinding: BindingApi | null = null;
   private timeLabelBinding: BindingApi | null = null;
   private syncingVideoTimeControls = false;
@@ -356,7 +357,7 @@ export class DemoApp {
   private layerResults: CatalogEntry[] = [];
   private layerActiveIndex = -1;
   private paletteSelectEl!: HTMLSelectElement;
-  private sourceContainer!: HTMLDivElement;
+  private sourceBlade!: BladeApi;
   private sourceSelectEl!: HTMLSelectElement;
   private projButtons: { proj: string; btn: HTMLButtonElement }[] = [];
   private legendBar!: HTMLDivElement;
@@ -385,6 +386,7 @@ export class DemoApp {
     this.params = this.makeDefaultParams();
 
     this.pane = new Pane({ title: "zartigl", expanded: true });
+    this.pane.registerPlugin(DomBladePlugin);
     this.buildStaticUI();
     this.buildFpsCounter();
     this.startFpsCounter();
@@ -496,8 +498,7 @@ export class DemoApp {
     this.rebuildDataUI();
 
     const isVector = layer.kind === "vector";
-    this.particlesFolder.element.style.display = isVector ? "" : "none";
-    this.trailFolder.element.style.display = isVector ? "" : "none";
+    this.vectorFolder.hidden = !isVector;
     this.updateSourceVisibility();
     this.syncColorDomainVisibility();
     this.updateLayerSelect();
@@ -589,10 +590,14 @@ export class DemoApp {
       }).on("change", (event) => this.z?.setPlaybackRate(event.value));
       this.dataBindings.push(autoplay, loop, rate);
     }
+
+    // Status is static, but moving its blade to the end keeps it below controls
+    // that are rebuilt for each layer/source/range change.
+    this.dataFolder.add(this.dataStatusBlade);
   }
 
   private buildAllowedRangeControls(): FolderApi {
-    const folder = this.dataFolder.addFolder({ title: "Allowed range" });
+    const folder = this.dataFolder.addFolder({ title: "Allowed range", expanded: false });
     const full = this.z!.getTimeMeta({ full: true });
     const row = document.createElement("div");
     row.className = "allowed-range";
@@ -648,12 +653,12 @@ export class DemoApp {
     };
     makeInput("start");
     makeInput("end");
-    folder.element.appendChild(row);
     folder.addButton({ title: "Full range" }).on("click", () => {
       this.params.allowedStart = full.min;
       this.params.allowedEnd = full.max;
       this.applyAuthoredRange();
     });
+    addDomBlade(folder, row);
     return folder;
   }
 
@@ -676,16 +681,14 @@ export class DemoApp {
 
   private buildStaticUI(): void {
     this.buildLayerFolder();
-    this.dataFolder = this.pane.addFolder({ title: "Data" });
+    this.dataFolder = this.pane.addFolder({ title: "Data", expanded: true });
     this.dataStatusEl = document.createElement("div");
     this.dataStatusEl.className = "data-status";
     this.dataStatusEl.dataset.phase = "idle";
     this.dataStatusEl.textContent = "Idle";
-    this.dataFolder.element.appendChild(this.dataStatusEl);
-    this.buildSourceFolder();
-    this.buildParticlesFolder();
-    this.buildTrailFolder();
-    this.buildAppearanceFolder();
+    this.dataStatusBlade = addDomBlade(this.dataFolder, this.dataStatusEl);
+    this.buildDisplayFolder();
+    this.buildVectorFolder();
     this.buildExportFolder();
   }
 
@@ -743,7 +746,7 @@ export class DemoApp {
   }
 
   private buildLayerFolder(): void {
-    const folder = this.pane.addFolder({ title: "Layer" });
+    const folder = this.pane.addFolder({ title: "Layer", expanded: true });
     const picker = document.createElement("div");
     picker.className = "catalog-picker";
 
@@ -780,7 +783,7 @@ export class DemoApp {
     details.className = "catalog-details";
 
     picker.append(searchRow, resultHeader, results, details);
-    folder.element.appendChild(picker);
+    addDomBlade(folder, picker);
     this.layerSearchInput = input;
     this.layerResultsEl = results;
     this.layerResultCountEl = resultCount;
@@ -798,6 +801,7 @@ export class DemoApp {
       this.renderLayerPicker();
     });
     this.renderLayerPicker();
+    this.buildSourceControls(folder);
   }
 
   private onLayerSearchKeyDown(event: KeyboardEvent): void {
@@ -913,28 +917,31 @@ export class DemoApp {
     this.layerDetailsEl.appendChild(grid);
   }
 
-  private buildSourceFolder(): void {
-    const folder = this.pane.addFolder({ title: "Source" });
-
-    this.sourceContainer = document.createElement("div");
+  private buildSourceControls(folder: FolderApi): void {
+    const sourceContainer = document.createElement("div");
     this.sourceSelectEl = document.createElement("select");
-    this.sourceSelectEl.className = "layer-select";
-    this.sourceContainer.appendChild(this.sourceSelectEl);
+    this.sourceSelectEl.className = "source-select";
+    sourceContainer.appendChild(this.sourceSelectEl);
 
-    folder.element.appendChild(this.sourceContainer);
+    this.sourceBlade = addDomBlade(folder, sourceContainer);
+    this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
     this.renderSourceSelect();
     this.sourceSelectEl.addEventListener("change", () => {
       const source = this.currentLayer.sources.find((candidate) => candidate.id === this.sourceSelectEl.value);
       if (source) void this.switchSource(source);
     });
+  }
+
+  private buildDisplayFolder(): void {
+    const folder = this.pane.addFolder({ title: "Display", expanded: false });
 
     const projContainer = document.createElement("div");
-    projContainer.className = "render-mode-btns";
+    projContainer.className = "projection-buttons";
 
     for (const proj of ["mercator", "globe"] as const) {
       const btn = document.createElement("button");
       btn.textContent = proj;
-      btn.className = "render-mode-btn" + (proj === this.currentProjection ? " active" : "");
+      btn.className = "projection-button" + (proj === this.currentProjection ? " active" : "");
       btn.addEventListener("click", () => {
         this.currentProjection = proj;
         this.map.setProjection({ type: proj });
@@ -946,41 +953,7 @@ export class DemoApp {
       projContainer.appendChild(btn);
     }
 
-    folder.element.appendChild(projContainer);
-  }
-
-  private buildParticlesFolder(): void {
-    this.particlesFolder = this.pane.addFolder({ title: "Particles" });
-
-    this.particlesFolder.addBinding(this.params, "renderMode", {
-      options: [
-        { text: "Particles", value: "particles" },
-        { text: "Raster", value: "raster" },
-        { text: "Raster + particles", value: "raster+particles" },
-      ],
-      label: "mode",
-    }).on("change", (ev) => this.z?.updateSettings({ renderMode: ev.value }));
-
-    this.particlesFolder.addBinding(this.params, "particleDensity", {
-      min: 0.001, max: 0.15, step: 0.001, label: "density",
-    }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
-
-    this.particlesFolder.addBinding(this.params, "speed", {
-      min: 0.1, max: 8, step: 0.1, label: "speed",
-    }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
-
-  }
-
-  private buildTrailFolder(): void {
-    this.trailFolder = this.pane.addFolder({ title: "Trail" });
-
-    this.trailFolder.addBinding(this.params, "fade", {
-      min: 0, max: 1, step: 0.01, label: "fade",
-    }).on("change", (ev) => this.z?.updateSettings({ fade: ev.value }));
-  }
-
-  private buildAppearanceFolder(): void {
-    const folder = this.pane.addFolder({ title: "Appearance" });
+    addDomBlade(folder, projContainer);
 
     const paletteSelect = document.createElement("select");
     paletteSelect.className = "palette-select";
@@ -997,7 +970,7 @@ export class DemoApp {
       this.syncLegend();
       setTimeout(() => this.syncLegend(), 400);
     });
-    folder.element.appendChild(paletteSelect);
+    addDomBlade(folder, paletteSelect);
     this.paletteSelectEl = paletteSelect;
 
     // Legend DOM (gradient + image, toggled by syncLegend)
@@ -1023,7 +996,7 @@ export class DemoApp {
     this.legendImg.style.display = "none";
 
     legendWrapper.append(this.gradientSection, this.legendImg);
-    folder.element.appendChild(legendWrapper);
+    addDomBlade(folder, legendWrapper);
 
     this.buildColorDomainControls(folder);
 
@@ -1037,6 +1010,31 @@ export class DemoApp {
     folder.addBinding(this.params, "vibrance", {
       min: -1, max: 1, step: 0.01, label: "vibrance",
     }).on("change", (ev) => this.z?.updateSettings({ vibrance: ev.value }));
+  }
+
+  private buildVectorFolder(): void {
+    this.vectorFolder = this.pane.addFolder({ title: "Vector", expanded: false });
+
+    this.vectorFolder.addBinding(this.params, "renderMode", {
+      options: [
+        { text: "Particles", value: "particles" },
+        { text: "Raster", value: "raster" },
+        { text: "Raster + particles", value: "raster+particles" },
+      ],
+      label: "mode",
+    }).on("change", (ev) => this.z?.updateSettings({ renderMode: ev.value }));
+
+    this.vectorFolder.addBinding(this.params, "particleDensity", {
+      min: 0.001, max: 0.15, step: 0.001, label: "density",
+    }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
+
+    this.vectorFolder.addBinding(this.params, "speed", {
+      min: 0.1, max: 8, step: 0.1, label: "speed",
+    }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
+
+    this.vectorFolder.addBinding(this.params, "fade", {
+      min: 0, max: 1, step: 0.01, label: "fade",
+    }).on("change", (ev) => this.z?.updateSettings({ fade: ev.value }));
   }
 
   private buildExportFolder(): void {
@@ -1432,7 +1430,7 @@ export class DemoApp {
   }
 
   private updateSourceVisibility(): void {
-    if (this.sourceContainer) this.sourceContainer.style.display = this.currentLayer.sources.length > 1 ? "" : "none";
+    if (this.sourceBlade) this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
     this.renderSourceSelect();
   }
 
