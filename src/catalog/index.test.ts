@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { catalog, findCatalogEntries, getCatalogEntry, searchCatalog } from "./index";
+import { catalog, findCatalogEntries, getCatalogEntry, pickPreferredSource, searchCatalog } from "./index";
+import type { CatalogEntry, CatalogSource } from "./types";
 
 describe("catalog v2 discovery", () => {
   it("uses UUID-only identity while keeping old names searchable", () => {
@@ -28,5 +29,32 @@ describe("catalog v2 discovery", () => {
     expect(results).toHaveLength(1);
     expect(results[0].aliases).toContain("sea-ice-thickness");
     expect(catalog.schemaVersion).toBe(2);
+  });
+});
+
+describe("pickPreferredSource", () => {
+  const zarr: CatalogSource = { id: "s-zarr", type: "zarr", title: {}, endpoints: { field: "x" }, variables: { kind: "scalar", value: "v" } };
+  const wmts: CatalogSource = { id: "s-wmts", type: "wmts", title: {}, capabilitiesUrl: "x", layer: "l" };
+  const geovideo: CatalogSource = { id: "s-geovideo", type: "geovideo", title: {}, manifestUrl: "x" };
+
+  function scalarEntry(sources: CatalogSource[]): CatalogEntry {
+    return { id: "e", title: {}, category: "c", kind: "scalar", sources, defaults: { sourceId: sources[0].id } };
+  }
+
+  it("prefers geovideo over wmts and zarr for scalar entries", () => {
+    expect(pickPreferredSource(scalarEntry([zarr, wmts, geovideo])).id).toBe("s-geovideo");
+  });
+
+  it("prefers wmts over zarr when geovideo is unavailable", () => {
+    expect(pickPreferredSource(scalarEntry([zarr, wmts])).id).toBe("s-wmts");
+  });
+
+  it("falls back to zarr when it is the only source", () => {
+    expect(pickPreferredSource(scalarEntry([zarr])).id).toBe("s-zarr");
+  });
+
+  it("always resolves vector entries to zarr", () => {
+    const entry: CatalogEntry = { id: "e", title: {}, category: "c", kind: "vector", sources: [wmts, zarr], defaults: { sourceId: wmts.id } };
+    expect(pickPreferredSource(entry).id).toBe("s-zarr");
   });
 });

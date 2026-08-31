@@ -18,7 +18,7 @@ import type {
   ZartiglStatus,
   TimeGranularity,
 } from "../lib";
-import { formatTime, formatVertical, resolveLocalizedText } from "../catalog";
+import { formatTime, formatVertical, pickPreferredSource, resolveLocalizedText } from "../catalog";
 import type { CatalogEntry, Catalog, CatalogSource, CatalogZarrSource } from "../catalog";
 import { addCatalogPickerBlade } from "./CatalogPicker";
 import type { CatalogPicker } from "./CatalogPicker";
@@ -337,7 +337,7 @@ export class DemoApp {
   private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
   private currentSourceId = "";
   private readonly locale = navigator.language || "en";
-  private currentProjection: "mercator" | "globe" = "mercator";
+  private currentProjection: "mercator" | "globe" = "globe";
   private activePopup: maplibregl.Popup | null = null;
   private switchSeq = 0;
   private pointQuerySeq = 0;
@@ -379,7 +379,7 @@ export class DemoApp {
   constructor(private readonly map: MaplibreMap, private readonly cat: Catalog) {
     const hash = this.loadHashState();
     this.currentLayer = cat.layers.find((entry) => entry.id === hash?.d) ?? cat.layers[0];
-    this.currentSourceId = this.currentLayer.defaults.sourceId;
+    this.currentSourceId = pickPreferredSource(this.currentLayer).id;
     this.params = this.makeDefaultParams();
 
     this.pane = new Pane({ title: "zartigl", expanded: true });
@@ -387,6 +387,7 @@ export class DemoApp {
     this.buildStaticUI();
     this.buildFpsCounter();
     this.startFpsCounter();
+    this.map.setProjection({ type: this.currentProjection });
     this.applyHashCamera(hash);
 
     void this.switchLayer(this.currentLayer, hash);
@@ -405,8 +406,7 @@ export class DemoApp {
 
     const requestedSource = layer.sources.find((source) => source.id === hashState?.s)
       ?? layer.sources.find((source) => source.id === this.currentSourceId)
-      ?? layer.sources.find((source) => source.id === layer.defaults.sourceId)
-      ?? layer.sources[0];
+      ?? pickPreferredSource(layer);
     this.currentSourceId = requestedSource.id;
     this.currentBackend = requestedSource.type;
 
@@ -770,7 +770,7 @@ export class DemoApp {
   }
 
   private buildDisplayFolder(): void {
-    const folder = this.pane.addFolder({ title: "Display", expanded: false });
+    const folder = this.pane.addFolder({ title: "Display", expanded: true });
 
     const projContainer = document.createElement("div");
     projContainer.className = "projection-buttons";
@@ -1095,7 +1095,7 @@ export class DemoApp {
       if (depthAvailable) void run("depth");
     });
 
-    await run(depthAvailable ? "depth" : "time");
+    await run("time");
   }
 
   // ── Export ──────────────────────────────────────────────────────────

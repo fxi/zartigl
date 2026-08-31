@@ -26,6 +26,19 @@ export function requireCatalogEntry(id: string, data: Catalog = catalog): Catalo
   return entry;
 }
 
+const SCALAR_SOURCE_PRIORITY: CatalogSource["type"][] = ["geovideo", "wmts", "zarr"];
+
+export function pickPreferredSource(entry: CatalogEntry): CatalogSource {
+  if (entry.kind === "vector") {
+    return entry.sources.find((source) => source.type === "zarr") ?? entry.sources[0];
+  }
+  for (const type of SCALAR_SOURCE_PRIORITY) {
+    const match = entry.sources.find((source) => source.type === type);
+    if (match) return match;
+  }
+  return entry.sources[0];
+}
+
 function sourceVariables(source: CatalogSource): string[] {
   if (source.type !== "zarr") return [];
   if (source.variables.kind === "scalar") return [source.variables.value];

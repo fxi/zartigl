@@ -1,6 +1,6 @@
 import type { Map as MaplibreMap } from "maplibre-gl";
 import type { Catalog, CatalogEntry, CatalogSource, CatalogSourcePreference, CatalogWmtsSource, CatalogZarrSource } from "../catalog/types";
-import { resolveLocalizedText } from "../catalog";
+import { pickPreferredSource, resolveLocalizedText } from "../catalog";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
 import { CatalogRenderLayer, buildWmtsLegendUrl } from "./CatalogRenderLayer";
 import type { CatalogRenderLayerDebugInfo } from "./CatalogRenderLayer";
@@ -1019,7 +1019,7 @@ export class Zartigl {
 
   private resolveSource(entry: CatalogEntry, preference: CatalogSourcePreference): CatalogSource {
     const selected = preference === "auto"
-      ? entry.sources.find((source) => source.id === entry.defaults.sourceId)
+      ? pickPreferredSource(entry)
       : entry.sources.find((source) => source.id === preference) ?? entry.sources.find((source) => source.type === preference);
     if (!selected) throw new Error(`Catalog entry ${entry.id} does not provide source: ${preference}`);
     if (entry.kind === "vector" && selected.type !== "zarr") {
