@@ -6,7 +6,6 @@
   shaders, particle simulation, and the `Zartigl` facade.
 - `src/catalog/` contains the built-in catalog JSON and TypeScript exports.
 - `src/demo-prod/` is the full interactive demo app.
-- `src/demo-minimal/` is the smaller public API demo.
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
   helper scripts.

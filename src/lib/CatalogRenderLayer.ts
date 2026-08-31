@@ -8,12 +8,12 @@ import type { ScalarLayerDebugInfo } from "./ScalarLayer";
 import { VectorLayer } from "./VectorLayer";
 import type { VectorLayerDebugInfo } from "./VectorLayer";
 import type {
-  ArcoLayerBackend,
-  ArcoLayerOptions,
+  CatalogRenderLayerBackend,
+  CatalogRenderLayerOptions,
   FieldMeta,
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
-import type { CatalogLayer } from "../catalog/types";
+import type { CatalogEntry, CatalogWmtsSource, CatalogZarrSource } from "../catalog/types";
 import type { RenderMode } from "./ParticleSimulation";
 import type { ZartiglStatus } from "./load-status";
 import { GeoVideoLayer } from "./GeoVideoLayer";
@@ -30,13 +30,13 @@ type LayerEventMap = {
   playbackChange: (playing: boolean) => void;
 };
 
-export type ArcoLayerDebugInfo = {
+export type CatalogRenderLayerDebugInfo = {
   id: string;
-  backend: ArcoLayerBackend;
+  backend: CatalogRenderLayerBackend;
   catalogLayer: {
     id: string;
-    label: string;
-    kind: CatalogLayer["kind"];
+    title: string;
+    kind: CatalogEntry["kind"];
   };
   time: string | number;
   depth: number;
@@ -54,6 +54,34 @@ function encodeParam(value: string | number): string {
 
 function wmtsElevation(depth: number, verticalLabel?: string): number {
   return verticalLabel === "depth" ? -Math.abs(depth) : depth;
+}
+
+export function resolveWmtsTileTemplate(options: {
+  template: string;
+  tileMatrixSet?: string;
+  style?: string;
+  time?: string | number;
+  depth?: number;
+  verticalLabel?: string;
+}): string | undefined {
+  let result = options.template
+    .replace(/\{TileMatrix\}/gi, "{z}")
+    .replace(/\{TileRow\}/gi, "{y}")
+    .replace(/\{TileCol\}/gi, "{x}");
+  if (options.tileMatrixSet != null) result = result.replace(/\{TileMatrixSet\}/gi, encodeParam(options.tileMatrixSet));
+  if (options.style != null) result = result.replace(/\{Style\}/gi, encodeParam(options.style));
+  if (options.time != null) {
+    result = result.replace(/\{time\}/gi, encodeParam(toIsoTime(options.time)));
+  }
+  if (options.depth != null) {
+    result = result.replace(
+      /\{elevation\}/gi,
+      encodeParam(wmtsElevation(options.depth, options.verticalLabel)),
+    );
+  }
+  return [...result.matchAll(/\{([^{}]+)\}/g)].some((match) => !/^(?:z|y|x)$/i.test(match[1]))
+    ? undefined
+    : result;
 }
 
 export function buildWmtsTileUrl(options: {
@@ -106,39 +134,36 @@ export function buildWmtsLegendUrl(options: {
   return `${options.baseUrl}?${params.map(([key, value]) => `${key}=${encodeParam(value)}`).join("&")}`;
 }
 
-export function selectArcoLayerBackend(options: ArcoLayerOptions): ArcoLayerBackend {
-  if (options.layer.kind === "vector") return "vector";
-  if (options.backend === "geovideo" && options.layer.derived?.geoVideos?.length) {
-    return "scalar-geovideo";
-  }
-  if (options.backend === "wmts" && options.layer.stores.wmts) return "scalar-wmts";
-  return "scalar-zarr";
+export function selectCatalogRenderLayerBackend(options: CatalogRenderLayerOptions): CatalogRenderLayerBackend {
+  if (options.sourceConfig.type === "wmts") return "scalar-wmts";
+  if (options.sourceConfig.type === "geovideo") return "scalar-geovideo";
+  return options.entry.kind === "vector" ? "vector-zarr" : "scalar-zarr";
 }
 
-function scalarLayerVariable(catalogLayer: CatalogLayer): string {
-  return catalogLayer.variables.kind === "scalar" ? catalogLayer.variables.value : "scalar";
+function scalarLayerVariable(source: CatalogZarrSource): string {
+  return source.variables.kind === "scalar" ? source.variables.value : "scalar";
 }
 
-function vectorLayerU(catalogLayer: CatalogLayer): string {
-  return catalogLayer.variables.kind === "vector" ? (catalogLayer.variables.u ?? "uo") : "uo";
+function vectorLayerU(source: CatalogZarrSource): string {
+  return source.variables.kind === "vector" ? (source.variables.u ?? "uo") : "uo";
 }
 
-function vectorLayerV(catalogLayer: CatalogLayer): string {
-  return catalogLayer.variables.kind === "vector" ? (catalogLayer.variables.v ?? "vo") : "vo";
+function vectorLayerV(source: CatalogZarrSource): string {
+  return source.variables.kind === "vector" ? (source.variables.v ?? "vo") : "vo";
 }
 
-function vectorLayerDerivation(catalogLayer: CatalogLayer) {
-  return catalogLayer.variables.kind === "vector" ? catalogLayer.variables.derivation : undefined;
+function vectorLayerDerivation(source: CatalogZarrSource) {
+  return source.variables.kind === "vector" ? source.variables.derivation : undefined;
 }
 
-export class ArcoLayer implements CustomLayerInterface {
+export class CatalogRenderLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
   readonly renderingMode = "3d" as const;
   readonly metadata?: Record<string, unknown>;
 
-  private readonly options: ArcoLayerOptions;
-  private readonly backend: ArcoLayerBackend;
+  private readonly options: CatalogRenderLayerOptions;
+  private readonly backend: CatalogRenderLayerBackend;
   private delegate: ScalarLayer | VectorLayer | GeoVideoLayer | null = null;
   private map: MaplibreMap | null = null;
   private rasterSourceId: string;
@@ -149,35 +174,35 @@ export class ArcoLayer implements CustomLayerInterface {
   private suspended = false;
   private listeners: Map<string, Set<Function>> = new Map();
 
-  constructor(options: ArcoLayerOptions) {
+  constructor(options: CatalogRenderLayerOptions) {
     this.options = options;
     this.id = options.id;
     this.metadata = options.metadata ? { ...options.metadata } : undefined;
-    this.backend = selectArcoLayerBackend(options);
+    this.backend = selectCatalogRenderLayerBackend(options);
     this.rasterSourceId = `${options.id}-wmts-source`;
     this.rasterLayerId = `${options.id}-wmts`;
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
     this.opacity = options.opacity ?? 1;
 
-    if (this.backend === "vector") {
-      const catalogLayer = options.layer;
+    if (this.backend === "vector-zarr") {
+      const sourceConfig = options.sourceConfig as CatalogZarrSource;
       this.delegate = new VectorLayer({
         ...options,
-        source: catalogLayer.stores.field.url,
+        source: sourceConfig.endpoints.field,
         zarrSource: options.zarrSource,
-        variableU: vectorLayerU(catalogLayer),
-        variableV: vectorLayerV(catalogLayer),
-        vectorDerivation: vectorLayerDerivation(catalogLayer),
+        variableU: vectorLayerU(sourceConfig),
+        variableV: vectorLayerV(sourceConfig),
+        vectorDerivation: vectorLayerDerivation(sourceConfig),
         unit: options.unit ?? "",
       });
     } else if (this.backend === "scalar-zarr") {
-      const catalogLayer = options.layer;
+      const sourceConfig = options.sourceConfig as CatalogZarrSource;
       this.delegate = new ScalarLayer({
         id: options.id,
-        source: catalogLayer.stores.field.url,
+        source: sourceConfig.endpoints.field,
         zarrSource: options.zarrSource,
-        variable: scalarLayerVariable(catalogLayer),
+        variable: scalarLayerVariable(sourceConfig),
         time: options.time,
         depth: options.depth,
         colorRamp: options.colorRamp,
@@ -190,11 +215,10 @@ export class ArcoLayer implements CustomLayerInterface {
         unit: options.unit ?? "",
       });
     } else if (this.backend === "scalar-geovideo") {
-      const render = options.layer.derived?.geoVideos?.[0];
-      if (!render) throw new Error(`Catalog layer does not provide GeoVideo: ${options.layer.id}`);
+      if (options.sourceConfig.type !== "geovideo") throw new Error("Invalid GeoVideo source");
       this.delegate = new GeoVideoLayer({
         id: options.id,
-        manifest: options.geoVideoManifest ?? render.manifestUrl,
+        manifest: options.geoVideoManifest ?? options.sourceConfig.manifestUrl,
         autoplay: options.geoVideoAutoplay,
         loop: options.geoVideoLoop,
         playbackRate: options.geoVideoPlaybackRate,
@@ -209,18 +233,18 @@ export class ArcoLayer implements CustomLayerInterface {
     }
   }
 
-  getBackend(): ArcoLayerBackend {
+  getBackend(): CatalogRenderLayerBackend {
     return this.backend;
   }
 
-  getDebugInfo(): ArcoLayerDebugInfo {
+  getDebugInfo(): CatalogRenderLayerDebugInfo {
     return {
       id: this.id,
       backend: this.backend,
       catalogLayer: {
-        id: this.options.layer.id,
-        label: this.options.layer.label,
-        kind: this.options.layer.kind,
+        id: this.options.entry.id,
+        title: this.options.entry.title.en ?? Object.values(this.options.entry.title)[0] ?? "",
+        kind: this.options.entry.kind,
       },
       time: this.time,
       depth: this.depth,
@@ -409,21 +433,40 @@ export class ArcoLayer implements CustomLayerInterface {
   }
 
   private addOrUpdateWmts(): void {
-    if (!this.map || !this.options.layer.stores.wmts) return;
+    if (!this.map || this.options.sourceConfig.type !== "wmts") return;
     this.removeWmts();
-    const wmts = this.options.layer.stores.wmts;
+    const wmts = this.options.sourceConfig as CatalogWmtsSource;
+    const tiles = wmts.tileUrlTemplate
+      ? [resolveWmtsTileTemplate({
+          template: wmts.tileUrlTemplate,
+          tileMatrixSet: wmts.tileMatrixSet,
+          style: wmts.style,
+          time: this.time,
+          depth: this.depth,
+          verticalLabel: this.options.verticalLabel,
+        }) ?? buildWmtsTileUrl({
+          baseUrl: wmts.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
+          layer: wmts.layer,
+          tileMatrixSet: wmts.tileMatrixSet ?? "EPSG:3857",
+          format: wmts.format ?? "image/png",
+          style: wmts.style,
+          time: this.time,
+          depth: this.depth,
+          verticalLabel: this.options.verticalLabel,
+        })]
+      : [buildWmtsTileUrl({
+          baseUrl: wmts.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
+          layer: wmts.layer,
+          tileMatrixSet: wmts.tileMatrixSet ?? "EPSG:3857",
+          format: wmts.format ?? "image/png",
+          style: wmts.style,
+          time: this.time,
+          depth: this.depth,
+          verticalLabel: this.options.verticalLabel,
+        })];
     this.map.addSource(this.rasterSourceId, {
       type: "raster",
-      tiles: [buildWmtsTileUrl({
-        baseUrl: wmts.base_url,
-        layer: wmts.layer,
-        tileMatrixSet: wmts.tileMatrixSet,
-        format: wmts.format,
-        style: wmts.style,
-        time: this.time,
-        depth: this.depth,
-        verticalLabel: this.options.verticalLabel,
-      })],
+      tiles,
       tileSize: 256,
     });
     const rasterLayer = {

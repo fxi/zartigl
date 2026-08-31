@@ -5,6 +5,11 @@ plus a spatial/temporal JSON manifest. GeoVideo stores quantized values in H.264
 luminance and keeps a static validity mask in a separate lossless PNG. The
 browser applies palette and scalar styling in WebGL.
 
+Published manifests use GeoVideo schema version 3. Their provenance records the
+catalog entry UUID, the input source UUID, provider/native identifiers, source
+variable IDs, and generation timestamp. Catalog aliases and translated labels
+are intentionally absent from artifact identity.
+
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json

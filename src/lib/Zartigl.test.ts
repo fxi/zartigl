@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ArcoLayer } from "./ArcoLayer";
+import { CatalogRenderLayer } from "./CatalogRenderLayer";
 import { Zartigl } from "./Zartigl";
 import { ZarrSource } from "./ZarrSource";
-import type { Catalog, CatalogLayer } from "../catalog/types";
+import type { Catalog, CatalogEntry } from "../catalog/types";
+
+const GEO_ENTRY_ID = "5e94f1b2-1342-4a1f-936e-09170d7d4db8";
+const GEO_ZARR_ID = "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0";
+const GEO_VIDEO_ID = "e260c26f-8374-4c65-a076-5cd181ed5091";
 
 class FakeMap {
   ready = true;
@@ -54,54 +58,29 @@ class FakeMap {
   }
 }
 
-function scalarLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
-  return {
-    id: "scalar",
-    label: "Scalar",
-    category: "Test",
-    kind: "scalar",
-    dataset: { id: "dataset" },
-    stores: {
-      field: {
-        url: "https://example.test/field.zarr",
-      },
-      pointSeries: {
-        url: "https://example.test/points.zarr",
-      },
-      wmts: {
-        capabilities_url: "https://example.test/wmts?service=WMTS&request=GetCapabilities",
-        base_url: "https://example.test/wmts",
-        layer: "PRODUCT/DATASET/scalar",
-        tileMatrixSet: "EPSG:3857",
-        format: "image/png",
-      },
-    },
-    variables: {
-      kind: "scalar",
-      value: "temperature",
-    },
-    defaults: {},
-    ...extra,
-  } as CatalogLayer;
+function scalarLayer(extra: Record<string, any> = {}): CatalogEntry {
+  const zarr = { id: extra.zarrId ?? "zarr", type: "zarr" as const, title: { en: "Zarr" }, endpoints: {
+    field: extra.stores?.field?.url ?? "https://example.test/field.zarr",
+    pointSeries: extra.stores?.pointSeries?.url ?? "https://example.test/points.zarr",
+  }, variables: extra.variables ?? { kind: "scalar" as const, value: "temperature" } };
+  const wmts = { id: "wmts", type: "wmts" as const, title: { en: "WMTS" }, capabilitiesUrl: "https://example.test/wmts?service=WMTS&request=GetCapabilities", baseUrl: "https://example.test/wmts", layer: "PRODUCT/DATASET/scalar", tileMatrixSet: "EPSG:3857", format: "image/png" };
+  const videos = (extra.derived?.geoVideos ?? []).map((video: { id?: string; manifestUrl: string }, index: number) => ({ id: video.id ?? `video-${index}`, type: "geovideo" as const, title: { en: "Video" }, manifestUrl: video.manifestUrl }));
+  const requestedDefault = extra.defaults?.sourceId ?? zarr.id;
+  const defaultOverrides = extra.defaults ?? {};
+  return { id: extra.id ?? "scalar", title: { en: extra.label ?? "Scalar" }, category: "test", kind: "scalar",
+    sources: [zarr, ...(extra.stores?.wmts === undefined && extra.stores ? [] : [wmts]), ...videos],
+    defaults: { sourceId: requestedDefault, querySourceId: zarr.id, ...defaultOverrides } };
 }
 
-function vectorLayer(extra: Partial<CatalogLayer> = {}): CatalogLayer {
-  return {
-    id: "vector",
-    label: "Vector",
-    category: "Test",
-    kind: "vector",
-    dataset: { id: "dataset" },
-    stores: { field: { url: "https://example.test/vector.zarr" } },
-    variables: { kind: "vector", u: "u", v: "v" },
-    defaults: {},
-    ...extra,
-  } as CatalogLayer;
+function vectorLayer(extra: Record<string, any> = {}): CatalogEntry {
+  const source = { id: "vector-zarr", type: "zarr" as const, title: { en: "Zarr" }, endpoints: { field: "https://example.test/vector.zarr" }, variables: extra.variables ?? { kind: "vector" as const, u: "u", v: "v" } };
+  return { id: extra.id ?? "vector", title: { en: "Vector" }, category: "test", kind: "vector", sources: [source], defaults: { sourceId: source.id, ...(extra.defaults ?? {}) } };
 }
 
-function catalog(layer: CatalogLayer = scalarLayer()): Catalog {
+function catalog(layer: CatalogEntry = scalarLayer()): Catalog {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    defaultLocale: "en",
     layers: [layer],
   };
 }
@@ -132,13 +111,15 @@ beforeEach(() => {
 describe("Zartigl facade", () => {
   it("loads an explicit GeoVideo backend without initializing the field Zarr store", async () => {
     const layer = scalarLayer({
+      id: GEO_ENTRY_ID,
+      zarrId: GEO_ZARR_ID,
       derived: {
-        geoVideos: [{ id: "preview", manifestUrl: "https://example.test/manifest.json" }],
+        geoVideos: [{ id: GEO_VIDEO_ID, manifestUrl: "https://example.test/manifest.json" }],
       },
     });
     const manifest = {
-      schemaVersion: 2,
-      id: "preview",
+      schemaVersion: 3,
+      id: GEO_VIDEO_ID,
       type: "geovideo",
       projection: "equirectangular",
       bounds: [-180, -90, 180, 90],
@@ -177,9 +158,10 @@ describe("Zartigl facade", () => {
         interpolation: "linear",
       },
       provenance: {
-        layerId: "scalar",
-        datasetId: "dataset",
-        variable: "temperature",
+        catalogEntryId: GEO_ENTRY_ID,
+        inputSourceId: GEO_ZARR_ID,
+        identifiers: { dataset: "dataset" },
+        variables: ["temperature"],
         generatedAt: "2026-01-03T00:00:00Z",
       },
       style: { palette: "balance", colorDomain: [-3, 3], unit: "degC" },
@@ -187,12 +169,12 @@ describe("Zartigl facade", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
     vi.mocked(ZarrSource.prototype.init).mockClear();
     const map = new FakeMap();
-    const z = new Zartigl({ map: map as never, catalog: catalog(layer), backend: "geovideo" });
+    const z = new Zartigl({ map: map as never, catalog: catalog(layer), source: "geovideo" });
 
-    await z.setLayer("scalar");
+    await z.setLayer(GEO_ENTRY_ID);
 
     expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
-    expect(z.getBackend()).toBe("geovideo");
+    expect(z.getSource()?.type).toBe("geovideo");
     expect(z.supportsDynamicStyle()).toBe(true);
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "degC" });
     z.updateSettings({ palette: "ice", colorDomain: [0, 5] });
@@ -300,7 +282,7 @@ describe("Zartigl facade", () => {
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });
     await z.setLayer("vector");
-    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setRenderMode");
 
     z.updateSettings({ renderMode: "raster+particles" });
@@ -345,7 +327,7 @@ describe("Zartigl facade", () => {
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog(vectorLayer()) });
     await z.setLayer("vector");
-    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setRgba8MaxParticleZoom");
 
     z.updateSettings({ rgba8MaxParticleZoom: 2 });
@@ -377,7 +359,6 @@ describe("Zartigl facade", () => {
     const map = new FakeMap();
     const layer = scalarLayer({
       defaults: {
-        backend: "zarr",
         palette: "balance",
         raster: { colorDomain: [-3, 3] },
       },
@@ -403,7 +384,7 @@ describe("Zartigl facade", () => {
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog(scalarLayer()) });
     await z.setLayer("scalar");
-    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setColorDomain");
 
     z.updateSettings({ colorDomain: [-2, 2] });
@@ -423,10 +404,10 @@ describe("Zartigl facade", () => {
     });
     const z = new Zartigl({
       map: map as never,
-      catalog: { schemaVersion: 1, layers: [first, second] },
+      catalog: { schemaVersion: 2, defaultLocale: "en", layers: [first, second] },
     });
     await z.setLayer("scalar");
-    const renderLayer = map.getLayer("zartigl") as ArcoLayer;
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setColorDomain");
 
     expect(() => z.updateSettings({ colorDomain: [3, -3] })).toThrow(/finite, increasing/);
@@ -460,7 +441,7 @@ describe("Zartigl facade", () => {
     });
     const z = new Zartigl({
       map: map as never,
-      catalog: { schemaVersion: 1, layers: [valid, invalid] },
+      catalog: { schemaVersion: 2, defaultLocale: "en", layers: [valid, invalid] },
     });
     await z.setLayer("scalar");
     const activeLayer = map.getLayer("zartigl");
@@ -479,7 +460,7 @@ describe("Zartigl facade", () => {
     const regular = scalarLayer({ id: "regular", defaults: {} });
     const z = new Zartigl({
       map: map as never,
-      catalog: { schemaVersion: 1, layers: [anomaly, regular] },
+      catalog: { schemaVersion: 2, defaultLocale: "en", layers: [anomaly, regular] },
     });
 
     await z.setLayer("scalar");
@@ -577,8 +558,8 @@ describe("Zartigl facade", () => {
   });
 
   it("forwards suspension to an attached render layer", async () => {
-    const suspend = vi.spyOn(ArcoLayer.prototype, "suspend");
-    const resume = vi.spyOn(ArcoLayer.prototype, "resume");
+    const suspend = vi.spyOn(CatalogRenderLayer.prototype, "suspend");
+    const resume = vi.spyOn(CatalogRenderLayer.prototype, "resume");
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog() });
     await z.setLayer("scalar");
@@ -652,26 +633,32 @@ describe("Zartigl facade", () => {
     expect(map.addLayerCalls).toContainEqual({ id: "MX-layer", before: undefined });
   });
 
-  it("uses scalar WMTS when auto backend is requested and the layer default asks for it", async () => {
+  it("uses scalar WMTS when the entry's default source asks for it", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => `
+      <Capabilities><Contents><Layer><Identifier>PRODUCT/DATASET/scalar</Identifier>
+      <Format>image/png</Format><TileMatrixSetLink><TileMatrixSet>EPSG:3857</TileMatrixSet></TileMatrixSetLink>
+      <Dimension><Identifier>time</Identifier><Value>2026-01-01T00:00:00Z</Value></Dimension>
+      </Layer></Contents></Capabilities>` }));
     const map = new FakeMap();
-    const layer = scalarLayer({ defaults: { backend: "wmts" } });
-    const z = new Zartigl({ map: map as never, catalog: catalog(layer), backend: "auto" });
+    const layer = scalarLayer({ defaults: { sourceId: "wmts" } });
+    const z = new Zartigl({ map: map as never, catalog: catalog(layer), source: "auto" });
 
     await z.setLayer("scalar");
 
     const renderLayer = map.getLayer("zartigl") as { getBackend(): string };
     expect(renderLayer.getBackend()).toBe("scalar-wmts");
-    expect(z.getBackend()).toBe("wmts");
+    expect(z.getSource()?.type).toBe("wmts");
     expect(z.supportsDynamicStyle()).toBe(false);
+    vi.unstubAllGlobals();
   });
 
   it("passes metadata and insertion anchor to WMTS raster sublayers", () => {
     const map = new FakeMap();
     map.addLayer({ id: "mxlayers" });
-    const layer = new ArcoLayer({
+    const layer = new CatalogRenderLayer({
       id: "MX-raster",
-      layer: scalarLayer(),
-      backend: "wmts",
+      entry: scalarLayer(),
+      sourceConfig: scalarLayer().sources.find((source) => source.type === "wmts")!,
       metadata: { idView: "raster-view", type: "arco" },
       before: "mxlayers",
     });
@@ -716,7 +703,7 @@ describe("Zartigl facade", () => {
   });
 
   it("forwards atomic time/depth changes to the active layer", async () => {
-    const spy = vi.spyOn(ArcoLayer.prototype, "setTimeAndDepth");
+    const spy = vi.spyOn(CatalogRenderLayer.prototype, "setTimeAndDepth");
     const map = new FakeMap();
     const z = new Zartigl({ map: map as never, catalog: catalog() });
 
@@ -777,8 +764,8 @@ describe("Zartigl facade", () => {
   });
 
   it("applies, clears, and rolls back dynamic time ranges", async () => {
-    const setRange = vi.spyOn(ArcoLayer.prototype, "setTimeRange");
-    const setTime = vi.spyOn(ArcoLayer.prototype, "setTime");
+    const setRange = vi.spyOn(CatalogRenderLayer.prototype, "setTimeRange");
+    const setTime = vi.spyOn(CatalogRenderLayer.prototype, "setTime");
     const z = new Zartigl({ map: new FakeMap() as never, catalog: catalog() });
     await z.setLayer("scalar");
     z.setTime(8_000);
@@ -807,13 +794,15 @@ describe("Zartigl facade", () => {
 
   it("uses nested GeoVideo defaults and forwards runtime playback changes", async () => {
     const layer = scalarLayer({
+      id: GEO_ENTRY_ID,
+      zarrId: GEO_ZARR_ID,
       derived: {
-        geoVideos: [{ id: "preview", manifestUrl: "https://example.test/manifest.json" }],
+        geoVideos: [{ id: GEO_VIDEO_ID, manifestUrl: "https://example.test/manifest.json" }],
       },
     });
     const manifest = {
-      schemaVersion: 2,
-      id: "preview",
+      schemaVersion: 3,
+      id: GEO_VIDEO_ID,
       type: "geovideo",
       projection: "equirectangular",
       bounds: [-180, -90, 180, 90],
@@ -821,7 +810,7 @@ describe("Zartigl facade", () => {
       encoding: { kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247, valueMin: 0, valueMax: 1, transfer: "linear", colorSpace: "bt709", colorRange: "limited" },
       mask: { kind: "static-validity", url: "mask.png", mimeType: "image/png", width: 16, height: 8, threshold: 0.5 },
       timeline: { kind: "snapshot-loop", date: "2026-01-01T00:00:00Z" },
-      provenance: { layerId: "scalar", datasetId: "dataset", variable: "temperature", generatedAt: "2026-01-01T00:00:00Z" },
+      provenance: { catalogEntryId: GEO_ENTRY_ID, inputSourceId: GEO_ZARR_ID, variables: ["temperature"], generatedAt: "2026-01-01T00:00:00Z" },
       style: { palette: "balance", colorDomain: [0, 1], unit: "K" },
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
@@ -829,10 +818,10 @@ describe("Zartigl facade", () => {
     const z = new Zartigl({
       map: map as never,
       catalog: catalog(layer),
-      backend: "geovideo",
+      source: "geovideo",
       geoVideo: { autoplay: false, loop: false, playbackRate: 5 },
     });
-    await z.setLayer("scalar");
+    await z.setLayer(GEO_ENTRY_ID);
 
     const arco = map.getLayer("zartigl") as unknown as {
       options: { geoVideoAutoplay: boolean; geoVideoLoop: boolean; geoVideoPlaybackRate: number };
@@ -846,8 +835,8 @@ describe("Zartigl facade", () => {
       timelineKind: "snapshot-loop",
       size: 1,
     });
-    const loop = vi.spyOn(ArcoLayer.prototype, "setLoop");
-    const rate = vi.spyOn(ArcoLayer.prototype, "setPlaybackRate");
+    const loop = vi.spyOn(CatalogRenderLayer.prototype, "setLoop");
+    const rate = vi.spyOn(CatalogRenderLayer.prototype, "setPlaybackRate");
     z.setLoop(true);
     z.setPlaybackRate(2);
     expect(loop).toHaveBeenCalledWith(true);
@@ -857,16 +846,18 @@ describe("Zartigl facade", () => {
 
   it("retains a time requested while GeoVideo metadata is loading", async () => {
     const layer = scalarLayer({
+      id: GEO_ENTRY_ID,
+      zarrId: GEO_ZARR_ID,
       derived: {
-        geoVideos: [{ id: "preview", manifestUrl: "https://example.test/manifest.json" }],
+        geoVideos: [{ id: GEO_VIDEO_ID, manifestUrl: "https://example.test/manifest.json" }],
       },
     });
     const start = Date.parse("2026-01-01T00:00:00Z");
     const end = Date.parse("2026-03-01T00:00:00Z");
     const requested = start + (end - start) / 2;
     const manifest = {
-      schemaVersion: 2,
-      id: "preview",
+      schemaVersion: 3,
+      id: GEO_VIDEO_ID,
       type: "geovideo",
       projection: "equirectangular",
       bounds: [-180, -90, 180, 90],
@@ -874,7 +865,7 @@ describe("Zartigl facade", () => {
       encoding: { kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247, valueMin: 0, valueMax: 1, transfer: "linear", colorSpace: "bt709", colorRange: "limited" },
       mask: { kind: "static-validity", url: "mask.png", mimeType: "image/png", width: 16, height: 8, threshold: 0.5 },
       timeline: { kind: "range", dateStart: new Date(start).toISOString(), dateEnd: new Date(end).toISOString(), interpolation: "linear" },
-      provenance: { layerId: "scalar", datasetId: "dataset", variable: "temperature", generatedAt: "2026-01-01T00:00:00Z" },
+      provenance: { catalogEntryId: GEO_ENTRY_ID, inputSourceId: GEO_ZARR_ID, variables: ["temperature"], generatedAt: "2026-01-01T00:00:00Z" },
       style: { palette: "balance", colorDomain: [0, 1], unit: "K" },
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
@@ -886,10 +877,10 @@ describe("Zartigl facade", () => {
     const z = new Zartigl({
       map: map as never,
       catalog: catalog(layer),
-      backend: "geovideo",
+      source: "geovideo",
     });
 
-    const loading = z.setLayer("scalar");
+    const loading = z.setLayer(GEO_ENTRY_ID);
     z.setTime(requested);
     await loading;
 
@@ -943,15 +934,14 @@ describe("Zartigl facade", () => {
     const second = {
       ...scalarLayer(),
       id: "second",
-      stores: {
-        ...scalarLayer().stores,
-        field: { url: "https://example.test/second.zarr" },
-      },
-    } as CatalogLayer;
+      sources: scalarLayer().sources.map((source) => source.type === "zarr"
+        ? { ...source, endpoints: { ...source.endpoints, field: "https://example.test/second.zarr" } }
+        : source),
+    } as CatalogEntry;
     const map = new FakeMap();
     const z = new Zartigl({
       map: map as never,
-      catalog: { schemaVersion: 1, layers: [first, second] },
+      catalog: { schemaVersion: 2, defaultLocale: "en", layers: [first, second] },
     });
     const errors: Error[] = [];
     z.on("error", (error) => errors.push(error));

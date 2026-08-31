@@ -97,7 +97,6 @@ export class StoryApp {
       this.renderStatic(initialScene);
     }, async () => {
       const nextMap = new maplibregl.Map({ container: "map", style: mapStyle(), center: initialCamera.center, zoom: initialCamera.zoom, maxZoom: 9, attributionControl: false });
-      window.map = nextMap;
       nextMap.scrollZoom.disable();
       nextMap.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
       await new Promise<void>((resolve, reject) => {
@@ -112,7 +111,7 @@ export class StoryApp {
     map.setProjection({ type: "globe" });
 
     const zartigl = new Zartigl({
-      id: "zartigl-story", map, catalog, backend: "geovideo",
+      id: "zartigl-story", map, catalog, source: "auto",
       geoVideo: { autoplay: true, loop: true, playbackRate: 1 }, visible: false, before: "enso-region-fill",
     });
     this.registry.registerViewType("zartigl-map", () => new ZartiglStoryView(map, zartigl, {

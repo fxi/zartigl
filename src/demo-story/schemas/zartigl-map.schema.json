@@ -6,6 +6,7 @@
   "required": ["camera"],
   "properties": {
     "layerId": { "type": "string" },
+    "sourceId": { "type": "string" },
     "camera": {
       "type": "object",
       "required": ["center", "zoom"],

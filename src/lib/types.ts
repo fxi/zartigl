@@ -44,15 +44,12 @@ export interface VectorLayerOptions {
   unit?: string;
 }
 
-export type ArcoLayerCatalogLayer = CatalogLayer;
+export type CatalogRenderLayerBackend = "vector-zarr" | "scalar-zarr" | "scalar-geovideo" | "scalar-wmts";
 
-export type ArcoLayerBackendPreference = "auto" | "wmts" | "geovideo" | "zarr";
-export type ArcoLayerBackend = "vector" | "scalar-zarr" | "scalar-geovideo" | "scalar-wmts";
-
-export interface ArcoLayerOptions
+export interface CatalogRenderLayerOptions
   extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
-  layer: ArcoLayerCatalogLayer;
-  backend?: ArcoLayerBackendPreference;
+  entry: CatalogEntry;
+  sourceConfig: CatalogSource;
   /** Fixed physical-value domain for scalar colors. Null/omitted uses frame extrema. */
   colorDomain?: [number, number] | null;
   geoVideoManifest?: GeoVideoManifest;
@@ -194,4 +191,4 @@ export interface ZarrVerticalDimension {
   units?: string;
   values: number[];
 }
-import type { CatalogLayer } from "../catalog/types";
+import type { CatalogEntry, CatalogSource } from "../catalog/types";

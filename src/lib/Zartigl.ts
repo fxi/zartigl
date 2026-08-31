@@ -1,11 +1,11 @@
 import type { Map as MaplibreMap } from "maplibre-gl";
-import type { Catalog, CatalogLayer } from "../catalog/types";
+import type { Catalog, CatalogEntry, CatalogSource, CatalogSourcePreference, CatalogWmtsSource, CatalogZarrSource } from "../catalog/types";
+import { resolveLocalizedText } from "../catalog";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
-import { ArcoLayer, buildWmtsLegendUrl } from "./ArcoLayer";
-import type { ArcoLayerDebugInfo } from "./ArcoLayer";
+import { CatalogRenderLayer, buildWmtsLegendUrl } from "./CatalogRenderLayer";
+import type { CatalogRenderLayerDebugInfo } from "./CatalogRenderLayer";
 import { ZarrSource } from "./ZarrSource";
 import type {
-  ArcoLayerBackendPreference,
   FieldMeta,
   ZarrPointSeriesResult,
   ZarrTimeDimension,
@@ -19,6 +19,7 @@ import {
   loadGeoVideoManifest,
   type GeoVideoManifest,
 } from "./geovideo";
+import { loadWmtsCapabilities, type WmtsMetadata } from "./WmtsCapabilities";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
@@ -39,7 +40,7 @@ export interface ZartiglOptions {
   id?: string;
   map: MaplibreMap;
   catalog: Catalog;
-  backend?: "auto" | "zarr" | "geovideo" | "wmts";
+  source?: CatalogSourcePreference;
   timeRange?: TimeRange;
   geoVideo?: GeoVideoOptions;
   visible?: boolean;
@@ -61,23 +62,23 @@ export interface ZartiglDebugInfo {
   destroyed: boolean;
   visible: boolean;
   suspended: boolean;
-  backendPreference: "auto" | "zarr" | "geovideo" | "wmts";
-  activeBackend?: "zarr" | "geovideo" | "wmts";
+  sourcePreference: CatalogSourcePreference;
+  activeSource?: { id: string; type: CatalogSource["type"] };
   projection?: string;
   canvasSize?: { width: number; height: number };
   canvasCssSize?: { width: number; height: number };
   devicePixelRatio?: number;
-  catalogLayer: {
+  catalogEntry: {
     id: string;
-    label: string;
-    kind: CatalogLayer["kind"];
+    title: string;
+    kind: CatalogEntry["kind"];
   } | null;
   time: number;
   depth: number;
   settings: Partial<ZartiglSettings>;
   timeRange?: TimeRange;
   geoVideo: Required<GeoVideoOptions>;
-  layer: ArcoLayerDebugInfo | null;
+  layer: CatalogRenderLayerDebugInfo | null;
 }
 
 export interface TimeMeta {
@@ -134,8 +135,6 @@ export interface QueryDepthProfileOptions {
   time?: string | number;
   maxDepths?: number;
 }
-
-type PublicBackend = "auto" | "zarr" | "geovideo" | "wmts";
 
 type ZartiglEventMap = {
   loading: () => void;
@@ -269,15 +268,15 @@ function applyTimeRange(meta: ZarrTimeDimension, range?: TimeRange): ZarrTimeDim
   };
 }
 
-function variableNames(catalogLayer: CatalogLayer): string[] {
-  if (catalogLayer.kind === "scalar") return [catalogLayer.variables.value];
-  if (catalogLayer.variables.derivation) {
+function variableNames(source: CatalogZarrSource): string[] {
+  if (source.variables.kind === "scalar") return [source.variables.value];
+  if (source.variables.derivation) {
     return [
-      catalogLayer.variables.derivation.direction_variable,
-      catalogLayer.variables.derivation.magnitude_variable,
+      source.variables.derivation.direction_variable,
+      source.variables.derivation.magnitude_variable,
     ];
   }
-  return [catalogLayer.variables.u ?? "uo", catalogLayer.variables.v ?? "vo"];
+  return [source.variables.u ?? "uo", source.variables.v ?? "vo"];
 }
 
 function sortedDepthValues(values: readonly number[]): number[] {
@@ -303,7 +302,7 @@ function nearestValue(values: readonly number[], target: number): number {
   return nearest;
 }
 
-function defaultSettings(catalogLayer?: CatalogLayer): Partial<ZartiglSettings> {
+function defaultSettings(catalogLayer?: CatalogEntry): Partial<ZartiglSettings> {
   const defaults = catalogLayer?.defaults;
   return {
     palette: defaults?.palette ?? "rdylbu",
@@ -326,7 +325,7 @@ export class Zartigl {
   private readonly id: string;
   private readonly map: MaplibreMap;
   private readonly catalog: Catalog;
-  private readonly backendPreference: PublicBackend;
+  private sourcePreference: CatalogSourcePreference;
   private timeRange?: TimeRange;
   private fullTimeMeta: ZarrTimeDimension | null = null;
   private readonly autoplay: boolean;
@@ -335,8 +334,9 @@ export class Zartigl {
   private readonly metadata?: Record<string, unknown>;
   private readonly before?: string;
   private visible: boolean;
-  private catalogLayer: CatalogLayer | null = null;
-  private layer: ArcoLayer | null = null;
+  private catalogLayer: CatalogEntry | null = null;
+  private catalogSource: CatalogSource | null = null;
+  private layer: CatalogRenderLayer | null = null;
   private time: number = 0;
   private pendingTime: number | null = null;
   private depth: number = 0;
@@ -349,6 +349,7 @@ export class Zartigl {
   private variableUnit = "";
   private variableStandardName: string | undefined;
   private geoVideoManifest: GeoVideoManifest | null = null;
+  private wmtsMetadata: WmtsMetadata | null = null;
   private fieldSources = new Map<string, ZarrSource>();
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
@@ -366,7 +367,7 @@ export class Zartigl {
     this.id = options.id ?? "zartigl";
     this.map = options.map;
     this.catalog = options.catalog;
-    this.backendPreference = options.backend ?? "auto";
+    this.sourcePreference = options.source ?? "auto";
     this.timeRange = options.timeRange ? { ...options.timeRange } : undefined;
     this.autoplay = options.geoVideo?.autoplay ?? true;
     this.loop = options.geoVideo?.loop ?? true;
@@ -385,20 +386,22 @@ export class Zartigl {
     this.map.on("idle", this.onMapIdle);
   }
 
-  async setLayer(id: string): Promise<void> {
+  async setLayer(id: string, preference: CatalogSourcePreference = this.sourcePreference): Promise<void> {
     this.assertAlive();
     const catalogLayer = this.catalog.layers.find((candidate) => candidate.id === id);
-    if (!catalogLayer) throw new Error(`Unknown zartigl catalog layer: ${id}`);
+    if (!catalogLayer) throw new Error(`Unknown zartigl catalog entry: ${id}`);
     const layerDefaults = defaultSettings(catalogLayer);
+    const requestedSource = this.resolveSource(catalogLayer, preference);
 
     const generation = ++this.switchGeneration;
-    const requestedBackend = this.backendForLayer(catalogLayer);
-    if (requestedBackend === "geovideo") {
-      const render = catalogLayer.derived?.geoVideos?.[0];
-      if (!render) throw new Error(`Catalog layer does not provide GeoVideo: ${id}`);
+    if (requestedSource.type === "geovideo") {
       this.emit("status", { phase: "metadata" });
       try {
-        const manifest = await loadGeoVideoManifest(render.manifestUrl);
+        const manifest = await loadGeoVideoManifest(requestedSource.manifestUrl);
+        const inputSource = catalogLayer.sources.find((source) => source.id === manifest.provenance.inputSourceId);
+        if (manifest.id !== requestedSource.id || manifest.provenance.catalogEntryId !== catalogLayer.id || inputSource?.type !== "zarr") {
+          throw new Error(`GeoVideo manifest identity does not match catalog entry/source: ${requestedSource.id}`);
+        }
         if (generation !== this.switchGeneration) {
           throw new DOMException("Layer selection was superseded", "AbortError");
         }
@@ -415,14 +418,17 @@ export class Zartigl {
         const filteredTimeMeta = applyTimeRange(geoVideoTimeMeta, this.timeRange);
         this.detach();
         this.catalogLayer = catalogLayer;
+        this.catalogSource = requestedSource;
+        this.sourcePreference = preference;
         this.activeFieldSource = null;
         this.geoVideoManifest = manifest;
+        this.wmtsMetadata = null;
         this.fullTimeMeta = geoVideoTimeMeta;
         this.resolvedTimeRange = resolvedTimeRange;
         this.timeMeta = filteredTimeMeta;
         this.verticalMeta = null;
         this.variableUnit = manifest.style.unit ?? "";
-        this.variableStandardName = manifest.provenance.variable;
+        this.variableStandardName = manifest.provenance.variables[0];
         this.time = this.pendingTime == null
           ? this.timeMeta.values[0]
           : nearestValue(this.timeMeta.values, this.pendingTime);
@@ -447,7 +453,48 @@ export class Zartigl {
       }
     }
 
-    const source = this.getFieldSource(catalogLayer.stores.field.url);
+    if (requestedSource.type === "wmts") {
+      this.emit("status", { phase: "metadata" });
+      try {
+        const metadata = await loadWmtsCapabilities(requestedSource);
+        if (generation !== this.switchGeneration) throw new DOMException("Layer selection was superseded", "AbortError");
+        const fullTimeMeta = metadata.time;
+        const timeMeta = applyTimeRange(fullTimeMeta, this.timeRange);
+        this.detach();
+        this.catalogLayer = catalogLayer;
+        this.catalogSource = {
+          ...requestedSource,
+          baseUrl: metadata.baseUrl,
+          tileUrlTemplate: requestedSource.tileUrlTemplate ?? metadata.tileUrlTemplate,
+          tileMatrixSet: metadata.tileMatrixSet,
+          format: metadata.format,
+          style: requestedSource.style ?? metadata.style,
+        };
+        this.sourcePreference = preference;
+        this.activeFieldSource = null;
+        this.geoVideoManifest = null;
+        this.wmtsMetadata = metadata;
+        this.fullTimeMeta = fullTimeMeta;
+        this.resolvedTimeRange = resolveTimeRange(fullTimeMeta, this.timeRange);
+        this.timeMeta = timeMeta;
+        this.verticalMeta = metadata.vertical;
+        this.variableUnit = "";
+        this.variableStandardName = requestedSource.layer;
+        this.time = this.pendingTime == null ? latestTimeAtOrBefore(timeMeta.values, Date.now()) : nearestValue(timeMeta.values, this.pendingTime);
+        this.pendingTime = null;
+        this.depth = sortedDepthValues(metadata.vertical?.values ?? [0])[0] ?? 0;
+        this.settings = { ...layerDefaults, ...this.settings };
+        this.lastMeta = null;
+        this.attachWhenReady();
+        return;
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        if (err.name !== "AbortError") { this.emit("status", { phase: "error", error: err }); this.emit("error", err); }
+        throw err;
+      }
+    }
+
+    const source = this.getFieldSource(requestedSource.endpoints.field);
     let timeMeta: ZarrTimeDimension;
     let fullTimeMeta: ZarrTimeDimension;
     let resolvedTimeRange: [number, number] | null;
@@ -456,7 +503,7 @@ export class Zartigl {
     this.emit("status", { phase: "metadata" });
     try {
       await source.init();
-      for (const variable of variableNames(catalogLayer)) {
+      for (const variable of variableNames(requestedSource)) {
         if (!source.hasVariable(variable)) {
           throw new Error(`Configured variable not found in Zarr store: ${variable}`);
         }
@@ -466,7 +513,7 @@ export class Zartigl {
       resolvedTimeRange = resolveTimeRange(fullTimeMeta, this.timeRange);
       timeMeta = applyTimeRange(fullTimeMeta, this.timeRange);
       verticalMeta = source.getVerticalDimension() ?? null;
-      const configuredVariables = variableNames(catalogLayer);
+      const configuredVariables = variableNames(requestedSource);
       unitAttrs = source.getVariableAttrs(configuredVariables[configuredVariables.length - 1]);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -480,8 +527,11 @@ export class Zartigl {
 
     this.detach();
     this.catalogLayer = catalogLayer;
+    this.catalogSource = requestedSource;
+    this.sourcePreference = preference;
     this.activeFieldSource = source;
     this.geoVideoManifest = null;
+    this.wmtsMetadata = null;
     this.fullTimeMeta = fullTimeMeta;
     this.resolvedTimeRange = resolvedTimeRange;
     this.timeMeta = timeMeta;
@@ -499,6 +549,16 @@ export class Zartigl {
       : (layerDefaults.colorDomain ?? null);
     this.lastMeta = null;
     this.attachWhenReady();
+  }
+
+  async setSource(preference: CatalogSourcePreference): Promise<void> {
+    this.assertAlive();
+    if (!this.catalogLayer) {
+      this.sourcePreference = preference;
+      return;
+    }
+    this.pendingTime = this.time;
+    await this.setLayer(this.catalogLayer.id, preference);
   }
 
   show(): void {
@@ -674,20 +734,20 @@ export class Zartigl {
   }
 
   getLegend(): Legend {
-    if (!this.catalogLayer) return { type: "empty" };
-    if (this.activeBackendPreference() === "wmts" && this.catalogLayer.stores.wmts) {
-      const wmts = this.catalogLayer.stores.wmts;
+    if (!this.catalogLayer || !this.catalogSource) return { type: "empty" };
+    if (this.catalogSource.type === "wmts") {
+      const wmts = this.catalogSource;
       return {
         type: "image",
         url: buildWmtsLegendUrl({
-          baseUrl: wmts.base_url,
+          baseUrl: wmts.baseUrl ?? this.wmtsMetadata?.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
           layer: wmts.layer,
           style: wmts.style,
         }),
         format: "image/svg+xml",
       };
     }
-    if (this.activeBackendPreference() === "geovideo" && this.geoVideoManifest) {
+    if (this.catalogSource.type === "geovideo" && this.geoVideoManifest) {
       const palette = typeof this.settings.palette === "string" ? this.settings.palette : "custom";
       const colorDomain = this.settings.colorDomain ?? this.geoVideoManifest.style.colorDomain;
       return {
@@ -713,16 +773,20 @@ export class Zartigl {
     return getPalettes();
   }
 
-  getBackend(): "zarr" | "geovideo" | "wmts" | undefined {
-    if (!this.catalogLayer) return undefined;
-    const backend = this.activeBackendPreference();
-    return backend === "wmts" || backend === "geovideo" ? backend : "zarr";
+  getSource(): { id: string; type: CatalogSource["type"] } | undefined {
+    return this.catalogSource ? { id: this.catalogSource.id, type: this.catalogSource.type } : undefined;
+  }
+
+  getCapabilities(): { render: true; time: boolean; depth: boolean; pointQuery: boolean; sourceTypes: CatalogSource["type"][] } {
+    const entry = this.catalogLayer;
+    const querySource = entry ? this.querySource(entry) : undefined;
+    return { render: true, time: !!this.timeMeta?.values.length, depth: !!this.verticalMeta?.values.length,
+      pointQuery: !!querySource, sourceTypes: entry ? [...new Set(entry.sources.map((source) => source.type))] : [] };
   }
 
   /** Whether palette/domain styling is applied to values in the active renderer. */
   supportsDynamicStyle(): boolean {
-    const backend = this.activeBackendPreference();
-    return backend === "zarr" || backend === "geovideo";
+    return this.catalogSource?.type === "zarr" || this.catalogSource?.type === "geovideo";
   }
 
   getDebugInfo(): ZartiglDebugInfo {
@@ -734,15 +798,15 @@ export class Zartigl {
       destroyed: this.destroyed,
       visible: this.visible,
       suspended: this.suspended,
-      backendPreference: this.backendPreference,
-      activeBackend: this.getBackend(),
+      sourcePreference: this.sourcePreference,
+      activeSource: this.getSource(),
       projection: String(this.map.getProjection?.()?.type ?? ""),
       canvasSize: canvas ? { width: canvas.width, height: canvas.height } : undefined,
       canvasCssSize: canvas ? { width: canvas.clientWidth, height: canvas.clientHeight } : undefined,
       devicePixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : undefined,
-      catalogLayer: this.catalogLayer ? {
+      catalogEntry: this.catalogLayer ? {
         id: this.catalogLayer.id,
-        label: this.catalogLayer.label,
+        title: resolveLocalizedText(this.catalogLayer.title, this.catalog.defaultLocale, this.catalog.defaultLocale),
         kind: this.catalogLayer.kind,
       } : null,
       time: this.time,
@@ -775,7 +839,7 @@ export class Zartigl {
     this.settings = { ...this.settings, ...validatedSettings };
     if (!this.layer) return;
 
-    if (paletteChanged && this.activeBackendPreference() === "geovideo") {
+    if (paletteChanged && this.catalogSource?.type === "geovideo") {
       this.layer.setColorRamp(validatedSettings.palette!);
       this.applyMutableSettings(this.layer, validatedSettings);
       return;
@@ -793,17 +857,17 @@ export class Zartigl {
   async queryTimeSeries(options: QueryPointOptions): Promise<ZarrPointSeriesResult> {
     this.assertAlive();
     const catalogLayer = this.requireLayer();
-    const store = catalogLayer.stores.pointSeries;
-    if (!store) throw new Error(`Catalog layer does not provide a point-series store: ${catalogLayer.id}`);
+    const queryConfig = this.querySource(catalogLayer);
+    if (!queryConfig) throw new Error(`Catalog entry does not provide point-query capability: ${catalogLayer.id}`);
 
     const maxPoints = Math.max(1, Math.floor(options.maxPoints ?? 512));
-    const source = this.getQuerySource(store.url);
+    const source = this.getQuerySource(queryConfig.endpoints.pointSeries!);
     await source.init();
     const queryTimes = source.getTimeDimension().values;
     if (!this.timeRange) {
       const stride = Math.max(1, Math.ceil(queryTimes.length / maxPoints));
       return source.sampleTimeSeries({
-        variables: variableNames(catalogLayer),
+        variables: variableNames(queryConfig),
         longitude: options.longitude,
         latitude: options.latitude,
         depth: options.depth ?? this.depth,
@@ -821,7 +885,7 @@ export class Zartigl {
     }
     const stride = Math.max(1, Math.ceil((endIndex - startIndex + 1) / maxPoints));
     return source.sampleTimeSeries({
-      variables: variableNames(catalogLayer),
+      variables: variableNames(queryConfig),
       longitude: options.longitude,
       latitude: options.latitude,
       depth: options.depth ?? this.depth,
@@ -835,12 +899,12 @@ export class Zartigl {
   async queryDepthProfile(options: QueryDepthProfileOptions): Promise<ZarrPointSeriesResult> {
     this.assertAlive();
     const catalogLayer = this.requireLayer();
-    const store = catalogLayer.stores.pointSeries;
-    if (!store) throw new Error(`Catalog layer does not provide a point-series store: ${catalogLayer.id}`);
+    const queryConfig = this.querySource(catalogLayer);
+    if (!queryConfig) throw new Error(`Catalog entry does not provide point-query capability: ${catalogLayer.id}`);
 
-    const source = this.getQuerySource(store.url);
+    const source = this.getQuerySource(queryConfig.endpoints.pointSeries!);
     return source.sampleVerticalProfile({
-      variables: variableNames(catalogLayer),
+      variables: variableNames(queryConfig),
       longitude: options.longitude,
       latitude: options.latitude,
       time: options.time ?? this.time,
@@ -849,39 +913,8 @@ export class Zartigl {
     });
   }
 
-  private activeBackendPreference(): ArcoLayerBackendPreference {
-    const catalogLayer = this.catalogLayer;
-    if (!catalogLayer || catalogLayer.kind === "vector") return "zarr";
-    if (this.backendPreference === "geovideo") {
-      return catalogLayer.derived?.geoVideos?.length ? "geovideo" : "zarr";
-    }
-    if (this.backendPreference === "wmts") return catalogLayer.stores.wmts ? "wmts" : "zarr";
-    if (this.backendPreference === "zarr") return "zarr";
-    if (catalogLayer.defaults?.backend === "geovideo" && catalogLayer.derived?.geoVideos?.length) {
-      return "geovideo";
-    }
-    return catalogLayer.defaults?.backend === "wmts" && catalogLayer.stores.wmts ? "wmts" : "zarr";
-  }
-
-  private backendForLayer(catalogLayer: CatalogLayer): "zarr" | "geovideo" | "wmts" {
-    if (catalogLayer.kind === "vector") return "zarr";
-    if (this.backendPreference === "geovideo") {
-      return catalogLayer.derived?.geoVideos?.length ? "geovideo" : "zarr";
-    }
-    if (this.backendPreference === "wmts") return catalogLayer.stores.wmts ? "wmts" : "zarr";
-    if (this.backendPreference === "zarr") return "zarr";
-    if (catalogLayer.defaults?.backend === "geovideo" && catalogLayer.derived?.geoVideos?.length) {
-      return "geovideo";
-    }
-    if (catalogLayer.defaults?.backend === "wmts" && catalogLayer.stores.wmts) return "wmts";
-    // Auto intentionally preserves the existing scientific-first preference.
-    if (catalogLayer.stores.field) return "zarr";
-    if (catalogLayer.derived?.geoVideos?.length) return "geovideo";
-    return catalogLayer.stores.wmts ? "wmts" : "zarr";
-  }
-
   private attachWhenReady(): void {
-    if (this.destroyed || this.suspended || !this.visible || !this.catalogLayer) return;
+    if (this.destroyed || this.suspended || !this.visible || !this.catalogLayer || !this.catalogSource) return;
     if (!this.isMapReady()) {
       this.attachQueued = true;
       return;
@@ -889,10 +922,10 @@ export class Zartigl {
     if (this.layer && this.map.getLayer(this.layer.id)) return;
     this.attachQueued = false;
 
-    const layer = new ArcoLayer({
+    const layer = new CatalogRenderLayer({
       id: this.id,
-      layer: this.catalogLayer,
-      backend: this.activeBackendPreference(),
+      entry: this.catalogLayer,
+      sourceConfig: this.catalogSource,
       time: this.time,
       depth: this.depth,
       particleDensity: this.settings.particleDensity,
@@ -952,7 +985,7 @@ export class Zartigl {
     this.layer = null;
   }
 
-  private applyMutableSettings(layer: ArcoLayer, settings: Partial<ZartiglSettings>): void {
+  private applyMutableSettings(layer: CatalogRenderLayer, settings: Partial<ZartiglSettings>): void {
     if (settings.particleDensity != null) layer.setParticleDensity(settings.particleDensity);
     if (settings.speed != null) layer.setSpeed(settings.speed);
     if (settings.fade != null) layer.setFade(settings.fade);
@@ -984,6 +1017,25 @@ export class Zartigl {
     return source;
   }
 
+  private resolveSource(entry: CatalogEntry, preference: CatalogSourcePreference): CatalogSource {
+    const selected = preference === "auto"
+      ? entry.sources.find((source) => source.id === entry.defaults.sourceId)
+      : entry.sources.find((source) => source.id === preference) ?? entry.sources.find((source) => source.type === preference);
+    if (!selected) throw new Error(`Catalog entry ${entry.id} does not provide source: ${preference}`);
+    if (entry.kind === "vector" && selected.type !== "zarr") {
+      throw new Error(`Vector catalog entry ${entry.id} requires a Zarr source`);
+    }
+    return selected;
+  }
+
+  private querySource(entry: CatalogEntry): CatalogZarrSource | undefined {
+    const configured = entry.defaults.querySourceId
+      ? entry.sources.find((source) => source.id === entry.defaults.querySourceId)
+      : undefined;
+    if (configured?.type === "zarr" && configured.endpoints.pointSeries) return configured;
+    return entry.sources.find((source): source is CatalogZarrSource => source.type === "zarr" && !!source.endpoints.pointSeries);
+  }
+
   private isMapReady(): boolean {
     const map = this.map as MaplibreMap & {
       isStyleLoaded?: () => boolean;
@@ -997,7 +1049,7 @@ export class Zartigl {
     return this.before;
   }
 
-  private requireLayer(): CatalogLayer {
+  private requireLayer(): CatalogEntry {
     if (!this.catalogLayer) throw new Error("Call setLayer() before querying");
     return this.catalogLayer;
   }

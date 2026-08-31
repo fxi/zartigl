@@ -1,9 +1,10 @@
 export * from "./lib";
 export type {
   Catalog,
-  CatalogLayer,
+  CatalogEntry,
+  CatalogSource,
+  CatalogSourcePreference,
+  CatalogSourceType,
   CatalogVariables,
   CatalogVectorDerivation,
-  CatalogWmts,
-  CatalogGeoVideo,
 } from "./catalog/types";

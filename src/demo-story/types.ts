@@ -25,6 +25,7 @@ export interface EnsoStoryData {
   generatedAt: string;
   source: {
     layerId: string;
+    sourceId: string;
     datasetId: string;
     storeUrl: string;
     variable: string;
@@ -49,6 +50,7 @@ export interface BalticHypoxiaStoryData {
   generatedAt: string;
   source: {
     layerId: string;
+    sourceId: string;
     datasetId: string;
     productId: string;
     storeUrl: string;

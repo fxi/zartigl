@@ -2,14 +2,15 @@
   "schemaVersion": 1,
   "generatedAt": "2026-08-26T12:42:41Z",
   "source": {
-    "layerId": "baltic-bottom-oxygen",
+    "layerId": "89f148bd-dd9d-4428-85ee-21f8af513627",
     "datasetId": "cmems_mod_bal_bgc_my_P1M-m",
     "productId": "BALTICSEA_MULTIYEAR_BGC_003_012",
     "storeUrl": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/timeChunked.zarr",
     "variable": "o2b",
     "unit": "mmol m-3",
     "timeStart": "1993-09-01T00:00:00.000Z",
-    "timeEnd": "2025-09-01T00:00:00.000Z"
+    "timeEnd": "2025-09-01T00:00:00.000Z",
+    "sourceId": "e6412d90-decd-46b2-9794-66f21cbf3893"
   },
   "analysis": {
     "label": "Modelled seafloor area below the operational hypoxia threshold",

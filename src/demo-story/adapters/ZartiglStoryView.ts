@@ -20,6 +20,7 @@ export interface CameraTransitionConfig {
 
 interface ZartiglViewConfig extends Record<string, unknown> {
   layerId?: string;
+  sourceId?: string;
   camera: CameraConfig;
   transition?: CameraTransitionConfig;
   anchor?: StoryAnchor;
@@ -185,7 +186,7 @@ export class ZartiglStoryView implements StoryViewAdapter {
     this.zartigl.show();
     this.callbacks.status("Loading environmental data…");
     if (this.zartigl.getTimeMeta({ full: true }).size) this.zartigl.setTimeRange(null);
-    await this.zartigl.setLayer(config.layerId);
+    await this.zartigl.setLayer(config.layerId, config.sourceId ?? "auto");
     if (generation !== this.generation) return;
     if (config.timeRange) this.zartigl.setTimeRange(config.timeRange);
     if (config.settings) this.zartigl.updateSettings(config.settings);

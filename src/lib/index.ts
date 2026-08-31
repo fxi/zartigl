@@ -10,7 +10,7 @@ export {
   validateGeoVideoManifest,
 } from "./geovideo";
 export { VectorLayer } from "./VectorLayer";
-export { ArcoLayer, buildWmtsLegendUrl, buildWmtsTileUrl, selectArcoLayerBackend } from "./ArcoLayer";
+export { buildWmtsLegendUrl, buildWmtsTileUrl } from "./CatalogRenderLayer";
 export { ZarrSource } from "./ZarrSource";
 export { VelocityField, stitchVelocityChunks } from "./VelocityField";
 export { ParticleSimulation } from "./ParticleSimulation";
@@ -30,10 +30,6 @@ export type {
 export type {
   VectorLayerOptions,
   ScalarLayerOptions,
-  ArcoLayerOptions,
-  ArcoLayerCatalogLayer,
-  ArcoLayerBackend,
-  ArcoLayerBackendPreference,
   VectorDerivation,
   DirectionMagnitudeVectorDerivation,
   VelocityData,
@@ -55,7 +51,6 @@ export type {
   ParticleStateMode,
   RenderMode,
 } from "./ParticleSimulation";
-export type { ArcoLayerDebugInfo } from "./ArcoLayer";
 export type { ScalarLayerDebugInfo } from "./ScalarLayer";
 export type { GeoVideoLayerDebugInfo, GeoVideoLayerOptions } from "./GeoVideoLayer";
 export type {

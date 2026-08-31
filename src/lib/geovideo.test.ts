@@ -9,8 +9,8 @@ import {
 } from "./geovideo";
 
 const manifest: GeoVideoManifest = {
-  schemaVersion: 2,
-  id: "sst-values",
+  schemaVersion: 3,
+  id: "e260c26f-8374-4c65-a076-5cd181ed5091",
   type: "geovideo",
   projection: "equirectangular",
   bounds: [-180, -90, 180, 90],
@@ -33,9 +33,10 @@ const manifest: GeoVideoManifest = {
     interpolation: "linear",
   },
   provenance: {
-    layerId: "sea-surface-temperature-anomaly",
-    datasetId: "dataset",
-    variable: "sea_surface_temperature_anomaly",
+    catalogEntryId: "5e94f1b2-1342-4a1f-936e-09170d7d4db8",
+    inputSourceId: "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0",
+    identifiers: { dataset: "dataset" },
+    variables: ["sea_surface_temperature_anomaly"],
     generatedAt: "2026-07-02T00:00:00Z",
   },
   style: { palette: "balance", colorDomain: [-3, 3], unit: "degrees_C" },
@@ -46,11 +47,31 @@ describe("GeoVideo manifest", () => {
     expect(validateGeoVideoManifest(manifest)).toEqual(manifest);
   });
 
-  it("rejects the removed v1 format", () => {
+  it("rejects removed manifest formats", () => {
     expect(() => validateGeoVideoManifest({
       ...manifest,
       schemaVersion: 1,
     })).toThrow(/version/);
+    expect(() => validateGeoVideoManifest({
+      ...manifest,
+      schemaVersion: 2,
+    })).toThrow(/version/);
+  });
+
+  it("rejects mutable names in identity fields", () => {
+    expect(() => validateGeoVideoManifest({ ...manifest, id: "sst-values" })).toThrow(/provenance/);
+    expect(() => validateGeoVideoManifest({
+      ...manifest,
+      provenance: { ...manifest.provenance, catalogEntryId: "sea-temperature" },
+    })).toThrow(/provenance/);
+  });
+
+  it("rejects uppercase UUID identity fields", () => {
+    expect(() => validateGeoVideoManifest({ ...manifest, id: manifest.id.toUpperCase() })).toThrow(/provenance/);
+    expect(() => validateGeoVideoManifest({
+      ...manifest,
+      provenance: { ...manifest.provenance, catalogEntryId: manifest.provenance.catalogEntryId.toUpperCase() },
+    })).toThrow(/provenance/);
   });
 
   it("rejects scalar-luma masks whose dimensions differ from the media", () => {
@@ -66,7 +87,7 @@ describe("GeoVideo manifest", () => {
     try {
       const loaded = await loadGeoVideoManifest("https://cdn.test/artifact/manifest.json");
       expect(loaded.media.url).toBe("https://cdn.test/artifact/video.mp4");
-      expect(loaded.schemaVersion).toBe(2);
+      expect(loaded.schemaVersion).toBe(3);
       expect(loaded.mask.url).toBe("https://cdn.test/artifact/mask.png");
     } finally {
       globalThis.fetch = previousFetch;

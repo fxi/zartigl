@@ -1,31 +1,51 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "defaultLocale": "en",
   "layers": [
     {
-      "id": "ocean-current-velocity",
-      "label": "Ocean Current Velocity",
-      "description": "Eastward and northward sea water velocity from global 6-hourly physics analysis and forecast.",
-      "category": "Ocean",
+      "id": "61a81ddd-6c8e-4020-a59f-06ef13a90419",
+      "aliases": [
+        "ocean-current-velocity"
+      ],
+      "title": {
+        "en": "Ocean Current Velocity"
+      },
+      "description": {
+        "en": "Eastward and northward sea water velocity from global 6-hourly physics analysis and forecast."
+      },
+      "category": "ocean",
       "kind": "vector",
-      "dataset": {
-        "id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/geoChunked.zarr"
+      "sources": [
+        {
+          "id": "5e677cff-e789-47d6-bdc0-c92af3c7fbe7",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT6H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-009/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "uo",
+            "v": "vo"
+          }
         }
-      },
-      "variables": {
-        "kind": "vector",
-        "u": "uo",
-        "v": "vo"
-      },
+      ],
       "defaults": {
+        "sourceId": "5e677cff-e789-47d6-bdc0-c92af3c7fbe7",
         "palette": "rdylbu",
         "renderMode": "particles",
         "particles": {
@@ -37,34 +57,54 @@
           "opacity": 1,
           "logScale": true,
           "vibrance": 0.39
-        }
+        },
+        "querySourceId": "5e677cff-e789-47d6-bdc0-c92af3c7fbe7"
       }
     },
     {
-      "id": "surface-wind",
-      "label": "Surface Wind",
-      "description": "Global hourly sea surface wind from scatterometer and model",
-      "category": "Atmosphere",
+      "id": "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
+      "aliases": [
+        "surface-wind"
+      ],
+      "title": {
+        "en": "Surface Wind"
+      },
+      "description": {
+        "en": "Global hourly sea surface wind from scatterometer and model"
+      },
+      "category": "atmosphere",
       "kind": "vector",
-      "dataset": {
-        "id": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H",
-        "provider": "copernicus",
-        "productId": "WIND_GLO_PHY_L4_NRT_012_004"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/geoChunked.zarr"
+      "sources": [
+        {
+          "id": "c815028f-1cbf-4592-922a-2e80b3cfae0b",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "WIND_GLO_PHY_L4_NRT_012_004",
+              "dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-050/arco/WIND_GLO_PHY_L4_NRT_012_004/cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "eastward_wind",
+            "v": "northward_wind"
+          }
         }
-      },
-      "variables": {
-        "kind": "vector",
-        "u": "eastward_wind",
-        "v": "northward_wind"
-      },
+      ],
       "defaults": {
+        "sourceId": "c815028f-1cbf-4592-922a-2e80b3cfae0b",
         "palette": "rdylbu",
         "renderMode": "particles",
         "particles": {
@@ -76,74 +116,130 @@
           "opacity": 0.9,
           "logScale": true,
           "vibrance": 1
-        }
+        },
+        "querySourceId": "c815028f-1cbf-4592-922a-2e80b3cfae0b"
       }
     },
     {
-      "id": "phytoplankton-chlorophyll",
-      "label": "Phytoplankton (Chlorophyll-a)",
-      "description": "Daily chlorophyll-a concentration from global biogeochemistry analysis and forecast.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "39296bd8-f93f-4fce-91ab-44faf9d91e90",
+      "aliases": [
+        "phytoplankton-chlorophyll"
+      ],
+      "title": {
+        "en": "Phytoplankton (Chlorophyll-a)"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily chlorophyll-a concentration from global biogeochemistry analysis and forecast."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "418e17e0-0804-459b-a711-238d6db7d5f0",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "chl"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "45adba3a-c538-4507-a25c-9c034fb9a02b",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m_202311/chl",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:algae,logScale"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "chl"
-      },
+      ],
       "defaults": {
+        "sourceId": "418e17e0-0804-459b-a711-238d6db7d5f0",
         "palette": "algae",
         "raster": {
           "opacity": 0.9,
           "logScale": true,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "418e17e0-0804-459b-a711-238d6db7d5f0"
       }
     },
     {
-      "id": "wave-stokes-drift",
-      "label": "Wave Stokes Drift",
-      "description": "Net horizontal wave-driven transport (Stokes drift) from global 3-hourly wave analysis — visualises wave energy propagation direction.",
-      "category": "Ocean",
+      "id": "88f00432-ffad-4ebd-85ac-9f8de1ee5213",
+      "aliases": [
+        "wave-stokes-drift"
+      ],
+      "title": {
+        "en": "Wave Stokes Drift"
+      },
+      "description": {
+        "en": "Net horizontal wave-driven transport (Stokes drift) from global 3-hourly wave analysis — visualises wave energy propagation direction."
+      },
+      "category": "ocean",
       "kind": "vector",
-      "dataset": {
-        "id": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_WAV_001_027"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+      "sources": [
+        {
+          "id": "40d68bf0-4dfc-4356-9604-373d63ba6aa9",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "VSDX",
+            "v": "VSDY"
+          }
         }
-      },
-      "variables": {
-        "kind": "vector",
-        "u": "VSDX",
-        "v": "VSDY"
-      },
+      ],
       "defaults": {
+        "sourceId": "40d68bf0-4dfc-4356-9604-373d63ba6aa9",
         "palette": "rdylbu",
         "renderMode": "particles",
         "particles": {
@@ -155,409 +251,772 @@
           "opacity": 1,
           "logScale": true,
           "vibrance": 1
-        }
+        },
+        "querySourceId": "40d68bf0-4dfc-4356-9604-373d63ba6aa9"
       }
     },
     {
-      "id": "dissolved-inorganic-carbon",
-      "label": "Dissolved Inorganic Carbon",
-      "description": "Daily dissolved inorganic carbon concentration from global biogeochemistry analysis and forecast.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "28599e51-320c-42f8-835a-02ad06f7a131",
+      "aliases": [
+        "dissolved-inorganic-carbon"
+      ],
+      "title": {
+        "en": "Dissolved Inorganic Carbon"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily dissolved inorganic carbon concentration from global biogeochemistry analysis and forecast."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "9844aec5-ecbb-4269-8df1-f751a3c132cd",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "dissic"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "c9c20229-35e1-428d-bef8-e9052d05a5ab",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/dissic",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "dissic"
-      },
+      ],
       "defaults": {
+        "sourceId": "9844aec5-ecbb-4269-8df1-f751a3c132cd",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15
-        }
+        },
+        "querySourceId": "9844aec5-ecbb-4269-8df1-f751a3c132cd"
       }
     },
     {
-      "id": "ocean-ph",
-      "label": "Ocean pH",
-      "description": "Daily sea water pH reported on the total scale from global biogeochemistry analysis and forecast.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "4609f41a-7089-4389-963f-38716335509b",
+      "aliases": [
+        "ocean-ph"
+      ],
+      "title": {
+        "en": "Ocean pH"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily sea water pH reported on the total scale from global biogeochemistry analysis and forecast."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "de3f2056-d7a9-46d8-b709-fda656b69b9b",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "ph"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "c60a3af2-5d56-414e-ae9a-aac06e37bdee",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/ph",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "ph"
-      },
+      ],
       "defaults": {
+        "sourceId": "de3f2056-d7a9-46d8-b709-fda656b69b9b",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.1
-        }
+        },
+        "querySourceId": "de3f2056-d7a9-46d8-b709-fda656b69b9b"
       }
     },
     {
-      "id": "primary-production",
-      "label": "Primary Production",
-      "description": "Daily net primary production of biomass expressed as carbon per unit volume.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "287d265b-6342-4f4a-bd57-aa861f84a269",
+      "aliases": [
+        "primary-production"
+      ],
+      "title": {
+        "en": "Primary Production"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily net primary production of biomass expressed as carbon per unit volume."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "bc133871-5fc9-4df6-8dbd-f5f82f785e0c",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "nppv"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "75e691e6-17ca-459a-89ed-233c659fb507",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/nppv",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "nppv"
-      },
+      ],
       "defaults": {
+        "sourceId": "bc133871-5fc9-4df6-8dbd-f5f82f785e0c",
         "palette": "algae",
         "raster": {
           "opacity": 0.9,
           "logScale": true,
           "vibrance": 0.25
-        }
+        },
+        "querySourceId": "bc133871-5fc9-4df6-8dbd-f5f82f785e0c"
       }
     },
     {
-      "id": "dissolved-oxygen",
-      "label": "Dissolved Oxygen",
-      "description": "Daily dissolved molecular oxygen concentration from global biogeochemistry analysis and forecast.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "b38f7b2c-9ff4-4b3c-96ab-eb4c01e69a45",
+      "aliases": [
+        "dissolved-oxygen"
+      ],
+      "title": {
+        "en": "Dissolved Oxygen"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily dissolved molecular oxygen concentration from global biogeochemistry analysis and forecast."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "45464c62-e3a6-4492-846b-960f19b53bfc",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "o2"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "6cd51f96-0f48-4c86-9f5c-a8164212d7e2",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/o2",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "o2"
-      },
+      ],
       "defaults": {
+        "sourceId": "45464c62-e3a6-4492-846b-960f19b53bfc",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15
-        }
+        },
+        "querySourceId": "45464c62-e3a6-4492-846b-960f19b53bfc"
       }
     },
     {
-      "id": "baltic-bottom-oxygen",
-      "label": "Baltic Bottom Oxygen",
-      "description": "Monthly dissolved oxygen concentration at the Baltic Sea floor from a regional biogeochemical reanalysis.",
-      "category": "Biology",
+      "id": "89f148bd-dd9d-4428-85ee-21f8af513627",
+      "aliases": [
+        "baltic-bottom-oxygen"
+      ],
+      "title": {
+        "en": "Baltic Bottom Oxygen"
+      },
+      "description": {
+        "en": "Monthly dissolved oxygen concentration at the Baltic Sea floor from a regional biogeochemical reanalysis."
+      },
+      "category": "biology",
       "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_bal_bgc_my_P1M-m",
-        "provider": "copernicus",
-        "productId": "BALTICSEA_MULTIYEAR_BGC_003_012"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/geoChunked.zarr"
-        }
-      },
-      "derived": {
-        "geoVideos": [
-          {
-            "id": "baltic-bottom-oxygen-monthly-1993-2025",
-            "label": "Monthly bottom oxygen, Sep 1993–Sep 2025",
-            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/baltic-bottom-oxygen/078b058ff8a5/manifest.json"
+      "sources": [
+        {
+          "id": "e6412d90-decd-46b2-9794-66f21cbf3893",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "BALTICSEA_MULTIYEAR_BGC_003_012",
+              "dataset": "cmems_mod_bal_bgc_my_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-002/arco/BALTICSEA_MULTIYEAR_BGC_003_012/cmems_mod_bal_bgc_my_P1M-m_202303/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "o2b"
           }
-        ]
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "o2b"
-      },
+        },
+        {
+          "id": "f65db382-5a6e-442b-a7e1-f79898487ec9",
+          "type": "geovideo",
+          "title": {
+            "en": "Monthly bottom oxygen, Sep 1993–Sep 2025"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "BALTICSEA_MULTIYEAR_BGC_003_012",
+              "dataset": "cmems_mod_bal_bgc_my_P1M-m"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/5ec77551af95/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1M",
+            "start": "1993-09-01T00:00:00Z",
+            "end": "2025-09-01T00:00:00Z"
+          }
+        }
+      ],
       "defaults": {
+        "sourceId": "e6412d90-decd-46b2-9794-66f21cbf3893",
         "palette": "oxygen",
         "raster": {
           "opacity": 0.92,
           "logScale": false,
           "vibrance": 0.1,
-          "colorDomain": [0, 375]
-        }
+          "colorDomain": [
+            0,
+            375
+          ]
+        },
+        "querySourceId": "e6412d90-decd-46b2-9794-66f21cbf3893"
       }
     },
     {
-      "id": "nitrate",
-      "label": "Nitrate",
-      "description": "Daily nitrate concentration from global biogeochemistry analysis and forecast.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "840609cc-28d2-42f8-afc7-5dfb322e93da",
+      "aliases": [
+        "nitrate"
+      ],
+      "title": {
+        "en": "Nitrate"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily nitrate concentration from global biogeochemistry analysis and forecast."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "1fb56ced-a234-4721-bf6e-060829ba8237",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "no3"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "648a96aa-cb51-4f09-937e-c11f0077669f",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/no3",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "no3"
-      },
+      ],
       "defaults": {
+        "sourceId": "1fb56ced-a234-4721-bf6e-060829ba8237",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": true,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "1fb56ced-a234-4721-bf6e-060829ba8237"
       }
     },
     {
-      "id": "phosphate",
-      "label": "Phosphate",
-      "description": "Daily phosphate concentration from global biogeochemistry analysis and forecast.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "83bfbf02-d5a4-40d6-8265-a16ef2c7a8a4",
+      "aliases": [
+        "phosphate"
+      ],
+      "title": {
+        "en": "Phosphate"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily phosphate concentration from global biogeochemistry analysis and forecast."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "d09d4a02-18aa-467c-9352-d58ecf622d94",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "po4"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "1b36abcc-f8ed-45f8-83ab-736e98c8f2a6",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/po4",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "po4"
-      },
+      ],
       "defaults": {
+        "sourceId": "d09d4a02-18aa-467c-9352-d58ecf622d94",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": true,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "d09d4a02-18aa-467c-9352-d58ecf622d94"
       }
     },
     {
-      "id": "surface-co2",
-      "label": "Surface CO2",
-      "description": "Daily surface partial pressure of carbon dioxide in sea water.",
-      "category": "Biology",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_BGC_001_028"
+      "id": "04ad1cbd-3f21-4e84-845d-cd17930a49a2",
+      "aliases": [
+        "surface-co2"
+      ],
+      "title": {
+        "en": "Surface CO2"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/timeChunked.zarr"
+      "description": {
+        "en": "Daily surface partial pressure of carbon dioxide in sea water."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "5b245710-ce6f-4eee-a771-c80b95b984ab",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "spco2"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-006/arco/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "8b47804d-f4c2-46d7-acf1-de1c83713b10",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/spco2",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "spco2"
-      },
+      ],
       "defaults": {
+        "sourceId": "5b245710-ce6f-4eee-a771-c80b95b984ab",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15
-        }
+        },
+        "querySourceId": "5b245710-ce6f-4eee-a771-c80b95b984ab"
       }
     },
     {
-      "id": "sea-ice-thickness",
-      "label": "Sea Ice Thickness",
-      "description": "Daily sea ice thickness from global physics analysis and forecast.",
-      "category": "Ice",
+      "id": "a7d9835c-0a80-4112-8b43-694e359384ac",
+      "aliases": [
+        "sea-ice-thickness"
+      ],
+      "title": {
+        "en": "Sea Ice Thickness"
+      },
+      "description": {
+        "en": "Daily sea ice thickness from global physics analysis and forecast."
+      },
+      "category": "ice",
       "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
-        }
-      },
-      "derived": {
-        "geoVideos": [
-          {
-            "id": "sea-ice-thickness-arctic-2022-2026-scalar-luma",
-            "label": "Arctic thickness animation (June 2022–August 2026)",
-            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-ice-thickness/145bb354eb87/manifest.json"
+      "sources": [
+        {
+          "id": "3b544800-9d97-4217-a0b6-95dacd56ca1a",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "sithick"
           }
-        ]
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "sithick"
-      },
+        },
+        {
+          "id": "f5b31e02-ff0f-4310-a046-a781bd2b1c38",
+          "type": "geovideo",
+          "title": {
+            "en": "Arctic thickness animation (June 2022–August 2026)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/bae0bf42bb9a/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1D",
+            "start": "2022-06-01T00:00:00Z",
+            "end": "2026-08-27T00:00:00Z"
+          }
+        }
+      ],
       "defaults": {
+        "sourceId": "3b544800-9d97-4217-a0b6-95dacd56ca1a",
         "palette": "ice",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.1
-        }
+        },
+        "querySourceId": "3b544800-9d97-4217-a0b6-95dacd56ca1a"
       }
     },
     {
-      "id": "sea-water-temperature",
-      "label": "Sea Water Temperature",
-      "description": "Daily sea water potential temperature from global physics analysis and forecast.",
-      "category": "Ocean",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+      "id": "3db0120b-17d2-4789-9952-efcc0953ecc4",
+      "aliases": [
+        "sea-water-temperature"
+      ],
+      "title": {
+        "en": "Sea Water Temperature"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
+      "description": {
+        "en": "Daily sea water potential temperature from global physics analysis and forecast."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "e18cff03-d2a3-4a41-bfd8-b4ea62bca2a3",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "thetao"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-012/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "a85fc17b-18a0-44da-9cf8-441c4ef944be",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/thetao",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "thetao"
-      },
+      ],
       "defaults": {
+        "sourceId": "e18cff03-d2a3-4a41-bfd8-b4ea62bca2a3",
         "palette": "thermal",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "e18cff03-d2a3-4a41-bfd8-b4ea62bca2a3"
       }
     },
     {
-      "id": "sea-surface-temperature-anomaly",
-      "label": "Sea Surface Temperature Anomaly",
-      "description": "Daily source-provided sea surface temperature anomaly from global physics analysis and forecast, suitable for visualizing El Niño and La Niña patterns.",
-      "category": "Ocean",
+      "id": "5e94f1b2-1342-4a1f-936e-09170d7d4db8",
+      "aliases": [
+        "sea-surface-temperature-anomaly"
+      ],
+      "title": {
+        "en": "Sea Surface Temperature Anomaly"
+      },
+      "description": {
+        "en": "Daily source-provided sea surface temperature anomaly from global physics analysis and forecast, suitable for visualizing El Niño and La Niña patterns."
+      },
+      "category": "ocean",
       "tags": [
         "el-nino",
         "la-nina",
@@ -565,41 +1024,80 @@
         "anomaly"
       ],
       "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/timeChunked.zarr"
+      "sources": [
+        {
+          "id": "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "sea_surface_temperature_anomaly"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "e3c65141-0376-462a-9490-40f71abc53c3",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/sea_surface_temperature_anomaly",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
-        }
-      },
-      "derived": {
-        "geoVideos": [
-          {
-            "id": "sst-anomaly-six-months-2026-scalar-luma",
-            "label": "Six-month scalar-luma animation (February–August 2026)",
-            "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/sea-surface-temperature-anomaly/5b560a8404a9/manifest.json"
+        },
+        {
+          "id": "e260c26f-8374-4c65-a076-5cd181ed5091",
+          "type": "geovideo",
+          "title": {
+            "en": "Six-month scalar-luma animation (February–August 2026)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/3af85ef846cb/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1D",
+            "start": "2026-02-01T00:00:00Z",
+            "end": "2026-08-01T00:00:00Z"
           }
-        ]
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "sea_surface_temperature_anomaly"
-      },
+        }
+      ],
       "defaults": {
-        "backend": "zarr",
+        "sourceId": "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0",
         "palette": "balance",
         "raster": {
           "opacity": 0.9,
@@ -609,266 +1107,486 @@
             -3,
             3
           ]
-        }
+        },
+        "querySourceId": "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0"
       }
     },
     {
-      "id": "sea-water-salinity",
-      "label": "Sea Water Salinity",
-      "description": "Daily sea water salinity from global physics analysis and forecast.",
-      "category": "Ocean",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+      "id": "95553290-0513-43bd-9806-a5bb060737b7",
+      "aliases": [
+        "sea-water-salinity"
+      ],
+      "title": {
+        "en": "Sea Water Salinity"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
+      "description": {
+        "en": "Daily sea water salinity from global physics analysis and forecast."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "a083f619-aea0-4dc8-965d-503fd33a982a",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "so"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-010/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "7d9e2178-a0c2-4e97-8ad3-7ba60211cc96",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/so",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "so"
-      },
+      ],
       "defaults": {
+        "sourceId": "a083f619-aea0-4dc8-965d-503fd33a982a",
         "palette": "haline",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15
-        }
+        },
+        "querySourceId": "a083f619-aea0-4dc8-965d-503fd33a982a"
       }
     },
     {
-      "id": "upward-sea-water-velocity",
-      "label": "Upward Sea Water Velocity",
-      "description": "Daily upward sea water velocity from global physics analysis and forecast.",
-      "category": "Ocean",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+      "id": "fa853610-4656-4308-a0c3-8a2ac546326f",
+      "aliases": [
+        "upward-sea-water-velocity"
+      ],
+      "title": {
+        "en": "Upward Sea Water Velocity"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
+      "description": {
+        "en": "Daily upward sea water velocity from global physics analysis and forecast."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "62afeaf2-0332-43ad-8441-f2f22f2a7c34",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "wo"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "30e74069-0fa4-48bb-9ec4-2bcacbc3be63",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/wo",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "wo"
-      },
+      ],
       "defaults": {
+        "sourceId": "62afeaf2-0332-43ad-8441-f2f22f2a7c34",
         "palette": "rdylbu",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15
-        }
+        },
+        "querySourceId": "62afeaf2-0332-43ad-8441-f2f22f2a7c34"
       }
     },
     {
-      "id": "mixed-layer-depth",
-      "label": "Mixed Layer Depth",
-      "description": "Daily ocean mixed layer thickness defined by sigma theta.",
-      "category": "Ocean",
+      "id": "ccb8500b-5bc1-41a1-acb3-cbd8cd758b92",
+      "aliases": [
+        "mixed-layer-depth"
+      ],
+      "title": {
+        "en": "Mixed Layer Depth"
+      },
+      "description": {
+        "en": "Daily ocean mixed layer thickness defined by sigma theta."
+      },
+      "category": "ocean",
       "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+      "sources": [
+        {
+          "id": "8e1bba17-69ee-47c1-bac0-89c613eb2f04",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "mlotst"
+          }
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "mlotst"
-      },
+      ],
       "defaults": {
+        "sourceId": "8e1bba17-69ee-47c1-bac0-89c613eb2f04",
         "palette": "deep",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15
-        }
+        },
+        "querySourceId": "8e1bba17-69ee-47c1-bac0-89c613eb2f04"
       }
     },
     {
-      "id": "primary-swell-direction",
-      "label": "Primary Swell Direction",
-      "description": "Primary swell wave direction reported as the direction waves come from.",
-      "category": "Waves",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_WAV_001_027"
+      "id": "614d6903-0402-4201-bccd-090ea9f39ed9",
+      "aliases": [
+        "primary-swell-direction"
+      ],
+      "title": {
+        "en": "Primary Swell Direction"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
+      "description": {
+        "en": "Primary swell wave direction reported as the direction waves come from."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "50716bff-ea48-49b8-bee1-00d34c5cee3d",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VMDR_SW1"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "edbcbff4-f4df-4a6d-8a2d-6db4138fbd68",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/VMDR_SW1",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "VMDR_SW1"
-      },
+      ],
       "defaults": {
+        "sourceId": "50716bff-ea48-49b8-bee1-00d34c5cee3d",
         "palette": "curl",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "50716bff-ea48-49b8-bee1-00d34c5cee3d"
       }
     },
     {
-      "id": "primary-swell-period",
-      "label": "Primary Swell Period",
-      "description": "Mean period of the primary swell wave from spectral moments.",
-      "category": "Waves",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_WAV_001_027"
+      "id": "056b72a3-08a9-4c54-a7e6-f21223182aee",
+      "aliases": [
+        "primary-swell-period"
+      ],
+      "title": {
+        "en": "Primary Swell Period"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
+      "description": {
+        "en": "Mean period of the primary swell wave from spectral moments."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "83c7d209-503f-441a-a162-1f1554e72695",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VTM01_SW1"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "a5eed543-ffac-4c8a-8558-6dad55df352e",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/VTM01_SW1",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "VTM01_SW1"
-      },
+      ],
       "defaults": {
+        "sourceId": "83c7d209-503f-441a-a162-1f1554e72695",
         "palette": "rdylbu",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "83c7d209-503f-441a-a162-1f1554e72695"
       }
     },
     {
-      "id": "primary-swell-height",
-      "label": "Primary Swell Height",
-      "description": "Significant height of the primary swell wave.",
-      "category": "Waves",
-      "kind": "scalar",
-      "dataset": {
-        "id": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_WAV_001_027"
+      "id": "67cc53f8-8810-42d9-adbf-bd28b16227c2",
+      "aliases": [
+        "primary-swell-height"
+      ],
+      "title": {
+        "en": "Primary Swell Height"
       },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
+      "description": {
+        "en": "Significant height of the primary swell wave."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "cc9d3570-8324-4a84-a88e-46096e8365e0",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VHM0_SW1"
+          }
         },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
-        },
-        "wmts": {
-          "capabilities_url": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
-          "base_url": "https://wmts.marine.copernicus.eu/teroWmts",
+        {
+          "id": "5cfdcf0a-2d4d-4ce3-a384-caec2796c05e",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
           "layer": "GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/VHM0_SW1",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
         }
-      },
-      "variables": {
-        "kind": "scalar",
-        "value": "VHM0_SW1"
-      },
+      ],
       "defaults": {
+        "sourceId": "cc9d3570-8324-4a84-a88e-46096e8365e0",
         "palette": "deep",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.2
-        }
+        },
+        "querySourceId": "cc9d3570-8324-4a84-a88e-46096e8365e0"
       }
     },
     {
-      "id": "primary-swell-propagation",
-      "label": "Primary Swell Propagation",
-      "description": "Derived primary swell propagation using significant height as magnitude and from-direction converted to travel direction.",
-      "category": "Waves",
+      "id": "bb38fd23-b0b0-4cd0-b59d-0224be3052f9",
+      "aliases": [
+        "primary-swell-propagation"
+      ],
+      "title": {
+        "en": "Primary Swell Propagation"
+      },
+      "description": {
+        "en": "Derived primary swell propagation using significant height as magnitude and from-direction converted to travel direction."
+      },
+      "category": "waves",
       "kind": "vector",
-      "dataset": {
-        "id": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_WAV_001_027"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+      "sources": [
+        {
+          "id": "1feaa33a-3c1b-4bc5-abae-fdd1f2a59f23",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-015/arco/GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "derivation": {
+              "kind": "direction_magnitude",
+              "direction_variable": "VMDR_SW1",
+              "magnitude_variable": "VHM0_SW1",
+              "direction_convention": "from",
+              "output_direction": "toward"
+            }
+          }
         }
-      },
-      "variables": {
-        "kind": "vector",
-        "derivation": {
-          "kind": "direction_magnitude",
-          "direction_variable": "VMDR_SW1",
-          "magnitude_variable": "VHM0_SW1",
-          "direction_convention": "from",
-          "output_direction": "toward"
-        }
-      },
+      ],
       "defaults": {
+        "sourceId": "1feaa33a-3c1b-4bc5-abae-fdd1f2a59f23",
         "palette": "rdylbu",
         "renderMode": "particles",
         "particles": {
@@ -880,35 +1598,54 @@
           "opacity": 1,
           "logScale": false,
           "vibrance": 0.45
-        }
+        },
+        "querySourceId": "1feaa33a-3c1b-4bc5-abae-fdd1f2a59f23"
       }
     },
     {
-      "id": "sea-ice-drift",
-      "label": "Sea Ice Drift",
-      "description": "Daily eastward and northward velocity of sea ice, tracing polar ice floe motion.",
-      "category": "Ice",
+      "id": "40733539-e493-448e-80b5-2a7874f47b85",
+      "aliases": [
+        "sea-ice-drift"
+      ],
+      "title": {
+        "en": "Sea Ice Drift"
+      },
+      "description": {
+        "en": "Daily eastward and northward velocity of sea ice, tracing polar ice floe motion."
+      },
+      "category": "ice",
       "kind": "vector",
-      "dataset": {
-        "id": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
-        "provider": "copernicus",
-        "productId": "GLOBAL_ANALYSISFORECAST_PHY_001_024"
-      },
-      "stores": {
-        "field": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr"
-        },
-        "pointSeries": {
-          "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+      "sources": [
+        {
+          "id": "7b6998c9-299c-466a-a99a-0e1b384bde21",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-013/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg_P1D-m_202406/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "usi",
+            "v": "vsi"
+          }
         }
-      },
-      "variables": {
-        "kind": "vector",
-        "u": "usi",
-        "v": "vsi"
-      },
+      ],
       "defaults": {
-        "backend": "zarr",
+        "sourceId": "7b6998c9-299c-466a-a99a-0e1b384bde21",
         "palette": "ice",
         "renderMode": "particles",
         "particles": {
@@ -920,7 +1657,8 @@
           "opacity": 1,
           "logScale": false,
           "vibrance": 0
-        }
+        },
+        "querySourceId": "7b6998c9-299c-466a-a99a-0e1b384bde21"
       }
     }
   ]

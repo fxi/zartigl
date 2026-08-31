@@ -18,7 +18,7 @@ export interface GeoVideoSampleSequenceTimeline {
 }
 
 export interface GeoVideoManifest {
-  schemaVersion: 2;
+  schemaVersion: 3;
   id: string;
   type: "geovideo";
   projection: "equirectangular";
@@ -53,9 +53,11 @@ export interface GeoVideoManifest {
   };
   timeline: GeoVideoRangeTimeline | GeoVideoSnapshotLoopTimeline | GeoVideoSampleSequenceTimeline;
   provenance: {
-    layerId: string;
-    datasetId: string;
-    variable: string;
+    catalogEntryId: string;
+    inputSourceId: string;
+    provider?: string;
+    identifiers?: Record<string, string>;
+    variables: string[];
     generatedAt: string;
   };
   style: {
@@ -81,10 +83,14 @@ function dateMs(value: unknown, label: string): number {
   return ms;
 }
 
+function uuid4(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value);
+}
+
 export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
   if (!value || typeof value !== "object") throw new Error("Invalid GeoVideo manifest");
   const manifest = value as GeoVideoManifest;
-  if (manifest.schemaVersion !== 2 || manifest.type !== "geovideo") {
+  if (manifest.schemaVersion !== 3 || manifest.type !== "geovideo") {
     throw new Error("Unsupported GeoVideo manifest version or type");
   }
   if (manifest.projection !== "equirectangular") {
@@ -148,6 +154,9 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
   if (!Array.isArray(domain) || domain.length !== 2 || !domain.every(Number.isFinite) || domain[0] >= domain[1]) {
     throw new Error("Invalid GeoVideo color domain");
   }
+  if (!uuid4(manifest.id) || !manifest.provenance || !uuid4(manifest.provenance.catalogEntryId) ||
+      !uuid4(manifest.provenance.inputSourceId) || !Array.isArray(manifest.provenance.variables) ||
+      manifest.provenance.variables.length === 0) throw new Error("Invalid GeoVideo provenance");
   return { ...manifest, bounds: [west, south, east, north] };
 }
 

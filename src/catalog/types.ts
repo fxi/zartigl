@@ -1,16 +1,15 @@
-export interface CatalogWmts {
-  capabilities_url: string;
-  base_url: string;
-  layer: string;
-  tileMatrixSet: string;
-  format: string;
-  style?: string;
+export type LocalizedText = Record<string, string>;
+
+export interface CatalogSourceProvenance {
+  provider: string;
+  identifiers?: Record<string, string>;
 }
 
-export interface CatalogGeoVideo {
-  id: string;
-  label?: string;
-  manifestUrl: string;
+export interface CatalogTemporalSummary {
+  cadence?: string;
+  mode: "historical" | "near-real-time" | "analysis-forecast" | "fixed";
+  start?: string;
+  end?: string;
 }
 
 export interface CatalogVectorDerivation {
@@ -22,70 +21,80 @@ export interface CatalogVectorDerivation {
 }
 
 export type CatalogVariables =
-  | {
-      kind: "scalar";
-      value: string;
-    }
-  | {
-      kind: "vector";
-      u?: string;
-      v?: string;
-      derivation?: CatalogVectorDerivation;
-    };
+  | { kind: "scalar"; value: string }
+  | { kind: "vector"; u?: string; v?: string; derivation?: CatalogVectorDerivation };
 
-interface CatalogLayerBase {
+interface CatalogSourceBase {
   id: string;
-  label: string;
-  description?: string;
-  category?: string;
+  title: LocalizedText;
+  provenance?: CatalogSourceProvenance;
+  temporal?: CatalogTemporalSummary;
+}
+
+export interface CatalogZarrSource extends CatalogSourceBase {
+  type: "zarr";
+  endpoints: { field: string; pointSeries?: string };
+  variables: CatalogVariables;
+}
+
+export interface CatalogWmtsSource extends CatalogSourceBase {
+  type: "wmts";
+  capabilitiesUrl: string;
+  baseUrl?: string;
+  layer: string;
+  tileMatrixSet?: string;
+  format?: string;
+  style?: string;
+  tileUrlTemplate?: string;
+}
+
+export interface CatalogGeoVideoSource extends CatalogSourceBase {
+  type: "geovideo";
+  manifestUrl: string;
+}
+
+export type CatalogSource = CatalogZarrSource | CatalogWmtsSource | CatalogGeoVideoSource;
+export type CatalogSourceType = CatalogSource["type"];
+export type CatalogSourcePreference = "auto" | CatalogSourceType | string;
+
+export interface CatalogEntry {
+  id: string;
+  aliases?: string[];
+  title: LocalizedText;
+  description?: LocalizedText;
+  category: string;
   tags?: string[];
-  dataset: {
-    id: string;
-    provider?: "copernicus" | string;
-    productId?: string;
-  };
-  stores: {
-    field: {
-      url: string;
-    };
-    pointSeries?: {
-      url: string;
-    };
-    wmts?: CatalogWmts;
-  };
-  derived?: {
-    geoVideos?: CatalogGeoVideo[];
-  };
-  defaults?: {
-    backend?: "zarr" | "geovideo" | "wmts";
+  kind: "scalar" | "vector";
+  sources: CatalogSource[];
+  defaults: {
+    sourceId: string;
+    querySourceId?: string;
     palette?: string;
     renderMode?: "particles" | "raster" | "raster+particles";
-    particles?: {
-      density?: number;
-      speed?: number;
-      fade?: number;
-    };
+    particles?: { density?: number; speed?: number; fade?: number };
     raster?: {
       opacity?: number;
       logScale?: boolean;
       vibrance?: number;
-      /** Fixed physical-value domain for scalar color normalization. */
       colorDomain?: [number, number];
     };
   };
 }
 
-export type CatalogLayer =
-  | (CatalogLayerBase & {
-      kind: "scalar";
-      variables: Extract<CatalogVariables, { kind: "scalar" }>;
-    })
-  | (CatalogLayerBase & {
-      kind: "vector";
-      variables: Extract<CatalogVariables, { kind: "vector" }>;
-    });
-
 export interface Catalog {
-  schemaVersion: 1;
-  layers: CatalogLayer[];
+  schemaVersion: 2;
+  defaultLocale: string;
+  layers: CatalogEntry[];
+}
+
+export interface CatalogSearchOptions {
+  locale?: string;
+  category?: string;
+  sourceType?: CatalogSourceType;
+  provider?: string;
+}
+
+export interface CatalogEntrySelector extends CatalogSearchOptions {
+  identifiers?: Record<string, string>;
+  variableId?: string;
 }

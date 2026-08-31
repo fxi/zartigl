@@ -89,14 +89,16 @@ function parseArgs(argv) {
 }
 
 function pointVariables(layer) {
-  if (layer.kind === "scalar") return [layer.variables.value ?? "scalar"];
-  if (layer.variables.derivation) {
+  const source = layer.sources.find((candidate) => candidate.type === "zarr");
+  if (!source) throw new Error(`Layer has no Zarr source: ${layer.id}`);
+  if (source.variables.kind === "scalar") return [source.variables.value ?? "scalar"];
+  if (source.variables.derivation) {
     return [
-      layer.variables.derivation.direction_variable,
-      layer.variables.derivation.magnitude_variable,
+      source.variables.derivation.direction_variable,
+      source.variables.derivation.magnitude_variable,
     ];
   }
-  return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
+  return [source.variables.u ?? "uo", source.variables.v ?? "vo"];
 }
 
 function sampleWindow(source, maxPoints = 24) {
@@ -144,13 +146,14 @@ function summarize(result, layer, scenario, unit) {
 }
 
 async function runScenario(catalog, scenario) {
-  const layer = catalog.layers.find((candidate) => candidate.id === scenario.layer);
+  const layer = catalog.layers.find((candidate) => candidate.id === scenario.layer || candidate.aliases?.includes(scenario.layer));
   if (!layer) throw new Error(`Unknown layer: ${scenario.layer}`);
-  if (!layer.stores.pointSeries) throw new Error(`Layer has no point-series store: ${layer.id}`);
+  const sourceConfig = layer.sources.find((candidate) => candidate.type === "zarr" && candidate.endpoints.pointSeries);
+  if (!sourceConfig) throw new Error(`Layer has no point-series source: ${layer.id}`);
   if (scenario.mode !== "time" && scenario.mode !== "depth") {
     throw new Error(`Invalid mode: ${scenario.mode}`);
   }
-  const source = new ZarrSource(layer.stores.pointSeries.url, 80);
+  const source = new ZarrSource(sourceConfig.endpoints.pointSeries, 80);
   await source.init();
   if (scenario.mode === "depth" && (source.getVerticalDimension()?.values.length ?? 0) <= 1) {
     return {

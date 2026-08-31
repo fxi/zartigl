@@ -1,177 +1,145 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Zartigl Catalog",
+  "title": "Zartigl Catalog v2",
   "type": "object",
-  "required": ["schemaVersion", "layers"],
+  "required": ["schemaVersion", "defaultLocale", "layers"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "type": "integer", "const": 1 },
-    "layers": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/Layer" },
-      "minItems": 1
-    }
+    "schemaVersion": { "const": 2 },
+    "defaultLocale": { "type": "string", "minLength": 2 },
+    "layers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Entry" } }
   },
   "$defs": {
-    "Layer": {
-      "type": "object",
-      "required": ["id", "label", "category", "kind", "dataset", "stores", "variables"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-        "label": { "type": "string", "minLength": 1 },
-        "description": { "type": "string" },
-        "category": { "type": "string", "minLength": 1 },
-        "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "kind": { "type": "string", "enum": ["vector", "scalar"] },
-        "dataset": { "$ref": "#/$defs/Dataset" },
-        "stores": { "$ref": "#/$defs/Stores" },
-        "derived": { "$ref": "#/$defs/Derived" },
-        "variables": { "$ref": "#/$defs/Variables" },
-        "defaults": { "$ref": "#/$defs/Defaults" }
-      }
+    "Uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "Url": { "type": "string", "pattern": "^https?://" },
+    "Localized": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": { "type": "string", "minLength": 1 }
     },
-    "Dataset": {
-      "type": "object",
-      "required": ["id"],
-      "additionalProperties": false,
+    "Provenance": {
+      "type": "object", "required": ["provider"], "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
         "provider": { "type": "string", "minLength": 1 },
-        "productId": { "type": "string", "minLength": 1 }
+        "identifiers": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
       }
     },
-    "Stores": {
-      "type": "object",
-      "required": ["field"],
-      "additionalProperties": false,
+    "Temporal": {
+      "type": "object", "required": ["mode"], "additionalProperties": false,
       "properties": {
-        "field": {
-          "type": "object",
-          "required": ["url"],
-          "additionalProperties": false,
-          "properties": {
-            "url": { "type": "string", "pattern": "^https?://" }
-          }
-        },
-        "pointSeries": {
-          "type": "object",
-          "required": ["url"],
-          "additionalProperties": false,
-          "properties": {
-            "url": { "type": "string", "pattern": "^https?://" }
-          }
-        },
-        "wmts": { "$ref": "#/$defs/Wmts" }
+        "cadence": { "type": "string", "pattern": "^P" },
+        "mode": { "enum": ["historical", "near-real-time", "analysis-forecast", "fixed"] },
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SourceBase": {
+      "type": "object", "required": ["id", "type", "title", "provenance", "temporal"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" }, "type": { "type": "string" },
+        "title": { "$ref": "#/$defs/Localized" }, "provenance": { "$ref": "#/$defs/Provenance" },
+        "temporal": { "$ref": "#/$defs/Temporal" }
       }
     },
     "Variables": {
       "oneOf": [
         {
-          "type": "object",
-          "required": ["kind", "value"],
-          "additionalProperties": false,
-          "properties": {
-            "kind": { "type": "string", "const": "scalar" },
-            "value": { "type": "string", "minLength": 1 }
-          }
+          "type": "object", "required": ["kind", "value"], "additionalProperties": false,
+          "properties": { "kind": { "const": "scalar" }, "value": { "type": "string", "minLength": 1 } }
         },
         {
-          "type": "object",
-          "required": ["kind"],
-          "additionalProperties": false,
+          "type": "object", "required": ["kind"], "additionalProperties": false,
           "properties": {
-            "kind": { "type": "string", "const": "vector" },
-            "u": { "type": "string", "minLength": 1 },
-            "v": { "type": "string", "minLength": 1 },
-            "derivation": { "$ref": "#/$defs/VectorDerivation" }
+            "kind": { "const": "vector" }, "u": { "type": "string", "minLength": 1 },
+            "v": { "type": "string", "minLength": 1 }, "derivation": { "$ref": "#/$defs/VectorDerivation" }
           },
-          "oneOf": [
-            { "required": ["u", "v"] },
-            { "required": ["derivation"] }
-          ]
+          "oneOf": [{ "required": ["u", "v"] }, { "required": ["derivation"] }]
         }
       ]
     },
     "VectorDerivation": {
-      "type": "object",
-      "required": ["kind", "direction_variable", "magnitude_variable", "direction_convention", "output_direction"],
+      "type": "object", "required": ["kind", "direction_variable", "magnitude_variable", "direction_convention", "output_direction"],
       "additionalProperties": false,
       "properties": {
-        "kind": { "type": "string", "enum": ["direction_magnitude"] },
-        "direction_variable": { "type": "string", "minLength": 1 },
+        "kind": { "const": "direction_magnitude" }, "direction_variable": { "type": "string", "minLength": 1 },
         "magnitude_variable": { "type": "string", "minLength": 1 },
-        "direction_convention": { "type": "string", "enum": ["from", "toward"] },
-        "output_direction": { "type": "string", "enum": ["from", "toward"] }
+        "direction_convention": { "enum": ["from", "toward"] }, "output_direction": { "enum": ["from", "toward"] }
       }
     },
-    "Wmts": {
-      "type": "object",
-      "required": ["capabilities_url", "base_url", "layer", "tileMatrixSet", "format"],
-      "additionalProperties": false,
-      "properties": {
-        "capabilities_url": { "type": "string", "pattern": "^https?://" },
-        "base_url": { "type": "string", "pattern": "^https?://" },
-        "layer": { "type": "string", "minLength": 1 },
-        "tileMatrixSet": { "type": "string", "minLength": 1 },
-        "format": { "type": "string", "minLength": 1 },
-        "style": { "type": "string", "minLength": 1 }
-      }
-    },
-    "Derived": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "geoVideos": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["id", "manifestUrl"],
-            "additionalProperties": false,
-            "properties": {
-              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-              "label": { "type": "string", "minLength": 1 },
-              "manifestUrl": { "type": "string", "pattern": "^https?://" }
-            }
+    "ZarrSource": {
+      "allOf": [
+        { "$ref": "#/$defs/SourceBase" },
+        {
+          "type": "object", "required": ["id", "type", "title", "endpoints", "variables"], "additionalProperties": false,
+          "properties": {
+            "id": { "$ref": "#/$defs/Uuid" }, "type": { "const": "zarr" }, "title": { "$ref": "#/$defs/Localized" },
+            "provenance": { "$ref": "#/$defs/Provenance" }, "temporal": { "$ref": "#/$defs/Temporal" },
+            "endpoints": {
+              "type": "object", "required": ["field"], "additionalProperties": false,
+              "properties": { "field": { "$ref": "#/$defs/Url" }, "pointSeries": { "$ref": "#/$defs/Url" } }
+            },
+            "variables": { "$ref": "#/$defs/Variables" }
           }
         }
-      }
+      ]
     },
-    "Defaults": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "backend": { "type": "string", "enum": ["zarr", "geovideo", "wmts"] },
-        "palette": { "type": "string" },
-        "renderMode": {
-          "type": "string",
-          "enum": ["particles", "raster", "raster+particles"]
-        },
-        "particles": {
-          "type": "object",
-          "additionalProperties": false,
+    "WmtsSource": {
+      "allOf": [
+        { "$ref": "#/$defs/SourceBase" },
+        {
+          "type": "object", "required": ["id", "type", "title", "capabilitiesUrl", "layer"], "additionalProperties": false,
           "properties": {
-            "density": { "type": "number", "exclusiveMinimum": 0 },
-            "speed": { "type": "number", "exclusiveMinimum": 0 },
-            "fade": { "type": "number", "minimum": 0, "maximum": 1 }
+            "id": { "$ref": "#/$defs/Uuid" }, "type": { "const": "wmts" }, "title": { "$ref": "#/$defs/Localized" },
+            "provenance": { "$ref": "#/$defs/Provenance" }, "temporal": { "$ref": "#/$defs/Temporal" },
+            "capabilitiesUrl": { "$ref": "#/$defs/Url" }, "baseUrl": { "$ref": "#/$defs/Url" },
+            "layer": { "type": "string", "minLength": 1 }, "tileMatrixSet": { "type": "string", "minLength": 1 },
+            "format": { "type": "string", "minLength": 1 }, "style": { "type": "string", "minLength": 1 },
+            "tileUrlTemplate": { "$ref": "#/$defs/Url" }
           }
+        }
+      ]
+    },
+    "GeoVideoSource": {
+      "allOf": [
+        { "$ref": "#/$defs/SourceBase" },
+        {
+          "type": "object", "required": ["id", "type", "title", "manifestUrl"], "additionalProperties": false,
+          "properties": {
+            "id": { "$ref": "#/$defs/Uuid" }, "type": { "const": "geovideo" }, "title": { "$ref": "#/$defs/Localized" },
+            "provenance": { "$ref": "#/$defs/Provenance" }, "temporal": { "$ref": "#/$defs/Temporal" },
+            "manifestUrl": { "$ref": "#/$defs/Url" }
+          }
+        }
+      ]
+    },
+    "Source": { "oneOf": [{ "$ref": "#/$defs/ZarrSource" }, { "$ref": "#/$defs/WmtsSource" }, { "$ref": "#/$defs/GeoVideoSource" }] },
+    "Defaults": {
+      "type": "object", "required": ["sourceId"], "additionalProperties": false,
+      "properties": {
+        "sourceId": { "$ref": "#/$defs/Uuid" }, "querySourceId": { "$ref": "#/$defs/Uuid" },
+        "palette": { "type": "string" }, "renderMode": { "enum": ["particles", "raster", "raster+particles"] },
+        "particles": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "density": { "type": "number", "exclusiveMinimum": 0 }, "speed": { "type": "number", "exclusiveMinimum": 0 }, "fade": { "type": "number", "minimum": 0, "maximum": 1 } }
         },
         "raster": {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "properties": {
-            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
-            "logScale": { "type": "boolean" },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 }, "logScale": { "type": "boolean" },
             "vibrance": { "type": "number", "minimum": -1, "maximum": 1 },
-            "colorDomain": {
-              "type": "array",
-              "items": { "type": "number" },
-              "minItems": 2,
-              "maxItems": 2
-            }
+            "colorDomain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
           }
         }
+      }
+    },
+    "Entry": {
+      "type": "object", "required": ["id", "title", "category", "kind", "sources", "defaults"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" }, "aliases": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "title": { "$ref": "#/$defs/Localized" }, "description": { "$ref": "#/$defs/Localized" },
+        "category": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "tags": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "kind": { "enum": ["scalar", "vector"] }, "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Source" } },
+        "defaults": { "$ref": "#/$defs/Defaults" }
       }
     }
   }

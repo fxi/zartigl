@@ -1,14 +1,22 @@
 {
-  "id": "sst-anomaly-six-months",
-  "layerId": "sea-surface-temperature-anomaly",
+  "id": "e260c26f-8374-4c65-a076-5cd181ed5091",
+  "catalogEntryId": "5e94f1b2-1342-4a1f-936e-09170d7d4db8",
   "dateStart": "2026-02-01T00:00:00Z",
   "dateEnd": "2026-08-01T00:00:00Z",
   "durationSeconds": 30,
   "interpolation": "linear",
-  "bounds": [-180, -90, 180, 90],
+  "bounds": [
+    -180,
+    -90,
+    180,
+    90
+  ],
   "style": {
     "palette": "balance",
-    "colorDomain": [-3, 3],
+    "colorDomain": [
+      -3,
+      3
+    ],
     "unit": "degrees_C",
     "logScale": false,
     "vibrance": 0.1

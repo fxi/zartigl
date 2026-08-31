@@ -64,7 +64,11 @@ def open_http_zarr(url: str) -> xr.Dataset:
 
 def catalog_layer(layer_id: str) -> dict[str, Any]:
     catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
-    return next(layer for layer in catalog["layers"] if layer["id"] == layer_id)
+    return next(layer for layer in catalog["layers"] if layer["id"] == layer_id or layer_id in layer.get("aliases", []))
+
+
+def source(layer: dict[str, Any], kind: str) -> dict[str, Any]:
+    return next(item for item in layer["sources"] if item["type"] == kind)
 
 
 def manifest_range(url: str) -> tuple[str, str]:
@@ -157,9 +161,10 @@ def require_complete_month_axis(values: np.ndarray, start: np.datetime64, end: n
 
 def build_enso() -> None:
     layer = catalog_layer("sea-surface-temperature-anomaly")
-    store_url = layer["stores"]["pointSeries"]["url"]
-    variable = layer["variables"]["value"]
-    manifest_url = layer["derived"]["geoVideos"][0]["manifestUrl"]
+    zarr = source(layer, "zarr")
+    store_url = zarr["endpoints"]["pointSeries"]
+    variable = zarr["variables"]["value"]
+    manifest_url = source(layer, "geovideo")["manifestUrl"]
     start, end = manifest_range(manifest_url)
     dataset = open_http_zarr(store_url)
     data = dataset[variable].sel(time=slice(np.datetime64(start.removesuffix("Z")), np.datetime64(end.removesuffix("Z"))))
@@ -183,7 +188,8 @@ def build_enso() -> None:
         "generatedAt": utc_now(),
         "source": {
             "layerId": layer["id"],
-            "datasetId": layer["dataset"]["id"],
+            "datasetId": zarr["provenance"]["identifiers"]["dataset"],
+            "sourceId": zarr["id"],
             "storeUrl": store_url,
             "variable": variable,
             "unit": "°C",
@@ -206,8 +212,9 @@ def trailing_mean(values: list[float], window: int) -> list[float | None]:
 
 def build_baltic_hypoxia() -> None:
     layer = catalog_layer("baltic-bottom-oxygen")
-    store_url = layer["stores"]["field"]["url"]
-    variable = layer["variables"]["value"]
+    zarr = source(layer, "zarr")
+    store_url = zarr["endpoints"]["field"]
+    variable = zarr["variables"]["value"]
     dataset = open_http_zarr(store_url)
     data = dataset[variable]
     start = np.datetime64("1993-09-01")
@@ -236,8 +243,9 @@ def build_baltic_hypoxia() -> None:
         "generatedAt": utc_now(),
         "source": {
             "layerId": layer["id"],
-            "datasetId": layer["dataset"]["id"],
-            "productId": layer["dataset"]["productId"],
+            "datasetId": zarr["provenance"]["identifiers"]["dataset"],
+            "productId": zarr["provenance"]["identifiers"]["product"],
+            "sourceId": zarr["id"],
             "storeUrl": store_url,
             "variable": variable,
             "unit": "mmol m-3",

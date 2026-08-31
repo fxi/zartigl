@@ -18,8 +18,8 @@ import type {
   ZartiglStatus,
   TimeGranularity,
 } from "../lib";
-import { formatTime, formatVertical } from "../catalog";
-import type { CatalogLayer, Catalog } from "../catalog";
+import { formatTime, formatVertical, resolveLocalizedText } from "../catalog";
+import type { CatalogEntry, Catalog, CatalogSource, CatalogZarrSource } from "../catalog";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -46,11 +46,11 @@ interface DemoParams {
 }
 
 interface HashState {
-  d: number;
+  d: string;
   t: number;
   v: number;
   p: string;
-  s?: "zarr" | "geovideo" | "wmts";
+  s?: string;
   pr?: "mercator" | "globe";
   c?: [number, number];
   z?: number;
@@ -102,15 +102,24 @@ function codeNumber(value: number, digits = 6): string {
   return String(Number(value.toFixed(digits)));
 }
 
-function getPointVariables(layer: CatalogLayer): string[] {
-  if (layer.kind === "scalar") return [layer.variables.value];
-  if (layer.variables.derivation) {
+function zarrSource(layer: CatalogEntry): CatalogZarrSource {
+  const configured = layer.defaults.querySourceId ?? layer.defaults.sourceId;
+  const source = layer.sources.find((candidate) => candidate.id === configured && candidate.type === "zarr")
+    ?? layer.sources.find((candidate): candidate is CatalogZarrSource => candidate.type === "zarr");
+  if (!source || source.type !== "zarr") throw new Error(`Catalog entry has no Zarr variables: ${layer.id}`);
+  return source;
+}
+
+function getPointVariables(layer: CatalogEntry): string[] {
+  const variables = zarrSource(layer).variables;
+  if (variables.kind === "scalar") return [variables.value];
+  if (variables.derivation) {
     return [
-      layer.variables.derivation.direction_variable,
-      layer.variables.derivation.magnitude_variable,
+      variables.derivation.direction_variable,
+      variables.derivation.magnitude_variable,
     ];
   }
-  return [layer.variables.u ?? "uo", layer.variables.v ?? "vo"];
+  return [variables.u ?? "uo", variables.v ?? "vo"];
 }
 
 function nearestTimeIndex(values: readonly number[], target: number): number {
@@ -138,20 +147,21 @@ function authoringInputValue(time: number, granularity: TimeGranularity): string
 
 function pointResultToData(
   result: ZarrPointSeriesResult,
-  layer: CatalogLayer,
+  layer: CatalogEntry,
 ): ChartDatum[] {
   const variables = getPointVariables(layer);
+  const sourceVariables = zarrSource(layer).variables;
   const isVector = layer.kind === "vector";
 
   return result.points.map((point) => {
     let u = point.values[variables[0]];
     let v = isVector ? point.values[variables[1]] : undefined;
 
-    if (layer.variables.kind === "vector" && layer.variables.derivation) {
+    if (sourceVariables.kind === "vector" && sourceVariables.derivation) {
       const components = deriveDirectionMagnitudeComponents(
-        point.values[layer.variables.derivation.direction_variable],
-        point.values[layer.variables.derivation.magnitude_variable],
-        layer.variables.derivation,
+        point.values[sourceVariables.derivation.direction_variable],
+        point.values[sourceVariables.derivation.magnitude_variable],
+        sourceVariables.derivation,
       );
       u = components.u;
       v = components.v;
@@ -320,8 +330,10 @@ export class DemoApp {
   private z: Zartigl | null = null;
   private readonly pane: Pane;
   private params: DemoParams;
-  private currentLayer: CatalogLayer;
+  private currentLayer: CatalogEntry;
   private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
+  private currentSourceId = "";
+  private readonly locale = navigator.language || "en";
   private currentProjection: "mercator" | "globe" = "mercator";
   private activePopup: maplibregl.Popup | null = null;
   private switchSeq = 0;
@@ -339,9 +351,8 @@ export class DemoApp {
   // DOM refs
   private layerSelectEl!: HTMLSelectElement;
   private paletteSelectEl!: HTMLSelectElement;
-  private layerDescEl!: HTMLDivElement;
   private sourceContainer!: HTMLDivElement;
-  private sourceButtons: { source: "zarr" | "geovideo" | "wmts"; btn: HTMLButtonElement }[] = [];
+  private sourceSelectEl!: HTMLSelectElement;
   private projButtons: { proj: string; btn: HTMLButtonElement }[] = [];
   private legendBar!: HTMLDivElement;
   private legendMin!: HTMLSpanElement;
@@ -364,8 +375,8 @@ export class DemoApp {
 
   constructor(private readonly map: MaplibreMap, private readonly cat: Catalog) {
     const hash = this.loadHashState();
-    const initialIdx = Math.max(0, Math.min(hash?.d ?? 0, cat.layers.length - 1));
-    this.currentLayer = cat.layers[initialIdx];
+    this.currentLayer = cat.layers.find((entry) => entry.id === hash?.d) ?? cat.layers[0];
+    this.currentSourceId = this.currentLayer.defaults.sourceId;
     this.params = this.makeDefaultParams();
 
     this.pane = new Pane({ title: "zartigl", expanded: true });
@@ -380,7 +391,7 @@ export class DemoApp {
 
   // ── Layer switching ─────────────────────────────────────────────────
 
-  async switchLayer(layer: CatalogLayer, hashState?: HashState | null): Promise<void> {
+  async switchLayer(layer: CatalogEntry, hashState?: HashState | null): Promise<void> {
     const seq = ++this.switchSeq;
     this.pointQuerySeq++;
     this.frameColorDomain = null;
@@ -388,19 +399,12 @@ export class DemoApp {
     this.activePopup?.remove();
     this.activePopup = null;
 
-    if (hashState?.s === "geovideo" && layer.kind === "scalar" && layer.derived?.geoVideos?.length) {
-      this.currentBackend = "geovideo";
-    } else if (hashState?.s === "wmts" && layer.kind === "scalar" && layer.stores.wmts) {
-      this.currentBackend = "wmts";
-    } else if (hashState?.s === "zarr") {
-      this.currentBackend = "zarr";
-    } else if (
-      layer.kind !== "scalar" ||
-      (this.currentBackend === "wmts" && !layer.stores.wmts) ||
-      (this.currentBackend === "geovideo" && !layer.derived?.geoVideos?.length)
-    ) {
-      this.currentBackend = "zarr";
-    }
+    const requestedSource = layer.sources.find((source) => source.id === hashState?.s)
+      ?? layer.sources.find((source) => source.id === this.currentSourceId)
+      ?? layer.sources.find((source) => source.id === layer.defaults.sourceId)
+      ?? layer.sources[0];
+    this.currentSourceId = requestedSource.id;
+    this.currentBackend = requestedSource.type;
 
     // Apply params: layer defaults, then optional hash overrides
     this.applyLayerDefaults(layer);
@@ -413,7 +417,7 @@ export class DemoApp {
       id: "prod-zartigl",
       map: this.map,
       catalog: this.cat,
-      backend: this.currentBackend,
+      source: this.currentSourceId,
       timeRange: hashState?.tr
         ? { start: hashState.tr[0], end: hashState.tr[1] }
         : undefined,
@@ -453,6 +457,8 @@ export class DemoApp {
 
     await activeZartigl.setLayer(layer.id);
     if (seq !== this.switchSeq) return;
+    const activeSource = activeZartigl.getSource();
+    if (activeSource) { this.currentSourceId = activeSource.id; this.currentBackend = activeSource.type; }
 
     const timeMeta = this.z.getTimeMeta();
     const depthMeta = this.z.getDepthMeta();
@@ -489,13 +495,28 @@ export class DemoApp {
     this.trailFolder.element.style.display = isVector ? "" : "none";
     this.updateSourceVisibility();
     this.syncColorDomainVisibility();
-    this.updateLayerDesc(layer);
     this.updateLayerSelect();
 
     if (this.paletteSelectEl) this.paletteSelectEl.value = this.params.palette;
     this.pane.refresh();
 
     setTimeout(() => this.syncLegend(), 400);
+  }
+
+  private async switchSource(source: CatalogSource): Promise<void> {
+    if (!this.z || source.id === this.currentSourceId) return;
+    await this.z.setSource(source.id);
+    this.currentSourceId = source.id;
+    this.currentBackend = source.type;
+    const timeMeta = this.z.getTimeMeta();
+    this.params.allowedStart = timeMeta.min;
+    this.params.allowedEnd = timeMeta.max;
+    this.params.timeIndex = nearestTimeIndex(timeMeta.values, timeMeta.current ?? timeMeta.max);
+    this.params.depth = this.z.getDepthMeta().current ?? 0;
+    this.rebuildDataUI();
+    this.renderSourceSelect();
+    this.syncColorDomainVisibility();
+    this.syncLegend();
   }
 
   // ── Data UI (rebuilt per layer) ─────────────────────────────────────
@@ -718,78 +739,37 @@ export class DemoApp {
 
   private buildLayerFolder(): void {
     const folder = this.pane.addFolder({ title: "Layer" });
-
     const select = document.createElement("select");
     select.className = "layer-select";
-
-    const seen = new Set<string>();
-    const cats: string[] = [];
-    for (const l of this.cat.layers) {
-      const cat = l.category ?? "Other";
-      if (!seen.has(cat)) { seen.add(cat); cats.push(cat); }
+    for (const entry of this.cat.layers) {
+      const option = new Option(resolveLocalizedText(entry.title, this.locale, this.cat.defaultLocale), entry.id);
+      option.title = entry.id;
+      select.appendChild(option);
     }
-
-    if (cats.length > 1) {
-      for (const cat of cats) {
-        const grp = document.createElement("optgroup");
-        grp.label = cat;
-        this.cat.layers.forEach((l, i) => {
-          if ((l.category ?? "Other") !== cat) return;
-          const opt = document.createElement("option");
-          opt.value = String(i);
-          opt.textContent = l.label;
-          grp.appendChild(opt);
-        });
-        select.appendChild(grp);
-      }
-    } else {
-      this.cat.layers.forEach((l, i) => {
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = l.label;
-        select.appendChild(opt);
-      });
-    }
-
-    select.value = String(this.cat.layers.indexOf(this.currentLayer));
+    select.value = this.currentLayer.id;
     select.addEventListener("change", () => {
-      const idx = Number(select.value);
-      const layer = this.cat.layers[idx];
+      const layer = this.cat.layers.find((entry) => entry.id === select.value);
       if (layer) void this.switchLayer(layer);
     });
 
     folder.element.appendChild(select);
     this.layerSelectEl = select;
-
-    const descDiv = document.createElement("div");
-    descDiv.className = "layer-meta";
-    folder.element.appendChild(descDiv);
-    this.layerDescEl = descDiv;
   }
 
   private buildSourceFolder(): void {
     const folder = this.pane.addFolder({ title: "Source" });
 
     this.sourceContainer = document.createElement("div");
-    this.sourceContainer.className = "render-mode-btns";
-
-    for (const src of ["zarr", "geovideo", "wmts"] as const) {
-      const btn = document.createElement("button");
-      btn.textContent = src;
-      btn.className = "render-mode-btn" + (src === this.currentBackend ? " active" : "");
-      btn.addEventListener("click", () => {
-        if (src === "wmts" && !this.currentLayer.stores.wmts) return;
-        if (src === "geovideo" && !this.currentLayer.derived?.geoVideos?.length) return;
-        this.currentBackend = src;
-        this.updateSourceButtons();
-        this.syncColorDomainVisibility();
-        void this.switchLayer(this.currentLayer);
-      });
-      this.sourceButtons.push({ source: src, btn });
-      this.sourceContainer.appendChild(btn);
-    }
+    this.sourceSelectEl = document.createElement("select");
+    this.sourceSelectEl.className = "layer-select";
+    this.sourceContainer.appendChild(this.sourceSelectEl);
 
     folder.element.appendChild(this.sourceContainer);
+    this.renderSourceSelect();
+    this.sourceSelectEl.addEventListener("change", () => {
+      const source = this.currentLayer.sources.find((candidate) => candidate.id === this.sourceSelectEl.value);
+      if (source) void this.switchSource(source);
+    });
 
     const projContainer = document.createElement("div");
     projContainer.className = "render-mode-btns";
@@ -1012,7 +992,7 @@ export class DemoApp {
   // ── Map click query ─────────────────────────────────────────────────
 
   private async onMapClick(lngLat: LngLat): Promise<void> {
-    if (!this.z || !this.currentLayer.stores.pointSeries) return;
+    if (!this.z || !this.z.getCapabilities().pointQuery) return;
     const z = this.z;
     this.activePopup?.remove();
 
@@ -1024,7 +1004,7 @@ export class DemoApp {
     const header = document.createElement("div");
     header.className = "query-header";
     const title = document.createElement("strong");
-    title.textContent = layer.label;
+    title.textContent = resolveLocalizedText(layer.title, this.locale, this.cat.defaultLocale);
     const coord = document.createElement("div");
     coord.className = "query-coord";
     coord.textContent = `${lngLat.lng.toFixed(3)}, ${lngLat.lat.toFixed(3)}`;
@@ -1176,9 +1156,10 @@ export class DemoApp {
         fps: this.currentFps || null,
         url: location.href,
         projection: this.currentProjection,
-        backend: this.currentBackend,
+        sourceType: this.currentBackend,
         layerId: this.currentLayer.id,
-        layerLabel: this.currentLayer.label,
+        layerTitle: resolveLocalizedText(this.currentLayer.title, this.locale, this.cat.defaultLocale),
+        sourceId: this.currentSourceId,
         timeRange: this.currentTimeRange(),
         geoVideo: this.currentGeoVideoOptions(),
         center: [center.lng, center.lat],
@@ -1238,7 +1219,8 @@ export class DemoApp {
     return {
       layerId: layer.id,
       layerKind: layer.kind,
-      backend: this.currentBackend,
+      source: this.currentSourceId,
+      sourceType: this.currentBackend,
       time: new Date(timeMs),
       timeRange: this.currentTimeRange(),
       geoVideo: this.currentBackend === "geovideo" ? this.currentGeoVideoOptions() : undefined,
@@ -1249,16 +1231,15 @@ export class DemoApp {
 
   private shareURL(): void {
     if (!this.z) return;
-    const layerIdx = this.cat.layers.indexOf(this.currentLayer);
     const timeMeta = this.z.getTimeMeta();
     const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
     const center = this.map.getCenter();
     const state: HashState = {
-      d: layerIdx,
+      d: this.currentLayer.id,
       t: timeMs,
       v: this.params.depth,
       p: this.params.palette,
-      s: this.currentBackend,
+      s: this.currentSourceId,
       pr: this.currentProjection,
       c: [
         Number(center.lng.toFixed(6)),
@@ -1291,34 +1272,24 @@ export class DemoApp {
 
   private updateLayerSelect(): void {
     if (!this.layerSelectEl) return;
-    const idx = this.cat.layers.indexOf(this.currentLayer);
-    this.layerSelectEl.value = String(idx);
-  }
-
-  private updateLayerDesc(layer: CatalogLayer): void {
-    if (!this.layerDescEl) return;
-    const variableMeta = this.z?.getVariableMeta();
-    const metaStr = variableMeta?.standardName
-      ? `${variableMeta.standardName.replace(/_/g, " ")} — ${variableMeta.units ?? ""}`
-      : "";
-    this.layerDescEl.textContent = [layer.description, metaStr].filter(Boolean).join("\n");
+    this.layerSelectEl.value = this.currentLayer.id;
   }
 
   private updateSourceVisibility(): void {
-    const canWmts = this.currentLayer.kind === "scalar" && !!this.currentLayer.stores.wmts;
-    const canGeoVideo = this.currentLayer.kind === "scalar" && !!this.currentLayer.derived?.geoVideos?.length;
-    if (this.sourceContainer) this.sourceContainer.style.display = canWmts || canGeoVideo ? "" : "none";
-    this.updateSourceButtons();
+    if (this.sourceContainer) this.sourceContainer.style.display = this.currentLayer.sources.length > 1 ? "" : "none";
+    this.renderSourceSelect();
   }
 
-  private updateSourceButtons(): void {
-    const canWmts = this.currentLayer.kind === "scalar" && !!this.currentLayer.stores.wmts;
-    const canGeoVideo = this.currentLayer.kind === "scalar" && !!this.currentLayer.derived?.geoVideos?.length;
-    for (const { source, btn } of this.sourceButtons) {
-      btn.classList.toggle("active", source === this.currentBackend);
-      btn.disabled = source === "wmts" && !canWmts;
-      if (source === "geovideo") btn.disabled = !canGeoVideo;
+  private renderSourceSelect(): void {
+    if (!this.sourceSelectEl) return;
+    this.sourceSelectEl.replaceChildren();
+    for (const source of this.currentLayer.sources) {
+      const label = source.type === "zarr" ? "Zarr" : source.type === "wmts" ? "WMTS" : "GeoVideo";
+      const option = new Option(label, source.id);
+      option.title = source.id;
+      this.sourceSelectEl.appendChild(option);
     }
+    this.sourceSelectEl.value = this.currentSourceId;
   }
 
   private applyHashCamera(hash: HashState | null): void {
@@ -1395,7 +1366,7 @@ export class DemoApp {
     };
   }
 
-  private applyLayerDefaults(layer: CatalogLayer): void {
+  private applyLayerDefaults(layer: CatalogEntry): void {
     const d = layer.defaults ?? {};
     this.params.particleDensity = d.particles?.density ?? 0.05;
     this.params.speed = d.particles?.speed ?? 1.0;
@@ -1412,7 +1383,7 @@ export class DemoApp {
     this.params.palette = d.palette ?? "rdylbu";
   }
 
-  private applyHashState(hash: HashState, layer: CatalogLayer): void {
+  private applyHashState(hash: HashState, layer: CatalogEntry): void {
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;

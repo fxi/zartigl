@@ -34,6 +34,7 @@ import subprocess
 import sys
 import time
 from typing import Any
+import uuid
 import zlib
 
 import numpy as np
@@ -65,6 +66,17 @@ def required(config: dict[str, Any], key: str) -> Any:
     return config[key]
 
 
+def uuid4(value: Any, label: str) -> str:
+    raw = str(value)
+    try:
+        parsed = uuid.UUID(raw)
+    except ValueError as exc:
+        raise ValueError(f"{label} must be a UUIDv4") from exc
+    if parsed.version != 4 or raw != raw.lower() or str(parsed) != raw:
+        raise ValueError(f"{label} must be a lowercase UUIDv4")
+    return raw
+
+
 def parse_iso(value: str) -> np.datetime64:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -86,8 +98,13 @@ def load_layer(layer_id: str) -> dict[str, Any]:
     raise ValueError(f"Unknown catalog layer: {layer_id}")
 
 
+def zarr_source(layer: dict[str, Any]) -> dict[str, Any]:
+    return next(source for source in layer["sources"] if source["type"] == "zarr")
+
+
 def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
-    layer_id = str(required(raw, "layerId"))
+    layer_id = uuid4(required(raw, "catalogEntryId"), "catalogEntryId")
+    artifact_id = uuid4(required(raw, "id"), "id")
     sampling = raw.get("sampling")
     if sampling is None:
         start = str(required(raw, "dateStart"))
@@ -176,7 +193,8 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("style.colorDomain must contain an increasing pair")
     result = {
         **raw,
-        "layerId": layer_id,
+        "catalogEntryId": layer_id,
+        "id": artifact_id,
         "durationSeconds": duration,
         "interpolation": interpolation,
         "sampling": sampling,
@@ -207,10 +225,10 @@ def validate_config(raw: dict[str, Any]) -> dict[str, Any]:
 
 def artifact_hash(config: dict[str, Any], layer: dict[str, Any]) -> str:
     material = {
-        "format": "geovideo-v2-scalar-luma-static-mask-intersection-exact-samples-v2",
+        "format": "geovideo-v3-scalar-luma-static-mask-intersection-exact-samples",
         "config": config,
-        "dataset": layer["dataset"],
-        "store": layer["stores"]["field"],
+        "provenance": zarr_source(layer).get("provenance"),
+        "store": zarr_source(layer)["endpoints"]["field"],
     }
     return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()[:12]
 
@@ -253,9 +271,10 @@ class ScalarFrames:
     def __init__(self, layer: dict[str, Any], config: dict[str, Any]):
         self.layer = layer
         self.config = config
-        store = layer["stores"]["field"]["url"]
+        source = zarr_source(layer)
+        store = source["endpoints"]["field"]
         self.dataset = xr.open_zarr(store, consolidated=True, chunks=None)
-        self.variable = layer["variables"]["value"]
+        self.variable = source["variables"]["value"]
         if self.variable not in self.dataset:
             raise ValueError(f"Variable not found in store: {self.variable}")
         self.data = self.dataset[self.variable]
@@ -621,8 +640,8 @@ def create_manifest(
         "interpolation": config["interpolation"],
     }
     return {
-        "schemaVersion": 2,
-        "id": config.get("id", f"{config['layerId']}-geovideo"),
+        "schemaVersion": 3,
+        "id": config["id"],
         "type": "geovideo",
         "projection": "equirectangular",
         "bounds": config["bounds"],
@@ -656,9 +675,11 @@ def create_manifest(
         },
         "timeline": timeline,
         "provenance": {
-            "layerId": layer["id"],
-            "datasetId": layer["dataset"]["id"],
-            "variable": layer["variables"]["value"],
+            "catalogEntryId": layer["id"],
+            "inputSourceId": zarr_source(layer)["id"],
+            "provider": zarr_source(layer).get("provenance", {}).get("provider"),
+            "identifiers": zarr_source(layer).get("provenance", {}).get("identifiers", {}),
+            "variables": [zarr_source(layer)["variables"]["value"]],
             "generatedAt": np.datetime_as_string(np.datetime64("now", "s"), timezone="UTC"),
         },
         "style": {
@@ -698,7 +719,7 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
         },
     )
     prefix = config.get("upload", {}).get("prefix", "geovideo")
-    object_prefix = f"{prefix.strip('/')}/{config['layerId']}/{artifact_id}"
+    object_prefix = f"{prefix.strip('/')}/{config['catalogEntryId']}/{artifact_id}"
     media = directory / "video.mp4"
     mask = directory / "mask.png"
     manifest = directory / "manifest.json"
@@ -781,12 +802,12 @@ def main() -> int:
     args = parser.parse_args()
 
     config = validate_config(json.loads(args.config.read_text()))
-    layer = load_layer(config["layerId"])
+    layer = load_layer(config["catalogEntryId"])
     artifact_id = artifact_hash(config, layer)
     output_root = Path(config["output"]["directory"])
     if not output_root.is_absolute():
         output_root = ROOT / output_root
-    directory = output_root / f"{config['layerId']}-{artifact_id}"
+    directory = output_root / f"{config['catalogEntryId']}-{artifact_id}"
     frame_count = round(config["durationSeconds"] * config["output"]["fps"])
     if args.max_frames is not None:
         frame_count = min(frame_count, max(1, args.max_frames))

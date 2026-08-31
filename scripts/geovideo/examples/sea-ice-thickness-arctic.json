@@ -1,14 +1,22 @@
 {
-  "id": "sea-ice-thickness-arctic-2022-2026",
-  "layerId": "sea-ice-thickness",
+  "id": "f5b31e02-ff0f-4310-a046-a781bd2b1c38",
+  "catalogEntryId": "a7d9835c-0a80-4112-8b43-694e359384ac",
   "dateStart": "2022-06-01T00:00:00Z",
   "dateEnd": "2026-08-27T00:00:00Z",
   "durationSeconds": 80,
   "interpolation": "linear",
-  "bounds": [-180, 45, 180, 90],
+  "bounds": [
+    -180,
+    45,
+    180,
+    90
+  ],
   "style": {
     "palette": "ice",
-    "colorDomain": [0, 5],
+    "colorDomain": [
+      0,
+      5
+    ],
     "unit": "m",
     "logScale": false,
     "vibrance": 0.1

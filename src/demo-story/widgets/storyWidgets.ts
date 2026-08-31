@@ -1,4 +1,4 @@
-import { requireCatalogLayer } from "../../catalog";
+import { findCatalogEntries } from "../../catalog";
 import type { StoryRegistry, StoryWidgetContext } from "../runtime";
 import { ARCTIC_POINT, MAYOTTE_POINT } from "../scenes";
 import ensoJson from "../data/enso.json";
@@ -41,6 +41,12 @@ function formatTime(ms: number): string {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" }).format(new Date(ms));
 }
 
+function datasetForVariable(variableId: string): string {
+  const entry = findCatalogEntries({ variableId })[0];
+  const source = entry?.sources.find((candidate) => candidate.type === "zarr");
+  return source?.provenance?.identifiers?.dataset ?? "unknown dataset";
+}
+
 export function registerStoryWidgets(registry: StoryRegistry): void {
   registry.registerWidgetType("arctic-series", async (host, config, context) => {
     const { chart, provenance } = widgetShell(host);
@@ -52,7 +58,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     view.setArcticMeasurementPoint({ longitude: result.longitude, latitude: result.latitude });
     const controller = renderArcticChart(chart, result, "sithick", view.zartigl.getVariableMeta().units ?? "m", chartOptions(config, context));
     context.setTimeCursor(controller.setCursor);
-    provenance.textContent = `${requireCatalogLayer("sea-ice-thickness").dataset.id} · nearest grid point ${result.latitude.toFixed(3)}°, ${result.longitude.toFixed(3)}° · ${result.points.length} samples`;
+    provenance.textContent = `${datasetForVariable("sithick")} · nearest grid point ${result.latitude.toFixed(3)}°, ${result.longitude.toFixed(3)}° · ${result.points.length} samples`;
     return () => controller.destroy();
   });
   registry.registerWidgetType("enso-series", (host, config, context) => {
@@ -93,7 +99,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     if (context.signal.aborted) return;
     const controller = renderMayotteChart(chart, result, chartOptions(config, context));
     context.setTimeCursor(controller.setCursor);
-    provenance.textContent = `Hourly sea-surface wind (not station gust): ${requireCatalogLayer("surface-wind").dataset.id} · nearest grid point ${result.latitude.toFixed(4)}°, ${result.longitude.toFixed(4)}° · Track: ${chidoTrackJson.source.name} ${chidoTrackJson.source.version}`;
+    provenance.textContent = `Hourly sea-surface wind (not station gust): ${datasetForVariable("eastward_wind")} · nearest grid point ${result.latitude.toFixed(4)}°, ${result.longitude.toFixed(4)}° · Track: ${chidoTrackJson.source.name} ${chidoTrackJson.source.version}`;
     return () => controller.destroy();
   });
 }

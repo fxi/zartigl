@@ -2,14 +2,15 @@
   "schemaVersion": 1,
   "generatedAt": "2026-08-23T09:08:19Z",
   "source": {
-    "layerId": "sea-surface-temperature-anomaly",
+    "layerId": "5e94f1b2-1342-4a1f-936e-09170d7d4db8",
     "datasetId": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m",
     "storeUrl": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-014/arco/GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/geoChunked.zarr",
     "variable": "sea_surface_temperature_anomaly",
     "unit": "°C",
     "method": "Exact native-grid area-weighted mean using cos(latitude); missing cells excluded.",
     "timeStart": "2026-02-01T00:00:00Z",
-    "timeEnd": "2026-08-01T00:00:00Z"
+    "timeEnd": "2026-08-01T00:00:00Z",
+    "sourceId": "9be43e20-eb9e-44e3-bc8b-a733f7a7eda0"
   },
   "regions": [
     {

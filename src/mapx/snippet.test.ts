@@ -7,9 +7,9 @@ import {
 describe("buildMapxWidgetSnippet", () => {
   it("builds a MapX widget handler using the ARCO extension", () => {
     const snippet = buildMapxWidgetSnippet({
-      layerId: "surface-wind",
+      layerId: "b15be4e7-94ca-4887-a874-3fab37d29638",
       layerKind: "vector",
-      backend: "zarr",
+      source: "zarr",
       time: new Date("2026-06-04T00:00:00.000Z"),
       depth: 10,
       timeRange: { trailing: "P1M" },
@@ -31,8 +31,8 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).toContain("local.arco = new ArcoMapLegend({");
     expect(snippet).toContain("await local.arco.init()");
     expect(snippet).toContain("elInputs: widget.elContent");
-    expect(snippet).toContain("backend: \"zarr\"");
-    expect(snippet).toContain("layer: \"surface-wind\"");
+    expect(snippet).toContain("source: \"zarr\"");
+    expect(snippet).toContain("layer: \"b15be4e7-94ca-4887-a874-3fab37d29638\"");
     expect(snippet).toContain("settings: {");
     expect(snippet).toContain("\"opacity\": 0.8");
     expect(snippet).toContain('"renderMode": "raster+particles"');
@@ -61,7 +61,7 @@ describe("buildMapxWidgetSnippet", () => {
     const snippet = buildMapxWidgetSnippet({
       layerId: "sea-temperature",
       layerKind: "scalar",
-      backend: "geovideo",
+      source: "geovideo",
       settings: {
         palette: "balance",
         opacity: 0.8,
@@ -75,7 +75,7 @@ describe("buildMapxWidgetSnippet", () => {
       },
     });
 
-    expect(snippet).toContain('backend: "geovideo"');
+    expect(snippet).toContain('source: "geovideo"');
     expect(snippet).toContain('"palette": "balance"');
     expect(snippet).toContain('"colorDomain"');
     expect(snippet).not.toContain("particleDensity");
@@ -88,9 +88,9 @@ describe("buildMapxWidgetSnippet", () => {
 describe("buildStandaloneDemoSnippet", () => {
   it("builds a standalone zartigl script for external demos", () => {
     const snippet = buildStandaloneDemoSnippet({
-      layerId: "surface-wind",
+      layerId: "b15be4e7-94ca-4887-a874-3fab37d29638",
       layerKind: "scalar",
-      backend: "wmts",
+      source: "wmts",
       time: new Date("2026-06-04T00:00:00.000Z"),
       timeRange: { start: "2026-06-01T00:00:00Z", end: "2026-06-30T00:00:00Z" },
       geoVideo: { autoplay: true, loop: false, playbackRate: 5 },
@@ -109,10 +109,10 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet).toContain("zoom: 4.123");
     expect(snippet).toContain("map.setProjection({ type: \"globe\" })");
     expect(snippet).toContain("new Zartigl({");
-    expect(snippet).toContain("backend: \"wmts\"");
+    expect(snippet).toContain("source: \"wmts\"");
     expect(snippet).toContain('"start": "2026-06-01T00:00:00Z"');
     expect(snippet).toContain("geoVideo: {");
-    expect(snippet).toContain("await z.setLayer(\"surface-wind\")");
+    expect(snippet).toContain("await z.setLayer(\"b15be4e7-94ca-4887-a874-3fab37d29638\")");
     expect(snippet).toContain("z.updateSettings({");
     expect(snippet).toContain('"opacity": 0.8');
     expect(snippet).not.toContain("renderMode");

@@ -15,6 +15,7 @@ Output: JSON with zarr URLs, variables, dimensions, and suggested layer fields.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from urllib.parse import urlparse
 
@@ -65,6 +66,13 @@ def build_wmts_metadata(svc, product_id: str, variable: str | None) -> dict | No
         "tileMatrixSet": "EPSG:3857",
         "format": "image/png",
     }
+
+
+def temporal_summary(dataset_id: str) -> dict:
+    cadence = re.search(r"_(P(?:T)?\d+[YMDHMS])(?:-|$)", dataset_id, re.IGNORECASE)
+    lowered = dataset_id.lower()
+    mode = "historical" if "_my_" in lowered else "near-real-time" if "_nrt_" in lowered else "analysis-forecast" if "_anfc_" in lowered else "historical"
+    return {"mode": mode, **({"cadence": cadence.group(1).upper()} if cadence else {})}
 
 
 def detect_vector_vars(svc) -> tuple[str, str] | None:
@@ -134,6 +142,7 @@ def main():
     wmts = build_wmts_metadata(svc_wmts, prod.product_id, suggested_variable)
 
     variables_meta = {}
+    temporal = temporal_summary(dataset_id)
     if suggested_type == "scalar":
         variables_meta = {
             "kind": "scalar",
@@ -150,20 +159,23 @@ def main():
         "dataset_id": dataset_id,
         "product_id": prod.product_id,
         "title": getattr(prod, "title", None) or getattr(ds, "title", None) or dataset_id,
-        "stores": {
-            "field": {
-                "url": svc_geo.uri,
-            },
-            **({
-                "pointSeries": {
-                    "url": svc_time.uri,
-                }
-            } if svc_time else {}),
-            **({"wmts": wmts} if wmts else {}),
+        "source_candidate": {
+            "type": "zarr",
+            "title": {"en": "Copernicus Marine ARCO Zarr"},
+            "provenance": {"provider": "copernicus-marine", "identifiers": {"product": prod.product_id, "dataset": dataset_id}},
+            "temporal": temporal,
+            "endpoints": {"field": svc_geo.uri, **({"pointSeries": svc_time.uri} if svc_time else {})},
+            "variables": variables_meta,
         },
+        "wmts_source_candidate": ({
+            "type": "wmts", "title": {"en": "Copernicus Marine WMTS"},
+            "provenance": {"provider": "copernicus-marine", "identifiers": {"product": prod.product_id, "dataset": dataset_id}},
+            "temporal": temporal,
+            "capabilitiesUrl": wmts["capabilities_url"], "baseUrl": wmts["base_url"], "layer": wmts["layer"],
+            "tileMatrixSet": wmts["tileMatrixSet"], "format": wmts["format"], **({"style": wmts["style"]} if wmts.get("style") else {}),
+        } if wmts else None),
         "all_variables": variables,
         "suggested_kind": suggested_type,
-        "suggested_variables": variables_meta,
     }
     print(json.dumps(result, indent=2))
 

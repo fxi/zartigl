@@ -5,7 +5,7 @@ import { geoVideoSecondsForTime } from "./geovideo";
 import type { GeoVideoManifest } from "./geovideo";
 
 const manifest: GeoVideoManifest = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: "test-values",
   type: "geovideo",
   projection: "equirectangular",
@@ -34,9 +34,10 @@ const manifest: GeoVideoManifest = {
     interpolation: "linear",
   },
   provenance: {
-    layerId: "test",
-    datasetId: "test",
-    variable: "test",
+    catalogEntryId: "entry",
+    inputSourceId: "source",
+    identifiers: { dataset: "test" },
+    variables: ["test"],
     generatedAt: "2026-07-02T00:00:00Z",
   },
   style: { palette: "balance", colorDomain: [-3, 3] },

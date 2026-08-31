@@ -6,12 +6,18 @@
       "type": "zartigl-map",
       "config": {
         "camera": {
-          "center": [18, 12],
+          "center": [
+            18,
+            12
+          ],
           "zoom": 1.25,
           "pitch": 0,
           "bearing": 0
         },
-        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "transition": {
+          "method": "flyTo",
+          "durationMs": 1400
+        },
         "anchor": "center"
       }
     },
@@ -19,60 +25,90 @@
       "id": "arctic-ice",
       "type": "zartigl-map",
       "config": {
-        "layerId": "sea-ice-thickness",
+        "layerId": "a7d9835c-0a80-4112-8b43-694e359384ac",
         "camera": {
-          "center": [-5.623, 85.05],
+          "center": [
+            -5.623,
+            85.05
+          ],
           "zoom": 0.28,
           "pitch": 0,
           "bearing": 0
         },
-        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "transition": {
+          "method": "flyTo",
+          "durationMs": 1400
+        },
         "anchor": "top-right",
         "settings": {
           "palette": "ice",
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.1,
-          "colorDomain": [0, 5]
+          "colorDomain": [
+            0,
+            5
+          ]
         },
-        "overlays": ["arctic-measurement"]
+        "overlays": [
+          "arctic-measurement"
+        ],
+        "sourceId": "f5b31e02-ff0f-4310-a046-a781bd2b1c38"
       }
     },
     {
       "id": "enso-pacific",
       "type": "zartigl-map",
       "config": {
-        "layerId": "sea-surface-temperature-anomaly",
+        "layerId": "5e94f1b2-1342-4a1f-936e-09170d7d4db8",
         "camera": {
-          "center": [-103.49, 22.71],
+          "center": [
+            -103.49,
+            22.71
+          ],
           "zoom": 1.55,
           "pitch": 0,
           "bearing": 0
         },
-        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "transition": {
+          "method": "flyTo",
+          "durationMs": 1400
+        },
         "anchor": "top-right",
         "settings": {
           "palette": "balance",
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.1,
-          "colorDomain": [-3, 3]
+          "colorDomain": [
+            -3,
+            3
+          ]
         },
-        "overlays": ["enso-regions"]
+        "overlays": [
+          "enso-regions"
+        ],
+        "sourceId": "e260c26f-8374-4c65-a076-5cd181ed5091"
       }
     },
     {
       "id": "baltic-oxygen",
       "type": "zartigl-map",
       "config": {
-        "layerId": "baltic-bottom-oxygen",
+        "layerId": "89f148bd-dd9d-4428-85ee-21f8af513627",
         "camera": {
-          "center": [20.2, 59.4],
+          "center": [
+            20.2,
+            59.4
+          ],
           "zoom": 3.5,
           "pitch": 0,
           "bearing": 0
         },
-        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "transition": {
+          "method": "flyTo",
+          "durationMs": 1400
+        },
         "anchor": "top-right",
         "settings": {
           "palette": "matter",
@@ -80,21 +116,28 @@
           "logScale": false,
           "vibrance": 0.1,
           "colorDomain": null
-        }
+        },
+        "sourceId": "f65db382-5a6e-442b-a7e1-f79898487ec9"
       }
     },
     {
       "id": "mayotte-wind",
       "type": "zartigl-map",
       "config": {
-        "layerId": "surface-wind",
+        "layerId": "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
         "camera": {
-          "center": [42.252791, -13.811],
+          "center": [
+            42.252791,
+            -13.811
+          ],
           "zoom": 6,
           "pitch": 60,
           "bearing": 34.69
         },
-        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "transition": {
+          "method": "flyTo",
+          "durationMs": 1400
+        },
         "anchor": "center",
         "timeRange": {
           "start": "2024-12-14T00:00:00.000Z",
@@ -111,15 +154,28 @@
           "vibrance": 1,
           "colorDomain": null
         },
-        "overlays": ["chido-track"]
+        "overlays": [
+          "chido-track"
+        ]
       }
     },
     {
       "id": "outro-globe",
       "type": "zartigl-map",
       "config": {
-        "camera": { "center": [22, 8], "zoom": 1.2, "pitch": 0, "bearing": 0 },
-        "transition": { "method": "flyTo", "durationMs": 1400 },
+        "camera": {
+          "center": [
+            22,
+            8
+          ],
+          "zoom": 1.2,
+          "pitch": 0,
+          "bearing": 0
+        },
+        "transition": {
+          "method": "flyTo",
+          "durationMs": 1400
+        },
         "anchor": "center"
       }
     }

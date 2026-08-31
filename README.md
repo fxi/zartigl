@@ -14,9 +14,9 @@ Zartigl renders scalar rasters and vector particle fields from multidimensional 
 - Vector rendering with GPU particle advection and optional raster magnitude display
 - Time and vertical-dimension controls for depth, elevation, level, or pressure-like axes
 - Point queries for time series and vertical profiles when a point-series store is available
-- Catalog-backed datasets with automatic Zarr/WMTS backend selection for scalar layers
+- UUID-addressed catalog entries with independently selectable Zarr, WMTS, and GeoVideo sources
 - MapLibre custom layer integration, including Mercator and globe rendering paths
-- Pre-rendered GeoVideo backends with true polar globe draping and portable masks
+- Pre-rendered GeoVideo sources with true polar globe draping and portable masks
 - No server component required for public CORS-enabled stores
 
 ## Quick Start
@@ -28,7 +28,7 @@ npm install @fxi/zartigl maplibre-gl
 ```ts
 import maplibregl from "maplibre-gl";
 import { Zartigl } from "@fxi/zartigl";
-import { catalog } from "@fxi/zartigl/catalog";
+import { catalog, searchCatalog } from "@fxi/zartigl/catalog";
 
 const map = new maplibregl.Map({
   container: "map",
@@ -41,19 +41,24 @@ const z = new Zartigl({
   id: "zarr-layer",
   map,
   catalog,
-  backend: "auto",
+  source: "auto",
   // Optional: expose only the month ending at the latest available timestamp.
   timeRange: { trailing: "P1M" },
   geoVideo: { autoplay: false, loop: true, playbackRate: 1 },
 });
 
-await z.setLayer("ocean-current-velocity");
+const currents = searchCatalog("ocean-current-velocity")[0];
+await z.setLayer(currents.id);
 z.setTimeAndDepth(new Date("2025-01-01T00:00:00Z"), 0);
 z.updateSettings({
   palette: "rdylbu",
   opacity: 0.9,
 });
 ```
+
+Pass a source UUID (or source type) as the optional second argument when entry
+and source should switch atomically. `setSource()` changes the source of the
+active entry.
 
 `setLayer()` resolves after the field store's consolidated metadata and coordinate axes have loaded. Metadata getters are therefore authoritative after the awaited call, including exact values for irregular time axes.
 
@@ -87,13 +92,7 @@ npm run dev:story
 npm run build:story
 ```
 
-For the smaller public API demo:
-
-```bash
-npm run dev:minimal
-```
-
-The demos read the built-in catalog, which points to public Copernicus Marine ARCO stores. No local data download is needed; visible chunks are fetched directly from cloud object storage or, for some scalar layers, from WMTS when that is the safer backend.
+The demos read the built-in catalog, which points to public browser-accessible Zarr, WMTS, and GeoVideo sources. No local data download is needed; data is fetched directly from the selected source.
 
 ## Public API
 
@@ -139,17 +138,17 @@ Missing remote chunks are interpreted as Zarr fill data. A wholly unavailable
 frame is not cached, so selecting it again can recover after an upstream store
 finishes publishing it; a renderable sparse frame is cached normally.
 
-`VectorLayer`, `ScalarLayer`, `ArcoLayer`, and `ZarrSource` remain exported for advanced use cases that need direct control over renderer internals. Ordinary MapLibre integrations should prefer `Zartigl`.
+`VectorLayer`, `ScalarLayer`, `GeoVideoLayer`, and `ZarrSource` remain exported for advanced use cases that need direct control over renderer internals. Ordinary MapLibre integrations should prefer `Zartigl`.
 
 ## Alternatives And Project Fit
 
-Zartigl overlaps with several useful projects. The goal is not to replace them, but to cover a specific MapX/ARCO workflow: public cloud Zarr stores, MapLibre integration, animated vector particles, scalar rasters, time/depth controls, point inspection, and reproducible widget configuration without a dedicated tile server.
+Zartigl overlaps with several useful projects. The goal is not to replace them, but to cover a specific cloud-native geoscience workflow: public Zarr stores and compatible WMTS/GeoVideo sources, MapLibre integration, animated vector particles, scalar rasters, time/depth controls, point inspection, and reproducible widget configuration without a dedicated tile server.
 
 The table below is a fit matrix based on documented project scope. "Not specified" means the feature is not a stated focus in the referenced project, not that it is impossible.
 
 | Project | Best fit | Zarr raster | Vector particles | Time/depth UI | Query API | Polar/globe rendering | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| zartigl | MapX-ready ARCO-like ocean layers | Yes, Zarr v2 | Yes | Built in | Time series and vertical profiles when a point-series store is available | MapLibre globe/ECEF path for lon/lat scalar and vector layers, including over-pole views | Catalog defaults, WMTS fallback for selected scalar layers, MapX snippet generation |
+| zartigl | MapX-ready cloud geoscience layers | Yes, Zarr v2 | Yes | Built in | Time series and vertical profiles when a point-series store is available | MapLibre globe/ECEF path for lon/lat scalar and vector layers, including over-pole views | Provider-neutral catalog, selectable sources, MapX snippet generation |
 | [Copernicus Marine MyOcean Pro](https://data.marine.copernicus.eu/viewer/expert) | Copernicus end-user exploration | Service-managed | Product-dependent | Application UI | Product UI, not a reusable library API | Service-managed | Reference viewer, not a MapLibre/WebGL library to embed in MapX |
 | [@carbonplan/zarr-layer](https://github.com/carbonplan/zarr-layer) | General Zarr raster layers for MapLibre/Mapbox | Yes, Zarr v2/v3 | No, raster-focused | Selector API | GeoJSON queries | Full polar coverage documented for MapLibre with suitable untiled datasets | Strong closest alternative for raster Zarr; supports custom stores, CRS reprojection, custom fragment shaders |
 | [@carbonplan/maps](https://github.com/carbonplan/maps) | React maps for prepared multidimensional rasters | Yes, prepared Zarr pyramids | No | React selector workflow | Not its main focus | Web Mercator-focused | Higher-level React framework; its core MapLibre path is documented as Web Mercator-only |
@@ -160,7 +159,7 @@ The closest general alternative is `@carbonplan/zarr-layer`. It has a broader do
 
 Zartigl remains useful because it combines pieces that are not currently covered together by those projects:
 
-- ARCO-oriented catalog entries and defaults for Copernicus Marine products.
+- Provider-neutral catalog entries with native dataset/variable provenance and source-specific defaults.
 - U/V vector products rendered as animated particles, with optional raster magnitude in the same layer.
 - Time and vertical-axis metadata exposed as application controls.
 - Depth/elevation labeling, ordering, and point inspection tuned for ocean products.
@@ -168,7 +167,7 @@ Zartigl remains useful because it combines pieces that are not currently covered
 - GPU particle-state fallbacks for browser and hardware differences, including float, half-float, and `RGBA8` compatibility mode.
 - A facade API that can generate MapX widget snippets and keep widget state reproducible.
 
-deck.gl, Three.js, or `@carbonplan/zarr-layer` could still be useful integration targets. They would not remove the ARCO catalog, time/depth metadata, vector particle simulation, point-query workflow, or MapX widget-state work that zartigl currently owns.
+deck.gl, Three.js, or `@carbonplan/zarr-layer` could still be useful integration targets. They would not remove the catalog identity/provenance model, time/depth metadata, vector particle simulation, point-query workflow, or MapX widget-state work that zartigl currently owns.
 
 ## Catalog Metadata
 
@@ -193,10 +192,10 @@ This requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and a free [Cope
 
 GeoVideo pre-renders an expensive scalar Zarr timeline into a short, streamable
 H.264 MP4 while retaining spatial bounds, scientific dates, provenance, units,
-palette, and color domain in a sidecar manifest. Version 2 transports quantized
+palette, and color domain in a sidecar manifest. Version 3 transports quantized
 scalar values in luminance and a static lossless mask as a separate PNG, so the
 browser can apply palette and scalar styling in WebGL. It is a visualization
-backend only: point queries always use the authoritative Zarr point-series store.
+render source only: point queries use a separately configured Zarr point-series source when the entry provides one.
 
 Unlike MapLibre's native four-corner video source, `GeoVideoLayer` maps an
 equirectangular scalar-luma texture through zartigl's subdivided lon/lat mesh.
@@ -206,13 +205,13 @@ static validity mask without doubling the video width.
 ### Displaying a GeoVideo
 
 The built-in catalog includes an Arctic sea-ice thickness animation. Select the
-GeoVideo backend explicitly and enable autoplay when creating the `Zartigl`
+GeoVideo source explicitly and enable autoplay when creating the `Zartigl`
 instance:
 
 ```ts
 import maplibregl from "maplibre-gl";
 import { Zartigl } from "@fxi/zartigl";
-import { catalog } from "@fxi/zartigl/catalog";
+import { catalog, searchCatalog } from "@fxi/zartigl/catalog";
 
 const map = new maplibregl.Map({
   container: "map",
@@ -226,7 +225,7 @@ map.setProjection({ type: "globe" });
 const z = new Zartigl({
   map,
   catalog,
-  backend: "geovideo",
+  source: "auto",
   geoVideo: {
     autoplay: true,
     loop: true,
@@ -234,16 +233,16 @@ const z = new Zartigl({
   },
 });
 
-await z.setLayer("sea-ice-thickness");
+const ice = searchCatalog("sea-ice-thickness")[0];
+await z.setLayer(ice.id);
+await z.setSource(ice.sources.find((source) => source.type === "geovideo")!.id);
 ```
 
-`backend: "geovideo"` selects the published GeoVideo manifest from the
-catalog's `sea-ice-thickness` entry. Globe projection demonstrates its polar
+`setSource()` selects the entry's published GeoVideo manifest by its stable
+source UUID. Globe projection demonstrates its polar
 coverage. `loop` and `playbackRate` are optional playback settings. Browsers
 may restrict autoplay, so embedding applications should provide a user-gesture
 fallback when necessary.
-
-Try the configured instance directly in the [Arctic sea-ice GeoVideo example](https://fxi.io/zartigl/#eyJkIjoxMSwidCI6MTc4MTAwNDMyNTY3OC40OTY4LCJ2IjowLCJwIjoiaWNlIiwicyI6Imdlb3ZpZGVvIiwicHIiOiJnbG9iZSIsImMiOlstMTMyLjQ1NDgyNiw4NS4wNTExMjldLCJ6IjowLjUxMSwiYiI6MCwicGkiOjAsInBkIjowLjA1LCJzcCI6MSwiZiI6MC43LCJybSI6InBhcnRpY2xlcyIsIm9wIjowLjksImxzIjp0cnVlLCJ2YiI6LTEsImNkIjpudWxsLCJnYSI6dHJ1ZSwiZ2wiOnRydWUsImdyIjoxMH0=).
 
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run
@@ -267,7 +266,7 @@ and smoke-test workflow.
 
 ## Dataset Scope
 
-The built-in catalog focuses on Copernicus Marine ARCO products, including ocean currents and scalar ocean/ice variables. Other public cloud-native Zarr v2 stores can be used when their store URLs and variables are described in a compatible catalog entry and runtime compatibility is verified. Time, vertical, spatial, and variable metadata are loaded live from consolidated Zarr metadata and coordinate chunks.
+The built-in catalog currently focuses on Copernicus Marine products, but catalog v2 treats Zarr, WMTS, and GeoVideo as independent provider-neutral sources. Public cloud-native Zarr v2 stores can be used when their URLs and variables match the runtime contract; standalone WMTS sources load dimensions from GetCapabilities, and standalone GeoVideo sources load their manifest metadata. Live source metadata remains authoritative.
 
 Good fits include:
 
@@ -279,7 +278,7 @@ Good fits include:
 
 Vector layers need either U/V component variables or a catalog derivation from direction and magnitude. Scalar layers need one numeric variable and enough coordinate metadata to locate chunks by longitude, latitude, time, and optional vertical dimension.
 
-Catalog validation checks the JSON contract, not remote service behavior. For built-in catalog additions, use the ARCO-oriented catalog-builder scripts first. WMTS is only an optional scalar shortcut; for polar products, prefer Zarr unless WMTS coverage is verified to reach the poles.
+Catalog validation checks the JSON contract, not remote service behavior. For built-in catalog additions, use the ARCO-oriented discovery scripts first. WMTS sources must expose a compatible Web Mercator tile matrix; for polar products, prefer Zarr unless WMTS coverage is verified to reach the poles.
 
 ## How It Works
 
