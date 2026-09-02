@@ -4,6 +4,7 @@ import { Pane } from "tweakpane";
 import type { FolderApi, BindingApi, BladeApi } from "@tweakpane/core";
 import {
   buildMapxWidgetSnippet,
+  buildStandaloneDemoHtml,
   buildStandaloneDemoSnippet,
   Zartigl,
   deriveDirectionMagnitudeComponents,
@@ -433,8 +434,12 @@ export class DemoApp {
       id: "prod-zartigl",
       map: this.map,
       catalog: this.cat,
+      layer: layer.id,
       source: this.currentSourceId,
       timeRange: sharedTimeRange,
+      time: hashState?.t,
+      depth: hashState?.v,
+      settings: this.buildSettings(),
       geoVideo: {
         autoplay: hashState?.ga ?? this.params.geoVideoAutoplay,
         loop: hashState?.gl ?? this.params.geoVideoLoop,
@@ -469,7 +474,7 @@ export class DemoApp {
       }
     });
 
-    await activeZartigl.setLayer(layer.id);
+    await activeZartigl.init();
     if (seq !== this.switchSeq) return;
     const activeSource = activeZartigl.getSource();
     if (activeSource) { this.currentSourceId = activeSource.id; this.currentBackend = activeSource.type; }
@@ -499,9 +504,6 @@ export class DemoApp {
       this.params.depth = depthMeta.values[0] ?? 0;
     }
 
-    this.z.updateSettings(this.buildSettings());
-    this.z.setTimeAndDepth(times[this.params.timeIndex], this.params.depth);
-
     this.rebuildDataUI();
 
     const isVector = layer.kind === "vector";
@@ -518,7 +520,7 @@ export class DemoApp {
 
   private async switchSource(source: CatalogSource): Promise<void> {
     if (!this.z || source.id === this.currentSourceId) return;
-    await this.z.setSource(source.id);
+    await this.z.update({ source: source.id });
     this.currentSourceId = source.id;
     this.currentBackend = source.type;
     const timeMeta = this.z.getTimeMeta();
@@ -555,7 +557,7 @@ export class DemoApp {
       const ms = times[ev.value];
       this.params.timeLabel = formatTime(ms);
       this.timeLabelBinding?.refresh();
-      this.z?.setTime(ms);
+      void this.z?.update({ time: ms });
     }) as BindingApi;
 
     this.timeLabelBinding = this.timeFolder.addBinding(this.params, "timeLabel", {
@@ -574,7 +576,7 @@ export class DemoApp {
           value: v,
         })),
         label: depthMeta.label,
-      }).on("change", (ev) => this.z?.setDepth(ev.value)) as BindingApi;
+      }).on("change", (ev) => void this.z?.update({ depth: ev.value })) as BindingApi;
     }
 
     this.dataBindings.push(
@@ -591,11 +593,11 @@ export class DemoApp {
       });
       const loop = this.dataFolder.addBinding(this.params, "geoVideoLoop", {
         label: "loop",
-      }).on("change", (event) => this.z?.setLoop(event.value));
+      }).on("change", (event) => void this.z?.update({ geoVideo: { loop: event.value } }));
       const rate = this.dataFolder.addBinding(this.params, "geoVideoPlaybackRate", {
         label: "playback rate",
         options: [0.5, 1, 2, 5, 10].map((value) => ({ text: `${value}×`, value })),
-      }).on("change", (event) => this.z?.setPlaybackRate(event.value));
+      }).on("change", (event) => void this.z?.update({ geoVideo: { playbackRate: event.value } }));
       this.dataBindings.push(autoplay, loop, rate);
     }
 
@@ -655,7 +657,7 @@ export class DemoApp {
       checkbox.addEventListener("change", () => {
         if (side === "start") this.params.limitStart = checkbox.checked;
         else this.params.limitEnd = checkbox.checked;
-        this.applyAuthoredRange();
+        void this.applyAuthoredRange();
       });
       input.addEventListener("change", () => {
         const snapped = resolveTimeInputSelection(
@@ -671,7 +673,7 @@ export class DemoApp {
           this.params.allowedEnd = snapped;
           if (snapped < this.params.allowedStart) this.params.allowedStart = snapped;
         }
-        this.applyAuthoredRange();
+        void this.applyAuthoredRange();
       });
       row.append(label, input);
       group.appendChild(row);
@@ -682,10 +684,13 @@ export class DemoApp {
     return addDomBlade(this.timeFolder, group);
   }
 
-  private applyAuthoredRange(): void {
+  private async applyAuthoredRange(): Promise<void> {
     if (!this.z) return;
+    const z = this.z;
     const range = this.currentNumericTimeRange();
-    const meta = this.z.setTimeRange(range ?? null);
+    await z.update({ timeRange: range ?? null });
+    if (this.z !== z) return;
+    const meta = z.getTimeMeta();
     this.params.allowedStart = meta.min;
     this.params.allowedEnd = meta.max;
     this.params.timeIndex = nearestTimeIndex(meta.values, meta.current ?? meta.min);
@@ -822,7 +827,7 @@ export class DemoApp {
     paletteSelect.value = this.params.palette;
     paletteSelect.addEventListener("change", () => {
       this.params.palette = paletteSelect.value;
-      this.z?.updateSettings({ palette: paletteSelect.value });
+      void this.z?.update({ settings: { palette: paletteSelect.value } });
       this.syncLegend();
       setTimeout(() => this.syncLegend(), 400);
     });
@@ -858,14 +863,14 @@ export class DemoApp {
 
     folder.addBinding(this.params, "opacity", {
       min: 0, max: 1, step: 0.01, label: "opacity",
-    }).on("change", (ev) => this.z?.updateSettings({ opacity: ev.value }));
+    }).on("change", (ev) => void this.z?.update({ settings: { opacity: ev.value } }));
 
     folder.addBinding(this.params, "logScale", { label: "log scale" })
-      .on("change", (ev) => this.z?.updateSettings({ logScale: ev.value }));
+      .on("change", (ev) => void this.z?.update({ settings: { logScale: ev.value } }));
 
     folder.addBinding(this.params, "vibrance", {
       min: -1, max: 1, step: 0.01, label: "vibrance",
-    }).on("change", (ev) => this.z?.updateSettings({ vibrance: ev.value }));
+    }).on("change", (ev) => void this.z?.update({ settings: { vibrance: ev.value } }));
   }
 
   private buildVectorFolder(): void {
@@ -878,25 +883,26 @@ export class DemoApp {
         { text: "Raster + particles", value: "raster+particles" },
       ],
       label: "mode",
-    }).on("change", (ev) => this.z?.updateSettings({ renderMode: ev.value }));
+    }).on("change", (ev) => void this.z?.update({ settings: { renderMode: ev.value } }));
 
     this.vectorFolder.addBinding(this.params, "particleDensity", {
       min: 0.001, max: 0.15, step: 0.001, label: "density",
-    }).on("change", (ev) => this.z?.updateSettings({ particleDensity: ev.value }));
+    }).on("change", (ev) => void this.z?.update({ settings: { particleDensity: ev.value } }));
 
     this.vectorFolder.addBinding(this.params, "speed", {
       min: 0.1, max: 8, step: 0.1, label: "speed",
-    }).on("change", (ev) => this.z?.updateSettings({ speed: ev.value }));
+    }).on("change", (ev) => void this.z?.update({ settings: { speed: ev.value } }));
 
     this.vectorFolder.addBinding(this.params, "fade", {
       min: 0, max: 1, step: 0.01, label: "fade",
-    }).on("change", (ev) => this.z?.updateSettings({ fade: ev.value }));
+    }).on("change", (ev) => void this.z?.update({ settings: { fade: ev.value } }));
   }
 
   private buildExportFolder(): void {
     const folder = this.pane.addFolder({ title: "Export", expanded: false });
     folder.addButton({ title: "Copy MapX widget code" }).on("click", () => this.copyMapxWidgetSnippet());
     folder.addButton({ title: "Copy demo script/app" }).on("click", () => this.copyStandaloneDemoSnippet());
+    folder.addButton({ title: "Copy full demo HTML" }).on("click", () => this.copyStandaloneDemoHtml());
     folder.addButton({ title: "Copy debug info" }).on("click", () => this.copyDebugInfo());
     folder.addButton({ title: "Share URL" }).on("click", () => this.shareURL());
   }
@@ -990,13 +996,13 @@ export class DemoApp {
       return;
     }
     this.params.colorDomain = [min, max];
-    this.z?.updateSettings({ colorDomain: this.params.colorDomain });
+    void this.z?.update({ settings: { colorDomain: this.params.colorDomain } });
     this.syncLegend();
   }
 
   private resetColorDomain(): void {
     this.params.colorDomain = null;
-    this.z?.updateSettings({ colorDomain: null });
+    void this.z?.update({ settings: { colorDomain: null } });
     this.syncLegend();
   }
 
@@ -1145,6 +1151,24 @@ export class DemoApp {
       .writeText(snippet)
       .then(() => showToast("Demo script copied!"))
       .catch(() => showToast("Could not copy snippet."));
+  }
+
+  private copyStandaloneDemoHtml(): void {
+    if (!this.z) return;
+    const center = this.map.getCenter();
+    const html = buildStandaloneDemoHtml({
+      ...this.currentSnippetOptions(),
+      center: [center.lng, center.lat],
+      zoom: this.map.getZoom(),
+      bearing: this.map.getBearing(),
+      pitch: this.map.getPitch(),
+      projection: this.currentProjection,
+    });
+
+    navigator.clipboard
+      .writeText(html)
+      .then(() => showToast("Full demo HTML copied!"))
+      .catch(() => showToast("Could not copy HTML."));
   }
 
   private copyDebugInfo(): void {

@@ -1,5 +1,7 @@
 import maplibregl, { type PropertyValueSpecification } from "maplibre-gl";
-import type { TimeRange, Zartigl, ZartiglSettings } from "../../lib";
+import { Zartigl } from "../../lib";
+import type { TimeRange, ZartiglSettings } from "../../lib";
+import { catalog } from "../../catalog";
 import type { StoryAnchor, StoryScene, StoryViewAdapter, StoryViewDefinition } from "../runtime";
 import ensoJson from "../data/enso.json";
 import chidoTrackJson from "../data/chido-track.json";
@@ -155,20 +157,69 @@ export function resolveCameraTransition(
 
 export class ZartiglStoryView implements StoryViewAdapter {
   private generation = 0;
+  private instance: Zartigl | null = null;
+  private initializingInstance: Zartigl | null = null;
+  private initializationPromise: Promise<Zartigl> | null = null;
+
+  get zartigl(): Zartigl {
+    if (!this.instance) throw new Error("The story Zartigl view has not been initialized");
+    return this.instance;
+  }
+
+  getCurrentTime(): number | undefined {
+    return this.instance?.getTimeMeta().current;
+  }
 
   constructor(
     private readonly map: maplibregl.Map,
-    readonly zartigl: Zartigl,
     private readonly callbacks: ZartiglStoryViewCallbacks,
   ) {
     this.addReferenceLayers();
-    zartigl.on("loading", () => callbacks.status("Loading environmental data…"));
-    zartigl.on("loaded", () => callbacks.status(""));
-    zartigl.on("error", (error) => callbacks.status(error.message, true));
+  }
+
+  private bindZartigl(zartigl: Zartigl): void {
+    zartigl.on("loading", () => this.callbacks.status("Loading environmental data…"));
+    zartigl.on("loaded", () => this.callbacks.status(""));
+    zartigl.on("error", (error) => this.callbacks.status(error.message, true));
     zartigl.on("timeChange", (time) => {
       this.updateChidoTrack(time);
-      callbacks.time(time);
+      this.callbacks.time(time);
     });
+  }
+
+  private initialize(config: ZartiglViewConfig): Promise<Zartigl> {
+    if (this.instance) return Promise.resolve(this.instance);
+    if (this.initializationPromise) return this.initializationPromise;
+    if (!config.layerId) throw new Error("Cannot initialize the story Zartigl view without a layer");
+
+    const zartigl = new Zartigl({
+      id: "zartigl-story",
+      map: this.map,
+      catalog,
+      layer: config.layerId,
+      source: config.sourceId ?? "auto",
+      timeRange: config.timeRange,
+      settings: config.settings,
+      geoVideo: { autoplay: true, loop: true, playbackRate: 1 },
+      visible: true,
+      before: "enso-region-fill",
+    });
+    this.bindZartigl(zartigl);
+    this.initializingInstance = zartigl;
+    this.initializationPromise = zartigl.init()
+      .then(() => {
+        this.instance = zartigl;
+        return zartigl;
+      })
+      .catch((error) => {
+        zartigl.destroy();
+        throw error;
+      })
+      .finally(() => {
+        if (this.initializingInstance === zartigl) this.initializingInstance = null;
+        this.initializationPromise = null;
+      });
+    return this.initializationPromise;
   }
 
   async activate(view: StoryViewDefinition, _scene: StoryScene): Promise<void> {
@@ -179,25 +230,36 @@ export class ZartiglStoryView implements StoryViewAdapter {
     this.showOverlays(config.overlays ?? []);
 
     if (!config.layerId) {
-      this.zartigl.hide();
+      const zartigl = this.instance ?? (this.initializationPromise
+        ? await this.initializationPromise
+        : null);
+      if (generation !== this.generation) return;
+      if (zartigl) await zartigl.update({ visible: false });
       this.callbacks.status("");
       return;
     }
-    this.zartigl.show();
     this.callbacks.status("Loading environmental data…");
-    if (this.zartigl.getTimeMeta({ full: true }).size) this.zartigl.setTimeRange(null);
-    await this.zartigl.setLayer(config.layerId, config.sourceId ?? "auto");
+    const createdForThisActivation = !this.instance && !this.initializationPromise;
+    const zartigl = this.instance ?? await this.initialize(config);
     if (generation !== this.generation) return;
-    if (config.timeRange) this.zartigl.setTimeRange(config.timeRange);
-    if (config.settings) this.zartigl.updateSettings(config.settings);
+    if (!createdForThisActivation) {
+      await zartigl.update({
+        layer: config.layerId,
+        source: config.sourceId ?? "auto",
+        timeRange: config.timeRange ?? null,
+        settings: config.settings,
+        visible: true,
+      });
+    }
+    if (generation !== this.generation) return;
     this.callbacks.status("");
   }
 
-  play(): Promise<void> { return this.zartigl.play(); }
-  pause(): void { this.zartigl.pause(); }
+  play(): Promise<void> { return this.instance?.play() ?? Promise.resolve(); }
+  pause(): void { this.instance?.pause(); }
   setTime(time: number): void {
     this.updateChidoTrack(time);
-    this.zartigl.setTime(time);
+    void this.instance?.update({ time });
   }
   setArcticMeasurementPoint(point?: ArcticMeasurementPoint): void {
     const source = this.map.getSource("arctic-measurement") as maplibregl.GeoJSONSource | undefined;
@@ -205,7 +267,12 @@ export class ZartiglStoryView implements StoryViewAdapter {
     const features = point ? [arcticMeasurementFeature(point)] : [];
     source.setData({ type: "FeatureCollection", features });
   }
-  destroy(): void { this.zartigl.destroy(); }
+  destroy(): void {
+    this.instance?.destroy();
+    this.initializingInstance?.destroy();
+    this.instance = null;
+    this.initializingInstance = null;
+  }
 
   private moveCamera(config: ZartiglViewConfig): void {
     const transition = resolveCameraTransition(

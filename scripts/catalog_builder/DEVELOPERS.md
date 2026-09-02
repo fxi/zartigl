@@ -1,6 +1,6 @@
 # Catalog Builder — Developer Contract
 
-The built-in catalog is a public API contract using schema version 2. Entries and sources have committed UUIDv4 identities; aliases and localized text are presentation/search metadata and never resolve through `Zartigl.setLayer()`.
+The built-in catalog is a public API contract using schema version 2. Entries and sources have committed UUIDv4 identities; aliases and localized text are presentation/search metadata and never resolve through `Zartigl`'s `layer` option or `update()`.
 
 ## Entry shape
 

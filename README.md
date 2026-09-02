@@ -37,30 +37,29 @@ const map = new maplibregl.Map({
   zoom: 2,
 });
 
+const currents = searchCatalog("ocean-current-velocity")[0];
 const z = new Zartigl({
   id: "zarr-layer",
   map,
   catalog,
+  layer: currents.id,
   source: "auto",
   // Optional: expose only the month ending at the latest available timestamp.
   timeRange: { trailing: "P1M" },
+  time: new Date("2025-01-01T00:00:00Z"),
+  depth: 0,
+  settings: { palette: "rdylbu", opacity: 0.9 },
   geoVideo: { autoplay: false, loop: true, playbackRate: 1 },
 });
 
-const currents = searchCatalog("ocean-current-velocity")[0];
-await z.setLayer(currents.id);
-z.setTimeAndDepth(new Date("2025-01-01T00:00:00Z"), 0);
-z.updateSettings({
-  palette: "rdylbu",
-  opacity: 0.9,
-});
+z.on("status", (status) => console.log(status.phase));
+await z.init();
 ```
 
-Pass a source UUID (or source type) as the optional second argument when entry
-and source should switch atomically. `setSource()` changes the source of the
-active entry.
+Use `await z.update({ ... })` to change any subset of the active configuration.
+Pass `layer` and `source` together when both should switch atomically.
 
-`setLayer()` resolves after the field store's consolidated metadata and coordinate axes have loaded. Metadata getters are therefore authoritative after the awaited call, including exact values for irregular time axes.
+`init()` and layer/source updates resolve after consolidated metadata and coordinate axes have loaded. Metadata getters are therefore authoritative afterward, including exact values for irregular time axes.
 
 The root import does not bundle the catalog presets. Import catalog data from `@fxi/zartigl/catalog` only when you want the built-in catalog.
 
@@ -115,13 +114,12 @@ z.on("status", (status) => {
 // GeoVideo uses native media playback and reports scientific time updates.
 z.on("timeChange", (time) => console.log(new Date(time)));
 z.on("playbackChange", (playing) => console.log({ playing }));
-z.setPlaybackRate(2);
-z.setLoop(false);
+await z.update({ geoVideo: { playbackRate: 2, loop: false } });
 
 // Embedding applications can stop rendering and abort field requests while
 // retaining the latest requested time/depth for one reload on resume.
 z.suspend();
-z.setTime(new Date("2025-02-01T00:00:00Z"));
+await z.update({ time: new Date("2025-02-01T00:00:00Z") });
 z.resume();
 
 const series = await z.queryTimeSeries({
@@ -227,10 +225,13 @@ const map = new maplibregl.Map({
 
 map.setProjection({ type: "globe" });
 
+const ice = searchCatalog("sea-ice-thickness")[0];
+const video = ice.sources.find((source) => source.type === "geovideo")!;
 const z = new Zartigl({
   map,
   catalog,
-  source: "auto",
+  layer: ice.id,
+  source: video.id,
   geoVideo: {
     autoplay: true,
     loop: true,
@@ -238,13 +239,10 @@ const z = new Zartigl({
   },
 });
 
-const ice = searchCatalog("sea-ice-thickness")[0];
-await z.setLayer(ice.id);
-await z.setSource(ice.sources.find((source) => source.type === "geovideo")!.id);
+await z.init();
 ```
 
-`setSource()` selects the entry's published GeoVideo manifest by its stable
-source UUID. Globe projection demonstrates its polar
+The source UUID selects the entry's published GeoVideo manifest. Globe projection demonstrates its polar
 coverage. `loop` and `playbackRate` are optional playback settings. Browsers
 may restrict autoplay, so embedding applications should provide a user-gesture
 fallback when necessary.

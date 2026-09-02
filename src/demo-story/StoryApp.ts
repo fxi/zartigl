@@ -1,6 +1,4 @@
 import maplibregl from "maplibre-gl";
-import { catalog } from "../catalog";
-import { Zartigl } from "../lib";
 import storyJson from "./story.json";
 import viewsJson from "./views.json";
 import { ZartiglStoryView } from "./adapters/ZartiglStoryView";
@@ -112,11 +110,7 @@ export class StoryApp {
     });
     map.setProjection({ type: "globe" });
 
-    const zartigl = new Zartigl({
-      id: "zartigl-story", map, catalog, source: "auto",
-      geoVideo: { autoplay: true, loop: true, playbackRate: 1 }, visible: false, before: "enso-region-fill",
-    });
-    this.registry.registerViewType("zartigl-map", () => new ZartiglStoryView(map, zartigl, {
+    this.registry.registerViewType("zartigl-map", () => new ZartiglStoryView(map, {
       status: (message, error) => this.setStatus(message, error),
       time: (time) => this.setActiveTime(time),
     }));
@@ -185,7 +179,7 @@ export class StoryApp {
       this.prepareSequenceStart(scene);
       await this.renderWidget(scene, generation, widgetRun);
       if (generation !== this.generation) return;
-      const current = adapter instanceof ZartiglStoryView ? adapter.zartigl.getTimeMeta().current : undefined;
+      const current = adapter instanceof ZartiglStoryView ? adapter.getCurrentTime() : undefined;
       if (current !== undefined) this.setActiveTime(current);
       if (this.playing) this.resumePlayback();
     } catch (error) {

@@ -40,13 +40,27 @@ export interface ZartiglOptions {
   id?: string;
   map: MaplibreMap;
   catalog: Catalog;
+  layer: string;
   source?: CatalogSourcePreference;
   timeRange?: TimeRange;
+  time?: Date | string | number;
+  depth?: number;
   geoVideo?: GeoVideoOptions;
   visible?: boolean;
   settings?: Partial<ZartiglSettings>;
   metadata?: Record<string, unknown>;
   before?: string;
+}
+
+export interface ZartiglUpdate {
+  layer?: string;
+  source?: CatalogSourcePreference;
+  timeRange?: TimeRange | null;
+  time?: Date | string | number;
+  depth?: number;
+  settings?: Partial<ZartiglSettings>;
+  geoVideo?: GeoVideoOptions;
+  visible?: boolean;
 }
 
 export interface GeoVideoOptions {
@@ -325,10 +339,13 @@ export class Zartigl {
   private readonly id: string;
   private readonly map: MaplibreMap;
   private readonly catalog: Catalog;
+  private readonly initialLayer: string;
+  private readonly initialTime?: Date | string | number;
+  private readonly initialDepth?: number;
   private sourcePreference: CatalogSourcePreference;
   private timeRange?: TimeRange;
   private fullTimeMeta: ZarrTimeDimension | null = null;
-  private readonly autoplay: boolean;
+  private autoplay: boolean;
   private loop: boolean;
   private playbackRate: number;
   private readonly metadata?: Record<string, unknown>;
@@ -355,6 +372,9 @@ export class Zartigl {
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
   private destroyed = false;
+  private initialized = false;
+  private initStarted = false;
+  private updateQueue: Promise<void> = Promise.resolve();
   private suspended = false;
   private attachQueued = false;
   private querySources = new Map<string, ZarrSource>();
@@ -365,9 +385,19 @@ export class Zartigl {
   private readonly onMapIdle = () => this.attachWhenReady();
 
   constructor(options: ZartiglOptions) {
+    if (!options.layer) throw new Error("Zartigl requires a layer UUID");
+    if (options.time != null) parseTime(options.time, "time");
+    if (options.depth != null && !Number.isFinite(options.depth)) throw new Error("Depth must be finite");
+    if (options.geoVideo?.playbackRate != null &&
+      (!Number.isFinite(options.geoVideo.playbackRate) || options.geoVideo.playbackRate <= 0)) {
+      throw new Error("Playback rate must be positive");
+    }
     this.id = options.id ?? "zartigl";
     this.map = options.map;
     this.catalog = options.catalog;
+    this.initialLayer = options.layer;
+    this.initialTime = options.time;
+    this.initialDepth = options.depth;
     this.sourcePreference = options.source ?? "auto";
     this.timeRange = options.timeRange ? { ...options.timeRange } : undefined;
     this.autoplay = options.geoVideo?.autoplay ?? true;
@@ -388,14 +418,119 @@ export class Zartigl {
     this.map.on("idle", this.onMapIdle);
   }
 
-  async setLayer(id: string, preference: CatalogSourcePreference = this.sourcePreference): Promise<void> {
+  async init(): Promise<void> {
+    this.assertAlive();
+    if (this.initStarted) throw new Error("Zartigl has already been initialized");
+    this.initStarted = true;
+    await this.loadLayer(this.initialLayer, this.sourcePreference);
+    if (this.initialTime != null && this.initialDepth != null) {
+      this.applyTimeAndDepth(this.initialTime, this.initialDepth);
+    } else {
+      if (this.initialTime != null) this.applyTime(this.initialTime);
+      if (this.initialDepth != null) this.applyDepth(this.initialDepth);
+    }
+    this.initialized = true;
+  }
+
+  async update(change: ZartiglUpdate): Promise<void> {
+    this.assertAlive();
+    if (!this.initialized) throw new Error("Call init() before update()");
+
+    if (change.depth != null && !Number.isFinite(change.depth)) {
+      throw new Error("Depth must be finite");
+    }
+    if (change.time != null) parseTime(change.time, "time");
+    if (change.geoVideo?.playbackRate != null &&
+      (!Number.isFinite(change.geoVideo.playbackRate) || change.geoVideo.playbackRate <= 0)) {
+      throw new Error("Playback rate must be positive");
+    }
+    if (change.settings?.colorDomain !== undefined) {
+      validateScalarColorDomain(change.settings.colorDomain);
+    }
+
+    // Reserve the generation when the request is made, rather than when it
+    // reaches the queue. A later layer request can therefore supersede a
+    // metadata load that is already in flight.
+    const generation = change.layer != null ? ++this.switchGeneration : undefined;
+    const operation = change.layer != null
+      ? this.applyUpdate(change, generation)
+      : this.updateQueue.then(() => this.applyUpdate(change));
+    this.updateQueue = operation.catch(() => undefined);
+    return operation;
+  }
+
+  private async applyUpdate(change: ZartiglUpdate, generation?: number): Promise<void> {
+    this.assertAlive();
+
+    const changesLayer = change.layer != null && change.layer !== this.catalogLayer?.id;
+    const changesSource = change.source != null &&
+      (changesLayer || change.source !== this.sourcePreference);
+
+    if (changesLayer) {
+      await this.loadLayer(change.layer!, change.source ?? "auto", {
+        timeRange: change.timeRange == null ? undefined : { ...change.timeRange },
+        settings: { ...(change.settings ?? {}) },
+        colorDomainOverridden: change.settings?.colorDomain !== undefined,
+        paletteOverridden: change.settings?.palette !== undefined,
+      }, generation);
+    } else {
+      const hasTimeRange = Object.prototype.hasOwnProperty.call(change, "timeRange");
+      if (changesSource) {
+        await this.changeSource(
+          change.source!,
+          hasTimeRange ? change.timeRange ?? undefined : this.timeRange,
+        );
+      }
+      if (hasTimeRange && !changesSource) {
+        this.applyTimeRange(change.timeRange ?? null);
+      }
+    }
+
+    if (!changesLayer && change.settings) this.applySettings(change.settings);
+
+    if (change.geoVideo) {
+      if (change.geoVideo.autoplay != null) {
+        this.autoplay = change.geoVideo.autoplay;
+        if (this.catalogSource?.type === "geovideo") {
+          if (this.autoplay) await this.play();
+          else this.pause();
+        }
+      }
+      if (change.geoVideo.loop != null) this.applyLoop(change.geoVideo.loop);
+      if (change.geoVideo.playbackRate != null) this.applyPlaybackRate(change.geoVideo.playbackRate);
+    }
+
+    if (change.time != null && change.depth != null) {
+      this.applyTimeAndDepth(change.time, change.depth);
+    } else {
+      if (change.time != null) this.applyTime(change.time);
+      if (change.depth != null) this.applyDepth(change.depth);
+    }
+    if (change.visible != null) this.applyVisible(change.visible);
+  }
+
+  private async loadLayer(
+    id: string,
+    preference: CatalogSourcePreference = this.sourcePreference,
+    context?: {
+      timeRange?: TimeRange;
+      settings: Partial<ZartiglSettings>;
+      colorDomainOverridden: boolean;
+      paletteOverridden: boolean;
+    },
+    requestedGeneration?: number,
+  ): Promise<void> {
     this.assertAlive();
     const catalogLayer = this.catalog.layers.find((candidate) => candidate.id === id);
     if (!catalogLayer) throw new Error(`Unknown zartigl catalog entry: ${id}`);
     const layerDefaults = defaultSettings(catalogLayer);
     const requestedSource = this.resolveSource(catalogLayer, preference);
+    const requestedTimeRange = context ? context.timeRange : this.timeRange;
+    const requestedSettings = context?.settings ?? this.settings;
+    const requestedColorDomainOverride = context?.colorDomainOverridden ?? this.colorDomainOverridden;
+    const requestedPaletteOverride = context?.paletteOverridden ?? this.paletteOverridden;
 
-    const generation = ++this.switchGeneration;
+    const generation = requestedGeneration ?? ++this.switchGeneration;
     if (requestedSource.type === "geovideo") {
       this.emit("status", { phase: "metadata" });
       try {
@@ -416,12 +551,13 @@ export class Zartigl {
           units: "milliseconds since 1970-01-01T00:00:00Z",
           values,
         };
-        const resolvedTimeRange = resolveTimeRange(geoVideoTimeMeta, this.timeRange);
-        const filteredTimeMeta = applyTimeRange(geoVideoTimeMeta, this.timeRange);
+        const resolvedTimeRange = resolveTimeRange(geoVideoTimeMeta, requestedTimeRange);
+        const filteredTimeMeta = applyTimeRange(geoVideoTimeMeta, requestedTimeRange);
         this.detach();
         this.catalogLayer = catalogLayer;
         this.catalogSource = requestedSource;
         this.sourcePreference = preference;
+        this.timeRange = requestedTimeRange;
         this.activeFieldSource = null;
         this.geoVideoManifest = manifest;
         this.wmtsMetadata = null;
@@ -436,12 +572,14 @@ export class Zartigl {
           : nearestValue(this.timeMeta.values, this.pendingTime);
         this.pendingTime = null;
         this.depth = 0;
-        const overriddenColorDomain = this.settings.colorDomain;
-        this.settings = { ...layerDefaults, ...this.settings };
-        this.settings.colorDomain = this.colorDomainOverridden
+        const overriddenColorDomain = requestedSettings.colorDomain;
+        this.settings = { ...layerDefaults, ...requestedSettings };
+        this.colorDomainOverridden = requestedColorDomainOverride;
+        this.paletteOverridden = requestedPaletteOverride;
+        this.settings.colorDomain = requestedColorDomainOverride
           ? (overriddenColorDomain ?? null)
           : manifest.style.colorDomain;
-        this.settings.palette = this.paletteOverridden
+        this.settings.palette = requestedPaletteOverride
           ? this.settings.palette
           : manifest.style.palette;
         this.lastMeta = null;
@@ -463,7 +601,7 @@ export class Zartigl {
         const metadata = await loadWmtsCapabilities(requestedSource);
         if (generation !== this.switchGeneration) throw new DOMException("Layer selection was superseded", "AbortError");
         const fullTimeMeta = metadata.time;
-        const timeMeta = applyTimeRange(fullTimeMeta, this.timeRange);
+        const timeMeta = applyTimeRange(fullTimeMeta, requestedTimeRange);
         this.detach();
         this.catalogLayer = catalogLayer;
         this.catalogSource = {
@@ -475,11 +613,12 @@ export class Zartigl {
           style: requestedSource.style ?? metadata.style,
         };
         this.sourcePreference = preference;
+        this.timeRange = requestedTimeRange;
         this.activeFieldSource = null;
         this.geoVideoManifest = null;
         this.wmtsMetadata = metadata;
         this.fullTimeMeta = fullTimeMeta;
-        this.resolvedTimeRange = resolveTimeRange(fullTimeMeta, this.timeRange);
+        this.resolvedTimeRange = resolveTimeRange(fullTimeMeta, requestedTimeRange);
         this.timeMeta = timeMeta;
         this.verticalMeta = metadata.vertical;
         this.variableUnit = "";
@@ -487,7 +626,9 @@ export class Zartigl {
         this.time = this.pendingTime == null ? latestTimeAtOrBefore(timeMeta.values, Date.now()) : nearestValue(timeMeta.values, this.pendingTime);
         this.pendingTime = null;
         this.depth = sortedDepthValues(metadata.vertical?.values ?? [0])[0] ?? 0;
-        this.settings = { ...layerDefaults, ...this.settings };
+        this.settings = { ...layerDefaults, ...requestedSettings };
+        this.colorDomainOverridden = requestedColorDomainOverride;
+        this.paletteOverridden = requestedPaletteOverride;
         this.lastMeta = null;
         this.attachWhenReady();
         return;
@@ -515,8 +656,8 @@ export class Zartigl {
       }
       fullTimeMeta = source.getTimeDimension();
       if (fullTimeMeta.values.length === 0) throw new Error("Zarr time coordinate is empty");
-      resolvedTimeRange = resolveTimeRange(fullTimeMeta, this.timeRange);
-      timeMeta = applyTimeRange(fullTimeMeta, this.timeRange);
+      resolvedTimeRange = resolveTimeRange(fullTimeMeta, requestedTimeRange);
+      timeMeta = applyTimeRange(fullTimeMeta, requestedTimeRange);
       verticalMeta = source.getVerticalDimension(configuredVariables[0]) ?? null;
       unitAttrs = source.getVariableAttrs(configuredVariables[configuredVariables.length - 1]);
     } catch (error) {
@@ -533,6 +674,7 @@ export class Zartigl {
     this.catalogLayer = catalogLayer;
     this.catalogSource = requestedSource;
     this.sourcePreference = preference;
+    this.timeRange = requestedTimeRange;
     this.activeFieldSource = source;
     this.geoVideoManifest = null;
     this.wmtsMetadata = null;
@@ -546,37 +688,41 @@ export class Zartigl {
       : undefined;
     this.time = latestTimeAtOrBefore(this.timeMeta.values, Date.now());
     this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
-    const overriddenColorDomain = this.settings.colorDomain;
-    this.settings = { ...layerDefaults, ...this.settings };
-    this.settings.colorDomain = this.colorDomainOverridden
+    const overriddenColorDomain = requestedSettings.colorDomain;
+    this.settings = { ...layerDefaults, ...requestedSettings };
+    this.colorDomainOverridden = requestedColorDomainOverride;
+    this.paletteOverridden = requestedPaletteOverride;
+    this.settings.colorDomain = requestedColorDomainOverride
       ? (overriddenColorDomain ?? null)
       : (layerDefaults.colorDomain ?? null);
     this.lastMeta = null;
     this.attachWhenReady();
   }
 
-  async setSource(preference: CatalogSourcePreference): Promise<void> {
+  private async changeSource(
+    preference: CatalogSourcePreference,
+    timeRange: TimeRange | undefined = this.timeRange,
+  ): Promise<void> {
     this.assertAlive();
     if (!this.catalogLayer) {
       this.sourcePreference = preference;
       return;
     }
     this.pendingTime = this.time;
-    await this.setLayer(this.catalogLayer.id, preference);
+    await this.loadLayer(this.catalogLayer.id, preference, {
+      timeRange,
+      settings: { ...this.settings },
+      colorDomainOverridden: this.colorDomainOverridden,
+      paletteOverridden: this.paletteOverridden,
+    });
   }
 
-  show(): void {
+  private applyVisible(visible: boolean): void {
     this.assertAlive();
-    if (this.visible) return;
-    this.visible = true;
-    this.attachWhenReady();
-  }
-
-  hide(): void {
-    this.assertAlive();
-    if (!this.visible) return;
-    this.visible = false;
-    this.detach();
+    if (this.visible === visible) return;
+    this.visible = visible;
+    if (visible) this.attachWhenReady();
+    else this.detach();
   }
 
   /** Pause rendering and abort field requests without discarding layer state. */
@@ -615,9 +761,9 @@ export class Zartigl {
     this.destroyed = true;
   }
 
-  setTime(time: Date | string | number): void {
+  private applyTime(time: Date | string | number): void {
     this.assertAlive();
-    const requested = timeToMs(time);
+    const requested = parseTime(time, "time");
     if (!this.layer) this.pendingTime = requested;
     this.time = nearestValue(this.timeMeta?.values ?? [], requested);
     this.layer?.setTime(this.time);
@@ -633,13 +779,13 @@ export class Zartigl {
     this.layer?.pause();
   }
 
-  setLoop(loop: boolean): void {
+  private applyLoop(loop: boolean): void {
     this.assertAlive();
     this.loop = loop;
     this.layer?.setLoop(loop);
   }
 
-  setPlaybackRate(rate: number): void {
+  private applyPlaybackRate(rate: number): void {
     this.assertAlive();
     if (!Number.isFinite(rate) || rate <= 0) throw new Error("Playback rate must be positive");
     this.playbackRate = rate;
@@ -647,7 +793,7 @@ export class Zartigl {
   }
 
   /** Apply or clear a time window without rebuilding source metadata or the map layer. */
-  setTimeRange(range?: TimeRange | null): TimeMeta {
+  private applyTimeRange(range?: TimeRange | null): TimeMeta {
     this.assertAlive();
     if (!this.fullTimeMeta) throw new Error("Set a layer before changing its time range");
 
@@ -665,15 +811,15 @@ export class Zartigl {
     return this.getTimeMeta();
   }
 
-  setDepth(depth: number): void {
+  private applyDepth(depth: number): void {
     this.assertAlive();
     this.depth = nearestValue(this.verticalMeta?.values ?? [], depth);
     this.layer?.setDepth(this.depth);
   }
 
-  setTimeAndDepth(time: Date | string | number, depth: number): void {
+  private applyTimeAndDepth(time: Date | string | number, depth: number): void {
     this.assertAlive();
-    this.time = nearestValue(this.timeMeta?.values ?? [], timeToMs(time));
+    this.time = nearestValue(this.timeMeta?.values ?? [], parseTime(time, "time"));
     this.depth = nearestValue(this.verticalMeta?.values ?? [], depth);
     this.layer?.setTimeAndDepth(this.time, this.depth);
   }
@@ -826,7 +972,7 @@ export class Zartigl {
     };
   }
 
-  updateSettings(settings: Partial<ZartiglSettings>): void {
+  private applySettings(settings: Partial<ZartiglSettings>): void {
     this.assertAlive();
     const validatedSettings = settings.colorDomain === undefined
       ? settings

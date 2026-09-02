@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CatalogRenderLayer } from "./CatalogRenderLayer";
 import { Zartigl } from "./Zartigl";
+import type { ZartiglOptions } from "./Zartigl";
 import { ZarrSource } from "./ZarrSource";
 import type { Catalog, CatalogEntry } from "../catalog/types";
 
@@ -85,6 +86,12 @@ function catalog(layer: CatalogEntry = scalarLayer()): Catalog {
   };
 }
 
+async function createZartigl(options: Omit<ZartiglOptions, "layer">, layer: string): Promise<Zartigl> {
+  const zartigl = new Zartigl({ ...options, layer });
+  await zartigl.init();
+  return zartigl;
+}
+
 beforeEach(() => {
   vi.spyOn(ZarrSource.prototype, "init").mockResolvedValue();
   vi.spyOn(ZarrSource.prototype, "hasVariable").mockReturnValue(true);
@@ -109,6 +116,43 @@ beforeEach(() => {
 });
 
 describe("Zartigl facade", () => {
+  it("requires one explicit initialization before accepting updates", async () => {
+    const z = new Zartigl({
+      map: new FakeMap() as never,
+      catalog: catalog(),
+      layer: "scalar",
+      source: "zarr",
+    });
+
+    await expect(z.update({ time: 1_000 })).rejects.toThrow("Call init() before update()");
+    await z.init();
+    await expect(z.init()).rejects.toThrow("already been initialized");
+  });
+
+  it("applies declarative time, depth, settings, and visibility during init", async () => {
+    const map = new FakeMap();
+    const z = new Zartigl({
+      map: map as never,
+      catalog: catalog(),
+      layer: "scalar",
+      source: "zarr",
+      time: 4_400,
+      depth: 18,
+      settings: { opacity: 0.4, colorDomain: [-2, 2] },
+      visible: false,
+    });
+
+    await z.init();
+
+    expect(z.getTimeMeta().current).toBe(4_000);
+    expect(z.getDepthMeta().current).toBe(20);
+    expect(z.getDebugInfo()).toMatchObject({
+      visible: false,
+      settings: { opacity: 0.4, colorDomain: [-2, 2] },
+    });
+    expect(map.getLayer("zartigl")).toBeUndefined();
+  });
+
   it("loads an explicit GeoVideo backend without initializing the field Zarr store", async () => {
     const layer = scalarLayer({
       id: GEO_ENTRY_ID,
@@ -169,15 +213,13 @@ describe("Zartigl facade", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
     vi.mocked(ZarrSource.prototype.init).mockClear();
     const map = new FakeMap();
-    const z = new Zartigl({ map: map as never, catalog: catalog(layer), source: "geovideo" });
-
-    await z.setLayer(GEO_ENTRY_ID);
+    const z = await createZartigl({ map: map as never, catalog: catalog(layer), source: "geovideo" }, GEO_ENTRY_ID);
 
     expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
     expect(z.getSource()?.type).toBe("geovideo");
     expect(z.supportsDynamicStyle()).toBe(true);
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "degC" });
-    z.updateSettings({ palette: "ice", colorDomain: [0, 5] });
+    await z.update({ settings: { palette: "ice", colorDomain: [0, 5] } });
     expect(z.getLegend()).toMatchObject({ palette: "ice", min: 0, max: 5 });
     expect(z.getTimeMeta()).toMatchObject({ size: 4 });
     const querySpy = vi
@@ -248,14 +290,12 @@ describe("Zartigl facade", () => {
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
     const map = new FakeMap();
-    const z = new Zartigl({
+    const z = await createZartigl({
       map: map as never,
       catalog: catalog(layer),
       source: "geovideo",
       settings: { palette: "oxygen" },
-    });
-
-    await z.setLayer(GEO_ENTRY_ID);
+    }, GEO_ENTRY_ID);
 
     expect(z.getLegend()).toMatchObject({ palette: "oxygen" });
     vi.unstubAllGlobals();
@@ -274,9 +314,7 @@ describe("Zartigl facade", () => {
       values,
     });
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
 
     expect(z.getTimeMeta()).toMatchObject({
       min: values[0],
@@ -289,15 +327,13 @@ describe("Zartigl facade", () => {
 
   it("reports metadata loading and metadata failures through status events", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
+    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(), layer: "scalar" });
     const statuses: Array<{ phase: string }> = [];
     z.on("status", (status) => statuses.push(status));
 
-    await z.setLayer("scalar");
-    expect(statuses[0]).toEqual({ phase: "metadata" });
-
     vi.mocked(ZarrSource.prototype.init).mockRejectedValueOnce(new Error("offline"));
-    await expect(z.setLayer("scalar")).rejects.toThrow("offline");
+    await expect(z.init()).rejects.toThrow("offline");
+    expect(statuses[0]).toEqual({ phase: "metadata" });
     expect(statuses[statuses.length - 1]).toMatchObject({ phase: "error" });
   });
 
@@ -312,8 +348,9 @@ describe("Zartigl facade", () => {
       source: "zarr",
       map: catalogMap as never,
       catalog: catalogValue,
+      layer: "vector",
     });
-    await fromCatalog.setLayer("vector");
+    await fromCatalog.init();
     expect(
       (catalogMap.getLayer("zartigl") as unknown as {
         options: { renderMode: string };
@@ -325,9 +362,10 @@ describe("Zartigl facade", () => {
       source: "zarr",
       map: explicitMap as never,
       catalog: catalogValue,
+      layer: "vector",
       settings: { renderMode: "raster" },
     });
-    await explicit.setLayer("vector");
+    await explicit.init();
     expect(
       (explicitMap.getLayer("zartigl") as unknown as {
         options: { renderMode: string };
@@ -341,8 +379,7 @@ describe("Zartigl facade", () => {
       [vectorLayer(), "particles"],
     ] as const) {
       const map = new FakeMap();
-      const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(layer) });
-      await z.setLayer(layer.id);
+      const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(layer) }, layer.id);
 
       expect(
         (map.getLayer("zartigl") as unknown as {
@@ -354,26 +391,23 @@ describe("Zartigl facade", () => {
 
   it("propagates runtime render mode updates", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) });
-    await z.setLayer("vector");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) }, "vector");
     const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setRenderMode");
 
-    z.updateSettings({ renderMode: "raster+particles" });
+    await z.update({ settings: { renderMode: "raster+particles" } });
 
     expect(spy).toHaveBeenCalledWith("raster+particles");
   });
 
   it("passes particle state settings to the render layer", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: map as never,
       catalog: catalog(vectorLayer()),
       settings: { particleState: "rgba8", rgba8MaxParticleZoom: 3 },
-    });
-
-    await z.setLayer("vector");
+    }, "vector");
 
     expect(
       (map.getLayer("zartigl") as unknown as {
@@ -387,11 +421,10 @@ describe("Zartigl facade", () => {
 
   it("recreates the render layer when particle state mode changes", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) });
-    await z.setLayer("vector");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) }, "vector");
     const firstLayer = map.getLayer("zartigl");
 
-    z.updateSettings({ particleState: "rgba8" });
+    await z.update({ settings: { particleState: "rgba8" } });
 
     expect(map.getLayer("zartigl")).toBeDefined();
     expect(map.getLayer("zartigl")).not.toBe(firstLayer);
@@ -400,12 +433,11 @@ describe("Zartigl facade", () => {
 
   it("updates RGBA8 max zoom without recreating the render layer", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) });
-    await z.setLayer("vector");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) }, "vector");
     const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setRgba8MaxParticleZoom");
 
-    z.updateSettings({ rgba8MaxParticleZoom: 2 });
+    await z.update({ settings: { rgba8MaxParticleZoom: 2 } });
 
     expect(spy).toHaveBeenCalledWith(2);
     expect(map.addLayerCalls.filter((call) => call.id === "zartigl")).toHaveLength(1);
@@ -413,14 +445,12 @@ describe("Zartigl facade", () => {
 
   it("passes palette settings to the render layer", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: map as never,
       catalog: catalog(vectorLayer()),
       settings: { palette: "mono-black" },
-    });
-
-    await z.setLayer("vector");
+    }, "vector");
 
     expect(
       (map.getLayer("zartigl") as unknown as {
@@ -439,9 +469,7 @@ describe("Zartigl facade", () => {
         raster: { colorDomain: [-3, 3] },
       },
     });
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(layer) });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(layer) }, "scalar");
 
     expect(
       (map.getLayer("zartigl") as unknown as {
@@ -458,13 +486,12 @@ describe("Zartigl facade", () => {
 
   it("updates and clears a scalar color domain without recreating the layer", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(scalarLayer()) });
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(scalarLayer()) }, "scalar");
     const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setColorDomain");
 
-    z.updateSettings({ colorDomain: [-2, 2] });
-    z.updateSettings({ colorDomain: null });
+    await z.update({ settings: { colorDomain: [-2, 2] } });
+    await z.update({ settings: { colorDomain: null } });
 
     expect(spy).toHaveBeenNthCalledWith(1, [-2, 2]);
     expect(spy).toHaveBeenNthCalledWith(2, null);
@@ -478,22 +505,21 @@ describe("Zartigl facade", () => {
       id: "second",
       defaults: { raster: { colorDomain: [-1, 1] } },
     });
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: map as never,
       catalog: { schemaVersion: 2, defaultLocale: "en", layers: [first, second] },
-    });
-    await z.setLayer("scalar");
+    }, "scalar");
     const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
     const spy = vi.spyOn(renderLayer, "setColorDomain");
 
-    expect(() => z.updateSettings({ colorDomain: [3, -3] })).toThrow(/finite, increasing/);
+    await expect(z.update({ settings: { colorDomain: [3, -3] } })).rejects.toThrow(/finite, increasing/);
 
     expect(spy).not.toHaveBeenCalled();
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3 });
     expect(z.getDebugInfo().settings.colorDomain).toEqual([-3, 3]);
 
-    await z.setLayer("second");
+    await z.update({ layer: "second", source: "zarr" });
     expect(z.getLegend()).toMatchObject({ min: -1, max: 1 });
   });
 
@@ -504,6 +530,7 @@ describe("Zartigl facade", () => {
       source: "zarr",
       map: map as never,
       catalog: catalog(),
+      layer: "scalar",
       settings: { colorDomain: [Number.NaN, 3] },
     })).toThrow(/finite, increasing/);
 
@@ -517,15 +544,14 @@ describe("Zartigl facade", () => {
       id: "invalid",
       defaults: { raster: { colorDomain: [2, 2] } },
     });
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: map as never,
       catalog: { schemaVersion: 2, defaultLocale: "en", layers: [valid, invalid] },
-    });
-    await z.setLayer("scalar");
+    }, "scalar");
     const activeLayer = map.getLayer("zartigl");
 
-    await expect(z.setLayer("invalid")).rejects.toThrow(/finite, increasing/);
+    await expect(z.update({ layer: "invalid" })).rejects.toThrow(/finite, increasing/);
 
     expect(map.getLayer("zartigl")).toBe(activeLayer);
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3 });
@@ -537,14 +563,12 @@ describe("Zartigl facade", () => {
       defaults: { raster: { colorDomain: [-3, 3] } },
     });
     const regular = scalarLayer({ id: "regular", defaults: {} });
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: map as never,
       catalog: { schemaVersion: 2, defaultLocale: "en", layers: [anomaly, regular] },
-    });
-
-    await z.setLayer("scalar");
-    await z.setLayer("regular");
+    }, "scalar");
+    await z.update({ layer: "regular", source: "zarr" });
 
     expect(
       (map.getLayer("zartigl") as unknown as {
@@ -555,11 +579,10 @@ describe("Zartigl facade", () => {
 
   it("recreates the render layer when palette changes", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) });
-    await z.setLayer("vector");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(vectorLayer()) }, "vector");
     const firstLayer = map.getLayer("zartigl");
 
-    z.updateSettings({ palette: "mono-white" });
+    await z.update({ settings: { palette: "mono-white" } });
 
     expect(map.getLayer("zartigl")).toBeDefined();
     expect(map.getLayer("zartigl")).not.toBe(firstLayer);
@@ -569,9 +592,7 @@ describe("Zartigl facade", () => {
   it("queues setLayer until the map style is ready", async () => {
     const map = new FakeMap();
     map.ready = false;
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
 
     expect(map.getLayer("zartigl")).toBeUndefined();
     map.ready = true;
@@ -582,9 +603,7 @@ describe("Zartigl facade", () => {
   it("retries a queued layer on idle without attaching it twice", async () => {
     const map = new FakeMap();
     map.ready = false;
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
     expect(map.getLayer("zartigl")).toBeUndefined();
 
     map.ready = true;
@@ -598,9 +617,7 @@ describe("Zartigl facade", () => {
   it("removes readiness listeners when destroyed", async () => {
     const map = new FakeMap();
     map.ready = false;
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
     z.destroy();
     map.ready = true;
     map.emit("idle");
@@ -611,24 +628,22 @@ describe("Zartigl facade", () => {
 
   it("uses the configured id namespace and supports hide/show", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", id: "surface", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", id: "surface", map: map as never, catalog: catalog() }, "scalar");
     expect(map.getLayer("surface")).toBeDefined();
 
-    z.hide();
+    await z.update({ visible: false });
     expect(map.getLayer("surface")).toBeUndefined();
 
-    z.show();
+    await z.update({ visible: true });
     expect(map.getLayer("surface")).toBeDefined();
   });
 
   it("defers attachment while suspended and resumes with the selected layer", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
+    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(), layer: "scalar" });
 
     z.suspend();
-    await z.setLayer("scalar");
+    await z.init();
     expect(map.getLayer("zartigl")).toBeUndefined();
     expect(z.getDebugInfo().suspended).toBe(true);
 
@@ -641,8 +656,7 @@ describe("Zartigl facade", () => {
     const suspend = vi.spyOn(CatalogRenderLayer.prototype, "suspend");
     const resume = vi.spyOn(CatalogRenderLayer.prototype, "resume");
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
 
     z.suspend();
     z.suspend();
@@ -655,11 +669,10 @@ describe("Zartigl facade", () => {
 
   it("loads the latest requested state when suspension ends", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
 
     z.suspend();
-    z.setTimeAndDepth(4_000, 20);
+    await z.update({ time: 4_000, depth: 20 });
     z.resume();
 
     const debug = z.getDebugInfo();
@@ -669,15 +682,13 @@ describe("Zartigl facade", () => {
   it("passes optional metadata to the render layer", async () => {
     const map = new FakeMap();
     const metadata = { idView: "mx-view", type: "arco" };
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       id: "MX-mx-view",
       map: map as never,
       catalog: catalog(),
       metadata,
-    });
-
-    await z.setLayer("scalar");
+    }, "scalar");
     metadata.type = "mutated";
 
     expect(map.getLayer("MX-mx-view")).toMatchObject({
@@ -688,30 +699,26 @@ describe("Zartigl facade", () => {
   it("adds the render layer before the configured anchor when available", async () => {
     const map = new FakeMap();
     map.addLayer({ id: "mxlayers" });
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       id: "MX-layer",
       map: map as never,
       catalog: catalog(),
       before: "mxlayers",
-    });
-
-    await z.setLayer("scalar");
+    }, "scalar");
 
     expect(map.addLayerCalls).toContainEqual({ id: "MX-layer", before: "mxlayers" });
   });
 
   it("falls back to normal layer insertion when the configured anchor is unavailable", async () => {
     const map = new FakeMap();
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       id: "MX-layer",
       map: map as never,
       catalog: catalog(),
       before: "missing-anchor",
-    });
-
-    await z.setLayer("scalar");
+    }, "scalar");
 
     expect(map.addLayerCalls).toContainEqual({ id: "MX-layer", before: undefined });
   });
@@ -724,9 +731,7 @@ describe("Zartigl facade", () => {
       </Layer></Contents></Capabilities>` }));
     const map = new FakeMap();
     const layer = scalarLayer({ defaults: { sourceId: "wmts" } });
-    const z = new Zartigl({ map: map as never, catalog: catalog(layer), source: "auto" });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ map: map as never, catalog: catalog(layer), source: "auto" }, "scalar");
 
     const renderLayer = map.getLayer("zartigl") as { getBackend(): string };
     expect(renderLayer.getBackend()).toBe("scalar-wmts");
@@ -763,9 +768,7 @@ describe("Zartigl facade", () => {
       name: "depth", label: "depth", units: "m", values: [100, 0.5, 10],
     });
     const layer = scalarLayer();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(layer) });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(layer) }, "scalar");
 
     expect(z.getDepthMeta().values).toEqual([0.5, 10, 100]);
     expect(z.getDepthMeta().current).toBe(0.5);
@@ -777,9 +780,7 @@ describe("Zartigl facade", () => {
       name: "depth", label: "depth", units: "m", values: [-100, -0.5, -10],
     });
     const layer = scalarLayer();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(layer) });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(layer) }, "scalar");
 
     expect(z.getDepthMeta().values).toEqual([-0.5, -10, -100]);
     expect(z.getDepthMeta().current).toBe(-0.5);
@@ -789,9 +790,7 @@ describe("Zartigl facade", () => {
     const vertical = vi.mocked(ZarrSource.prototype.getVerticalDimension);
     vertical.mockReturnValue(undefined);
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog(scalarLayer()) });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog(scalarLayer()) }, "scalar");
 
     expect(vertical).toHaveBeenCalledWith("temperature");
     expect(z.getDepthMeta().values).toEqual([]);
@@ -801,10 +800,8 @@ describe("Zartigl facade", () => {
   it("forwards atomic time/depth changes to the active layer", async () => {
     const spy = vi.spyOn(CatalogRenderLayer.prototype, "setTimeAndDepth");
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
-    z.setTimeAndDepth(4_000, 20);
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
+    await z.update({ time: 4_000, depth: 20 });
 
     expect(z.getTimeMeta().current).toBe(4_000);
     expect(z.getDepthMeta().current).toBe(20);
@@ -819,9 +816,7 @@ describe("Zartigl facade", () => {
       .spyOn(ZarrSource.prototype, "sampleVerticalProfile")
       .mockResolvedValue({ longitude: 0, latitude: 0, points: [] });
     const map = new FakeMap();
-    const z = new Zartigl({ source: "zarr", map: map as never, catalog: catalog() });
-
-    await z.setLayer("scalar");
+    const z = await createZartigl({ source: "zarr", map: map as never, catalog: catalog() }, "scalar");
     await z.queryTimeSeries({ longitude: 1, latitude: 2, maxPoints: 3 });
     await z.queryDepthProfile({ longitude: 1, latitude: 2, maxDepths: 2 });
 
@@ -834,14 +829,12 @@ describe("Zartigl facade", () => {
       .spyOn(ZarrSource.prototype, "sampleTimeSeries")
       .mockResolvedValue({ longitude: 0, latitude: 0, points: [] });
     const map = new FakeMap();
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: map as never,
       catalog: catalog(),
       timeRange: { start: 2_500, end: 7_500 },
-    });
-
-    await z.setLayer("scalar");
+    }, "scalar");
     expect(z.getTimeMeta()).toMatchObject({
       min: 3_000,
       max: 7_000,
@@ -850,7 +843,7 @@ describe("Zartigl facade", () => {
       granularity: "second",
     });
 
-    z.setTime(9_000);
+    await z.update({ time: 9_000 });
     expect(z.getTimeMeta().current).toBe(7_000);
     await z.queryTimeSeries({ longitude: 1, latitude: 2, maxPoints: 2 });
     expect(timeSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -863,11 +856,11 @@ describe("Zartigl facade", () => {
   it("applies, clears, and rolls back dynamic time ranges", async () => {
     const setRange = vi.spyOn(CatalogRenderLayer.prototype, "setTimeRange");
     const setTime = vi.spyOn(CatalogRenderLayer.prototype, "setTime");
-    const z = new Zartigl({ source: "zarr", map: new FakeMap() as never, catalog: catalog() });
-    await z.setLayer("scalar");
-    z.setTime(8_000);
+    const z = await createZartigl({ source: "zarr", map: new FakeMap() as never, catalog: catalog() }, "scalar");
+    await z.update({ time: 8_000 });
 
-    expect(z.setTimeRange({ start: 2_500, end: 6_500 })).toMatchObject({
+    await z.update({ timeRange: { start: 2_500, end: 6_500 } });
+    expect(z.getTimeMeta()).toMatchObject({
       min: 3_000,
       max: 6_000,
       current: 6_000,
@@ -881,12 +874,13 @@ describe("Zartigl facade", () => {
     expect(setRange).toHaveBeenLastCalledWith([3_000, 6_000]);
     expect(setTime).toHaveBeenLastCalledWith(6_000);
 
-    expect(() => z.setTimeRange({ start: 20_000, end: 30_000 })).toThrow(
+    await expect(z.update({ timeRange: { start: 20_000, end: 30_000 } })).rejects.toThrow(
       /available timestamps/,
     );
     expect(z.getTimeMeta()).toMatchObject({ min: 3_000, max: 6_000, current: 6_000 });
 
-    expect(z.setTimeRange(null)).toMatchObject({ min: 0, max: 9_000, size: 10 });
+    await z.update({ timeRange: null });
+    expect(z.getTimeMeta()).toMatchObject({ min: 0, max: 9_000, size: 10 });
   });
 
   it("uses nested GeoVideo defaults and forwards runtime playback changes", async () => {
@@ -912,13 +906,12 @@ describe("Zartigl facade", () => {
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }));
     const map = new FakeMap();
-    const z = new Zartigl({
+    const z = await createZartigl({
       map: map as never,
       catalog: catalog(layer),
       source: "geovideo",
       geoVideo: { autoplay: false, loop: false, playbackRate: 5 },
-    });
-    await z.setLayer(GEO_ENTRY_ID);
+    }, GEO_ENTRY_ID);
 
     const arco = map.getLayer("zartigl") as unknown as {
       options: { geoVideoAutoplay: boolean; geoVideoLoop: boolean; geoVideoPlaybackRate: number };
@@ -934,8 +927,8 @@ describe("Zartigl facade", () => {
     });
     const loop = vi.spyOn(CatalogRenderLayer.prototype, "setLoop");
     const rate = vi.spyOn(CatalogRenderLayer.prototype, "setPlaybackRate");
-    z.setLoop(true);
-    z.setPlaybackRate(2);
+    await z.update({ geoVideo: { loop: true } });
+    await z.update({ geoVideo: { playbackRate: 2 } });
     expect(loop).toHaveBeenCalledWith(true);
     expect(rate).toHaveBeenCalledWith(2);
     vi.unstubAllGlobals();
@@ -974,12 +967,11 @@ describe("Zartigl facade", () => {
     const z = new Zartigl({
       map: map as never,
       catalog: catalog(layer),
+      layer: GEO_ENTRY_ID,
       source: "geovideo",
+      time: requested,
     });
-
-    const loading = z.setLayer(GEO_ENTRY_ID);
-    z.setTime(requested);
-    await loading;
+    await z.init();
 
     expect(z.getTimeMeta().current).toBe(requested);
     vi.unstubAllGlobals();
@@ -996,14 +988,12 @@ describe("Zartigl facade", () => {
       min: values[0], max: values[values.length - 1], size: values.length,
       units: "milliseconds since 1970-01-01T00:00:00Z", values,
     });
-    const z = new Zartigl({
+    const z = await createZartigl({
       source: "zarr",
       map: new FakeMap() as never,
       catalog: catalog(),
       timeRange: { trailing: "P1M" },
-    });
-
-    await z.setLayer("scalar");
+    }, "scalar");
 
     expect(z.getTimeMeta()).toMatchObject({
       values: values.slice(2),
@@ -1016,17 +1006,120 @@ describe("Zartigl facade", () => {
       source: "zarr",
       map: new FakeMap() as never,
       catalog: catalog(),
+      layer: "scalar",
       timeRange: { trailing: "P0D" },
     });
-    await expect(invalid.setLayer("scalar")).rejects.toThrow(/positive/);
+    await expect(invalid.init()).rejects.toThrow(/positive/);
 
     const empty = new Zartigl({
       source: "zarr",
       map: new FakeMap() as never,
       catalog: catalog(),
+      layer: "scalar",
       timeRange: { start: 20_000, end: 30_000 },
     });
-    await expect(empty.setLayer("scalar")).rejects.toThrow(/available timestamps/);
+    await expect(empty.init()).rejects.toThrow(/available timestamps/);
+  });
+
+  it("lets the latest concurrent layer update win without leaking staged state", async () => {
+    const first = scalarLayer();
+    const second = scalarLayer({ id: "second" });
+    const third = scalarLayer({ id: "third" });
+    const z = await createZartigl({
+      source: "zarr",
+      map: new FakeMap() as never,
+      catalog: { schemaVersion: 2, defaultLocale: "en", layers: [first, second, third] },
+    }, "scalar");
+    let releaseSecond!: () => void;
+    vi.mocked(ZarrSource.prototype.init).mockClear();
+    vi.mocked(ZarrSource.prototype.init)
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { releaseSecond = resolve; }))
+      .mockResolvedValueOnce();
+
+    const superseded = z.update({ layer: "second", source: "zarr", settings: { opacity: 0.2 } });
+    await Promise.resolve();
+    await z.update({ layer: "third", source: "zarr", settings: { opacity: 0.8 } });
+    releaseSecond();
+
+    await expect(superseded).rejects.toMatchObject({ name: "AbortError" });
+    expect(z.getDebugInfo()).toMatchObject({
+      catalogEntry: { id: "third" },
+      settings: { opacity: 0.8 },
+    });
+  });
+
+  it("loads a replacement source with its replacement time range", async () => {
+    const firstValues = [0, 1_000, 2_000];
+    const secondValues = [10_000, 11_000, 12_000];
+    const base = scalarLayer();
+    const firstSource = base.sources.find((source) => source.type === "zarr")!;
+    const secondSource = {
+      ...firstSource,
+      id: "second-zarr",
+      endpoints: { ...firstSource.endpoints, field: "https://example.test/second.zarr" },
+    };
+    const layer = { ...base, sources: [firstSource, secondSource] } as CatalogEntry;
+    vi.mocked(ZarrSource.prototype.getTimeDimension)
+      .mockReturnValueOnce({
+        min: firstValues[0], max: firstValues[2], size: firstValues.length,
+        units: "milliseconds since 1970-01-01T00:00:00Z", values: firstValues,
+      })
+      .mockReturnValueOnce({
+        min: secondValues[0], max: secondValues[2], size: secondValues.length,
+        units: "milliseconds since 1970-01-01T00:00:00Z", values: secondValues,
+      });
+    const z = await createZartigl({
+      source: firstSource.id,
+      map: new FakeMap() as never,
+      catalog: catalog(layer),
+      timeRange: { start: 0, end: 2_000 },
+    }, layer.id);
+
+    await z.update({
+      source: secondSource.id,
+      timeRange: { start: 10_000, end: 12_000 },
+    });
+
+    expect(z.getSource()?.id).toBe(secondSource.id);
+    expect(z.getTimeMeta()).toMatchObject({
+      min: 10_000,
+      max: 12_000,
+      values: secondValues,
+    });
+  });
+
+  it("preserves mutations queued during a layer metadata load", async () => {
+    const first = scalarLayer();
+    const second = scalarLayer({
+      id: "second",
+      stores: { field: { url: "https://example.test/second.zarr" } },
+    });
+    const z = await createZartigl({
+      source: "zarr",
+      map: new FakeMap() as never,
+      catalog: { schemaVersion: 2, defaultLocale: "en", layers: [first, second] },
+    }, first.id);
+    let releaseMetadata!: () => void;
+    vi.mocked(ZarrSource.prototype.init).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { releaseMetadata = resolve; }),
+    );
+
+    const select = z.update({ layer: second.id, source: "zarr", settings: { opacity: 0.2 } });
+    await Promise.resolve();
+    const settings = z.update({ settings: { opacity: 0.8 } });
+    const time = z.update({ time: 4_000 });
+    const depth = z.update({ depth: 20 });
+    const visibility = z.update({ visible: false });
+    releaseMetadata();
+    await Promise.all([select, settings, time, depth, visibility]);
+
+    expect(z.getDebugInfo()).toMatchObject({
+      catalogEntry: { id: second.id },
+      settings: { opacity: 0.8 },
+      time: 4_000,
+      depth: 20,
+      visible: false,
+    });
   });
 
   it("preserves the active layer when candidate metadata loading fails", async () => {
@@ -1043,15 +1136,16 @@ describe("Zartigl facade", () => {
       source: "zarr",
       map: map as never,
       catalog: { schemaVersion: 2, defaultLocale: "en", layers: [first, second] },
+      layer: "scalar",
     });
     const errors: Error[] = [];
     z.on("error", (error) => errors.push(error));
 
-    await z.setLayer("scalar");
+    await z.init();
     const active = map.getLayer("zartigl");
     vi.mocked(ZarrSource.prototype.init).mockRejectedValueOnce(new Error("metadata unavailable"));
 
-    await expect(z.setLayer("second")).rejects.toThrow("metadata unavailable");
+    await expect(z.update({ layer: "second", source: "zarr" })).rejects.toThrow("metadata unavailable");
     expect(map.getLayer("zartigl")).toBe(active);
     expect(z.getTimeMeta().current).toBe(9_000);
     expect(errors[errors.length - 1]?.message).toBe("metadata unavailable");

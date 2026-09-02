@@ -21,6 +21,7 @@ export {
 } from "./vector-derivation";
 export {
   buildMapxWidgetSnippet,
+  buildStandaloneDemoHtml,
   buildStandaloneDemoSnippet,
 } from "../mapx/snippet";
 export type {
@@ -73,5 +74,6 @@ export type {
   TimeRange,
   VariableMeta,
   ZartiglOptions,
+  ZartiglUpdate,
   ZartiglSettings,
 } from "./Zartigl";
