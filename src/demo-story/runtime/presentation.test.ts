@@ -1,24 +1,35 @@
 import { describe, expect, it } from "vitest";
-import storyJson from "../story.json";
 import { advanceStorySequence, sceneShowsTime, sequenceIndexAtOrBefore, StoryTimePresentation } from "./presentation";
-import type { StoryDocument } from "./types";
+import type { StoryScene } from "./types";
 
-const story = storyJson as StoryDocument;
+function scene(showTime: boolean): StoryScene {
+  return {
+    id: showTime ? "timed" : "timeless",
+    name: { en: "Fixture scene" },
+    theme: "fixture",
+    layout: "full",
+    blocks: [{
+      id: "copy",
+      type: "copy",
+      slot: "copy",
+      heading: { en: "Fixture heading" },
+      showTime,
+    }],
+  };
+}
 
 describe("story presentation", () => {
   it("shows time only when the active copy opts in", () => {
-    expect(sceneShowsTime(story.scenes.find((scene) => scene.id === "intro")!)).toBe(false);
-    expect(sceneShowsTime(story.scenes.find((scene) => scene.id === "arctic")!)).toBe(true);
-    expect(sceneShowsTime(story.scenes.find((scene) => scene.id === "mayotte")!)).toBe(true);
-    expect(sceneShowsTime(story.scenes.find((scene) => scene.id === "outro")!)).toBe(false);
+    expect(sceneShowsTime(scene(false))).toBe(false);
+    expect(sceneShowsTime(scene(true))).toBe(true);
   });
 
   it("rejects a late dataset time after entering a timeless scene", () => {
     const presentation = new StoryTimePresentation();
-    presentation.setScene(story.scenes.find((scene) => scene.id === "arctic")!);
+    presentation.setScene(scene(true));
     expect(presentation.accept(Date.parse("2024-12-14T12:00:00Z"))).not.toBeNull();
 
-    presentation.setScene(story.scenes.find((scene) => scene.id === "outro")!);
+    presentation.setScene(scene(false));
     expect(presentation.visible).toBe(false);
     expect(presentation.accept(Date.parse("2024-12-14T15:00:00Z"))).toBeNull();
   });

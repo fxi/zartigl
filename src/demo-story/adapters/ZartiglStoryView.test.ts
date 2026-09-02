@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { arcticMeasurementFeature, resolveCameraTransition, storyOverlayVisibility } from "./ZartiglStoryView";
+import {
+  arcticMeasurementFeature,
+  nearestChidoTrackPoint,
+  resolveCameraTransition,
+  storyOverlayVisibility,
+} from "./ZartiglStoryView";
 
 describe("story reference overlays", () => {
   it("formats the returned Arctic grid point for its map target", () => {
@@ -20,6 +25,16 @@ describe("story reference overlays", () => {
       ensoRegions: false,
       chidoTrack: false,
     });
+  });
+
+  it("selects the track point nearest the requested time", () => {
+    const points = [
+      { time: "2024-01-01T00:00:00.000Z", label: "first", longitude: 1, latitude: 2 },
+      { time: "2024-01-01T03:00:00.000Z", label: "second", longitude: 3, latitude: 4 },
+    ];
+
+    expect(nearestChidoTrackPoint(points, Date.parse("2024-01-01T02:30:00.000Z")).label)
+      .toBe("second");
   });
 });
 
