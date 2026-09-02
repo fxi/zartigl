@@ -1,5 +1,6 @@
 import { findCatalogEntries } from "../../catalog";
 import type { StoryRegistry, StoryWidgetContext } from "../runtime";
+import { resolveLocalizedText } from "../runtime";
 import { ARCTIC_POINT, MAYOTTE_POINT } from "../scenes";
 import ensoJson from "../data/enso.json";
 import balticHypoxiaJson from "../data/baltic-hypoxia.json";
@@ -28,12 +29,18 @@ function requiredView(config: Record<string, unknown>, context: StoryWidgetConte
   return adapter;
 }
 
-function widgetShell(host: HTMLElement): { chart: HTMLElement; provenance: HTMLElement } {
+function widgetShell(host: HTMLElement, context: StoryWidgetContext): { chart: HTMLElement; provenance: HTMLElement } {
   const chart = document.createElement("div");
   chart.className = "chart";
+  const caption = document.createElement("p");
+  caption.className = "widget-caption";
+  caption.textContent = context.block.caption
+    ? resolveLocalizedText(context.block.caption, context.locale, "en", ["en"])
+    : "";
+  caption.hidden = !caption.textContent;
   const provenance = document.createElement("footer");
   provenance.className = "provenance";
-  host.replaceChildren(chart, provenance);
+  host.replaceChildren(chart, caption, provenance);
   return { chart, provenance };
 }
 
@@ -49,7 +56,7 @@ function datasetForVariable(variableId: string): string {
 
 export function registerStoryWidgets(registry: StoryRegistry): void {
   registry.registerWidgetType("arctic-series", async (host, config, context) => {
-    const { chart, provenance } = widgetShell(host);
+    const { chart, provenance } = widgetShell(host, context);
     const view = requiredView(config, context);
     view.setArcticMeasurementPoint();
     renderChartStatus(chart, "Loading measurements…");
@@ -63,7 +70,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
   });
   registry.registerWidgetType("enso-series", (host, config, context) => {
     if (context.signal.aborted) return;
-    const { chart, provenance } = widgetShell(host);
+    const { chart, provenance } = widgetShell(host, context);
     const data = ensoJson as EnsoStoryData;
     const controller = renderEnsoChart(chart, data, chartOptions(config, context));
     context.setTimeCursor(controller.setCursor);
@@ -72,7 +79,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
   });
   registry.registerWidgetType("baltic-hypoxia", (host, config, context) => {
     if (context.signal.aborted) return;
-    const { chart, provenance } = widgetShell(host);
+    const { chart, provenance } = widgetShell(host, context);
     const data = balticHypoxiaJson as BalticHypoxiaStoryData;
     const controller = renderBalticHypoxiaChart(chart, data, chartOptions(config, context), context.locale);
     context.setTimeCursor(controller.setCursor);
@@ -84,7 +91,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
       const link = document.createElement("a");
       link.href = reference.url;
       link.target = "_blank";
-      link.rel = "noreferrer";
+      link.rel = "noopener noreferrer";
       link.textContent = reference.label;
       provenance.append(link);
       if (index < data.references.length - 1) provenance.append(" · ");
@@ -92,7 +99,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     return () => controller.destroy();
   });
   registry.registerWidgetType("mayotte-wind", async (host, config, context) => {
-    const { chart, provenance } = widgetShell(host);
+    const { chart, provenance } = widgetShell(host, context);
     const view = requiredView(config, context);
     renderChartStatus(chart, "Loading measurements…");
     const result = await view.zartigl.queryTimeSeries({ longitude: MAYOTTE_POINT.longitude, latitude: MAYOTTE_POINT.latitude, maxPoints: 180 });

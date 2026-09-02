@@ -30,10 +30,16 @@ export interface StoryCopyBlock extends StoryBlockBase {
   label?: LocalizedText;
   heading: LocalizedText;
   text?: LocalizedText;
+  references?: StoryReference[];
   showTime?: boolean;
   backdrop?: "none" | "dark-gradient";
   orientation?: "horizontal" | "vertical-rl";
   variant?: "hero" | "standard";
+}
+
+export interface StoryReference {
+  label: LocalizedText;
+  url: string;
 }
 
 export interface StoryViewBlock extends StoryBlockBase {
@@ -46,6 +52,7 @@ export interface StoryWidgetBlock extends StoryBlockBase {
   type: "widget";
   widget: string;
   config?: Record<string, unknown>;
+  caption?: LocalizedText;
 }
 
 export interface StoryTextBlock extends StoryBlockBase {
@@ -104,6 +111,7 @@ export interface StoryViewAdapter {
 
 export interface StoryWidgetContext {
   scene: StoryScene;
+  block: StoryWidgetBlock;
   locale: string;
   signal: AbortSignal;
   getViewAdapter(viewId: string): StoryViewAdapter | undefined;

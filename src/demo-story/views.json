@@ -73,7 +73,7 @@
         },
         "anchor": "top-right",
         "settings": {
-          "palette": "oxygen",
+          "palette": "balance",
           "opacity": 1,
           "logScale": false,
           "vibrance": 0.1,

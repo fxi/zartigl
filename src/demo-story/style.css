@@ -109,6 +109,16 @@ h1 {
   font-weight: 500;
   line-height: 1.48;
 }
+.references {
+  margin: 10px 0 0;
+  color: color-mix(in srgb, var(--story-muted) 82%, var(--accent));
+  font-size: 11px;
+  line-height: 1.35;
+}
+.references[hidden] { display: none; }
+.references::before { content: attr(data-label); opacity: .72; }
+.references a { color: inherit; text-underline-offset: 2px; }
+.references a:hover, .references a:focus-visible { color: var(--story-fg); }
 .timestamp { min-height: 1.3em; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 
 .analysis {
@@ -157,6 +167,7 @@ h1 {
 .chart-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 0 52px; color: rgba(247, 243, 255, .72); font-size: 11px; }
 .chart-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 14px; height: 3px; border-radius: 2px; }
+.widget-caption { margin: 10px 0 0; color: rgba(247, 243, 255, .72); font-size: 11px; line-height: 1.4; }
 .provenance { margin-top: 12px; color: rgba(247, 243, 255, .42); font-size: 10px; line-height: 1.4; }
 .provenance a { color: inherit; text-decoration-color: rgba(247, 243, 255, .25); }
 .hypoxia-readout { margin: 0 0 -8px 52px; color: #fff4e7; font-size: 14px; font-weight: 700; letter-spacing: .01em; }
@@ -245,6 +256,7 @@ h1 {
     font-size: clamp(14px, 4vw, 18px);
     line-height: 1.36;
   }
+  .references { margin-top: 7px; font-size: clamp(9px, 2.5vw, 11px); }
   .timestamp { margin: 12px 0 0; font-size: clamp(10px, 2.8vw, 12px); }
   .analysis,
   .story[data-layout="overlay"] .analysis,
@@ -265,14 +277,22 @@ h1 {
   .chart-grid line { stroke: rgba(255, 255, 255, .065); }
   .chart-legend[hidden] { display: none; }
   .hypoxia-readout { margin: 0 0 -6px 44px; font-size: 12px; }
-  .provenance {
+  .widget-caption {
     display: -webkit-box;
     margin-top: 6px;
     overflow: hidden;
-    color: rgba(247, 243, 255, .42);
-    font-size: clamp(8px, 2.3vw, 10px);
+    font-size: clamp(9px, 2.5vw, 11px);
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+  }
+  .provenance {
+    display: -webkit-box;
+    margin-top: 4px;
+    overflow: hidden;
+    color: rgba(247, 243, 255, .36);
+    font-size: clamp(7px, 2vw, 9px);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
   }
   .map-tint {
     mix-blend-mode: normal;

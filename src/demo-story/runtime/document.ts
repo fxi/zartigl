@@ -19,6 +19,17 @@ function validateLocalized(value: unknown, path: string, defaultLocale: string):
   invariant(typeof value[defaultLocale] === "string", `${path}.${defaultLocale} must be a string`);
 }
 
+function validateHttpUrl(value: unknown, path: string): void {
+  invariant(typeof value === "string", `${path} must be a string`);
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`Invalid story document: ${path} must be a valid URL`);
+  }
+  invariant(url.protocol === "https:" || url.protocol === "http:", `${path} must use HTTP or HTTPS`);
+}
+
 function validateBlock(block: unknown, path: string, defaultLocale: string): asserts block is StoryBlock {
   invariant(isRecord(block), `${path} must be an object`);
   invariant(typeof block.id === "string" && block.id.length > 0, `${path}.id is required`);
@@ -26,12 +37,25 @@ function validateBlock(block: unknown, path: string, defaultLocale: string): ass
   invariant(["copy", "view", "widget", "text", "credit", "label"].includes(String(block.type)), `${path}.type is invalid`);
   if (block.type === "copy") {
     validateLocalized(block.heading, `${path}.heading`, defaultLocale);
+    if (block.text !== undefined) validateLocalized(block.text, `${path}.text`, defaultLocale);
+    if (block.references !== undefined) {
+      invariant(Array.isArray(block.references) && block.references.length > 0, `${path}.references must not be empty`);
+      block.references.forEach((reference, index) => {
+        const referencePath = `${path}.references[${index}]`;
+        invariant(isRecord(reference), `${referencePath} must be an object`);
+        validateLocalized(reference.label, `${referencePath}.label`, defaultLocale);
+        validateHttpUrl(reference.url, `${referencePath}.url`);
+      });
+    }
     if (block.backdrop !== undefined) {
       invariant(["none", "dark-gradient"].includes(String(block.backdrop)), `${path}.backdrop is invalid`);
     }
   }
   if (block.type === "view") invariant(typeof block.view === "string", `${path}.view is required`);
-  if (block.type === "widget") invariant(typeof block.widget === "string", `${path}.widget is required`);
+  if (block.type === "widget") {
+    invariant(typeof block.widget === "string", `${path}.widget is required`);
+    if (block.caption !== undefined) validateLocalized(block.caption, `${path}.caption`, defaultLocale);
+  }
   if (["text", "credit", "label"].includes(String(block.type))) {
     validateLocalized(block.text, `${path}.text`, defaultLocale);
   }

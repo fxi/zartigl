@@ -116,13 +116,19 @@
           "showTime": true,
           "label": { "en": "Signal 01 — Arctic", "fr": "Signal 01 — Arctique" },
           "heading": {
-            "en": "Ice,\nframe by frame",
-            "fr": "La glace,\nimage par image"
+            "en": "Arctic",
+            "fr": "Arctique"
           },
           "text": {
-            "en": "Daily sea-ice thickness across the Arctic, paired with the record at 5.667°W, 81.833°N.",
-            "fr": "Épaisseur quotidienne de la glace arctique, associée aux mesures à 5,667°O, 81,833°N."
-          }
+            "en": "Since 1979, its minimum September extent has declined by 12.8% per decade.",
+            "fr": "Depuis 1979, son étendue minimale en septembre diminue de 12,8 % par décennie."
+          },
+          "references": [
+            {
+              "label": { "en": "IPCC SROCC", "fr": "GIEC/IPCC SROCC" },
+              "url": "https://www.ipcc.ch/srocc/chapter/summary-for-policymakers/"
+            }
+          ]
         },
         {
           "id": "arctic-chart",
@@ -130,7 +136,11 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "arctic-series",
-          "config": { "view": "arctic-ice", "interactiveTime": true }
+          "config": { "view": "arctic-ice", "interactiveTime": true },
+          "caption": {
+            "en": "Daily modelled thickness at grid point 81.833°N, 5.667°W; June 2022–August 2026; 391 values.",
+            "fr": "Épaisseur quotidienne modélisée au point de grille 81,833° N, 5,667° O ; juin 2022–août 2026 ; 391 valeurs."
+          }
         }
       ]
     },
@@ -160,13 +170,22 @@
             "fr": "Signal 02 — Pacifique équatorial"
           },
           "heading": {
-            "en": "Four windows\non ENSO",
-            "fr": "Quatre fenêtres\nsur ENSO"
+            "en": "El Niño",
+            "fr": "El Niño"
           },
           "text": {
-            "en": "Sea-surface temperature anomalies across the Niño 1+2, 3, 3.4 and 4 monitoring regions.",
-            "fr": "Anomalies de température de surface dans les régions de suivi Niño 1+2, 3, 3.4 et 4."
-          }
+            "en": "In August 2026, NOAA estimated a greater than 90% chance of a very strong event during fall and winter 2026–27.",
+            "fr": "En août 2026, NOAA estimait à plus de 90 % la probabilité d’un épisode très intense durant l’automne-hiver 2026-2027."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "NOAA Climate Prediction Center",
+                "fr": "NOAA Climate Prediction Center"
+              },
+              "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/archives/?month=08&type=strengths&year=2026"
+            }
+          ]
         },
         {
           "id": "enso-chart",
@@ -174,7 +193,11 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "enso-series",
-          "config": { "view": "enso-pacific", "interactiveTime": true }
+          "config": { "view": "enso-pacific", "interactiveTime": true },
+          "caption": {
+            "en": "Daily Copernicus Marine sea-surface temperature anomalies; area-weighted means in four Niño regions; February–August 2026.",
+            "fr": "Anomalies quotidiennes de température de surface Copernicus Marine ; moyennes pondérées par surface dans quatre régions Niño ; février–août 2026."
+          }
         }
       ]
     },
@@ -205,13 +228,22 @@
             "fr": "Signal 03 — Mer Baltique"
           },
           "heading": {
-            "en": "When the seabed\nruns out of oxygen",
-            "fr": "Quand l’oxygène\nquitte les fonds"
+            "en": "Baltic Sea",
+            "fr": "Mer Baltique"
           },
           "text": {
-            "en": "Each frame is one real monthly mean. The graph compares September only. Nutrient enrichment drives oxygen loss; warming and stratification can intensify it, while saline inflows shape each year.",
-            "fr": "Chaque image est une moyenne mensuelle réelle. Le graphe compare uniquement septembre. L’excès de nutriments entraîne la raréfaction de l’oxygène ; réchauffement et stratification peuvent l’aggraver, tandis que les apports d’eau saline modulent chaque année."
-          }
+            "en": "In 2016, hypoxia covered about 70,000 km² of seabed. Excess nutrient inputs are the main driver; warming and stratification worsen oxygen loss.",
+            "fr": "En 2016, l’hypoxie couvrait environ 70 000 km² de fonds. Les excès de nutriments en sont le moteur principal ; réchauffement et stratification aggravent le déficit d’oxygène."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "HELCOM — State of the Baltic Sea",
+                "fr": "HELCOM — État de la mer Baltique"
+              },
+              "url": "https://stateofthebalticsea.helcom.fi/wp-content/uploads/2023/11/Climate-change-chapter.pdf"
+            }
+          ]
         },
         {
           "id": "baltic-chart",
@@ -219,7 +251,11 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "baltic-hypoxia",
-          "config": { "view": "baltic-oxygen", "interactiveTime": true }
+          "config": { "view": "baltic-oxygen", "interactiveTime": true },
+          "caption": {
+            "en": "Copernicus Marine reanalysis; modelled seabed area below 2 mg/L O₂; monthly animation, September only in the graph with a five-year moving average; 1993–2025.",
+            "fr": "Réanalyse Copernicus Marine ; surface modélisée des fonds sous 2 mg/L d’O₂ ; animation mensuelle, septembre seul dans le graphe et moyenne glissante sur cinq ans ; 1993–2025."
+          }
         }
       ]
     },
@@ -263,13 +299,23 @@
             "fr": "Signal 04 — Mayotte, 14 décembre 2024"
           },
           "heading": {
-            "en": "Following Chido west",
-            "fr": "Suivre Chido vers l’ouest"
+            "en": "Cyclones",
+            "fr": "Cyclones"
           },
           "text": {
-            "en": "Hourly sea-surface wind follows Chido west across Mayotte and onward.",
-            "fr": "Le vent horaire à la surface de la mer suit Chido vers l’ouest, à travers Mayotte puis au-delà."
-          }
+            "en": "Chido struck Mayotte with gusts of 226 km/h and waves reaching 9.3 m. In a warmer climate, the strongest cyclones become more intense and represent a larger share.",
+            "fr": "Chido a frappé Mayotte avec des rafales de 226 km/h et des vagues de 9,3 m. Dans un climat plus chaud, les cyclones extrêmes gagnent en puissance et en proportion."
+          },
+          "references": [
+            {
+              "label": { "en": "Météo-France", "fr": "Météo-France" },
+              "url": "https://education.meteofrance.fr/actualites/le-cyclone-chido-a-frappe-mayotte-le-14-decembre-2024"
+            },
+            {
+              "label": { "en": "IPCC AR6", "fr": "GIEC/IPCC AR6" },
+              "url": "https://www.ipcc.ch/report/ar6/wg1/chapter/chapter-11/"
+            }
+          ]
         },
         {
           "id": "mayotte-chart",
@@ -277,7 +323,11 @@
           "slot": "analysis",
           "anchor": "bottom-right",
           "widget": "mayotte-wind",
-          "config": { "view": "mayotte-wind", "interactiveTime": true }
+          "config": { "view": "mayotte-wind", "interactiveTime": true },
+          "caption": {
+            "en": "Hourly modelled wind at a grid point, not station gusts; IBTrACS track at three-hour intervals; 14 December 2024.",
+            "fr": "Vent horaire modélisé au point de grille, et non rafales de station ; trajectoire IBTrACS par pas de trois heures ; 14 décembre 2024."
+          }
         }
       ]
     },

@@ -8,6 +8,7 @@ import {
   advanceStorySequence, initializeAfterStaticRender, nextStoryIndex, parseStoryDocuments,
   resolveLocalizedText, sceneViewId, sequenceIndexAtOrBefore, StoryRegistry, StoryTimeInteraction,
   StoryTimePresentation, StoryWidgetLifecycle,
+  storyExternalLinkAttributes,
   type StoryCopyBlock, type StoryScene, type StoryViewAdapter, type StoryWidgetRun,
 } from "./runtime";
 import { registerStoryWidgets } from "./widgets/storyWidgets";
@@ -47,6 +48,7 @@ export class StoryApp {
   private readonly signal = required<HTMLElement>("#signal");
   private readonly title = required<HTMLElement>("#title");
   private readonly description = required<HTMLElement>("#description");
+  private readonly references = required<HTMLElement>("#references");
   private readonly copy = required<HTMLElement>("#copy");
   private readonly timestamp = required<HTMLElement>("#timestamp");
   private readonly analysis = required<HTMLElement>("#analysis");
@@ -199,7 +201,7 @@ export class StoryApp {
     host.className = "widget-host";
     this.analysis.replaceChildren(host);
     const cleanup = await this.registry.getWidget(block.widget)(host, block.config ?? {}, {
-      scene, locale: this.locale, signal: run.signal,
+      scene, block, locale: this.locale, signal: run.signal,
       getViewAdapter: (viewId) => viewId === this.activeViewId ? this.activeAdapter ?? undefined : undefined,
       setTimeCursor: (cursor) => void run.runIfCurrent(() => {
         if (generation === this.generation) this.chartCursor = cursor;
@@ -235,6 +237,15 @@ export class StoryApp {
     this.signal.hidden = !copy?.label;
     this.title.textContent = copy ? this.text(copy.heading) : "";
     this.description.textContent = copy?.text ? this.text(copy.text) : "";
+    this.references.replaceChildren();
+    this.references.dataset.label = this.locale.startsWith("fr") ? "Référence : " : "Source: ";
+    for (const [index, reference] of (copy?.references ?? []).entries()) {
+      if (index > 0) this.references.append(document.createTextNode(" · "));
+      const link = document.createElement("a");
+      Object.assign(link, storyExternalLinkAttributes(reference, this.text(reference.label)));
+      this.references.append(link);
+    }
+    this.references.hidden = !copy?.references?.length;
     this.copy.dataset.orientation = copy?.orientation ?? "horizontal";
     this.timestamp.textContent = "";
     this.timestamp.hidden = !this.timePresentation.visible;

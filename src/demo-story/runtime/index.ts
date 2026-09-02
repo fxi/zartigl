@@ -1,5 +1,6 @@
 export * from "./bootstrap";
 export * from "./document";
+export * from "./externalLinks";
 export * from "./navigation";
 export * from "./presentation";
 export * from "./registry";
