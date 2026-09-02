@@ -386,24 +386,49 @@ body {
   cursor: not-allowed;
 }
 
-.allowed-range {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 6px 8px;
+.limit-range {
+  margin: 4px 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
 }
 
-.allowed-range label {
+.limit-range-title {
+  margin-bottom: 7px;
+  color: #bbb;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.limit-range-row {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.limit-range-row + .limit-range-row {
+  margin-top: 6px;
+}
+
+.limit-range-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: #999;
   font-size: 10px;
   text-transform: uppercase;
 }
 
-.allowed-range-input {
+.limit-range-toggle input {
+  margin: 0;
+}
+
+.limit-range-input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  margin-top: 3px;
   padding: 4px;
   color: #ccc;
   background: rgba(255, 255, 255, 0.06);
@@ -411,6 +436,11 @@ body {
   border-radius: 3px;
   color-scheme: dark;
   font: inherit;
+}
+
+.limit-range-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* Legend (inside Display folder) */

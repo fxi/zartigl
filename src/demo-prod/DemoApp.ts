@@ -23,6 +23,13 @@ import type { CatalogEntry, Catalog, CatalogSource, CatalogZarrSource } from "..
 import { addCatalogPickerBlade } from "./CatalogPicker";
 import type { CatalogPicker } from "./CatalogPicker";
 import { addDomBlade, DomBladePlugin } from "./DomBladePlugin";
+import {
+  buildLimitedTimeRange,
+  isoTimeRange,
+  normalizeSharedTimeRange,
+  shouldExportSelectedTime,
+} from "./time-range";
+import type { SharedTimeRange } from "./time-range";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -31,6 +38,8 @@ interface DemoParams {
   timeLabel: string;
   allowedStart: number;
   allowedEnd: number;
+  limitStart: boolean;
+  limitEnd: boolean;
   geoVideoAutoplay: boolean;
   geoVideoLoop: boolean;
   geoVideoPlaybackRate: number;
@@ -67,7 +76,7 @@ interface HashState {
   ls: boolean;
   vb: number;
   cd?: [number, number] | null;
-  tr?: [number, number];
+  tr?: SharedTimeRange;
   ga?: boolean;
   gl?: boolean;
   gr?: number;
@@ -343,6 +352,7 @@ export class DemoApp {
   private pointQuerySeq = 0;
 
   // Folder refs
+  private timeFolder!: FolderApi;
   private dataFolder!: FolderApi;
   private vectorFolder!: FolderApi;
   private dataBindings: { dispose(): void }[] = [];
@@ -410,6 +420,8 @@ export class DemoApp {
     this.currentSourceId = requestedSource.id;
     this.currentBackend = requestedSource.type;
 
+    const sharedTimeRange = normalizeSharedTimeRange(hashState?.tr);
+
     // Apply params: layer defaults, then optional hash overrides
     this.applyLayerDefaults(layer);
     if (hashState) this.applyHashState(hashState, layer);
@@ -422,9 +434,7 @@ export class DemoApp {
       map: this.map,
       catalog: this.cat,
       source: this.currentSourceId,
-      timeRange: hashState?.tr
-        ? { start: hashState.tr[0], end: hashState.tr[1] }
-        : undefined,
+      timeRange: sharedTimeRange,
       geoVideo: {
         autoplay: hashState?.ga ?? this.params.geoVideoAutoplay,
         loop: hashState?.gl ?? this.params.geoVideoLoop,
@@ -535,9 +545,7 @@ export class DemoApp {
     const times = timeMeta.values ?? [];
     const tSize = times.length;
 
-    this.dataBindings.push(this.buildAllowedRangeControls());
-
-    this.timeSliderBinding = this.dataFolder.addBinding(this.params, "timeIndex", {
+    this.timeSliderBinding = this.timeFolder.addBinding(this.params, "timeIndex", {
       min: 0,
       max: Math.max(0, tSize - 1),
       step: 1,
@@ -550,10 +558,12 @@ export class DemoApp {
       this.z?.setTime(ms);
     }) as BindingApi;
 
-    this.timeLabelBinding = this.dataFolder.addBinding(this.params, "timeLabel", {
+    this.timeLabelBinding = this.timeFolder.addBinding(this.params, "timeLabel", {
       readonly: true,
       label: "",
     }) as BindingApi;
+
+    this.dataBindings.push(this.buildLimitRangeControls());
 
     const depthMeta = this.z!.getDepthMeta();
     let depthBinding: BindingApi | null = null;
@@ -594,15 +604,27 @@ export class DemoApp {
     this.dataFolder.add(this.dataStatusBlade);
   }
 
-  private buildAllowedRangeControls(): FolderApi {
-    const folder = this.dataFolder.addFolder({ title: "Allowed range", expanded: false });
+  private buildLimitRangeControls(): BladeApi {
     const full = this.z!.getTimeMeta({ full: true });
-    const row = document.createElement("div");
-    row.className = "allowed-range";
+    const group = document.createElement("div");
+    group.className = "limit-range";
+    const title = document.createElement("div");
+    title.className = "limit-range-title";
+    title.textContent = "Limit range";
+    group.appendChild(title);
 
     const makeInput = (side: "start" | "end"): HTMLInputElement | HTMLSelectElement => {
+      const row = document.createElement("div");
+      row.className = "limit-range-row";
       const label = document.createElement("label");
-      label.textContent = side;
+      label.className = "limit-range-toggle";
+      const enabled = side === "start" ? this.params.limitStart : this.params.limitEnd;
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = enabled;
+      const labelText = document.createElement("span");
+      labelText.textContent = side;
+      label.append(checkbox, labelText);
       const input = full.granularity === "year"
         ? document.createElement("select")
         : document.createElement("input");
@@ -624,11 +646,17 @@ export class DemoApp {
           input.appendChild(option);
         }
       }
-      input.className = "allowed-range-input";
+      input.className = "limit-range-input";
+      input.disabled = !enabled;
       input.value = authoringInputValue(
         side === "start" ? this.params.allowedStart : this.params.allowedEnd,
         full.granularity,
       );
+      checkbox.addEventListener("change", () => {
+        if (side === "start") this.params.limitStart = checkbox.checked;
+        else this.params.limitEnd = checkbox.checked;
+        this.applyAuthoredRange();
+      });
       input.addEventListener("change", () => {
         const snapped = resolveTimeInputSelection(
           full.values,
@@ -645,29 +673,19 @@ export class DemoApp {
         }
         this.applyAuthoredRange();
       });
-      label.appendChild(input);
-      row.appendChild(label);
+      row.append(label, input);
+      group.appendChild(row);
       return input;
     };
     makeInput("start");
     makeInput("end");
-    folder.addButton({ title: "Full range" }).on("click", () => {
-      this.params.allowedStart = full.min;
-      this.params.allowedEnd = full.max;
-      this.applyAuthoredRange();
-    });
-    addDomBlade(folder, row);
-    return folder;
+    return addDomBlade(this.timeFolder, group);
   }
 
   private applyAuthoredRange(): void {
     if (!this.z) return;
-    const full = this.z.getTimeMeta({ full: true });
-    const isFull = this.params.allowedStart === full.min && this.params.allowedEnd === full.max;
-    const meta = this.z.setTimeRange(isFull ? null : {
-      start: this.params.allowedStart,
-      end: this.params.allowedEnd,
-    });
+    const range = this.currentNumericTimeRange();
+    const meta = this.z.setTimeRange(range ?? null);
     this.params.allowedStart = meta.min;
     this.params.allowedEnd = meta.max;
     this.params.timeIndex = nearestTimeIndex(meta.values, meta.current ?? meta.min);
@@ -679,6 +697,7 @@ export class DemoApp {
 
   private buildStaticUI(): void {
     this.buildLayerFolder();
+    this.timeFolder = this.pane.addFolder({ title: "Time", expanded: true });
     this.dataFolder = this.pane.addFolder({ title: "Data", expanded: true });
     this.dataStatusEl = document.createElement("div");
     this.dataStatusEl.className = "data-status";
@@ -1208,12 +1227,17 @@ export class DemoApp {
     const timeMeta = this.z!.getTimeMeta();
     const depthMeta = this.z!.getDepthMeta();
     const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
+    const includeTime = this.currentBackend === "geovideo" || shouldExportSelectedTime(
+      timeMs,
+      timeMeta.max,
+      this.params.limitEnd,
+    );
     return {
       layerId: layer.id,
       layerKind: layer.kind,
       source: this.currentSourceId,
       sourceType: this.currentBackend,
-      time: new Date(timeMs),
+      time: includeTime ? new Date(timeMs) : undefined,
       timeRange: this.currentTimeRange(),
       geoVideo: this.currentBackend === "geovideo" ? this.currentGeoVideoOptions() : undefined,
       depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
@@ -1248,9 +1272,7 @@ export class DemoApp {
       ls: this.params.logScale,
       vb: this.params.vibrance,
       cd: this.params.colorDomain,
-      tr: this.currentTimeRange()
-        ? [this.params.allowedStart, this.params.allowedEnd]
-        : undefined,
+      tr: this.currentNumericTimeRange(),
       ga: this.params.geoVideoAutoplay,
       gl: this.params.geoVideoLoop,
       gr: this.params.geoVideoPlaybackRate,
@@ -1320,6 +1342,8 @@ export class DemoApp {
       timeLabel: "",
       allowedStart: 0,
       allowedEnd: 0,
+      limitStart: false,
+      limitEnd: false,
       geoVideoAutoplay: false,
       geoVideoLoop: true,
       geoVideoPlaybackRate: 1,
@@ -1338,15 +1362,17 @@ export class DemoApp {
     };
   }
 
-  private currentTimeRange(): { start: string; end: string } | undefined {
-    const full = this.z?.getTimeMeta({ full: true });
-    if (!full || (this.params.allowedStart === full.min && this.params.allowedEnd === full.max)) {
-      return undefined;
-    }
-    return {
-      start: new Date(this.params.allowedStart).toISOString(),
-      end: new Date(this.params.allowedEnd).toISOString(),
-    };
+  private currentTimeRange(): { start?: string; end?: string } | undefined {
+    return isoTimeRange(this.currentNumericTimeRange());
+  }
+
+  private currentNumericTimeRange() {
+    return buildLimitedTimeRange(
+      this.params.allowedStart,
+      this.params.allowedEnd,
+      this.params.limitStart,
+      this.params.limitEnd,
+    );
   }
 
   private currentGeoVideoOptions() {
@@ -1372,9 +1398,14 @@ export class DemoApp {
     this.params.colorDomainMin = this.params.colorDomain?.[0] ?? 0;
     this.params.colorDomainMax = this.params.colorDomain?.[1] ?? 1;
     this.params.palette = d.palette ?? "rdylbu";
+    this.params.limitStart = false;
+    this.params.limitEnd = false;
   }
 
   private applyHashState(hash: HashState, layer: CatalogEntry): void {
+    const timeRange = normalizeSharedTimeRange(hash.tr);
+    this.params.limitStart = timeRange?.start !== undefined;
+    this.params.limitEnd = timeRange?.end !== undefined;
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;

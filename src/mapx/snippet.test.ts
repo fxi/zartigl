@@ -58,6 +58,17 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).not.toContain("cc._zartigl");
   });
 
+  it("serializes a start-only time range", () => {
+    const snippet = buildMapxWidgetSnippet({
+      layerId: "scalar",
+      layerKind: "scalar",
+      timeRange: { start: "2026-01-01T00:00:00Z" },
+    });
+
+    expect(snippet).toContain('"start": "2026-01-01T00:00:00Z"');
+    expect(snippet).not.toContain('"end"');
+  });
+
   it("omits particle-only settings from scalar GeoVideo snippets", () => {
     const snippet = buildMapxWidgetSnippet({
       layerId: "sea-temperature",
@@ -127,5 +138,16 @@ describe("buildStandaloneDemoSnippet", () => {
     });
 
     expect(snippet).toContain(`@fxi/zartigl@${pkg.version}/dist`);
+  });
+
+  it("serializes an end-only time range", () => {
+    const snippet = buildStandaloneDemoSnippet({
+      layerId: "scalar",
+      layerKind: "scalar",
+      timeRange: { end: "2026-06-30T00:00:00Z" },
+    });
+
+    expect(snippet).toContain('"end": "2026-06-30T00:00:00Z"');
+    expect(snippet).not.toContain('"start"');
   });
 });
