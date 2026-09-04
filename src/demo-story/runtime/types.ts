@@ -85,7 +85,6 @@ export interface StoryDocument {
   fallbackLocales?: string[];
   title: LocalizedText;
   themes: Record<string, StoryTheme>;
-  chrome?: { verticalMark?: LocalizedText };
   scenes: StoryScene[];
 }
 

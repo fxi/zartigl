@@ -3,6 +3,7 @@ import {
   arcticMeasurementFeature,
   nearestChidoTrackPoint,
   resolveCameraTransition,
+  storyStatusPresentation,
   storyOverlayVisibility,
   ZartiglStoryView,
 } from "./ZartiglStoryView";
@@ -54,6 +55,36 @@ describe("story reference overlays", () => {
 
     expect(nearestChidoTrackPoint(points, Date.parse("2024-01-01T02:30:00.000Z")).label)
       .toBe("second");
+  });
+});
+
+describe("story status presentation", () => {
+  it("maps work phases to loading and ready to idle", () => {
+    expect(storyStatusPresentation({ phase: "metadata" })).toEqual({
+      message: "Loading environmental data",
+      error: false,
+    });
+    expect(storyStatusPresentation({ phase: "rendering", time: 1 })).toEqual({
+      message: "Loading environmental data",
+      error: false,
+    });
+    expect(storyStatusPresentation({ phase: "ready", time: 1 })).toEqual({
+      message: "",
+      error: false,
+    });
+  });
+
+  it("maps blocked and failed loads to errors", () => {
+    expect(storyStatusPresentation({
+      phase: "blocked",
+      time: 1,
+      statuses: [404],
+      message: "Frame unavailable",
+    })).toEqual({ message: "Frame unavailable", error: true });
+    expect(storyStatusPresentation({
+      phase: "error",
+      error: new Error("Load failed"),
+    })).toEqual({ message: "Load failed", error: true });
   });
 });
 

@@ -3,12 +3,6 @@
   "defaultLocale": "en",
   "fallbackLocales": ["en"],
   "title": { "en": "Planetary Signal", "fr": "Signal planétaire" },
-  "chrome": {
-    "verticalMark": {
-      "en": "ZARTIGL · CLOUD-NATIVE ZARR · PLANETARY SIGNAL",
-      "fr": "ZARTIGL · ZARR CLOUD-NATIVE · SIGNAL PLANÉTAIRE"
-    }
-  },
   "themes": {
     "intro": {
       "background": "#111018",

@@ -2,10 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#111018" />
     <meta name="description" content="A live-data story built with Zartigl and cloud-native Zarr." />
-    <title>Planetary Signal — Zartigl</title>
+    <title>Planetary Signal - Zartigl</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,7 +14,6 @@
     <main id="story" class="story" aria-live="polite">
       <div id="map" class="map" aria-label="Interactive environmental data map"></div>
       <div class="map-tint" aria-hidden="true"></div>
-      <div id="enso-regions" class="map-labels" aria-hidden="true"></div>
 
       <section class="content">
         <div id="copy" class="copy">
@@ -28,9 +27,9 @@
       </section>
       <div id="story-extras" class="story-extras"></div>
 
-      <div id="status" class="status" role="status">Loading map…</div>
-      <div id="vertical-mark" class="vertical-mark" aria-hidden="true"></div>
-      <nav class="navigation" aria-label="Story navigation">
+      <div class="edge-rail">Zartigl • MapLibre • © MapTiler • © OpenStreetMap contributors • © Copernicus</div>
+      <div id="status" class="visually-hidden" role="status" aria-live="polite">Loading map</div>
+      <nav id="navigation" class="navigation" aria-label="Story navigation" aria-busy="true">
         <button id="previous" type="button" aria-label="Previous scene">←</button>
         <span id="counter"></span>
         <button id="play" type="button" aria-label="Pause animation">Pause</button>

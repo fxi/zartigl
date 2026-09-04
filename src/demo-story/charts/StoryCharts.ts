@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import type { ZarrPointSeriesResult } from "../../lib";
-import { ENSO_REGION_COLORS } from "../scenes";
+import { BALTIC_SERIES_COLORS, CHART_PALETTE_ORDER, ENSO_REGION_COLORS, SINGLE_SERIES_COLOR } from "../palette";
 import type { BalticHypoxiaStoryData, EnsoStoryData } from "../types";
 
 type Datum = { time: number; value: number };
@@ -20,8 +20,6 @@ export interface StoryChartOptions {
   onSeek?(time: number): void;
   onEnd?(): void;
 }
-
-const COLORS = ["#e995ff", "#67d9ff", "#ffbf69", "#75e39a"];
 
 export function spreadChartLabels(values: readonly number[], min: number, max: number, gap: number): number[] {
   if (!values.length) return [];
@@ -53,10 +51,17 @@ function clear(host: HTMLElement): void {
   host.removeAttribute("data-empty");
 }
 
-function status(host: HTMLElement, message: string): void {
+function renderStatus(host: HTMLElement, message: string, loading = false): void {
   clear(host);
   host.dataset.empty = "true";
-  host.textContent = message;
+  if (!loading) {
+    host.textContent = message;
+    return;
+  }
+  const span = document.createElement("span");
+  span.className = "loading-text";
+  span.textContent = message;
+  host.append(span);
 }
 
 export function nearestChartTime(times: readonly number[], target: number): number | undefined {
@@ -79,7 +84,7 @@ function lineChart(host: HTMLElement, series: Series[], unit: string, options: S
   series = series.filter((entry) => entry.values.length > 0);
   const all = series.flatMap((entry) => entry.values);
   if (!all.length) {
-    status(host, "No samples available in this snapshot.");
+    renderStatus(host, "No samples available in this snapshot.");
     return { setCursor: () => undefined, destroy: () => undefined };
   }
 
@@ -281,14 +286,14 @@ export function renderArcticChart(host: HTMLElement, result: ZarrPointSeriesResu
   const values = result.points
     .map((point) => ({ time: point.time ?? point.axisValue, value: point.values[variable] }))
     .filter((point): point is Datum => valid(point.time) && valid(point.value));
-  return lineChart(host, [{ id: "ice", label: "Sea-ice thickness", color: COLORS[1], values }], unit, options);
+  return lineChart(host, [{ id: "ice", label: "Sea-ice thickness", color: SINGLE_SERIES_COLOR, values }], unit, options);
 }
 
 export function renderEnsoChart(host: HTMLElement, data: EnsoStoryData, options?: StoryChartOptions): StoryChartController {
   const series = data.regions.map((region, index) => ({
     id: region.id,
     label: region.label,
-    color: ENSO_REGION_COLORS[region.id] ?? COLORS[index % COLORS.length],
+    color: ENSO_REGION_COLORS[region.id] ?? CHART_PALETTE_ORDER[index % CHART_PALETTE_ORDER.length],
     values: region.points
       .filter((point) => valid(point.mean))
       .map((point) => ({ time: Date.parse(point.time), value: point.mean! })),
@@ -307,7 +312,7 @@ export function renderMayotteChart(
     return { time: point.time ?? point.axisValue, value: Math.hypot(u, v) };
   }).filter((point): point is Datum => valid(point.time) && valid(point.value));
   return lineChart(host, [
-    { id: "wind", label: "Wind speed", color: COLORS[1], values: windValues },
+    { id: "wind", label: "Wind speed", color: SINGLE_SERIES_COLOR, values: windValues },
   ], "m s⁻¹", options);
 }
 
@@ -326,8 +331,8 @@ export function renderBalticHypoxiaChart(
     .filter((point) => valid(point.trailingFiveYearMeanKm2))
     .map((point) => ({ time: Date.parse(point.time), value: point.trailingFiveYearMeanKm2! }));
   const controller = lineChart(host, [
-    { id: "annual", label: locale.startsWith("fr") ? "Étendue en septembre" : "September extent", color: "#f39b3d", values: annual },
-    { id: "five-year", label: locale.startsWith("fr") ? "Moyenne mobile sur 5 ans" : "Trailing 5-year mean", color: "#79cbd1", values: trailing },
+    { id: "annual", label: locale.startsWith("fr") ? "Étendue en septembre" : "September extent", color: BALTIC_SERIES_COLORS.annual, values: annual },
+    { id: "five-year", label: locale.startsWith("fr") ? "Moyenne mobile sur 5 ans" : "Trailing 5-year mean", color: BALTIC_SERIES_COLORS.trailing, values: trailing },
   ], "km² below 2 mg/L O₂", { ...options, interactionTimes: monthlyTimes });
   const readout = document.createElement("div");
   readout.className = "hypoxia-readout";
@@ -356,5 +361,5 @@ export function formatHypoxiaReadout(
 }
 
 export function renderChartStatus(host: HTMLElement, message: string): void {
-  status(host, message);
+  renderStatus(host, message, true);
 }

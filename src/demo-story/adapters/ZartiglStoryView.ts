@@ -1,11 +1,11 @@
 import maplibregl, { type PropertyValueSpecification } from "maplibre-gl";
 import { Zartigl } from "../../lib";
-import type { TimeRange, ZartiglSettings } from "../../lib";
+import type { TimeRange, ZartiglSettings, ZartiglStatus } from "../../lib";
 import { catalog } from "../../catalog";
 import type { StoryAnchor, StoryScene, StoryViewAdapter, StoryViewDefinition } from "../runtime";
 import ensoJson from "../data/enso.json";
 import chidoTrackJson from "../data/chido-track.json";
-import { ENSO_REGION_COLORS } from "../scenes";
+import { ENSO_REGION_COLORS, MAP_LABEL_HALO_COLOR } from "../palette";
 import type { EnsoStoryData } from "../types";
 
 export interface CameraConfig {
@@ -45,6 +45,19 @@ export interface ChidoTrackData {
 export interface ArcticMeasurementPoint {
   longitude: number;
   latitude: number;
+}
+
+export function storyStatusPresentation(status: ZartiglStatus): { message: string; error: boolean } {
+  switch (status.phase) {
+    case "ready":
+      return { message: "", error: false };
+    case "blocked":
+      return { message: status.message, error: true };
+    case "error":
+      return { message: status.error.message, error: true };
+    default:
+      return { message: "Loading environmental data", error: false };
+  }
 }
 
 const chidoTrack = chidoTrackJson as ChidoTrackData;
@@ -178,8 +191,10 @@ export class ZartiglStoryView implements StoryViewAdapter {
   }
 
   private bindZartigl(zartigl: Zartigl): void {
-    zartigl.on("loading", () => this.callbacks.status("Loading environmental data…"));
-    zartigl.on("loaded", () => this.callbacks.status(""));
+    zartigl.on("status", (status) => {
+      const presentation = storyStatusPresentation(status);
+      this.callbacks.status(presentation.message, presentation.error);
+    });
     zartigl.on("error", (error) => this.callbacks.status(error.message, true));
     zartigl.on("timeChange", (time) => {
       this.updateChidoTrack(time);
@@ -238,7 +253,6 @@ export class ZartiglStoryView implements StoryViewAdapter {
       this.callbacks.status("");
       return;
     }
-    this.callbacks.status("Loading environmental data…");
     const createdForThisActivation = !this.instance && !this.initializationPromise;
     const zartigl = this.instance ?? await this.initialize(config);
     if (generation !== this.generation) return;
@@ -252,7 +266,6 @@ export class ZartiglStoryView implements StoryViewAdapter {
       });
     }
     if (generation !== this.generation) return;
-    this.callbacks.status("");
   }
 
   play(): Promise<void> { return this.instance?.play() ?? Promise.resolve(); }
@@ -308,12 +321,12 @@ export class ZartiglStoryView implements StoryViewAdapter {
     this.map.addSource("enso-regions", { type: "geojson", data: { type: "FeatureCollection", features } });
     this.map.addLayer({ id: "enso-region-fill", type: "fill", source: "enso-regions", paint: { "fill-color": ENSO_COLOR_EXPRESSION, "fill-opacity": 0.12 }, layout: { visibility: "none" } });
     this.map.addLayer({ id: "enso-region-line", type: "line", source: "enso-regions", paint: { "line-color": ENSO_COLOR_EXPRESSION, "line-width": 2, "line-opacity": 0.88 }, layout: { visibility: "none" } });
-    this.map.addLayer({ id: "enso-region-label", type: "symbol", source: "enso-regions", layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 12 }, paint: { "text-color": ENSO_COLOR_EXPRESSION, "text-halo-color": "#100b16", "text-halo-width": 1.5 } });
+    this.map.addLayer({ id: "enso-region-label", type: "symbol", source: "enso-regions", layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 12 }, paint: { "text-color": ENSO_COLOR_EXPRESSION, "text-halo-color": MAP_LABEL_HALO_COLOR, "text-halo-width": 1.5 } });
 
     this.map.addSource("arctic-measurement", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     this.map.addLayer({ id: "arctic-measurement-ring", type: "circle", source: "arctic-measurement", layout: { visibility: "none" }, paint: { "circle-radius": 9, "circle-color": "rgba(17, 16, 24, 0.28)", "circle-stroke-color": "#67d9ff", "circle-stroke-width": 2 } });
-    this.map.addLayer({ id: "arctic-measurement-crosshair", type: "symbol", source: "arctic-measurement", layout: { visibility: "none", "text-field": "+", "text-size": 22, "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#f7f3ff", "text-halo-color": "#111018", "text-halo-width": 1 } });
-    this.map.addLayer({ id: "arctic-measurement-label", type: "symbol", source: "arctic-measurement", layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 10, "text-offset": [0, 1.8], "text-anchor": "top", "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#dff8ff", "text-halo-color": "#111018", "text-halo-width": 1.5 } });
+    this.map.addLayer({ id: "arctic-measurement-crosshair", type: "symbol", source: "arctic-measurement", layout: { visibility: "none", "text-field": "+", "text-size": 22, "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#f7f3ff", "text-halo-color": MAP_LABEL_HALO_COLOR, "text-halo-width": 1 } });
+    this.map.addLayer({ id: "arctic-measurement-label", type: "symbol", source: "arctic-measurement", layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 10, "text-offset": [0, 1.8], "text-anchor": "top", "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#dff8ff", "text-halo-color": MAP_LABEL_HALO_COLOR, "text-halo-width": 1.5 } });
 
     const track: GeoJSON.FeatureCollection<GeoJSON.LineString | GeoJSON.Point> = { type: "FeatureCollection", features: [
       {
@@ -330,7 +343,7 @@ export class ZartiglStoryView implements StoryViewAdapter {
     this.map.addSource("chido-track", { type: "geojson", data: track });
     this.map.addLayer({ id: "chido-track-line", type: "line", source: "chido-track", filter: ["==", ["get", "kind"], "track"], layout: { visibility: "none" }, paint: { "line-color": "#8df097", "line-width": 2, "line-opacity": 0.85, "line-dasharray": [2, 2] } });
     this.map.addLayer({ id: "chido-track-points", type: "circle", source: "chido-track", filter: ["==", ["get", "kind"], "position"], layout: { visibility: "none" }, paint: { "circle-radius": 4, "circle-color": "#8df097", "circle-stroke-color": "#111018", "circle-stroke-width": 1.5 } });
-    this.map.addLayer({ id: "chido-track-labels", type: "symbol", source: "chido-track", filter: ["==", ["get", "kind"], "position"], layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 10, "text-offset": [0, 1.1] }, paint: { "text-color": "#d7ffda", "text-halo-color": "#111018", "text-halo-width": 1.5 } });
+    this.map.addLayer({ id: "chido-track-labels", type: "symbol", source: "chido-track", filter: ["==", ["get", "kind"], "position"], layout: { visibility: "none", "text-field": ["get", "label"], "text-size": 10, "text-offset": [0, 1.1] }, paint: { "text-color": "#d7ffda", "text-halo-color": MAP_LABEL_HALO_COLOR, "text-halo-width": 1.5 } });
     this.map.addLayer({ id: "chido-track-active", type: "circle", source: "chido-track", filter: ["==", ["get", "time"], ""], layout: { visibility: "none" }, paint: { "circle-radius": 8, "circle-color": "#ffffff", "circle-stroke-color": "#8df097", "circle-stroke-width": 3, "circle-blur": 0.08 } });
   }
 

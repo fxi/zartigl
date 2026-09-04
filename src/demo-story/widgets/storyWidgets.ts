@@ -2,6 +2,7 @@ import { findCatalogEntries } from "../../catalog";
 import type { StoryRegistry, StoryWidgetContext } from "../runtime";
 import { resolveLocalizedText } from "../runtime";
 import { ARCTIC_POINT, MAYOTTE_POINT } from "../scenes";
+import { mobileMediaQuery } from "../breakpoints";
 import ensoJson from "../data/enso.json";
 import balticHypoxiaJson from "../data/baltic-hypoxia.json";
 import chidoTrackJson from "../data/chido-track.json";
@@ -10,7 +11,7 @@ import { renderArcticChart, renderBalticHypoxiaChart, renderChartStatus, renderE
 import { ZartiglStoryView } from "../adapters/ZartiglStoryView";
 
 function chartOptions(config: Record<string, unknown>, context: StoryWidgetContext) {
-  const compact = matchMedia("(max-width: 850px)").matches;
+  const compact = mobileMediaQuery().matches;
   return {
     interactiveTime: config.interactiveTime === true,
     compact,
@@ -59,7 +60,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     const { chart, provenance } = widgetShell(host, context);
     const view = requiredView(config, context);
     view.setArcticMeasurementPoint();
-    renderChartStatus(chart, "Loading measurements…");
+    renderChartStatus(chart, "Loading measurements");
     const result = await view.zartigl.queryTimeSeries({ longitude: ARCTIC_POINT.longitude, latitude: ARCTIC_POINT.latitude, maxPoints: 420 });
     if (context.signal.aborted) return;
     view.setArcticMeasurementPoint({ longitude: result.longitude, latitude: result.latitude });
@@ -101,7 +102,7 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
   registry.registerWidgetType("mayotte-wind", async (host, config, context) => {
     const { chart, provenance } = widgetShell(host, context);
     const view = requiredView(config, context);
-    renderChartStatus(chart, "Loading measurements…");
+    renderChartStatus(chart, "Loading measurements");
     const result = await view.zartigl.queryTimeSeries({ longitude: MAYOTTE_POINT.longitude, latitude: MAYOTTE_POINT.latitude, maxPoints: 180 });
     if (context.signal.aborted) return;
     const controller = renderMayotteChart(chart, result, chartOptions(config, context));

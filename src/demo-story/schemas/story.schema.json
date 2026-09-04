@@ -10,7 +10,6 @@
     "fallbackLocales": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "title": { "$ref": "#/definitions/localized" },
     "themes": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/definitions/theme" } },
-    "chrome": { "type": "object", "properties": { "verticalMark": { "$ref": "#/definitions/localized" } }, "additionalProperties": false },
     "scenes": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/scene" } }
   },
   "additionalProperties": false,

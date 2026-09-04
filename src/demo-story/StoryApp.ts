@@ -3,7 +3,7 @@ import storyJson from "./story.json";
 import viewsJson from "./views.json";
 import { ZartiglStoryView } from "./adapters/ZartiglStoryView";
 import {
-  advanceStorySequence, initializeAfterStaticRender, nextStoryIndex, parseStoryDocuments,
+  advanceStorySequence, initializeAfterStaticRender, LoadingIndicator, nextStoryIndex, parseStoryDocuments,
   resolveLocalizedText, sceneViewId, sequenceIndexAtOrBefore, StoryRegistry, StoryTimeInteraction,
   StoryTimePresentation, StoryWidgetLifecycle,
   storyExternalLinkAttributes,
@@ -51,18 +51,21 @@ export class StoryApp {
   private readonly timestamp = required<HTMLElement>("#timestamp");
   private readonly analysis = required<HTMLElement>("#analysis");
   private readonly status = required<HTMLElement>("#status");
+  private readonly navigation = required<HTMLElement>("#navigation");
   private readonly counter = required<HTMLElement>("#counter");
   private readonly progress = required<HTMLElement>("#progress");
   private readonly previous = required<HTMLButtonElement>("#previous");
   private readonly next = required<HTMLButtonElement>("#next");
   private readonly playButton = required<HTMLButtonElement>("#play");
-  private readonly verticalMark = required<HTMLElement>("#vertical-mark");
   private readonly extras = required<HTMLElement>("#story-extras");
   private readonly registry = new StoryRegistry();
   private readonly widgetLifecycle = new StoryWidgetLifecycle();
   private readonly timePresentation = new StoryTimePresentation();
   private readonly locale = selectLocale();
   private readonly viewById = new Map(documents.views.views.map((view) => [view.id, view]));
+  private readonly loadingIndicator = new LoadingIndicator((visible) => {
+    this.navigation.classList.toggle("is-loading", visible);
+  });
 
   private activeAdapter: StoryViewAdapter | null = null;
   private activeViewId: string | undefined;
@@ -88,17 +91,16 @@ export class StoryApp {
   });
 
   async start(): Promise<void> {
+    this.setStatus("Loading map");
     this.bindEvents();
     const initialScene = documents.story.scenes[0];
     const initialView = this.viewById.get(sceneViewId(initialScene)!);
     const initialCamera = initialView?.config.camera as { center: [number, number]; zoom: number };
     const map = await initializeAfterStaticRender(() => {
-      this.verticalMark.textContent = this.text(documents.story.chrome?.verticalMark ?? { en: "" });
       this.renderStatic(initialScene);
     }, async () => {
       const nextMap = new maplibregl.Map({ container: "map", style: mapStyle(), center: initialCamera.center, zoom: initialCamera.zoom, maxZoom: 9, attributionControl: false });
       nextMap.scrollZoom.disable();
-      nextMap.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
       await new Promise<void>((resolve, reject) => {
         nextMap.once("load", resolve);
         nextMap.once("error", (event) => reject(event.error ?? new Error("Map failed to load")));
@@ -109,6 +111,7 @@ export class StoryApp {
       return nextMap;
     });
     map.setProjection({ type: "globe" });
+    this.bindViewportResize(map);
 
     this.registry.registerViewType("zartigl-map", () => new ZartiglStoryView(map, {
       status: (message, error) => this.setStatus(message, error),
@@ -117,7 +120,6 @@ export class StoryApp {
     registerStoryWidgets(this.registry);
     this.ready = true;
     this.renderControls(initialScene);
-    this.setStatus("");
     await this.activate(0, false);
   }
 
@@ -145,6 +147,21 @@ export class StoryApp {
       if (document.hidden) this.pausePlayback();
       else if (this.playing && !this.timeInteraction.interacting) this.resumePlayback();
     });
+  }
+
+  private bindViewportResize(map: maplibregl.Map): void {
+    let scheduled = false;
+    const scheduleResize = (): void => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        map.resize();
+      });
+    };
+    window.visualViewport?.addEventListener("resize", scheduleResize);
+    window.visualViewport?.addEventListener("scroll", scheduleResize);
+    window.addEventListener("orientationchange", scheduleResize);
   }
 
   private async go(delta: number): Promise<void> {
@@ -249,10 +266,13 @@ export class StoryApp {
     this.analysis.hidden = !scene.blocks.some((block) => block.type === "widget");
     this.analysis.replaceChildren();
     this.renderExtraBlocks(scene);
-    this.title.parentElement?.animate(
-      [{ opacity: 0, transform: "translateX(-5vw)", filter: "blur(12px)" }, { opacity: 1, transform: "none", filter: "none" }],
-      { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : 800, easing: "cubic-bezier(.16,1,.3,1)" },
-    );
+    for (const animation of this.copy.getAnimations()) animation.cancel();
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      this.copy.animate(
+        [{ transform: "translateX(-1vw)" }, { transform: "none" }],
+        { duration: 350, easing: "cubic-bezier(.16,1,.3,1)" },
+      );
+    }
   }
 
   private renderControls(scene: StoryScene): void {
@@ -365,7 +385,24 @@ export class StoryApp {
 
   private setStatus(message: string, error = false): void {
     this.status.textContent = message;
-    this.status.hidden = !message;
-    this.status.classList.toggle("is-error", error);
+    if (!message) {
+      this.loadingIndicator.hide();
+      this.navigation.classList.remove("is-error");
+      this.navigation.removeAttribute("title");
+      this.navigation.setAttribute("aria-busy", "false");
+      return;
+    }
+    if (error) {
+      this.loadingIndicator.hide(true);
+      this.navigation.classList.remove("is-loading");
+      this.navigation.classList.add("is-error");
+      this.navigation.title = message;
+      this.navigation.setAttribute("aria-busy", "false");
+      return;
+    }
+    this.navigation.classList.remove("is-error");
+    this.navigation.removeAttribute("title");
+    this.navigation.setAttribute("aria-busy", "true");
+    this.loadingIndicator.show();
   }
 }
