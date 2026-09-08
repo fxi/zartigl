@@ -22,7 +22,13 @@ interface CoordArrays {
 type NumericArray = Float32Array | Float64Array;
 
 /** Names that may represent the vertical coordinate. */
-const VERTICAL_NAMES = ["depth", "elevation", "level", "altitude", "pressure_level"] as const;
+const VERTICAL_NAMES = [
+  "depth",
+  "elevation",
+  "level",
+  "altitude",
+  "pressure_level",
+] as const;
 
 class ZarrChunkFetchError extends Error {
   readonly status: number;
@@ -55,8 +61,12 @@ export class ZarrSource {
   }
 
   async init(): Promise<void> {
-    if (this.coords) return;
-    if (this.initPromise) return this.initPromise;
+    if (this.coords) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
 
     this.initPromise = (async () => {
       const resp = await fetch(`${this.root}/.zmetadata`);
@@ -106,7 +116,9 @@ export class ZarrSource {
   }
 
   getCoords(): CoordArrays {
-    if (!this.coords) throw new Error("Call init() first");
+    if (!this.coords) {
+      throw new Error("Call init() first");
+    }
     return this.coords;
   }
 
@@ -133,19 +145,27 @@ export class ZarrSource {
   }
 
   getVerticalDimension(variable?: string): ZarrVerticalDimension | undefined {
-    if (!this.verticalName) return undefined;
+    if (!this.verticalName) {
+      return undefined;
+    }
     if (variable && !this.getDimensions(variable).includes(this.verticalName)) {
       return undefined;
     }
     const attrs = this.getAttrs(this.verticalName);
     const units = typeof attrs.units === "string" ? attrs.units : undefined;
-    const standardName = typeof attrs.standard_name === "string" ? attrs.standard_name : "";
+    const standardName =
+      typeof attrs.standard_name === "string" ? attrs.standard_name : "";
     const unitText = units?.toLowerCase() ?? "";
-    const label = standardName.includes("pressure") || this.verticalName.includes("pressure") || /(^|\s)(pa|hpa|bar|dbar)($|\s)/i.test(unitText)
-      ? "pressure"
-      : standardName.includes("elevation") || this.verticalName === "elevation" || attrs.positive === "up"
-        ? "elevation"
-        : "depth";
+    const label =
+      standardName.includes("pressure") ||
+      this.verticalName.includes("pressure") ||
+      /(^|\s)(pa|hpa|bar|dbar)($|\s)/i.test(unitText)
+        ? "pressure"
+        : standardName.includes("elevation") ||
+            this.verticalName === "elevation" ||
+            attrs.positive === "up"
+          ? "elevation"
+          : "depth";
     return {
       name: this.verticalName,
       label,
@@ -160,18 +180,20 @@ export class ZarrSource {
   }
 
   getVariableAttrs(variable: string): ZarrAttrs {
-    if (!this.meta) throw new Error("Call init() first");
-    if (!this.hasVariable(variable)) throw new Error(`No .zarray for ${variable}`);
+    if (!this.meta) {
+      throw new Error("Call init() first");
+    }
+    if (!this.hasVariable(variable)) {
+      throw new Error(`No .zarray for ${variable}`);
+    }
     return { ...this.getAttrs(variable) };
   }
 
   getDimensions(variable: string): string[] {
     const attrs = this.getAttrs(variable);
-    return (attrs._ARRAY_DIMENSIONS as string[]) ?? [
-      "time",
-      "latitude",
-      "longitude",
-    ];
+    return (
+      (attrs._ARRAY_DIMENSIONS as string[]) ?? ["time", "latitude", "longitude"]
+    );
   }
 
   findNearestIndex(array: Float32Array | Float64Array, value: number): number {
@@ -221,19 +243,26 @@ export class ZarrSource {
     const match = this.timeUnits.match(
       /^(milliseconds?|seconds?|minutes?|hours?|days?)\s+since\s+(.+)$/i,
     );
-    if (!match) throw new Error(`Unsupported Zarr time units: ${this.timeUnits || "<missing>"}`);
+    if (!match) {
+      throw new Error(
+        `Unsupported Zarr time units: ${this.timeUnits || "<missing>"}`,
+      );
+    }
     const refMs = parseZarrTimeEpoch(match[2]);
-    if (!Number.isFinite(refMs)) throw new Error(`Invalid Zarr time epoch: ${match[2]}`);
+    if (!Number.isFinite(refMs)) {
+      throw new Error(`Invalid Zarr time epoch: ${match[2]}`);
+    }
     const unit = match[1].toLowerCase();
-    const multiplier = unit.startsWith("ms") || unit.startsWith("milli")
-      ? 1
-      : unit.startsWith("s")
-        ? 1000
-        : unit.startsWith("min")
-          ? 60_000
-          : unit.startsWith("h")
-            ? 3_600_000
-            : 86_400_000;
+    const multiplier =
+      unit.startsWith("ms") || unit.startsWith("milli")
+        ? 1
+        : unit.startsWith("s")
+          ? 1000
+          : unit.startsWith("min")
+            ? 60_000
+            : unit.startsWith("h")
+              ? 3_600_000
+              : 86_400_000;
     return { refMs, multiplier };
   }
 
@@ -276,13 +305,17 @@ export class ZarrSource {
         globalIdx = indices.latIdx;
       } else if (dim === "longitude") {
         globalIdx = indices.lonIdx;
-      } else if (dim === this.verticalName || VERTICAL_NAMES.includes(dim as typeof VERTICAL_NAMES[number])) {
+      } else if (
+        dim === this.verticalName ||
+        VERTICAL_NAMES.includes(dim as (typeof VERTICAL_NAMES)[number])
+      ) {
         globalIdx = indices.depthIdx;
       }
 
       globalIdx = Math.max(0, Math.min(shape[dimIdx] - 1, globalIdx));
       chunkIndices[dimIdx] = Math.floor(globalIdx / chunkShape[dimIdx]);
-      localIndices[dimIdx] = globalIdx - chunkIndices[dimIdx] * chunkShape[dimIdx];
+      localIndices[dimIdx] =
+        globalIdx - chunkIndices[dimIdx] * chunkShape[dimIdx];
     }
 
     let chunk: Float32Array;
@@ -348,7 +381,10 @@ export class ZarrSource {
       options.timeEndIndex ?? coords.time.length - 1,
     );
     const stride = Math.max(1, Math.floor(options.stride ?? 1));
-    const stopAfterMissing = Math.max(0, Math.floor(options.stopAfterMissingSamples ?? 0));
+    const stopAfterMissing = Math.max(
+      0,
+      Math.floor(options.stopAfterMissingSamples ?? 0),
+    );
     let missingRun = 0;
     const points: ZarrPointSeriesResult["points"] = [];
 
@@ -363,13 +399,20 @@ export class ZarrSource {
         });
       }
       const time = this.zarrTimeToMs(coords.time[timeIdx]);
-      points.push({ axisValue: time, time, depth: coords.vertical[depthIdx], values });
+      points.push({
+        axisValue: time,
+        time,
+        depth: coords.vertical[depthIdx],
+        values,
+      });
 
       const allMissing = options.variables.every(
         (variable) => !Number.isFinite(values[variable]),
       );
       missingRun = allMissing ? missingRun + 1 : 0;
-      if (stopAfterMissing > 0 && missingRun >= stopAfterMissing) break;
+      if (stopAfterMissing > 0 && missingRun >= stopAfterMissing) {
+        break;
+      }
     }
 
     return {
@@ -394,20 +437,30 @@ export class ZarrSource {
     const lonIdx = this.findNearestLongitudeIndex(options.longitude);
     const latIdx = this.findNearestIndex(coords.latitude, options.latitude);
     const timeIdx = this.findTimeIndex(options.time);
-    const stopAfterMissing = Math.max(0, Math.floor(options.stopAfterMissingSamples ?? 0));
+    const stopAfterMissing = Math.max(
+      0,
+      Math.floor(options.stopAfterMissingSamples ?? 0),
+    );
     let missingRun = 0;
     const points: ZarrPointSeriesResult["points"] = [];
 
     let depthOrder = Array.from(
       { length: coords.vertical.length },
       (_, index) => index,
-    ).sort((a, b) => Math.abs(coords.vertical[a]) - Math.abs(coords.vertical[b]));
-    const maxDepths = Math.max(1, Math.floor(options.maxDepths ?? depthOrder.length));
+    ).sort(
+      (a, b) => Math.abs(coords.vertical[a]) - Math.abs(coords.vertical[b]),
+    );
+    const maxDepths = Math.max(
+      1,
+      Math.floor(options.maxDepths ?? depthOrder.length),
+    );
     const stride = Math.max(
       1,
       Math.floor(options.stride ?? Math.ceil(depthOrder.length / maxDepths)),
     );
-    depthOrder = depthOrder.filter((_, index) => index % stride === 0).slice(0, maxDepths);
+    depthOrder = depthOrder
+      .filter((_, index) => index % stride === 0)
+      .slice(0, maxDepths);
 
     for (const depthIdx of depthOrder) {
       const values: Record<string, number> = {};
@@ -431,7 +484,9 @@ export class ZarrSource {
         (variable) => !Number.isFinite(values[variable]),
       );
       missingRun = allMissing ? missingRun + 1 : 0;
-      if (stopAfterMissing > 0 && missingRun >= stopAfterMissing) break;
+      if (stopAfterMissing > 0 && missingRun >= stopAfterMissing) {
+        break;
+      }
     }
 
     return {
@@ -529,10 +584,7 @@ export class ZarrSource {
     return results;
   }
 
-  async fetchChunk(
-    variable: string,
-    indices: number[],
-  ): Promise<Float32Array> {
+  async fetchChunk(variable: string, indices: number[]): Promise<Float32Array> {
     return (await this.fetchChunkResult(variable, indices)).data;
   }
 
@@ -555,7 +607,9 @@ export class ZarrSource {
     const latDim = dims.indexOf("latitude");
     const lonDim = dims.indexOf("longitude");
     if (latDim < 0 || lonDim < 0) {
-      throw new Error(`Variable ${variable} must have latitude and longitude dimensions`);
+      throw new Error(
+        `Variable ${variable} must have latitude and longitude dimensions`,
+      );
     }
 
     const chunkIndices = new Array(dims.length).fill(0);
@@ -567,7 +621,7 @@ export class ZarrSource {
         globalIndex = selection.timeIndex;
       } else if (
         dim === this.verticalName ||
-        VERTICAL_NAMES.includes(dim as typeof VERTICAL_NAMES[number])
+        VERTICAL_NAMES.includes(dim as (typeof VERTICAL_NAMES)[number])
       ) {
         globalIndex = selection.verticalIndex;
       } else if (dim === "latitude") {
@@ -594,7 +648,8 @@ export class ZarrSource {
         localIndices[lonDim] = longitude;
         const sourceOffset = this.getFlatOffset(variable, localIndices);
         if (sourceOffset < result.data.length) {
-          data[latitude * longitudeChunkSize + longitude] = result.data[sourceOffset];
+          data[latitude * longitudeChunkSize + longitude] =
+            result.data[sourceOffset];
         }
       }
     }
@@ -660,14 +715,18 @@ export class ZarrSource {
     // Evict old entries if cache is full
     if (this.cache.size >= this.maxCacheSize) {
       const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) this.cache.delete(firstKey);
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
     }
     this.cache.set(key, data);
   }
 
   private getBloscCodec(meta: ZarrArrayMeta): Codec {
     const cfg = meta.compressor!;
-    const key = `${cfg.cname ?? "lz4"}-${cfg.clevel ?? 5}-${cfg.shuffle ?? 1}-${cfg.blocksize ?? 0}`;
+    const key = `${cfg.cname ?? "lz4"}-${cfg.clevel ?? 5}-${cfg.shuffle ?? 1}-${
+      cfg.blocksize ?? 0
+    }`;
     let codec = this.bloscCodecCache.get(key);
     if (!codec) {
       codec = Blosc.fromConfig({
@@ -753,9 +812,15 @@ export class ZarrSource {
 
     // Replace fill values with NaN so downstream code can detect nodata
     const fillValue = meta.fill_value;
-    if (fillValue != null && typeof fillValue === "number" && !isNaN(fillValue)) {
+    if (
+      fillValue != null &&
+      typeof fillValue === "number" &&
+      !isNaN(fillValue)
+    ) {
       for (let i = 0; i < result.length; i++) {
-        if (result[i] === fillValue) result[i] = NaN;
+        if (result[i] === fillValue) {
+          result[i] = NaN;
+        }
       }
     }
 
@@ -768,7 +833,9 @@ export class ZarrSource {
         const s = scale ?? 1;
         const o = offset ?? 0;
         for (let i = 0; i < result.length; i++) {
-          if (!isNaN(result[i])) result[i] = result[i] * s + o;
+          if (!isNaN(result[i])) {
+            result[i] = result[i] * s + o;
+          }
         }
       }
     }
@@ -788,7 +855,9 @@ export class ZarrSource {
       for (let i = 0; i < chunkCount; i++) {
         const url = `${this.root}/${name}/${i}`;
         const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`Failed to fetch coord ${name}/${i}`);
+        if (!resp.ok) {
+          throw new Error(`Failed to fetch coord ${name}/${i}`);
+        }
         const raw = new Uint8Array(await resp.arrayBuffer());
         arrays.push(await this.decompress(raw, meta));
       }
@@ -810,7 +879,9 @@ export class ZarrSource {
         const toCopy = Math.min(arr.length, actualSize - offset);
         merged.set(arr.subarray(0, toCopy), offset);
         offset += toCopy;
-        if (offset >= actualSize) break;
+        if (offset >= actualSize) {
+          break;
+        }
       }
       return merged;
     };
@@ -873,7 +944,9 @@ function parseZarrTimeEpoch(epochValue: string): number {
   const match = epoch.match(
     /^(\d{4})-(\d{2})-(\d{2})(?:(?:T|\s+)(\d{2})(?::(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?)?)?(?:\s*(Z|[+-]\d{2}:?\d{2}))?$/i,
   );
-  if (!match) return NaN;
+  if (!match) {
+    return NaN;
+  }
 
   const year = Number(match[1]);
   const month = Number(match[2]);
@@ -884,12 +957,7 @@ function parseZarrTimeEpoch(epochValue: string): number {
   const millisecond = Number((match[7] ?? "").padEnd(3, "0").slice(0, 3));
   const offset = match[8] ?? "Z";
 
-  if (
-    month < 1 || month > 12 ||
-    hour > 23 ||
-    minute > 59 ||
-    second > 59
-  ) {
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) {
     return NaN;
   }
 
@@ -910,13 +978,19 @@ function parseZarrTimeEpoch(epochValue: string): number {
     return NaN;
   }
 
-  if (/^z$/i.test(offset)) return localMs;
+  if (/^z$/i.test(offset)) {
+    return localMs;
+  }
 
   const offsetMatch = offset.match(/^([+-])(\d{2}):?(\d{2})$/);
-  if (!offsetMatch) return NaN;
+  if (!offsetMatch) {
+    return NaN;
+  }
   const offsetHours = Number(offsetMatch[2]);
   const offsetMinutes = Number(offsetMatch[3]);
-  if (offsetHours > 23 || offsetMinutes > 59) return NaN;
+  if (offsetHours > 23 || offsetMinutes > 59) {
+    return NaN;
+  }
   const offsetMs = (offsetHours * 60 + offsetMinutes) * 60_000;
   return localMs - (offsetMatch[1] === "+" ? offsetMs : -offsetMs);
 }
@@ -951,12 +1025,18 @@ function normalizeTimeStep(step?: number): number | undefined {
 }
 
 function uniformTimeStep(values: readonly number[]): number | undefined {
-  if (values.length < 2) return undefined;
+  if (values.length < 2) {
+    return undefined;
+  }
   const first = values[1] - values[0];
-  if (!Number.isFinite(first) || first <= 0) return undefined;
+  if (!Number.isFinite(first) || first <= 0) {
+    return undefined;
+  }
   const tolerance = Math.max(1, Math.abs(first) * 1e-9);
   for (let i = 2; i < values.length; i++) {
-    if (Math.abs(values[i] - values[i - 1] - first) > tolerance) return undefined;
+    if (Math.abs(values[i] - values[i - 1] - first) > tolerance) {
+      return undefined;
+    }
   }
   return normalizeTimeStep(first);
 }

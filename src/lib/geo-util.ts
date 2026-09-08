@@ -33,7 +33,10 @@ export function normalizeLongitude(lng: number): number {
   return ((((lng + 180) % 360) + 360) % 360) - 180;
 }
 
-export function globeCenterVector(lng: number, lat: number): [number, number, number] {
+export function globeCenterVector(
+  lng: number,
+  lat: number,
+): [number, number, number] {
   const lngRad = (normalizeLongitude(lng) * Math.PI) / 180;
   const latRad = (lat * Math.PI) / 180;
   const cosLat = Math.cos(latRad);
@@ -48,8 +51,12 @@ export function viewportMercatorBounds(
   bounds: BoundsLike,
   options: { wrapX?: boolean } = {},
 ): { minX: number; minY: number; maxX: number; maxY: number } {
-  const west = options.wrapX ? Math.max(bounds.getWest(), -180) : bounds.getWest();
-  const east = options.wrapX ? Math.min(bounds.getEast(), 180) : bounds.getEast();
+  const west = options.wrapX
+    ? Math.max(bounds.getWest(), -180)
+    : bounds.getWest();
+  const east = options.wrapX
+    ? Math.min(bounds.getEast(), 180)
+    : bounds.getEast();
   return {
     minX: lngToMercX(west),
     minY: latToMercY(bounds.getNorth()),
@@ -107,19 +114,20 @@ export function particleUpdateBounds(
   const rawMaxX = lngToMercX(east);
   const spansWorld = rawMaxX - rawMinX >= 1;
   const crossesWrappedWorld = Math.floor(rawMinX) !== Math.floor(rawMaxX);
-  const xBounds = spansWorld || crossesWrappedWorld
-    ? { minX: 0, maxX: 1 }
-    : {
-        minX: rawMinX - Math.floor(rawMinX),
-        maxX: rawMaxX - Math.floor(rawMaxX),
-      };
+  const xBounds =
+    spansWorld || crossesWrappedWorld
+      ? { minX: 0, maxX: 1 }
+      : {
+          minX: rawMinX - Math.floor(rawMinX),
+          maxX: rawMaxX - Math.floor(rawMaxX),
+        };
 
   if (isGlobe) {
     // Globe mode: particle Y encodes latitude as (lat+90)/180, covering full ±90°.
     return {
       ...xBounds,
       minY: (Math.max(bounds.getSouth(), -90) + 90) / 180,
-      maxY: (Math.min(bounds.getNorth(),  90) + 90) / 180,
+      maxY: (Math.min(bounds.getNorth(), 90) + 90) / 180,
     };
   }
 
@@ -130,8 +138,13 @@ export function particleUpdateBounds(
   };
 }
 
-export function visibleWorldCopyOffsets(bounds: BoundsLike, isGlobe: boolean): number[] {
-  if (isGlobe) return [0];
+export function visibleWorldCopyOffsets(
+  bounds: BoundsLike,
+  isGlobe: boolean,
+): number[] {
+  if (isGlobe) {
+    return [0];
+  }
 
   const rawMinX = lngToMercX(bounds.getWest());
   const rawMaxX = lngToMercX(bounds.getEast());

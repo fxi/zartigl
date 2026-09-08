@@ -1,9 +1,9 @@
 import palettesJson from "./palettes.json";
 
 export type ColorRampInput =
-  | string                      // palette ID → look up palettes.json
-  | string[]                    // hex array → evenly-spaced stops
-  | Record<number, string>;     // stops map → current API
+  | string // palette ID → look up palettes.json
+  | string[] // hex array → evenly-spaced stops
+  | Record<number, string>; // stops map → current API
 
 export interface PaletteMeta {
   id: string;
@@ -12,7 +12,10 @@ export interface PaletteMeta {
   colors: string[];
 }
 
-type PalettesJson = Record<string, { label: string; tags: string[]; colors: string[] }>;
+type PalettesJson = Record<
+  string,
+  { label: string; tags: string[]; colors: string[] }
+>;
 
 function colorsToStops(colors: string[]): Record<number, string> {
   const stops: Record<number, string> = {};
@@ -33,10 +36,14 @@ export function resolveColorRamp(
     const entry = palettes[input];
     if (!entry) {
       throw new Error(
-        `Palette "${input}" not found. Available palettes: ${Object.keys(palettes).join(", ")}`,
+        `Palette "${input}" not found. Available palettes: ${Object.keys(
+          palettes,
+        ).join(", ")}`,
       );
     }
-    const colors = options?.reverse ? [...entry.colors].reverse() : entry.colors;
+    const colors = options?.reverse
+      ? [...entry.colors].reverse()
+      : entry.colors;
     return colorsToStops(colors);
   }
 
@@ -60,7 +67,9 @@ export function createShader(
   source: string,
 ): WebGLShader {
   const shader = gl.createShader(type);
-  if (!shader) throw new Error("Failed to create shader");
+  if (!shader) {
+    throw new Error("Failed to create shader");
+  }
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -77,7 +86,9 @@ export function createProgram(
   fragSource: string,
 ): WebGLProgram {
   const program = gl.createProgram();
-  if (!program) throw new Error("Failed to create program");
+  if (!program) {
+    throw new Error("Failed to create program");
+  }
   const vert = createShader(gl, gl.VERTEX_SHADER, vertSource);
   const frag = createShader(gl, gl.FRAGMENT_SHADER, fragSource);
   gl.attachShader(program, vert);
@@ -101,7 +112,9 @@ export function createTexture(
   height: number,
 ): WebGLTexture {
   const texture = gl.createTexture();
-  if (!texture) throw new Error("Failed to create texture");
+  if (!texture) {
+    throw new Error("Failed to create texture");
+  }
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -138,14 +151,22 @@ function isFramebufferCompleteForTextureFormat(
   internalFormat: number,
   type: number,
 ): boolean {
-  const prevTexture = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
-  const prevFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+  const prevTexture = gl.getParameter(
+    gl.TEXTURE_BINDING_2D,
+  ) as WebGLTexture | null;
+  const prevFramebuffer = gl.getParameter(
+    gl.FRAMEBUFFER_BINDING,
+  ) as WebGLFramebuffer | null;
   const texture = gl.createTexture();
   const framebuffer = gl.createFramebuffer();
 
   if (!texture || !framebuffer) {
-    if (texture) gl.deleteTexture(texture);
-    if (framebuffer) gl.deleteFramebuffer(framebuffer);
+    if (texture) {
+      gl.deleteTexture(texture);
+    }
+    if (framebuffer) {
+      gl.deleteFramebuffer(framebuffer);
+    }
     gl.bindTexture(gl.TEXTURE_2D, prevTexture);
     gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
     return false;
@@ -178,7 +199,8 @@ function isFramebufferCompleteForTextureFormat(
       texture,
       0,
     );
-    complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    complete =
+      gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
   } finally {
     gl.bindFramebuffer(gl.FRAMEBUFFER, prevFramebuffer);
     gl.bindTexture(gl.TEXTURE_2D, prevTexture);
@@ -189,8 +211,14 @@ function isFramebufferCompleteForTextureFormat(
   return complete;
 }
 
-export function rgba8StateTextureFormat(gl: WebGLRenderingContext): StateTextureFormat {
-  return { kind: "rgba8-packed", internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE };
+export function rgba8StateTextureFormat(
+  gl: WebGLRenderingContext,
+): StateTextureFormat {
+  return {
+    kind: "rgba8-packed",
+    internalFormat: gl.RGBA,
+    type: gl.UNSIGNED_BYTE,
+  };
 }
 
 /**
@@ -207,8 +235,18 @@ export function detectStateTextureFormat(
   if (isWebGL2) {
     const gl2 = gl as unknown as WebGL2RenderingContext;
     if (gl.getExtension("EXT_color_buffer_float")) {
-      const candidate = { kind: "float32" as const, internalFormat: gl2.RGBA32F, type: gl.FLOAT };
-      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+      const candidate = {
+        kind: "float32" as const,
+        internalFormat: gl2.RGBA32F,
+        type: gl.FLOAT,
+      };
+      if (
+        isFramebufferCompleteForTextureFormat(
+          gl,
+          candidate.internalFormat,
+          candidate.type,
+        )
+      ) {
         return candidate;
       }
     }
@@ -216,8 +254,18 @@ export function detectStateTextureFormat(
       gl.getExtension("EXT_color_buffer_float") ||
       gl.getExtension("EXT_color_buffer_half_float");
     if (halfFloatRender) {
-      const candidate = { kind: "float16" as const, internalFormat: gl2.RGBA16F, type: gl2.HALF_FLOAT };
-      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+      const candidate = {
+        kind: "float16" as const,
+        internalFormat: gl2.RGBA16F,
+        type: gl2.HALF_FLOAT,
+      };
+      if (
+        isFramebufferCompleteForTextureFormat(
+          gl,
+          candidate.internalFormat,
+          candidate.type,
+        )
+      ) {
         return candidate;
       }
     }
@@ -225,16 +273,38 @@ export function detectStateTextureFormat(
     const hasFloatTex = gl.getExtension("OES_texture_float");
     const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
     if (hasFloatTex && hasFloatRender) {
-      const candidate = { kind: "float32" as const, internalFormat: gl.RGBA, type: gl.FLOAT };
-      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+      const candidate = {
+        kind: "float32" as const,
+        internalFormat: gl.RGBA,
+        type: gl.FLOAT,
+      };
+      if (
+        isFramebufferCompleteForTextureFormat(
+          gl,
+          candidate.internalFormat,
+          candidate.type,
+        )
+      ) {
         return candidate;
       }
     }
-    const halfFloat = gl.getExtension("OES_texture_half_float") as { HALF_FLOAT_OES: number } | null;
+    const halfFloat = gl.getExtension("OES_texture_half_float") as {
+      HALF_FLOAT_OES: number;
+    } | null;
     const halfFloatRender = gl.getExtension("EXT_color_buffer_half_float");
     if (halfFloat && halfFloatRender) {
-      const candidate = { kind: "float16" as const, internalFormat: gl.RGBA, type: halfFloat.HALF_FLOAT_OES };
-      if (isFramebufferCompleteForTextureFormat(gl, candidate.internalFormat, candidate.type)) {
+      const candidate = {
+        kind: "float16" as const,
+        internalFormat: gl.RGBA,
+        type: halfFloat.HALF_FLOAT_OES,
+      };
+      if (
+        isFramebufferCompleteForTextureFormat(
+          gl,
+          candidate.internalFormat,
+          candidate.type,
+        )
+      ) {
         return candidate;
       }
     }
@@ -253,7 +323,9 @@ export function createTextureFormat(
   type: number,
 ): WebGLTexture {
   const texture = gl.createTexture();
-  if (!texture) throw new Error("Failed to create texture");
+  if (!texture) {
+    throw new Error("Failed to create texture");
+  }
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -288,7 +360,9 @@ export function createFramebuffer(
   texture: WebGLTexture,
 ): WebGLFramebuffer {
   const fb = gl.createFramebuffer();
-  if (!fb) throw new Error("Failed to create framebuffer");
+  if (!fb) {
+    throw new Error("Failed to create framebuffer");
+  }
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(
     gl.FRAMEBUFFER,
@@ -303,7 +377,9 @@ export function createFramebuffer(
 
 export function createQuadBuffer(gl: WebGLRenderingContext): WebGLBuffer {
   const buffer = gl.createBuffer();
-  if (!buffer) throw new Error("Failed to create buffer");
+  if (!buffer) {
+    throw new Error("Failed to create buffer");
+  }
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.bufferData(
     gl.ARRAY_BUFFER,
@@ -341,7 +417,9 @@ export function createColorRampTexture(
   ctx.fillRect(0, 0, 256, 1);
 
   const texture = gl.createTexture();
-  if (!texture) throw new Error("Failed to create color ramp texture");
+  if (!texture) {
+    throw new Error("Failed to create color ramp texture");
+  }
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -360,7 +438,9 @@ export interface WebGLRendererInfo {
   version?: string;
 }
 
-export function getWebGLRendererInfo(gl: WebGLRenderingContext): WebGLRendererInfo {
+export function getWebGLRendererInfo(
+  gl: WebGLRenderingContext,
+): WebGLRendererInfo {
   const info = gl.getExtension("WEBGL_debug_renderer_info") as {
     UNMASKED_VENDOR_WEBGL: number;
     UNMASKED_RENDERER_WEBGL: number;
@@ -369,8 +449,12 @@ export function getWebGLRendererInfo(gl: WebGLRenderingContext): WebGLRendererIn
   return {
     vendor: String(gl.getParameter(gl.VENDOR) ?? ""),
     renderer: String(gl.getParameter(gl.RENDERER) ?? ""),
-    unmaskedVendor: info ? String(gl.getParameter(info.UNMASKED_VENDOR_WEBGL) ?? "") : undefined,
-    unmaskedRenderer: info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) ?? "") : undefined,
+    unmaskedVendor: info
+      ? String(gl.getParameter(info.UNMASKED_VENDOR_WEBGL) ?? "")
+      : undefined,
+    unmaskedRenderer: info
+      ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) ?? "")
+      : undefined,
     version: String(gl.getParameter(gl.VERSION) ?? ""),
   };
 }
@@ -415,12 +499,21 @@ export function restoreGLState(gl: WebGLRenderingContext, s: GLState): void {
   gl.bindBuffer(gl.ARRAY_BUFFER, s.arrayBuffer);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, s.elementBuffer);
   gl.bindFramebuffer(gl.FRAMEBUFFER, s.framebuffer);
-  if (s.blend) gl.enable(gl.BLEND);
-  else gl.disable(gl.BLEND);
-  if (s.depthTest) gl.enable(gl.DEPTH_TEST);
-  else gl.disable(gl.DEPTH_TEST);
-  if (s.stencilTest) gl.enable(gl.STENCIL_TEST);
-  else gl.disable(gl.STENCIL_TEST);
+  if (s.blend) {
+    gl.enable(gl.BLEND);
+  } else {
+    gl.disable(gl.BLEND);
+  }
+  if (s.depthTest) {
+    gl.enable(gl.DEPTH_TEST);
+  } else {
+    gl.disable(gl.DEPTH_TEST);
+  }
+  if (s.stencilTest) {
+    gl.enable(gl.STENCIL_TEST);
+  } else {
+    gl.disable(gl.STENCIL_TEST);
+  }
   gl.viewport(s.viewport[0], s.viewport[1], s.viewport[2], s.viewport[3]);
   gl.blendFunc(s.blendFunc[0], s.blendFunc[1]);
 }

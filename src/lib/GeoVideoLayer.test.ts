@@ -20,12 +20,23 @@ const manifest: GeoVideoManifest = {
     codec: "h264",
   },
   encoding: {
-    kind: "scalar-luma", bits: 8, codeMin: 8, codeMax: 247,
-    valueMin: -3, valueMax: 3, transfer: "linear", colorSpace: "bt709", colorRange: "limited",
+    kind: "scalar-luma",
+    bits: 8,
+    codeMin: 8,
+    codeMax: 247,
+    valueMin: -3,
+    valueMax: 3,
+    transfer: "linear",
+    colorSpace: "bt709",
+    colorRange: "limited",
   },
   mask: {
-    kind: "static-validity", url: "mask.png", mimeType: "image/png",
-    width: 16, height: 8, threshold: 0.5,
+    kind: "static-validity",
+    url: "mask.png",
+    mimeType: "image/png",
+    width: 16,
+    height: 8,
+    threshold: 0.5,
   },
   timeline: {
     kind: "range",
@@ -89,7 +100,9 @@ class FakeVideo extends EventTarget {
   }
 
   pause(): void {
-    if (this.paused) return;
+    if (this.paused) {
+      return;
+    }
     this.paused = true;
     this.dispatchEvent(new Event("pause"));
   }
@@ -97,7 +110,12 @@ class FakeVideo extends EventTarget {
   load(): void {}
   removeAttribute(_name: string): void {}
   getVideoPlaybackQuality(): VideoPlaybackQuality {
-    return { creationTime: 0, totalVideoFrames: 12, droppedVideoFrames: 2, corruptedVideoFrames: 0 };
+    return {
+      creationTime: 0,
+      totalVideoFrames: 12,
+      droppedVideoFrames: 2,
+      corruptedVideoFrames: 0,
+    };
   }
 }
 
@@ -132,7 +150,9 @@ function setup(
   let nextFrame = 1;
   vi.stubGlobal("document", {
     createElement: vi.fn((tag: string) => {
-      if (tag === "video") return video;
+      if (tag === "video") {
+        return video;
+      }
       if (tag === "img") {
         const image = new FakeImage();
         images.push(image);
@@ -144,14 +164,20 @@ function setup(
     }),
   });
   vi.stubGlobal("HTMLMediaElement", { HAVE_CURRENT_DATA: 2 });
-  vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => {
-    const handle = nextFrame++;
-    animationFrames.set(handle, callback);
-    return handle;
-  }));
-  vi.stubGlobal("cancelAnimationFrame", vi.fn((handle: number) => {
-    animationFrames.delete(handle);
-  }));
+  vi.stubGlobal(
+    "requestAnimationFrame",
+    vi.fn((callback: FrameRequestCallback) => {
+      const handle = nextFrame++;
+      animationFrames.set(handle, callback);
+      return handle;
+    }),
+  );
+  vi.stubGlobal(
+    "cancelAnimationFrame",
+    vi.fn((handle: number) => {
+      animationFrames.delete(handle);
+    }),
+  );
 
   const layer = new GeoVideoLayer({
     id: "test",
@@ -184,7 +210,9 @@ describe("GeoVideoLayer playback scheduling", () => {
 
     video.dispatchEvent(new Event("loadedmetadata"));
 
-    expect(video.currentTime).toBeCloseTo(geoVideoSecondsForTime(manifest, start));
+    expect(video.currentTime).toBeCloseTo(
+      geoVideoSecondsForTime(manifest, start),
+    );
   });
 
   it("applies an initial time before the first frame and clamps it to the range", () => {
@@ -198,7 +226,9 @@ describe("GeoVideoLayer playback scheduling", () => {
 
     video.dispatchEvent(new Event("loadedmetadata"));
 
-    expect(video.currentTime).toBeCloseTo(geoVideoSecondsForTime(manifest, end));
+    expect(video.currentTime).toBeCloseTo(
+      geoVideoSecondsForTime(manifest, end),
+    );
   });
 
   it("retains a time requested before media initialization", () => {
@@ -209,7 +239,9 @@ describe("GeoVideoLayer playback scheduling", () => {
     video.currentTime = 0;
     video.dispatchEvent(new Event("loadedmetadata"));
 
-    expect(video.currentTime).toBeCloseTo(geoVideoSecondsForTime(manifest, requested));
+    expect(video.currentTime).toBeCloseTo(
+      geoVideoSecondsForTime(manifest, requested),
+    );
   });
 
   it("loads a static mask independently without copying the value video through canvas", () => {
@@ -221,30 +253,65 @@ describe("GeoVideoLayer playback scheduling", () => {
     video.dispatchEvent(new Event("loadeddata"));
 
     expect(canvases[0].drawImage).toHaveBeenCalledWith(images[0], 0, 0, 16, 8);
-    expect(canvases[0].drawImage).not.toHaveBeenCalledWith(video, expect.anything());
+    expect(canvases[0].drawImage).not.toHaveBeenCalledWith(
+      video,
+      expect.anything(),
+    );
     expect(layer.getDebugInfo().bufferedFrames).toBe(1);
-    expect((layer as unknown as { colorCanvas?: unknown }).colorCanvas).toBeUndefined();
+    expect(
+      (layer as unknown as { colorCanvas?: unknown }).colorCanvas,
+    ).toBeUndefined();
   });
 
   it("accepts the video element itself as a WebGL texture source", () => {
     const { layer, video } = setup();
     const gl = {
-      TEXTURE_2D: 0x0de1, RGBA: 0x1908, UNSIGNED_BYTE: 0x1401, UNPACK_FLIP_Y_WEBGL: 0x9240,
-      getParameter: vi.fn(() => false), pixelStorei: vi.fn(),
-      texImage2D: vi.fn(), texSubImage2D: vi.fn(),
+      TEXTURE_2D: 0x0de1,
+      RGBA: 0x1908,
+      UNSIGNED_BYTE: 0x1401,
+      UNPACK_FLIP_Y_WEBGL: 0x9240,
+      getParameter: vi.fn(() => false),
+      pixelStorei: vi.fn(),
+      texImage2D: vi.fn(),
+      texSubImage2D: vi.fn(),
     };
-    const upload = (layer as unknown as {
-      uploadTextureSource: (context: WebGLRenderingContext, source: HTMLVideoElement, initialized: boolean) => void;
-    }).uploadTextureSource.bind(layer);
+    const upload = (
+      layer as unknown as {
+        uploadTextureSource: (
+          context: WebGLRenderingContext,
+          source: HTMLVideoElement,
+          initialized: boolean,
+        ) => void;
+      }
+    ).uploadTextureSource.bind(layer);
 
-    upload(gl as unknown as WebGLRenderingContext, video as unknown as HTMLVideoElement, false);
-    upload(gl as unknown as WebGLRenderingContext, video as unknown as HTMLVideoElement, true);
+    upload(
+      gl as unknown as WebGLRenderingContext,
+      video as unknown as HTMLVideoElement,
+      false,
+    );
+    upload(
+      gl as unknown as WebGLRenderingContext,
+      video as unknown as HTMLVideoElement,
+      true,
+    );
 
     expect(gl.texImage2D).toHaveBeenCalledWith(
-      gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video,
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      video,
     );
     expect(gl.texSubImage2D).toHaveBeenCalledWith(
-      gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video,
+      gl.TEXTURE_2D,
+      0,
+      0,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      video,
     );
   });
 
@@ -268,7 +335,11 @@ describe("GeoVideoLayer playback scheduling", () => {
 
     images[0].dispatchEvent(new Event("load"));
 
-    expect(error).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("dimensions") }));
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("dimensions"),
+      }),
+    );
   });
 
   it("does not run a continuous repaint loop when video frame callbacks are available", async () => {
@@ -290,7 +361,8 @@ describe("GeoVideoLayer playback scheduling", () => {
     expect(triggerRepaint).toHaveBeenCalledTimes(1);
     expect(animationFrames.size).toBe(1);
 
-    const callback = animationFrames.values().next().value as FrameRequestCallback;
+    const callback = animationFrames.values().next()
+      .value as FrameRequestCallback;
     animationFrames.clear();
     callback(16);
     expect(triggerRepaint).toHaveBeenCalledTimes(2);
@@ -356,7 +428,9 @@ describe("GeoVideoLayer playback scheduling", () => {
     video.frameCallback!(10, { mediaTime: 30, presentedFrames: 1 });
 
     expect(video.paused).toBe(true);
-    expect(times[times.length - 1]).toBe(new Date("2026-07-01T00:00:00Z").getTime());
+    expect(times[times.length - 1]).toBe(
+      new Date("2026-07-01T00:00:00Z").getTime(),
+    );
   });
 
   it("restarts at the allowed range start when the media ends while looping", async () => {

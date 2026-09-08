@@ -21,7 +21,9 @@ export class LoadingIndicator {
 
   show(): void {
     this.clearHideTimer();
-    if (this.visible || this.revealTimer !== null) return;
+    if (this.visible || this.revealTimer !== null) {
+      return;
+    }
     this.revealTimer = setTimeout(() => {
       this.revealTimer = null;
       this.visible = true;
@@ -33,7 +35,9 @@ export class LoadingIndicator {
   hide(immediate = false): void {
     this.clearRevealTimer();
     this.clearHideTimer();
-    if (!this.visible) return;
+    if (!this.visible) {
+      return;
+    }
     const delay = immediate
       ? 0
       : Math.max(0, this.minimumVisibleMs - (Date.now() - this.shownAt));
@@ -48,19 +52,25 @@ export class LoadingIndicator {
   }
 
   private setVisible(visible: boolean): void {
-    if (this.visible === visible) return;
+    if (this.visible === visible) {
+      return;
+    }
     this.visible = visible;
     this.update(visible);
   }
 
   private clearRevealTimer(): void {
-    if (this.revealTimer === null) return;
+    if (this.revealTimer === null) {
+      return;
+    }
     clearTimeout(this.revealTimer);
     this.revealTimer = null;
   }
 
   private clearHideTimer(): void {
-    if (this.hideTimer === null) return;
+    if (this.hideTimer === null) {
+      return;
+    }
     clearTimeout(this.hideTimer);
     this.hideTimer = null;
   }

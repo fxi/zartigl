@@ -1,8 +1,4 @@
-import {
-  BladeApi,
-  BladeController,
-  createPlugin,
-} from "@tweakpane/core";
+import { BladeApi, BladeController, createPlugin } from "@tweakpane/core";
 import type {
   BaseBladeParams,
   BladePlugin,
@@ -43,30 +39,38 @@ class DomBladeController extends BladeController<DomBladeView> {
   }
 }
 
-export const DomBladePluginDefinition: BladePlugin<DomBladeParams> = createPlugin({
-  id: "zartigl-dom",
-  type: "blade",
-  accept(params) {
-    if (params.view !== "zartigl-dom" || !(params.content instanceof HTMLElement)) return null;
-    return {
-      params: {
-        view: "zartigl-dom",
-        content: params.content,
-      },
-    };
-  },
-  controller(args) {
-    return new DomBladeController(args.document, {
-      blade: args.blade,
-      viewProps: args.viewProps,
-      content: args.params.content,
-    });
-  },
-  api({ controller }: { controller: BladeController; pool: PluginPool }) {
-    if (!(controller instanceof DomBladeController)) return null;
-    return new BladeApi(controller);
-  },
-});
+export const DomBladePluginDefinition: BladePlugin<DomBladeParams> =
+  createPlugin({
+    id: "zartigl-dom",
+    type: "blade",
+    accept(params) {
+      if (
+        params.view !== "zartigl-dom" ||
+        !(params.content instanceof HTMLElement)
+      ) {
+        return null;
+      }
+      return {
+        params: {
+          view: "zartigl-dom",
+          content: params.content,
+        },
+      };
+    },
+    controller(args) {
+      return new DomBladeController(args.document, {
+        blade: args.blade,
+        viewProps: args.viewProps,
+        content: args.params.content,
+      });
+    },
+    api({ controller }: { controller: BladeController; pool: PluginPool }) {
+      if (!(controller instanceof DomBladeController)) {
+        return null;
+      }
+      return new BladeApi(controller);
+    },
+  });
 
 export const DomBladePlugin: TpPluginBundle = {
   id: "zartigl-dom",

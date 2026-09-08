@@ -55,15 +55,18 @@ function encodedRedValues(
 
 describe("VelocityField scalar color encoding", () => {
   it("retains the full texture range for large-offset automatic and fixed domains", () => {
-    expect(encodedRedValues(scalarData([273, 273.5, 274], 273, 274)))
-      .toEqual([0, 128, 255]);
-    expect(encodedRedValues(scalarData([273, 273.5, 274], 270, 280), [273, 274]))
-      .toEqual([0, 128, 255]);
+    expect(encodedRedValues(scalarData([273, 273.5, 274], 273, 274))).toEqual([
+      0, 128, 255,
+    ]);
+    expect(
+      encodedRedValues(scalarData([273, 273.5, 274], 270, 280), [273, 274]),
+    ).toEqual([0, 128, 255]);
   });
 
   it("applies fixed domains and clamps out-of-range values on the CPU", () => {
-    expect(encodedRedValues(scalarData([-4, 0, 4], -4, 4), [-3, 3]))
-      .toEqual([0, 128, 255]);
+    expect(encodedRedValues(scalarData([-4, 0, 4], -4, 4), [-3, 3])).toEqual([
+      0, 128, 255,
+    ]);
   });
 
   it("gives constant frames a defined palette coordinate", () => {

@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import storyJson from "../story.json";
 import viewsJson from "../views.json";
-import { parseStoryDocuments, resolveLocalizedText, validateStoryDocument } from "./document";
+import {
+  parseStoryDocuments,
+  resolveLocalizedText,
+  validateStoryDocument,
+} from "./document";
 import { storyExternalLinkAttributes } from "./externalLinks";
-import type { StoryCopyBlock, StoryDocument, StoryViewsDocument, StoryWidgetBlock } from "./types";
+import type {
+  StoryCopyBlock,
+  StoryDocument,
+  StoryViewsDocument,
+  StoryWidgetBlock,
+} from "./types";
 
 function storyFixture(): StoryDocument {
   return {
@@ -35,7 +44,9 @@ function storyFixture(): StoryDocument {
             heading: { en: "Heading", fr: "Titre" },
             text: { en: "Body", fr: "Texte" },
             backdrop: "dark-gradient",
-            references: [{ label: { en: "Source" }, url: "https://example.com/source" }],
+            references: [
+              { label: { en: "Source" }, url: "https://example.com/source" },
+            ],
           },
           {
             id: "widget-one",
@@ -73,8 +84,12 @@ describe("story documents", () => {
   it("accepts optional references and widget captions", () => {
     const documents = parseStoryDocuments(storyFixture(), viewsFixture());
     const blocks = documents.story.scenes[0].blocks;
-    const copy = blocks.find((block): block is StoryCopyBlock => block.type === "copy")!;
-    const widget = blocks.find((block): block is StoryWidgetBlock => block.type === "widget")!;
+    const copy = blocks.find(
+      (block): block is StoryCopyBlock => block.type === "copy",
+    )!;
+    const widget = blocks.find(
+      (block): block is StoryWidgetBlock => block.type === "widget",
+    )!;
 
     expect(resolveLocalizedText(copy.heading, "fr", "en")).toBe("Titre");
     expect(resolveLocalizedText(widget.caption!, "fr", "en")).toBe("Légende");
@@ -98,12 +113,17 @@ describe("story documents", () => {
   it("rejects a missing view reference", () => {
     const invalid = viewsFixture();
     invalid.views = [];
-    expect(() => parseStoryDocuments(storyFixture(), invalid)).toThrow(/unknown view fixture-view/);
+    expect(() => parseStoryDocuments(storyFixture(), invalid)).toThrow(
+      /unknown view fixture-view/,
+    );
   });
 
   it("uses locale fallbacks deterministically", () => {
-    expect(resolveLocalizedText({ en: "Default", fr: "Fallback" }, "de", "en", ["fr"]))
-      .toBe("Fallback");
+    expect(
+      resolveLocalizedText({ en: "Default", fr: "Fallback" }, "de", "en", [
+        "fr",
+      ]),
+    ).toBe("Fallback");
   });
 
   it("rejects malformed references and captions", () => {
@@ -113,20 +133,26 @@ describe("story documents", () => {
     invalidReference.scenes[0].blocks[0].references = [
       { label: { en: "Unsafe" }, url: "javascript:alert(1)" },
     ];
-    expect(() => validateStoryDocument(invalidReference)).toThrow(/must use HTTP or HTTPS/);
+    expect(() => validateStoryDocument(invalidReference)).toThrow(
+      /must use HTTP or HTTPS/,
+    );
 
     const invalidCaption = structuredClone(storyFixture()) as unknown as {
       scenes: Array<{ blocks: Array<Record<string, unknown>> }>;
     };
     invalidCaption.scenes[0].blocks[1].caption = "Not localized";
-    expect(() => validateStoryDocument(invalidCaption)).toThrow(/caption must be a localized object/);
+    expect(() => validateStoryDocument(invalidCaption)).toThrow(
+      /caption must be a localized object/,
+    );
   });
 
   it("builds safe attributes for external links", () => {
-    expect(storyExternalLinkAttributes(
-      { label: { en: "Source" }, url: "https://example.com/source" },
-      "Source",
-    )).toEqual({
+    expect(
+      storyExternalLinkAttributes(
+        { label: { en: "Source" }, url: "https://example.com/source" },
+        "Source",
+      ),
+    ).toEqual({
       href: "https://example.com/source",
       target: "_blank",
       rel: "noopener noreferrer",
@@ -139,7 +165,9 @@ describe("story documents", () => {
       scenes: Array<{ playback: { mode: string } }>;
     };
     invalid.scenes[0].playback.mode = "scrub";
-    expect(() => validateStoryDocument(invalid)).toThrow(/playback.mode is invalid/);
+    expect(() => validateStoryDocument(invalid)).toThrow(
+      /playback.mode is invalid/,
+    );
   });
 
   it("rejects the removed scroll length property", () => {
@@ -147,6 +175,8 @@ describe("story documents", () => {
       scenes: Array<Record<string, unknown>>;
     };
     invalid.scenes[0].scrollVh = 180;
-    expect(() => validateStoryDocument(invalid)).toThrow(/scrollVh is not supported/);
+    expect(() => validateStoryDocument(invalid)).toThrow(
+      /scrollVh is not supported/,
+    );
   });
 });

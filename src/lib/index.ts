@@ -53,7 +53,10 @@ export type {
   RenderMode,
 } from "./ParticleSimulation";
 export type { ScalarLayerDebugInfo } from "./ScalarLayer";
-export type { GeoVideoLayerDebugInfo, GeoVideoLayerOptions } from "./GeoVideoLayer";
+export type {
+  GeoVideoLayerDebugInfo,
+  GeoVideoLayerOptions,
+} from "./GeoVideoLayer";
 export type {
   GeoVideoBounds,
   GeoVideoManifest,

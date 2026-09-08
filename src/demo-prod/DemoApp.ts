@@ -19,8 +19,18 @@ import type {
   ZartiglStatus,
   TimeGranularity,
 } from "../lib";
-import { formatTime, formatVertical, pickPreferredSource, resolveLocalizedText } from "../catalog";
-import type { CatalogEntry, Catalog, CatalogSource, CatalogZarrSource } from "../catalog";
+import {
+  formatTime,
+  formatVertical,
+  pickPreferredSource,
+  resolveLocalizedText,
+} from "../catalog";
+import type {
+  CatalogEntry,
+  Catalog,
+  CatalogSource,
+  CatalogZarrSource,
+} from "../catalog";
 import { addCatalogPickerBlade } from "./CatalogPicker";
 import type { CatalogPicker } from "./CatalogPicker";
 import { addDomBlade, DomBladePlugin } from "./DomBladePlugin";
@@ -105,9 +115,12 @@ function showToast(msg: string): void {
 }
 
 function formatValue(v: number, unit: string): string {
-  if (!Number.isFinite(v)) return "nodata";
+  if (!Number.isFinite(v)) {
+    return "nodata";
+  }
   const abs = Math.abs(v);
-  const txt = abs >= 100 ? v.toFixed(1) : abs >= 10 ? v.toFixed(2) : v.toFixed(3);
+  const txt =
+    abs >= 100 ? v.toFixed(1) : abs >= 10 ? v.toFixed(2) : v.toFixed(3);
   return unit ? `${txt} ${unit}` : txt;
 }
 
@@ -117,15 +130,24 @@ function codeNumber(value: number, digits = 6): string {
 
 function zarrSource(layer: CatalogEntry): CatalogZarrSource {
   const configured = layer.defaults.querySourceId ?? layer.defaults.sourceId;
-  const source = layer.sources.find((candidate) => candidate.id === configured && candidate.type === "zarr")
-    ?? layer.sources.find((candidate): candidate is CatalogZarrSource => candidate.type === "zarr");
-  if (!source || source.type !== "zarr") throw new Error(`Catalog entry has no Zarr variables: ${layer.id}`);
+  const source =
+    layer.sources.find(
+      (candidate) => candidate.id === configured && candidate.type === "zarr",
+    ) ??
+    layer.sources.find(
+      (candidate): candidate is CatalogZarrSource => candidate.type === "zarr",
+    );
+  if (!source || source.type !== "zarr") {
+    throw new Error(`Catalog entry has no Zarr variables: ${layer.id}`);
+  }
   return source;
 }
 
 function getPointVariables(layer: CatalogEntry): string[] {
   const variables = zarrSource(layer).variables;
-  if (variables.kind === "scalar") return [variables.value];
+  if (variables.kind === "scalar") {
+    return [variables.value];
+  }
   if (variables.derivation) {
     return [
       variables.derivation.direction_variable,
@@ -136,25 +158,44 @@ function getPointVariables(layer: CatalogEntry): string[] {
 }
 
 function nearestTimeIndex(values: readonly number[], target: number): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) {
+    return 0;
+  }
   let best = 0;
   for (let i = 1; i < values.length; i++) {
-    if (Math.abs(values[i] - target) < Math.abs(values[best] - target)) best = i;
+    if (Math.abs(values[i] - target) < Math.abs(values[best] - target)) {
+      best = i;
+    }
   }
   return best;
 }
 
-function authoringInputType(granularity: TimeGranularity): "month" | "date" | "datetime-local" {
-  if (granularity === "month") return "month";
-  if (granularity === "day" || granularity === "year") return "date";
+function authoringInputType(
+  granularity: TimeGranularity,
+): "month" | "date" | "datetime-local" {
+  if (granularity === "month") {
+    return "month";
+  }
+  if (granularity === "day" || granularity === "year") {
+    return "date";
+  }
   return "datetime-local";
 }
 
-function authoringInputValue(time: number, granularity: TimeGranularity): string {
+function authoringInputValue(
+  time: number,
+  granularity: TimeGranularity,
+): string {
   const iso = new Date(time).toISOString();
-  if (granularity === "year") return iso.slice(0, 4);
-  if (granularity === "month") return iso.slice(0, 7);
-  if (granularity === "day") return iso.slice(0, 10);
+  if (granularity === "year") {
+    return iso.slice(0, 4);
+  }
+  if (granularity === "month") {
+    return iso.slice(0, 7);
+  }
+  if (granularity === "day") {
+    return iso.slice(0, 10);
+  }
   return iso.slice(0, granularity === "second" ? 19 : 16);
 }
 
@@ -181,7 +222,9 @@ function pointResultToData(
     }
 
     const value = isVector
-      ? (Number.isFinite(u) && Number.isFinite(v) ? Math.hypot(u, v!) : NaN)
+      ? Number.isFinite(u) && Number.isFinite(v)
+        ? Math.hypot(u, v!)
+        : NaN
       : u;
 
     return {
@@ -195,13 +238,18 @@ function pointResultToData(
   });
 }
 
-function nearestDatum(data: ChartDatum[], target: number, mode: PopupMode): ChartDatum | null {
+function nearestDatum(
+  data: ChartDatum[],
+  target: number,
+  mode: PopupMode,
+): ChartDatum | null {
   let best: ChartDatum | null = null;
   let bestDist = Infinity;
   for (const datum of data) {
-    const axis = mode === "time"
-      ? (datum.time ?? datum.axis)
-      : (datum.depth ?? datum.axis);
+    const axis =
+      mode === "time"
+        ? (datum.time ?? datum.axis)
+        : (datum.depth ?? datum.axis);
     const dist = Math.abs(axis - target);
     if (dist < bestDist) {
       best = datum;
@@ -211,7 +259,11 @@ function nearestDatum(data: ChartDatum[], target: number, mode: PopupMode): Char
   return best;
 }
 
-function setPopupStatus(body: HTMLElement, message: string, cls = "query-loading"): void {
+function setPopupStatus(
+  body: HTMLElement,
+  message: string,
+  cls = "query-loading",
+): void {
   body.replaceChildren();
   const status = document.createElement("div");
   status.className = cls;
@@ -262,12 +314,16 @@ function renderPointChart(
   const axisMax = Math.max(...finite.map(axisValue));
   const axisSpan = axisMax - axisMin || 1;
 
-  const sx = (axis: number) => margin.left + ((axis - axisMin) / axisSpan) * innerW;
+  const sx = (axis: number) =>
+    margin.left + ((axis - axisMin) / axisSpan) * innerW;
   const sy = (value: number) =>
-    margin.top + innerH - ((value - paddedMin) / (paddedMax - paddedMin || 1)) * innerH;
+    margin.top +
+    innerH -
+    ((value - paddedMin) / (paddedMax - paddedMin || 1)) * innerH;
   const depthX = (value: number) =>
     margin.left + ((value - paddedMin) / (paddedMax - paddedMin || 1)) * innerW;
-  const depthY = (axis: number) => margin.top + ((axis - axisMin) / axisSpan) * innerH;
+  const depthY = (axis: number) =>
+    margin.top + ((axis - axisMin) / axisSpan) * innerH;
 
   const sorted = [...data].sort((a, b) => axisValue(a) - axisValue(b));
   const path = sorted
@@ -293,18 +349,18 @@ function renderPointChart(
   const line = svgEl("path", { d: path, class: "query-chart-line" });
   svg.append(frame, line);
 
-  const xMinLabel = mode === "time"
-    ? formatTime(axisMin)
-    : paddedMin.toPrecision(3);
-  const xMaxLabel = mode === "time"
-    ? formatTime(axisMax)
-    : paddedMax.toPrecision(3);
-  const yMinLabel = mode === "time"
-    ? paddedMin.toPrecision(3)
-    : formatVertical(axisMin, verticalLabel, verticalUnits);
-  const yMaxLabel = mode === "time"
-    ? paddedMax.toPrecision(3)
-    : formatVertical(axisMax, verticalLabel, verticalUnits);
+  const xMinLabel =
+    mode === "time" ? formatTime(axisMin) : paddedMin.toPrecision(3);
+  const xMaxLabel =
+    mode === "time" ? formatTime(axisMax) : paddedMax.toPrecision(3);
+  const yMinLabel =
+    mode === "time"
+      ? paddedMin.toPrecision(3)
+      : formatVertical(axisMin, verticalLabel, verticalUnits);
+  const yMaxLabel =
+    mode === "time"
+      ? paddedMax.toPrecision(3)
+      : formatVertical(axisMax, verticalLabel, verticalUnits);
 
   const labels: Array<[number, number, string, string]> = [
     [margin.left, height - 10, xMinLabel, "start"],
@@ -387,9 +443,13 @@ export class DemoApp {
   private currentFps = 0;
   private fpsRafId = 0;
 
-  constructor(private readonly map: MaplibreMap, private readonly cat: Catalog) {
+  constructor(
+    private readonly map: MaplibreMap,
+    private readonly cat: Catalog,
+  ) {
     const hash = this.loadHashState();
-    this.currentLayer = cat.layers.find((entry) => entry.id === hash?.d) ?? cat.layers[0];
+    this.currentLayer =
+      cat.layers.find((entry) => entry.id === hash?.d) ?? cat.layers[0];
     this.currentSourceId = pickPreferredSource(this.currentLayer).id;
     this.params = this.makeDefaultParams();
 
@@ -407,7 +467,10 @@ export class DemoApp {
 
   // ── Layer switching ─────────────────────────────────────────────────
 
-  async switchLayer(layer: CatalogEntry, hashState?: HashState | null): Promise<void> {
+  async switchLayer(
+    layer: CatalogEntry,
+    hashState?: HashState | null,
+  ): Promise<void> {
     const seq = ++this.switchSeq;
     this.pointQuerySeq++;
     this.frameColorDomain = null;
@@ -415,9 +478,10 @@ export class DemoApp {
     this.activePopup?.remove();
     this.activePopup = null;
 
-    const requestedSource = layer.sources.find((source) => source.id === hashState?.s)
-      ?? layer.sources.find((source) => source.id === this.currentSourceId)
-      ?? pickPreferredSource(layer);
+    const requestedSource =
+      layer.sources.find((source) => source.id === hashState?.s) ??
+      layer.sources.find((source) => source.id === this.currentSourceId) ??
+      pickPreferredSource(layer);
     this.currentSourceId = requestedSource.id;
     this.currentBackend = requestedSource.type;
 
@@ -425,7 +489,9 @@ export class DemoApp {
 
     // Apply params: layer defaults, then optional hash overrides
     this.applyLayerDefaults(layer);
-    if (hashState) this.applyHashState(hashState, layer);
+    if (hashState) {
+      this.applyHashState(hashState, layer);
+    }
 
     this.currentLayer = layer;
 
@@ -449,18 +515,32 @@ export class DemoApp {
     });
     const activeZartigl = this.z;
     activeZartigl.on("loaded", (meta) => {
-      if (this.z !== activeZartigl || seq !== this.switchSeq) return;
-      if (layer.kind === "scalar") this.frameColorDomain = [meta.min, meta.max];
+      if (this.z !== activeZartigl || seq !== this.switchSeq) {
+        return;
+      }
+      if (layer.kind === "scalar") {
+        this.frameColorDomain = [meta.min, meta.max];
+      }
       this.syncLegend();
     });
     activeZartigl.on("status", (status) => {
-      if (this.z === activeZartigl && seq === this.switchSeq) this.updateDataStatus(status);
+      if (this.z === activeZartigl && seq === this.switchSeq) {
+        this.updateDataStatus(status);
+      }
     });
     let lastVideoUiUpdate = 0;
     activeZartigl.on("timeChange", (time) => {
-      if (this.z !== activeZartigl || seq !== this.switchSeq || this.currentBackend !== "geovideo") return;
+      if (
+        this.z !== activeZartigl ||
+        seq !== this.switchSeq ||
+        this.currentBackend !== "geovideo"
+      ) {
+        return;
+      }
       const now = performance.now();
-      if (now - lastVideoUiUpdate < 200) return;
+      if (now - lastVideoUiUpdate < 200) {
+        return;
+      }
       lastVideoUiUpdate = now;
       const values = activeZartigl.getTimeMeta().values;
       this.params.timeIndex = nearestTimeIndex(values, time);
@@ -475,9 +555,14 @@ export class DemoApp {
     });
 
     await activeZartigl.init();
-    if (seq !== this.switchSeq) return;
+    if (seq !== this.switchSeq) {
+      return;
+    }
     const activeSource = activeZartigl.getSource();
-    if (activeSource) { this.currentSourceId = activeSource.id; this.currentBackend = activeSource.type; }
+    if (activeSource) {
+      this.currentSourceId = activeSource.id;
+      this.currentBackend = activeSource.type;
+    }
 
     const timeMeta = this.z.getTimeMeta();
     const depthMeta = this.z.getDepthMeta();
@@ -485,21 +570,26 @@ export class DemoApp {
     const tSize = times.length;
     this.params.allowedStart = timeMeta.min;
     this.params.allowedEnd = timeMeta.max;
-    this.params.geoVideoAutoplay = hashState?.ga ?? this.params.geoVideoAutoplay;
+    this.params.geoVideoAutoplay =
+      hashState?.ga ?? this.params.geoVideoAutoplay;
     this.params.geoVideoLoop = hashState?.gl ?? this.params.geoVideoLoop;
-    this.params.geoVideoPlaybackRate = hashState?.gr ?? this.params.geoVideoPlaybackRate;
+    this.params.geoVideoPlaybackRate =
+      hashState?.gr ?? this.params.geoVideoPlaybackRate;
 
     if (hashState) {
-      this.params.timeIndex = Math.max(0, Math.min(
-        nearestTimeIndex(times, hashState.t),
-        tSize - 1,
-      ));
+      this.params.timeIndex = Math.max(
+        0,
+        Math.min(nearestTimeIndex(times, hashState.t), tSize - 1),
+      );
       this.params.timeLabel = formatTime(times[this.params.timeIndex]);
       this.params.depth = depthMeta.values.includes(hashState.v)
         ? hashState.v
         : (depthMeta.values[0] ?? 0);
     } else {
-      this.params.timeIndex = nearestTimeIndex(times, timeMeta.current ?? timeMeta.max);
+      this.params.timeIndex = nearestTimeIndex(
+        times,
+        timeMeta.current ?? timeMeta.max,
+      );
       this.params.timeLabel = formatTime(times[this.params.timeIndex]);
       this.params.depth = depthMeta.values[0] ?? 0;
     }
@@ -512,21 +602,28 @@ export class DemoApp {
     this.syncColorDomainVisibility();
     this.updateLayerSelect();
 
-    if (this.paletteSelectEl) this.paletteSelectEl.value = this.params.palette;
+    if (this.paletteSelectEl) {
+      this.paletteSelectEl.value = this.params.palette;
+    }
     this.pane.refresh();
 
     setTimeout(() => this.syncLegend(), 400);
   }
 
   private async switchSource(source: CatalogSource): Promise<void> {
-    if (!this.z || source.id === this.currentSourceId) return;
+    if (!this.z || source.id === this.currentSourceId) {
+      return;
+    }
     await this.z.update({ source: source.id });
     this.currentSourceId = source.id;
     this.currentBackend = source.type;
     const timeMeta = this.z.getTimeMeta();
     this.params.allowedStart = timeMeta.min;
     this.params.allowedEnd = timeMeta.max;
-    this.params.timeIndex = nearestTimeIndex(timeMeta.values, timeMeta.current ?? timeMeta.max);
+    this.params.timeIndex = nearestTimeIndex(
+      timeMeta.values,
+      timeMeta.current ?? timeMeta.max,
+    );
     this.params.timeLabel = formatTime(timeMeta.values[this.params.timeIndex]);
     this.params.depth = this.z.getDepthMeta().current ?? 0;
     this.rebuildDataUI();
@@ -538,7 +635,9 @@ export class DemoApp {
   // ── Data UI (rebuilt per layer) ─────────────────────────────────────
 
   private rebuildDataUI(): void {
-    for (const b of this.dataBindings) b.dispose();
+    for (const b of this.dataBindings) {
+      b.dispose();
+    }
     this.dataBindings = [];
     this.timeSliderBinding = null;
     this.timeLabelBinding = null;
@@ -547,57 +646,88 @@ export class DemoApp {
     const times = timeMeta.values ?? [];
     const tSize = times.length;
 
-    this.timeSliderBinding = this.timeFolder.addBinding(this.params, "timeIndex", {
-      min: 0,
-      max: Math.max(0, tSize - 1),
-      step: 1,
-      label: "time",
-    }).on("change", (ev) => {
-      if (this.syncingVideoTimeControls) return;
-      const ms = times[ev.value];
-      this.params.timeLabel = formatTime(ms);
-      this.timeLabelBinding?.refresh();
-      void this.z?.update({ time: ms });
-    }) as BindingApi;
+    this.timeSliderBinding = this.timeFolder
+      .addBinding(this.params, "timeIndex", {
+        min: 0,
+        max: Math.max(0, tSize - 1),
+        step: 1,
+        label: "time",
+      })
+      .on("change", (ev) => {
+        if (this.syncingVideoTimeControls) {
+          return;
+        }
+        const ms = times[ev.value];
+        this.params.timeLabel = formatTime(ms);
+        this.timeLabelBinding?.refresh();
+        void this.z?.update({ time: ms });
+      }) as BindingApi;
 
-    this.timeLabelBinding = this.timeFolder.addBinding(this.params, "timeLabel", {
-      readonly: true,
-      label: "",
-    }) as BindingApi;
+    this.timeLabelBinding = this.timeFolder.addBinding(
+      this.params,
+      "timeLabel",
+      {
+        readonly: true,
+        label: "",
+      },
+    ) as BindingApi;
 
     this.dataBindings.push(this.buildLimitRangeControls());
 
     const depthMeta = this.z!.getDepthMeta();
     let depthBinding: BindingApi | null = null;
     if (depthMeta.values.length > 0) {
-      depthBinding = this.dataFolder.addBinding(this.params, "depth", {
-        options: depthMeta.values.map((v) => ({
-          text: formatVertical(v, depthMeta.label, depthMeta.units),
-          value: v,
-        })),
-        label: depthMeta.label,
-      }).on("change", (ev) => void this.z?.update({ depth: ev.value })) as BindingApi;
+      depthBinding = this.dataFolder
+        .addBinding(this.params, "depth", {
+          options: depthMeta.values.map((v) => ({
+            text: formatVertical(v, depthMeta.label, depthMeta.units),
+            value: v,
+          })),
+          label: depthMeta.label,
+        })
+        .on(
+          "change",
+          (ev) => void this.z?.update({ depth: ev.value }),
+        ) as BindingApi;
     }
 
-    this.dataBindings.push(
-      this.timeSliderBinding,
-      this.timeLabelBinding,
-    );
-    if (depthBinding) this.dataBindings.push(depthBinding);
+    this.dataBindings.push(this.timeSliderBinding, this.timeLabelBinding);
+    if (depthBinding) {
+      this.dataBindings.push(depthBinding);
+    }
     if (this.currentBackend === "geovideo") {
-      const autoplay = this.dataFolder.addBinding(this.params, "geoVideoAutoplay", {
-        label: "autoplay",
-      }).on("change", (event) => {
-        if (event.value) void this.z?.play();
-        else this.z?.pause();
-      });
-      const loop = this.dataFolder.addBinding(this.params, "geoVideoLoop", {
-        label: "loop",
-      }).on("change", (event) => void this.z?.update({ geoVideo: { loop: event.value } }));
-      const rate = this.dataFolder.addBinding(this.params, "geoVideoPlaybackRate", {
-        label: "playback rate",
-        options: [0.5, 1, 2, 5, 10].map((value) => ({ text: `${value}×`, value })),
-      }).on("change", (event) => void this.z?.update({ geoVideo: { playbackRate: event.value } }));
+      const autoplay = this.dataFolder
+        .addBinding(this.params, "geoVideoAutoplay", {
+          label: "autoplay",
+        })
+        .on("change", (event) => {
+          if (event.value) {
+            void this.z?.play();
+          } else {
+            this.z?.pause();
+          }
+        });
+      const loop = this.dataFolder
+        .addBinding(this.params, "geoVideoLoop", {
+          label: "loop",
+        })
+        .on(
+          "change",
+          (event) => void this.z?.update({ geoVideo: { loop: event.value } }),
+        );
+      const rate = this.dataFolder
+        .addBinding(this.params, "geoVideoPlaybackRate", {
+          label: "playback rate",
+          options: [0.5, 1, 2, 5, 10].map((value) => ({
+            text: `${value}×`,
+            value,
+          })),
+        })
+        .on(
+          "change",
+          (event) =>
+            void this.z?.update({ geoVideo: { playbackRate: event.value } }),
+        );
       this.dataBindings.push(autoplay, loop, rate);
     }
 
@@ -615,32 +745,41 @@ export class DemoApp {
     title.textContent = "Limit range";
     group.appendChild(title);
 
-    const makeInput = (side: "start" | "end"): HTMLInputElement | HTMLSelectElement => {
+    const makeInput = (
+      side: "start" | "end",
+    ): HTMLInputElement | HTMLSelectElement => {
       const row = document.createElement("div");
       row.className = "limit-range-row";
       const label = document.createElement("label");
       label.className = "limit-range-toggle";
-      const enabled = side === "start" ? this.params.limitStart : this.params.limitEnd;
+      const enabled =
+        side === "start" ? this.params.limitStart : this.params.limitEnd;
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = enabled;
       const labelText = document.createElement("span");
       labelText.textContent = side;
       label.append(checkbox, labelText);
-      const input = full.granularity === "year"
-        ? document.createElement("select")
-        : document.createElement("input");
+      const input =
+        full.granularity === "year"
+          ? document.createElement("select")
+          : document.createElement("input");
       if (input instanceof HTMLInputElement) {
         input.type = authoringInputType(full.granularity);
         input.min = authoringInputValue(full.min, full.granularity);
         input.max = authoringInputValue(full.max, full.granularity);
-        input.step = full.granularity === "second"
-          ? String(Math.max(1, (full.step ?? 1_000) / 1_000))
-          : full.granularity === "minute" || full.granularity === "hour"
-            ? String(Math.max(60, (full.step ?? 60_000) / 1_000))
-            : "1";
+        input.step =
+          full.granularity === "second"
+            ? String(Math.max(1, (full.step ?? 1_000) / 1_000))
+            : full.granularity === "minute" || full.granularity === "hour"
+              ? String(Math.max(60, (full.step ?? 60_000) / 1_000))
+              : "1";
       } else {
-        const years = [...new Set(full.values.map((time) => new Date(time).getUTCFullYear()))];
+        const years = [
+          ...new Set(
+            full.values.map((time) => new Date(time).getUTCFullYear()),
+          ),
+        ];
         for (const year of years) {
           const option = document.createElement("option");
           option.value = String(year);
@@ -655,8 +794,11 @@ export class DemoApp {
         full.granularity,
       );
       checkbox.addEventListener("change", () => {
-        if (side === "start") this.params.limitStart = checkbox.checked;
-        else this.params.limitEnd = checkbox.checked;
+        if (side === "start") {
+          this.params.limitStart = checkbox.checked;
+        } else {
+          this.params.limitEnd = checkbox.checked;
+        }
         void this.applyAuthoredRange();
       });
       input.addEventListener("change", () => {
@@ -665,13 +807,19 @@ export class DemoApp {
           input.value,
           full.granularity,
         );
-        if (snapped === undefined) return;
+        if (snapped === undefined) {
+          return;
+        }
         if (side === "start") {
           this.params.allowedStart = snapped;
-          if (snapped > this.params.allowedEnd) this.params.allowedEnd = snapped;
+          if (snapped > this.params.allowedEnd) {
+            this.params.allowedEnd = snapped;
+          }
         } else {
           this.params.allowedEnd = snapped;
-          if (snapped < this.params.allowedStart) this.params.allowedStart = snapped;
+          if (snapped < this.params.allowedStart) {
+            this.params.allowedStart = snapped;
+          }
         }
         void this.applyAuthoredRange();
       });
@@ -685,15 +833,22 @@ export class DemoApp {
   }
 
   private async applyAuthoredRange(): Promise<void> {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
     const z = this.z;
     const range = this.currentNumericTimeRange();
     await z.update({ timeRange: range ?? null });
-    if (this.z !== z) return;
+    if (this.z !== z) {
+      return;
+    }
     const meta = z.getTimeMeta();
     this.params.allowedStart = meta.min;
     this.params.allowedEnd = meta.max;
-    this.params.timeIndex = nearestTimeIndex(meta.values, meta.current ?? meta.min);
+    this.params.timeIndex = nearestTimeIndex(
+      meta.values,
+      meta.current ?? meta.min,
+    );
     this.params.timeLabel = formatTime(meta.values[this.params.timeIndex]);
     this.rebuildDataUI();
   }
@@ -788,8 +943,12 @@ export class DemoApp {
     this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
     this.renderSourceSelect();
     this.sourceSelectEl.addEventListener("change", () => {
-      const source = this.currentLayer.sources.find((candidate) => candidate.id === this.sourceSelectEl.value);
-      if (source) void this.switchSource(source);
+      const source = this.currentLayer.sources.find(
+        (candidate) => candidate.id === this.sourceSelectEl.value,
+      );
+      if (source) {
+        void this.switchSource(source);
+      }
     });
   }
 
@@ -802,7 +961,9 @@ export class DemoApp {
     for (const proj of ["mercator", "globe"] as const) {
       const btn = document.createElement("button");
       btn.textContent = proj;
-      btn.className = "projection-button" + (proj === this.currentProjection ? " active" : "");
+      btn.className =
+        "projection-button" +
+        (proj === this.currentProjection ? " active" : "");
       btn.addEventListener("click", () => {
         this.currentProjection = proj;
         this.map.setProjection({ type: proj });
@@ -861,56 +1022,119 @@ export class DemoApp {
 
     this.buildColorDomainControls(folder);
 
-    folder.addBinding(this.params, "opacity", {
-      min: 0, max: 1, step: 0.01, label: "opacity",
-    }).on("change", (ev) => void this.z?.update({ settings: { opacity: ev.value } }));
+    folder
+      .addBinding(this.params, "opacity", {
+        min: 0,
+        max: 1,
+        step: 0.01,
+        label: "opacity",
+      })
+      .on(
+        "change",
+        (ev) => void this.z?.update({ settings: { opacity: ev.value } }),
+      );
 
-    folder.addBinding(this.params, "logScale", { label: "log scale" })
-      .on("change", (ev) => void this.z?.update({ settings: { logScale: ev.value } }));
+    folder
+      .addBinding(this.params, "logScale", { label: "log scale" })
+      .on(
+        "change",
+        (ev) => void this.z?.update({ settings: { logScale: ev.value } }),
+      );
 
-    folder.addBinding(this.params, "vibrance", {
-      min: -1, max: 1, step: 0.01, label: "vibrance",
-    }).on("change", (ev) => void this.z?.update({ settings: { vibrance: ev.value } }));
+    folder
+      .addBinding(this.params, "vibrance", {
+        min: -1,
+        max: 1,
+        step: 0.01,
+        label: "vibrance",
+      })
+      .on(
+        "change",
+        (ev) => void this.z?.update({ settings: { vibrance: ev.value } }),
+      );
   }
 
   private buildVectorFolder(): void {
-    this.vectorFolder = this.pane.addFolder({ title: "Vector", expanded: false });
+    this.vectorFolder = this.pane.addFolder({
+      title: "Vector",
+      expanded: false,
+    });
 
-    this.vectorFolder.addBinding(this.params, "renderMode", {
-      options: [
-        { text: "Particles", value: "particles" },
-        { text: "Raster", value: "raster" },
-        { text: "Raster + particles", value: "raster+particles" },
-      ],
-      label: "mode",
-    }).on("change", (ev) => void this.z?.update({ settings: { renderMode: ev.value } }));
+    this.vectorFolder
+      .addBinding(this.params, "renderMode", {
+        options: [
+          { text: "Particles", value: "particles" },
+          { text: "Raster", value: "raster" },
+          { text: "Raster + particles", value: "raster+particles" },
+        ],
+        label: "mode",
+      })
+      .on(
+        "change",
+        (ev) => void this.z?.update({ settings: { renderMode: ev.value } }),
+      );
 
-    this.vectorFolder.addBinding(this.params, "particleDensity", {
-      min: 0.001, max: 0.15, step: 0.001, label: "density",
-    }).on("change", (ev) => void this.z?.update({ settings: { particleDensity: ev.value } }));
+    this.vectorFolder
+      .addBinding(this.params, "particleDensity", {
+        min: 0.001,
+        max: 0.15,
+        step: 0.001,
+        label: "density",
+      })
+      .on(
+        "change",
+        (ev) =>
+          void this.z?.update({ settings: { particleDensity: ev.value } }),
+      );
 
-    this.vectorFolder.addBinding(this.params, "speed", {
-      min: 0.1, max: 8, step: 0.1, label: "speed",
-    }).on("change", (ev) => void this.z?.update({ settings: { speed: ev.value } }));
+    this.vectorFolder
+      .addBinding(this.params, "speed", {
+        min: 0.1,
+        max: 8,
+        step: 0.1,
+        label: "speed",
+      })
+      .on(
+        "change",
+        (ev) => void this.z?.update({ settings: { speed: ev.value } }),
+      );
 
-    this.vectorFolder.addBinding(this.params, "fade", {
-      min: 0, max: 1, step: 0.01, label: "fade",
-    }).on("change", (ev) => void this.z?.update({ settings: { fade: ev.value } }));
+    this.vectorFolder
+      .addBinding(this.params, "fade", {
+        min: 0,
+        max: 1,
+        step: 0.01,
+        label: "fade",
+      })
+      .on(
+        "change",
+        (ev) => void this.z?.update({ settings: { fade: ev.value } }),
+      );
   }
 
   private buildExportFolder(): void {
     const folder = this.pane.addFolder({ title: "Export", expanded: false });
-    folder.addButton({ title: "Copy MapX widget code" }).on("click", () => this.copyMapxWidgetSnippet());
-    folder.addButton({ title: "Copy demo script/app" }).on("click", () => this.copyStandaloneDemoSnippet());
-    folder.addButton({ title: "Copy full demo HTML" }).on("click", () => this.copyStandaloneDemoHtml());
-    folder.addButton({ title: "Copy debug info" }).on("click", () => this.copyDebugInfo());
+    folder
+      .addButton({ title: "Copy MapX widget code" })
+      .on("click", () => this.copyMapxWidgetSnippet());
+    folder
+      .addButton({ title: "Copy demo script/app" })
+      .on("click", () => this.copyStandaloneDemoSnippet());
+    folder
+      .addButton({ title: "Copy full demo HTML" })
+      .on("click", () => this.copyStandaloneDemoHtml());
+    folder
+      .addButton({ title: "Copy debug info" })
+      .on("click", () => this.copyDebugInfo());
     folder.addButton({ title: "Share URL" }).on("click", () => this.shareURL());
   }
 
   // ── Legend sync ─────────────────────────────────────────────────────
 
   private syncLegend(): void {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
     const legend = this.z.getLegend();
     const palettes = this.z.getPalettes();
 
@@ -918,15 +1142,20 @@ export class DemoApp {
       this.gradientSection.style.display = "none";
       this.legendImg.src = legend.url;
       this.legendImg.style.display = "";
-      if (this.paletteSelectEl) this.paletteSelectEl.disabled = true;
+      if (this.paletteSelectEl) {
+        this.paletteSelectEl.disabled = true;
+      }
     } else if (legend.type === "gradient") {
       this.legendImg.style.display = "none";
       this.gradientSection.style.display = "";
-      if (this.paletteSelectEl) this.paletteSelectEl.disabled = false;
+      if (this.paletteSelectEl) {
+        this.paletteSelectEl.disabled = false;
+      }
       const palette = palettes.find((p) => p.id === legend.palette);
       if (palette) {
-        this.legendBar.style.background =
-          `linear-gradient(to right, ${palette.colors.join(", ")})`;
+        this.legendBar.style.background = `linear-gradient(to right, ${palette.colors.join(
+          ", ",
+        )})`;
       }
       this.legendMin.textContent = legend.min?.toFixed(2) ?? "";
       this.legendMax.textContent = legend.max?.toFixed(2) ?? "";
@@ -934,23 +1163,34 @@ export class DemoApp {
     } else {
       this.gradientSection.style.display = "none";
       this.legendImg.style.display = "none";
-      if (this.paletteSelectEl) this.paletteSelectEl.disabled = false;
+      if (this.paletteSelectEl) {
+        this.paletteSelectEl.disabled = false;
+      }
     }
     this.syncColorDomainControl();
   }
 
   private buildColorDomainControls(folder: FolderApi): void {
-    this.colorDomainMinBinding = folder.addBinding(this.params, "colorDomainMin", {
-      label: "color min",
-    }).on("change", () => {
-      if (!this.syncingColorDomainControls) this.applyColorDomainBindings();
-    }) as BindingApi;
-    this.colorDomainMaxBinding = folder.addBinding(this.params, "colorDomainMax", {
-      label: "color max",
-    }).on("change", () => {
-      if (!this.syncingColorDomainControls) this.applyColorDomainBindings();
-    }) as BindingApi;
-    this.colorDomainAutoButton = folder.addButton({ label: "color range", title: "Auto" })
+    this.colorDomainMinBinding = folder
+      .addBinding(this.params, "colorDomainMin", {
+        label: "color min",
+      })
+      .on("change", () => {
+        if (!this.syncingColorDomainControls) {
+          this.applyColorDomainBindings();
+        }
+      }) as BindingApi;
+    this.colorDomainMaxBinding = folder
+      .addBinding(this.params, "colorDomainMax", {
+        label: "color max",
+      })
+      .on("change", () => {
+        if (!this.syncingColorDomainControls) {
+          this.applyColorDomainBindings();
+        }
+      }) as BindingApi;
+    this.colorDomainAutoButton = folder
+      .addButton({ label: "color range", title: "Auto" })
       .on("click", () => this.resetColorDomain());
     this.colorDomainControls = [
       this.colorDomainMinBinding,
@@ -961,15 +1201,25 @@ export class DemoApp {
   }
 
   private syncColorDomainVisibility(): void {
-    if (this.colorDomainControls.length === 0) return;
-    const visible = this.currentLayer.kind === "scalar" &&
-      (this.currentBackend === "zarr" || this.z?.supportsDynamicStyle() === true);
-    for (const control of this.colorDomainControls) control.hidden = !visible;
-    if (this.paletteSelectEl) this.paletteSelectEl.disabled = this.z?.supportsDynamicStyle() === false;
+    if (this.colorDomainControls.length === 0) {
+      return;
+    }
+    const visible =
+      this.currentLayer.kind === "scalar" &&
+      (this.currentBackend === "zarr" ||
+        this.z?.supportsDynamicStyle() === true);
+    for (const control of this.colorDomainControls) {
+      control.hidden = !visible;
+    }
+    if (this.paletteSelectEl) {
+      this.paletteSelectEl.disabled = this.z?.supportsDynamicStyle() === false;
+    }
   }
 
   private syncColorDomainControl(): void {
-    if (this.colorDomainControls.length === 0) return;
+    if (this.colorDomainControls.length === 0) {
+      return;
+    }
     this.syncColorDomainVisibility();
 
     const domain = this.params.colorDomain ?? this.frameColorDomain;
@@ -1009,7 +1259,9 @@ export class DemoApp {
   // ── Map click query ─────────────────────────────────────────────────
 
   private async onMapClick(lngLat: LngLat): Promise<void> {
-    if (!this.z || !this.z.getCapabilities().pointQuery) return;
+    if (!this.z || !this.z.getCapabilities().pointQuery) {
+      return;
+    }
     const z = this.z;
     this.activePopup?.remove();
 
@@ -1021,7 +1273,11 @@ export class DemoApp {
     const header = document.createElement("div");
     header.className = "query-header";
     const title = document.createElement("strong");
-    title.textContent = resolveLocalizedText(layer.title, this.locale, this.cat.defaultLocale);
+    title.textContent = resolveLocalizedText(
+      layer.title,
+      this.locale,
+      this.cat.defaultLocale,
+    );
     const coord = document.createElement("div");
     coord.className = "query-coord";
     coord.textContent = `${lngLat.lng.toFixed(3)}, ${lngLat.lat.toFixed(3)}`;
@@ -1044,7 +1300,10 @@ export class DemoApp {
     chart.className = "query-chart-host";
     root.append(header, modeRow, meta, chart);
 
-    const popup = new maplibregl.Popup({ closeOnClick: true, maxWidth: "360px" })
+    const popup = new maplibregl.Popup({
+      closeOnClick: true,
+      maxWidth: "360px",
+    })
       .setLngLat(lngLat)
       .setDOMContent(root)
       .addTo(this.map);
@@ -1059,22 +1318,28 @@ export class DemoApp {
 
       try {
         const timeMeta = z.getTimeMeta();
-        const currentMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
-        const result = mode === "time"
-          ? await z.queryTimeSeries({
-              longitude: lngLat.lng,
-              latitude: lngLat.lat,
-              depth: this.params.depth,
-              maxPoints: 96,
-            })
-          : await z.queryDepthProfile({
-              longitude: lngLat.lng,
-              latitude: lngLat.lat,
-              time: currentMs,
-              maxDepths: 48,
-            });
+        const currentMs =
+          timeMeta.values?.[this.params.timeIndex] ??
+          timeMeta.current ??
+          timeMeta.max;
+        const result =
+          mode === "time"
+            ? await z.queryTimeSeries({
+                longitude: lngLat.lng,
+                latitude: lngLat.lat,
+                depth: this.params.depth,
+                maxPoints: 96,
+              })
+            : await z.queryDepthProfile({
+                longitude: lngLat.lng,
+                latitude: lngLat.lat,
+                time: currentMs,
+                maxDepths: 48,
+              });
 
-        if (seq !== this.pointQuerySeq || !popup.isOpen()) return;
+        if (seq !== this.pointQuerySeq || !popup.isOpen()) {
+          return;
+        }
 
         const data = pointResultToData(result, layer);
         const unit = z.getVariableMeta().units ?? "";
@@ -1088,17 +1353,29 @@ export class DemoApp {
           return;
         }
 
-        const vectorText = layer.kind === "vector"
-          ? ` | u ${formatValue(nearest.u ?? NaN, unit)} / v ${formatValue(nearest.v ?? NaN, unit)}`
-          : "";
-        const depthText = result.depth != null
-          ? ` | ${formatVertical(result.depth, z.getDepthMeta().label, z.getDepthMeta().units)}`
-          : "";
-        const timeText = mode === "depth" && result.time != null
-          ? ` | ${formatTime(result.time)}`
-          : "";
+        const vectorText =
+          layer.kind === "vector"
+            ? ` | u ${formatValue(nearest.u ?? NaN, unit)} / v ${formatValue(
+                nearest.v ?? NaN,
+                unit,
+              )}`
+            : "";
+        const depthText =
+          result.depth != null
+            ? ` | ${formatVertical(
+                result.depth,
+                z.getDepthMeta().label,
+                z.getDepthMeta().units,
+              )}`
+            : "";
+        const timeText =
+          mode === "depth" && result.time != null
+            ? ` | ${formatTime(result.time)}`
+            : "";
         meta.textContent =
-          `source Zarr | grid ${result.longitude.toFixed(3)}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
+          `source Zarr | grid ${result.longitude.toFixed(
+            3,
+          )}, ${result.latitude.toFixed(3)}${depthText}${timeText}\n` +
           `value ${formatValue(nearest.value, unit)}${vectorText}`;
         renderPointChart(
           chart,
@@ -1109,7 +1386,9 @@ export class DemoApp {
           z.getDepthMeta().units,
         );
       } catch (err) {
-        if (seq !== this.pointQuerySeq || !popup.isOpen()) return;
+        if (seq !== this.pointQuerySeq || !popup.isOpen()) {
+          return;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         setPopupStatus(chart, msg, "query-error");
       }
@@ -1117,7 +1396,9 @@ export class DemoApp {
 
     timeBtn.addEventListener("click", () => void run("time"));
     depthBtn.addEventListener("click", () => {
-      if (depthAvailable) void run("depth");
+      if (depthAvailable) {
+        void run("depth");
+      }
     });
 
     await run("time");
@@ -1126,7 +1407,9 @@ export class DemoApp {
   // ── Export ──────────────────────────────────────────────────────────
 
   private copyMapxWidgetSnippet(): void {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
     const snippet = buildMapxWidgetSnippet(this.currentSnippetOptions());
 
     navigator.clipboard
@@ -1136,7 +1419,9 @@ export class DemoApp {
   }
 
   private copyStandaloneDemoSnippet(): void {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
     const center = this.map.getCenter();
     const snippet = buildStandaloneDemoSnippet({
       ...this.currentSnippetOptions(),
@@ -1154,7 +1439,9 @@ export class DemoApp {
   }
 
   private copyStandaloneDemoHtml(): void {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
     const center = this.map.getCenter();
     const html = buildStandaloneDemoHtml({
       ...this.currentSnippetOptions(),
@@ -1172,7 +1459,9 @@ export class DemoApp {
   }
 
   private copyDebugInfo(): void {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
 
     navigator.clipboard
       .writeText(JSON.stringify(this.getDebugPayload(), null, 2))
@@ -1193,7 +1482,11 @@ export class DemoApp {
         projection: this.currentProjection,
         sourceType: this.currentBackend,
         layerId: this.currentLayer.id,
-        layerTitle: resolveLocalizedText(this.currentLayer.title, this.locale, this.cat.defaultLocale),
+        layerTitle: resolveLocalizedText(
+          this.currentLayer.title,
+          this.locale,
+          this.cat.defaultLocale,
+        ),
         sourceId: this.currentSourceId,
         timeRange: this.currentTimeRange(),
         geoVideo: this.currentGeoVideoOptions(),
@@ -1208,33 +1501,43 @@ export class DemoApp {
   private updateDebugStatus(): void {
     const info = this.z?.getDebugInfo();
     const delegate = info?.layer?.delegate;
-    const simulation = delegate && "simulation" in delegate ? delegate.simulation : undefined;
+    const simulation =
+      delegate && "simulation" in delegate ? delegate.simulation : undefined;
     const renderer = this.shortRendererLabel(
-      simulation?.webgl?.unmaskedRenderer ??
-      simulation?.webgl?.renderer,
+      simulation?.webgl?.unmaskedRenderer ?? simulation?.webgl?.renderer,
     );
     const fpsText = this.currentFps > 0 ? String(this.currentFps) : "--";
     const stateText = simulation
       ? [
           `state ${simulation.particleState}`,
           simulation.rgba8ParticlesSuppressed ? "raster-only" : "",
-        ].filter(Boolean).join(" ")
+        ]
+          .filter(Boolean)
+          .join(" ")
       : "state --";
-    const dpr = info?.devicePixelRatio ?? (typeof window !== "undefined" ? window.devicePixelRatio : undefined);
-    const videoFps = delegate?.kind === "scalar-geovideo" ? delegate.presentedFps : null;
-    const fpsLabel = videoFps != null
-      ? `video ${videoFps.toFixed(1)} FPS | UI ${fpsText}`
-      : `FPS ${fpsText}`;
+    const dpr =
+      info?.devicePixelRatio ??
+      (typeof window !== "undefined" ? window.devicePixelRatio : undefined);
+    const videoFps =
+      delegate?.kind === "scalar-geovideo" ? delegate.presentedFps : null;
+    const fpsLabel =
+      videoFps != null
+        ? `video ${videoFps.toFixed(1)} FPS | UI ${fpsText}`
+        : `FPS ${fpsText}`;
     this.fpsEl.textContent = [
       fpsLabel,
       stateText,
       dpr ? `DPR ${dpr}` : "",
       renderer,
-    ].filter(Boolean).join(" | ");
+    ]
+      .filter(Boolean)
+      .join(" | ");
   }
 
   private shortRendererLabel(renderer?: string): string {
-    if (!renderer) return "";
+    if (!renderer) {
+      return "";
+    }
     const parts = [
       renderer.match(/Intel/i)?.[0],
       renderer.match(/NVIDIA/i)?.[0],
@@ -1242,7 +1545,9 @@ export class DemoApp {
       renderer.match(/Apple/i)?.[0],
       renderer.match(/D3D11|Direct3D11|D3D9|Metal|OpenGL/i)?.[0],
     ].filter(Boolean);
-    if (parts.length) return [...new Set(parts)].join(" ");
+    if (parts.length) {
+      return [...new Set(parts)].join(" ");
+    }
     return renderer.length > 28 ? `${renderer.slice(0, 25)}...` : renderer;
   }
 
@@ -1250,12 +1555,13 @@ export class DemoApp {
     const layer = this.currentLayer;
     const timeMeta = this.z!.getTimeMeta();
     const depthMeta = this.z!.getDepthMeta();
-    const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
-    const includeTime = this.currentBackend === "geovideo" || shouldExportSelectedTime(
-      timeMs,
-      timeMeta.max,
-      this.params.limitEnd,
-    );
+    const timeMs =
+      timeMeta.values?.[this.params.timeIndex] ??
+      timeMeta.current ??
+      timeMeta.max;
+    const includeTime =
+      this.currentBackend === "geovideo" ||
+      shouldExportSelectedTime(timeMs, timeMeta.max, this.params.limitEnd);
     return {
       layerId: layer.id,
       layerKind: layer.kind,
@@ -1263,16 +1569,24 @@ export class DemoApp {
       sourceType: this.currentBackend,
       time: includeTime ? new Date(timeMs) : undefined,
       timeRange: this.currentTimeRange(),
-      geoVideo: this.currentBackend === "geovideo" ? this.currentGeoVideoOptions() : undefined,
+      geoVideo:
+        this.currentBackend === "geovideo"
+          ? this.currentGeoVideoOptions()
+          : undefined,
       depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
       settings: this.buildSettings(),
     };
   }
 
   private shareURL(): void {
-    if (!this.z) return;
+    if (!this.z) {
+      return;
+    }
     const timeMeta = this.z.getTimeMeta();
-    const timeMs = timeMeta.values?.[this.params.timeIndex] ?? timeMeta.current ?? timeMeta.max;
+    const timeMs =
+      timeMeta.values?.[this.params.timeIndex] ??
+      timeMeta.current ??
+      timeMeta.max;
     const center = this.map.getCenter();
     const state: HashState = {
       d: this.currentLayer.id,
@@ -1281,10 +1595,7 @@ export class DemoApp {
       p: this.params.palette,
       s: this.currentSourceId,
       pr: this.currentProjection,
-      c: [
-        Number(center.lng.toFixed(6)),
-        Number(center.lat.toFixed(6)),
-      ],
+      c: [Number(center.lng.toFixed(6)), Number(center.lat.toFixed(6))],
       z: Number(this.map.getZoom().toFixed(3)),
       b: Number(this.map.getBearing().toFixed(3)),
       pi: Number(this.map.getPitch().toFixed(3)),
@@ -1313,15 +1624,24 @@ export class DemoApp {
   }
 
   private updateSourceVisibility(): void {
-    if (this.sourceBlade) this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
+    if (this.sourceBlade) {
+      this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
+    }
     this.renderSourceSelect();
   }
 
   private renderSourceSelect(): void {
-    if (!this.sourceSelectEl) return;
+    if (!this.sourceSelectEl) {
+      return;
+    }
     this.sourceSelectEl.replaceChildren();
     for (const source of this.currentLayer.sources) {
-      const label = source.type === "zarr" ? "Zarr" : source.type === "wmts" ? "WMTS" : "GeoVideo";
+      const label =
+        source.type === "zarr"
+          ? "Zarr"
+          : source.type === "wmts"
+            ? "WMTS"
+            : "GeoVideo";
       const option = new Option(label, source.id);
       option.title = source.id;
       this.sourceSelectEl.appendChild(option);
@@ -1330,7 +1650,9 @@ export class DemoApp {
   }
 
   private applyHashCamera(hash: HashState | null): void {
-    if (!hash) return;
+    if (!hash) {
+      return;
+    }
 
     if (hash.pr === "mercator" || hash.pr === "globe") {
       this.currentProjection = hash.pr;
@@ -1349,9 +1671,15 @@ export class DemoApp {
     if (Array.isArray(hash.c) && hash.c.length === 2) {
       next.center = hash.c;
     }
-    if (Number.isFinite(hash.z)) next.zoom = hash.z;
-    if (Number.isFinite(hash.b)) next.bearing = hash.b;
-    if (Number.isFinite(hash.pi)) next.pitch = hash.pi;
+    if (Number.isFinite(hash.z)) {
+      next.zoom = hash.z;
+    }
+    if (Number.isFinite(hash.b)) {
+      next.bearing = hash.b;
+    }
+    if (Number.isFinite(hash.pi)) {
+      next.pitch = hash.pi;
+    }
 
     if (Object.keys(next).length > 0) {
       this.map.jumpTo(next);
@@ -1412,9 +1740,8 @@ export class DemoApp {
     this.params.particleDensity = d.particles?.density ?? 0.05;
     this.params.speed = d.particles?.speed ?? 1.0;
     this.params.fade = d.particles?.fade ?? 0.7;
-    this.params.renderMode = layer.kind === "scalar"
-      ? "raster"
-      : (d.renderMode ?? "particles");
+    this.params.renderMode =
+      layer.kind === "scalar" ? "raster" : (d.renderMode ?? "particles");
     this.params.opacity = d.raster?.opacity ?? 1;
     this.params.logScale = d.raster?.logScale ?? false;
     this.params.vibrance = d.raster?.vibrance ?? 0;
@@ -1433,9 +1760,8 @@ export class DemoApp {
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;
-    this.params.renderMode = layer.kind === "scalar"
-      ? "raster"
-      : (hash.rm ?? this.params.renderMode);
+    this.params.renderMode =
+      layer.kind === "scalar" ? "raster" : (hash.rm ?? this.params.renderMode);
     this.params.opacity = hash.op;
     this.params.logScale = hash.ls;
     this.params.vibrance = hash.vb;
@@ -1465,7 +1791,9 @@ export class DemoApp {
 
   private loadHashState(): HashState | null {
     const hash = location.hash.slice(1);
-    if (!hash) return null;
+    if (!hash) {
+      return null;
+    }
     try {
       return JSON.parse(atob(hash)) as HashState;
     } catch {

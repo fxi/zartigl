@@ -12,7 +12,9 @@ export class StoryWidgetLifecycle {
   private controller: AbortController | null = null;
   private cleanup: StoryWidgetCleanup | null = null;
 
-  constructor(private readonly onCleanupError: (error: unknown) => void = console.error) {}
+  constructor(
+    private readonly onCleanupError: (error: unknown) => void = console.error,
+  ) {}
 
   begin(): StoryWidgetRun {
     this.cancel();
@@ -21,14 +23,19 @@ export class StoryWidgetLifecycle {
     this.controller = controller;
     return {
       signal: controller.signal,
-      isCurrent: () => this.generation === generation && !controller.signal.aborted,
+      isCurrent: () =>
+        this.generation === generation && !controller.signal.aborted,
       runIfCurrent: (effect) => {
-        if (this.generation !== generation || controller.signal.aborted) return false;
+        if (this.generation !== generation || controller.signal.aborted) {
+          return false;
+        }
         effect();
         return true;
       },
       settle: (cleanup) => {
-        if (!cleanup) return;
+        if (!cleanup) {
+          return;
+        }
         if (this.generation !== generation || controller.signal.aborted) {
           this.invoke(cleanup);
           return;
@@ -44,7 +51,9 @@ export class StoryWidgetLifecycle {
     this.controller = null;
     const cleanup = this.cleanup;
     this.cleanup = null;
-    if (cleanup) this.invoke(cleanup);
+    if (cleanup) {
+      this.invoke(cleanup);
+    }
   }
 
   private invoke(cleanup: StoryWidgetCleanup): void {

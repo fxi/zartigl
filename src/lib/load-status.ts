@@ -26,19 +26,25 @@ export class ZartiglFrameUnavailableError extends Error {
 
 export function hasRenderableScalar(values: Float32Array): boolean {
   for (const value of values) {
-    if (Number.isFinite(value)) return true;
+    if (Number.isFinite(value)) {
+      return true;
+    }
   }
   return false;
 }
 
 export function hasRenderableVector(u: Float32Array, v: Float32Array): boolean {
   for (let index = 0; index < Math.min(u.length, v.length); index++) {
-    if (Number.isFinite(u[index]) && Number.isFinite(v[index])) return true;
+    if (Number.isFinite(u[index]) && Number.isFinite(v[index])) {
+      return true;
+    }
   }
   return false;
 }
 
-export function blockedStatus(error: ZartiglFrameUnavailableError): ZartiglStatus {
+export function blockedStatus(
+  error: ZartiglFrameUnavailableError,
+): ZartiglStatus {
   return {
     phase: "blocked",
     time: error.time,

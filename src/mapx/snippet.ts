@@ -1,4 +1,8 @@
-import type { GeoVideoOptions, TimeRange, ZartiglSettings } from "../lib/Zartigl";
+import type {
+  GeoVideoOptions,
+  TimeRange,
+  ZartiglSettings,
+} from "../lib/Zartigl";
 import type { CatalogEntry } from "../catalog/types";
 import pkg from "../../package.json";
 
@@ -26,11 +30,12 @@ export interface StandaloneDemoSnippetOptions extends MapxWidgetSnippetOptions {
   style?: string;
 }
 
-const maplibreVersion = pkg.devDependencies["maplibre-gl"].replace(/^[^\d]*/, "");
-const maplibreModuleUrl =
-  `https://cdn.jsdelivr.net/npm/maplibre-gl@${maplibreVersion}/+esm`;
-const maplibreCssUrl =
-  `https://cdn.jsdelivr.net/npm/maplibre-gl@${maplibreVersion}/dist/maplibre-gl.css`;
+const maplibreVersion = pkg.devDependencies["maplibre-gl"].replace(
+  /^[^\d]*/,
+  "",
+);
+const maplibreModuleUrl = `https://cdn.jsdelivr.net/npm/maplibre-gl@${maplibreVersion}/+esm`;
+const maplibreCssUrl = `https://cdn.jsdelivr.net/npm/maplibre-gl@${maplibreVersion}/dist/maplibre-gl.css`;
 
 const eoxCloudlessStyle = `{
   version: 8,
@@ -63,8 +68,12 @@ function codeValue(value: unknown): string {
 }
 
 function codeTime(value: string | number | Date): string {
-  if (value instanceof Date) return `new Date(${codeString(value.toISOString())})`;
-  if (typeof value === "string") return `new Date(${codeString(value)})`;
+  if (value instanceof Date) {
+    return `new Date(${codeString(value.toISOString())})`;
+  }
+  if (typeof value === "string") {
+    return `new Date(${codeString(value)})`;
+  }
   return String(value);
 }
 
@@ -85,7 +94,7 @@ function indentBlock(value: string, spaces: number): string {
   const pad = " ".repeat(spaces);
   return value
     .split("\n")
-    .map((line) => line.length > 0 ? `${pad}${line}` : line)
+    .map((line) => (line.length > 0 ? `${pad}${line}` : line))
     .join("\n");
 }
 
@@ -106,32 +115,38 @@ export function effectiveSnippetSettings(
   sourceType: SnippetSourceType,
   settings?: Partial<ZartiglSettings>,
 ): Partial<ZartiglSettings> | undefined {
-  if (!settings) return undefined;
-  const keys: Array<keyof ZartiglSettings> = layerKind === "vector"
-    ? [
-        "palette",
-        "opacity",
-        "logScale",
-        "vibrance",
-        "particleDensity",
-        "speed",
-        "fade",
-        "renderMode",
-        "particleState",
-        "rgba8MaxParticleZoom",
-      ]
-    : sourceType === "wmts"
-      ? ["opacity"]
-      : ["palette", "opacity", "logScale", "vibrance", "colorDomain"];
+  if (!settings) {
+    return undefined;
+  }
+  const keys: Array<keyof ZartiglSettings> =
+    layerKind === "vector"
+      ? [
+          "palette",
+          "opacity",
+          "logScale",
+          "vibrance",
+          "particleDensity",
+          "speed",
+          "fade",
+          "renderMode",
+          "particleState",
+          "rgba8MaxParticleZoom",
+        ]
+      : sourceType === "wmts"
+        ? ["opacity"]
+        : ["palette", "opacity", "logScale", "vibrance", "colorDomain"];
   const effective = pickSettings(settings, keys);
   return Object.keys(effective).length > 0 ? effective : undefined;
 }
 
-export function buildMapxWidgetSnippet(options: MapxWidgetSnippetOptions): string {
+export function buildMapxWidgetSnippet(
+  options: MapxWidgetSnippetOptions,
+): string {
   const source = options.source ?? "auto";
   const settings = effectiveSnippetSettings(
     options.layerKind,
-    options.sourceType ?? (source === "wmts" || source === "geovideo" ? source : "zarr"),
+    options.sourceType ??
+      (source === "wmts" || source === "geovideo" ? source : "zarr"),
     options.settings,
   );
   const optionLines = [
@@ -148,10 +163,14 @@ export function buildMapxWidgetSnippet(options: MapxWidgetSnippetOptions): strin
     optionLines.push(`        time: ${codeTime(options.time)},`);
   }
   if (options.timeRange != null) {
-    optionLines.push(`        timeRange: ${indentedValue(options.timeRange, 10)},`);
+    optionLines.push(
+      `        timeRange: ${indentedValue(options.timeRange, 10)},`,
+    );
   }
   if (options.geoVideo != null) {
-    optionLines.push(`        geoVideo: ${indentedValue(options.geoVideo, 10)},`);
+    optionLines.push(
+      `        geoVideo: ${indentedValue(options.geoVideo, 10)},`,
+    );
   }
   if (options.depth != null) {
     optionLines.push(`        depth: ${options.depth},`);
@@ -194,29 +213,36 @@ ${optionLines.join("\n")}
 }`;
 }
 
-export function buildStandaloneDemoSnippet(options: StandaloneDemoSnippetOptions): string {
+export function buildStandaloneDemoSnippet(
+  options: StandaloneDemoSnippetOptions,
+): string {
   const moduleBaseUrl =
-    options.moduleBaseUrl ?? `https://cdn.jsdelivr.net/npm/@fxi/zartigl@${pkg.version}/dist`;
+    options.moduleBaseUrl ??
+    `https://cdn.jsdelivr.net/npm/@fxi/zartigl@${pkg.version}/dist`;
   const source = options.source ?? "auto";
   const settings = effectiveSnippetSettings(
     options.layerKind,
-    options.sourceType ?? (source === "wmts" || source === "geovideo" ? source : "zarr"),
+    options.sourceType ??
+      (source === "wmts" || source === "geovideo" ? source : "zarr"),
     options.settings,
   );
-  const timeRangeLine = options.timeRange == null
-    ? ""
-    : `  timeRange: ${indentedValue(options.timeRange, 2)},\n`;
-  const geoVideoLine = options.geoVideo == null
-    ? ""
-    : `  geoVideo: ${indentedValue(options.geoVideo, 2)},\n`;
-  const settingsLine = settings == null
-    ? ""
-    : `  settings: ${indentedValue(settings, 2)},\n`;
-  const timeLine = options.time == null ? "" : `  time: ${codeTime(options.time)},\n`;
+  const timeRangeLine =
+    options.timeRange == null
+      ? ""
+      : `  timeRange: ${indentedValue(options.timeRange, 2)},\n`;
+  const geoVideoLine =
+    options.geoVideo == null
+      ? ""
+      : `  geoVideo: ${indentedValue(options.geoVideo, 2)},\n`;
+  const settingsLine =
+    settings == null ? "" : `  settings: ${indentedValue(settings, 2)},\n`;
+  const timeLine =
+    options.time == null ? "" : `  time: ${codeTime(options.time)},\n`;
   const depthLine = options.depth == null ? "" : `  depth: ${options.depth},\n`;
   const center = options.center ?? [0, 20];
   const projection = options.projection ?? "mercator";
-  const style = options.style == null ? eoxCloudlessStyle : codeString(options.style);
+  const style =
+    options.style == null ? eoxCloudlessStyle : codeString(options.style);
   const runtime = `map.setProjection({ type: ${codeString(projection)} });
 map.jumpTo({
   center: [${codeNumber(center[0])}, ${codeNumber(center[1])}],
@@ -266,7 +292,9 @@ ${indentBlock(runtime, 2)}
 });`;
 }
 
-export function buildStandaloneDemoHtml(options: StandaloneDemoSnippetOptions): string {
+export function buildStandaloneDemoHtml(
+  options: StandaloneDemoSnippetOptions,
+): string {
   const script = buildStandaloneDemoSnippet(options);
   return `<!doctype html>
 <html lang="en">

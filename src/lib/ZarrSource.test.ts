@@ -25,12 +25,18 @@ function attrs(dimensions: string[], extra: Record<string, unknown> = {}) {
 
 function chunk(values: number[]) {
   const bytes = new Float32Array(values);
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  );
 }
 
 function chunkFloat64(values: number[]) {
   const bytes = new Float64Array(values);
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  );
 }
 
 function response(body: unknown, ok = true, status = ok ? 200 : 404): Response {
@@ -45,7 +51,9 @@ function response(body: unknown, ok = true, status = ok ? 200 : 404): Response {
 function installFetch(routes: Record<string, Response>) {
   const fetchMock = vi.fn(async (url: string) => {
     const res = routes[url];
-    if (!res) return response(new ArrayBuffer(0), false, 404);
+    if (!res) {
+      return response(new ArrayBuffer(0), false, 404);
+    }
     return res;
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -83,7 +91,12 @@ function baseRoutes(extra: Record<string, Response> = {}) {
   };
 }
 
-function dataValue(timeIdx: number, depthIdx: number, latIdx: number, lonIdx: number) {
+function dataValue(
+  timeIdx: number,
+  depthIdx: number,
+  latIdx: number,
+  lonIdx: number,
+) {
   return timeIdx * 1000 + depthIdx * 100 + latIdx * 10 + lonIdx;
 }
 
@@ -99,15 +112,26 @@ function dataChunk(timeIdx: number, depthIdx: number, multiplier = 1) {
 
 function multidimensionalChunk(order: "C" | "F", timeStart: number) {
   const shape = [2, 2, 2, 3];
-  const values = new Array<number>(shape.reduce((total, size) => total * size, 1));
+  const values = new Array<number>(
+    shape.reduce((total, size) => total * size, 1),
+  );
   for (let time = 0; time < shape[0]; time++) {
     for (let depth = 0; depth < shape[1]; depth++) {
       for (let latitude = 0; latitude < shape[2]; latitude++) {
         for (let longitude = 0; longitude < shape[3]; longitude++) {
-          const offset = order === "F"
-            ? time + shape[0] * (depth + shape[1] * (latitude + shape[2] * longitude))
-            : (((time * shape[1] + depth) * shape[2] + latitude) * shape[3]) + longitude;
-          values[offset] = dataValue(timeStart + time, depth, latitude, longitude);
+          const offset =
+            order === "F"
+              ? time +
+                shape[0] *
+                  (depth + shape[1] * (latitude + shape[2] * longitude))
+              : ((time * shape[1] + depth) * shape[2] + latitude) * shape[3] +
+                longitude;
+          values[offset] = dataValue(
+            timeStart + time,
+            depth,
+            latitude,
+            longitude,
+          );
         }
       }
     }
@@ -148,7 +172,9 @@ describe("ZarrSource point sampling", () => {
     const source = new ZarrSource(root);
     await Promise.all([source.init(), source.init(), source.init()]);
 
-    expect(fetchMock.mock.calls.filter(([url]) => url === `${root}/.zmetadata`)).toHaveLength(1);
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === `${root}/.zmetadata`),
+    ).toHaveLength(1);
     expect(source.getCoords().time).toHaveLength(4);
   });
 
@@ -214,7 +240,7 @@ describe("ZarrSource point sampling", () => {
 
     for (const { units, start } of cases) {
       const routes: Record<string, Response> = baseRoutes();
-      const metadata = await routes[`${root}/.zmetadata`].json() as {
+      const metadata = (await routes[`${root}/.zmetadata`].json()) as {
         metadata: Record<string, Record<string, unknown>>;
       };
       metadata.metadata["time/.zattrs"].units = units;
@@ -259,31 +285,35 @@ describe("ZarrSource point sampling", () => {
 
   it("rejects unsupported calendars instead of guessing dates", async () => {
     const routes: Record<string, Response> = baseRoutes();
-    const metadata = await routes[`${root}/.zmetadata`].json() as {
+    const metadata = (await routes[`${root}/.zmetadata`].json()) as {
       metadata: Record<string, Record<string, unknown>>;
     };
     metadata.metadata["time/.zattrs"].calendar = "360_day";
     installFetch(routes);
 
     const source = new ZarrSource(root);
-    await expect(source.init()).rejects.toThrow("Unsupported Zarr time calendar: 360_day");
+    await expect(source.init()).rejects.toThrow(
+      "Unsupported Zarr time calendar: 360_day",
+    );
   });
 
   it("rejects invalid time epochs instead of normalizing dates", async () => {
     const routes: Record<string, Response> = baseRoutes();
-    const metadata = await routes[`${root}/.zmetadata`].json() as {
+    const metadata = (await routes[`${root}/.zmetadata`].json()) as {
       metadata: Record<string, Record<string, unknown>>;
     };
     metadata.metadata["time/.zattrs"].units = "hours since 2020-02-31";
     installFetch(routes);
 
     const source = new ZarrSource(root);
-    await expect(source.init()).rejects.toThrow("Invalid Zarr time epoch: 2020-02-31");
+    await expect(source.init()).rejects.toThrow(
+      "Invalid Zarr time epoch: 2020-02-31",
+    );
   });
 
   it("preserves native elevation values and semantics", async () => {
     const routes: Record<string, Response> = baseRoutes();
-    const metadata = await routes[`${root}/.zmetadata`].json() as {
+    const metadata = (await routes[`${root}/.zmetadata`].json()) as {
       metadata: Record<string, Record<string, unknown>>;
     };
     delete metadata.metadata["depth/.zarray"];
@@ -312,11 +342,20 @@ describe("ZarrSource point sampling", () => {
     "extracts logical time and depth planes from %s-order multidimensional chunks",
     async (order) => {
       const routes: Record<string, Response> = baseRoutes();
-      const metadata = await routes[`${root}/.zmetadata`].json() as {
+      const metadata = (await routes[`${root}/.zmetadata`].json()) as {
         metadata: Record<string, Record<string, unknown>>;
       };
-      metadata.metadata["u/.zarray"] = zarray([4, 2, 2, 3], [2, 2, 2, 3], order);
-      metadata.metadata["u/.zattrs"] = attrs(["time", "depth", "latitude", "longitude"]);
+      metadata.metadata["u/.zarray"] = zarray(
+        [4, 2, 2, 3],
+        [2, 2, 2, 3],
+        order,
+      );
+      metadata.metadata["u/.zattrs"] = attrs([
+        "time",
+        "depth",
+        "latitude",
+        "longitude",
+      ]);
       metadata.metadata["latitude/.zarray"] = zarray([2], [2]);
       metadata.metadata["longitude/.zarray"] = zarray([3], [3]);
       metadata.metadata["depth/.zarray"] = zarray([2], [2]);
@@ -342,27 +381,38 @@ describe("ZarrSource point sampling", () => {
       });
 
       expect(first.url).toBe(`${root}/u/1.0.0.0`);
-      expect(Array.from(first.data)).toEqual([2100, 2101, 2102, 2110, 2111, 2112]);
-      expect(Array.from(second.data)).toEqual([3100, 3101, 3102, 3110, 3111, 3112]);
-      expect(fetchMock.mock.calls.filter(([url]) => url === `${root}/u/1.0.0.0`)).toHaveLength(1);
+      expect(Array.from(first.data)).toEqual([
+        2100, 2101, 2102, 2110, 2111, 2112,
+      ]);
+      expect(Array.from(second.data)).toEqual([
+        3100, 3101, 3102, 3110, 3111, 3112,
+      ]);
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === `${root}/u/1.0.0.0`),
+      ).toHaveLength(1);
     },
   );
 
   it("ignores store-level vertical coordinates for surface variables", async () => {
     const routes: Record<string, Response> = baseRoutes();
-    const metadata = await routes[`${root}/.zmetadata`].json() as {
+    const metadata = (await routes[`${root}/.zmetadata`].json()) as {
       metadata: Record<string, Record<string, unknown>>;
     };
     metadata.metadata["surface/.zarray"] = zarray([4, 2, 3], [2, 2, 3]);
-    metadata.metadata["surface/.zattrs"] = attrs(["time", "latitude", "longitude"]);
+    metadata.metadata["surface/.zattrs"] = attrs([
+      "time",
+      "latitude",
+      "longitude",
+    ]);
     metadata.metadata["latitude/.zarray"] = zarray([2], [2]);
     metadata.metadata["longitude/.zarray"] = zarray([3], [3]);
     routes[`${root}/latitude/0`] = response(chunk([10, 20]));
     routes[`${root}/longitude/0`] = response(chunk([-10, 0, 10]));
-    routes[`${root}/surface/1.0.0`] = response(chunk([
-      2000, 2001, 2002, 2010, 2011, 2012,
-      3000, 3001, 3002, 3010, 3011, 3012,
-    ]));
+    routes[`${root}/surface/1.0.0`] = response(
+      chunk([
+        2000, 2001, 2002, 2010, 2011, 2012, 3000, 3001, 3002, 3010, 3011, 3012,
+      ]),
+    );
     installFetch(routes);
 
     const source = new ZarrSource(root);
@@ -376,13 +426,17 @@ describe("ZarrSource point sampling", () => {
 
     expect(source.getVerticalDimension("surface")).toBeUndefined();
     expect(result.url).toBe(`${root}/surface/1.0.0`);
-    expect(Array.from(result.data)).toEqual([3000, 3001, 3002, 3010, 3011, 3012]);
+    expect(Array.from(result.data)).toEqual([
+      3000, 3001, 3002, 3010, 3011, 3012,
+    ]);
   });
 
   it("preserves missing status and URL when extracting a spatial plane", async () => {
-    installFetch(baseRoutes({
-      [`${root}/u/2.1.0.0`]: response(new ArrayBuffer(0), false, 403),
-    }));
+    installFetch(
+      baseRoutes({
+        [`${root}/u/2.1.0.0`]: response(new ArrayBuffer(0), false, 403),
+      }),
+    );
     const source = new ZarrSource(root);
     await source.init();
 
@@ -393,17 +447,23 @@ describe("ZarrSource point sampling", () => {
       longitudeChunkIndex: 0,
     });
 
-    expect(result).toMatchObject({ missing: true, status: 403, url: `${root}/u/2.1.0.0` });
+    expect(result).toMatchObject({
+      missing: true,
+      status: 403,
+      url: `${root}/u/2.1.0.0`,
+    });
     expect(result.data).toHaveLength(12);
     expect(result.data.every(Number.isNaN)).toBe(true);
   });
 
   it("samples a time series at the nearest lon/lat/depth grid point", async () => {
-    installFetch(baseRoutes({
-      [`${root}/u/0.1.0.0`]: dataChunk(0, 1),
-      [`${root}/u/1.1.0.0`]: dataChunk(1, 1),
-      [`${root}/u/2.1.0.0`]: dataChunk(2, 1),
-    }));
+    installFetch(
+      baseRoutes({
+        [`${root}/u/0.1.0.0`]: dataChunk(0, 1),
+        [`${root}/u/1.1.0.0`]: dataChunk(1, 1),
+        [`${root}/u/2.1.0.0`]: dataChunk(2, 1),
+      }),
+    );
 
     const source = new ZarrSource(root);
     const result = await source.sampleTimeSeries({
@@ -427,9 +487,11 @@ describe("ZarrSource point sampling", () => {
   });
 
   it("normalizes wrapped longitudes before sampling", async () => {
-    installFetch(baseRoutes({
-      [`${root}/u/0.0.0.0`]: dataChunk(0, 0),
-    }));
+    installFetch(
+      baseRoutes({
+        [`${root}/u/0.0.0.0`]: dataChunk(0, 0),
+      }),
+    );
 
     const source = new ZarrSource(root);
     const result = await source.sampleTimeSeries({
@@ -445,11 +507,13 @@ describe("ZarrSource point sampling", () => {
   });
 
   it("samples a vertical profile at the nearest time and location", async () => {
-    installFetch(baseRoutes({
-      [`${root}/u/1.0.0.0`]: dataChunk(1, 0),
-      [`${root}/u/1.1.0.0`]: dataChunk(1, 1),
-      [`${root}/u/1.2.0.0`]: dataChunk(1, 2),
-    }));
+    installFetch(
+      baseRoutes({
+        [`${root}/u/1.0.0.0`]: dataChunk(1, 0),
+        [`${root}/u/1.1.0.0`]: dataChunk(1, 1),
+        [`${root}/u/1.2.0.0`]: dataChunk(1, 2),
+      }),
+    );
 
     const source = new ZarrSource(root);
     const result = await source.sampleVerticalProfile({
@@ -465,10 +529,12 @@ describe("ZarrSource point sampling", () => {
   });
 
   it("converts missing point chunks to NaN without hiding other variables", async () => {
-    installFetch(baseRoutes({
-      [`${root}/u/0.0.0.0`]: response(new ArrayBuffer(0), false, 403),
-      [`${root}/v/0.0.0.0`]: dataChunk(0, 0, -1),
-    }));
+    installFetch(
+      baseRoutes({
+        [`${root}/u/0.0.0.0`]: response(new ArrayBuffer(0), false, 403),
+        [`${root}/v/0.0.0.0`]: dataChunk(0, 0, -1),
+      }),
+    );
 
     const source = new ZarrSource(root);
     const result = await source.sampleTimeSeries({
@@ -502,7 +568,11 @@ describe("ZarrSource point sampling", () => {
     const missing = await source.fetchChunkResult("u", [0, 0, 0, 0]);
     const available = await source.fetchChunkResult("u", [0, 0, 0, 0]);
 
-    expect(missing).toMatchObject({ missing: true, status: 403, url: chunkUrl });
+    expect(missing).toMatchObject({
+      missing: true,
+      status: 403,
+      url: chunkUrl,
+    });
     expect(missing.data.every(Number.isNaN)).toBe(true);
     expect(available).toMatchObject({ missing: false, url: chunkUrl });
     expect(available.data[1]).toBe(1);
@@ -510,11 +580,13 @@ describe("ZarrSource point sampling", () => {
   });
 
   it("stops after a configured run of all-missing samples", async () => {
-    installFetch(baseRoutes({
-      [`${root}/u/0.0.0.0`]: response(new ArrayBuffer(0), false, 403),
-      [`${root}/u/1.0.0.0`]: response(new ArrayBuffer(0), false, 403),
-      [`${root}/u/2.0.0.0`]: dataChunk(2, 0),
-    }));
+    installFetch(
+      baseRoutes({
+        [`${root}/u/0.0.0.0`]: response(new ArrayBuffer(0), false, 403),
+        [`${root}/u/1.0.0.0`]: response(new ArrayBuffer(0), false, 403),
+        [`${root}/u/2.0.0.0`]: dataChunk(2, 0),
+      }),
+    );
 
     const source = new ZarrSource(root);
     const result = await source.sampleTimeSeries({

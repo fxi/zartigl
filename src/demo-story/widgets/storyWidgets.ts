@@ -7,10 +7,19 @@ import ensoJson from "../data/enso.json";
 import balticHypoxiaJson from "../data/baltic-hypoxia.json";
 import chidoTrackJson from "../data/chido-track.json";
 import type { BalticHypoxiaStoryData, EnsoStoryData } from "../types";
-import { renderArcticChart, renderBalticHypoxiaChart, renderChartStatus, renderEnsoChart, renderMayotteChart } from "../charts/StoryCharts";
+import {
+  renderArcticChart,
+  renderBalticHypoxiaChart,
+  renderChartStatus,
+  renderEnsoChart,
+  renderMayotteChart,
+} from "../charts/StoryCharts";
 import { ZartiglStoryView } from "../adapters/ZartiglStoryView";
 
-function chartOptions(config: Record<string, unknown>, context: StoryWidgetContext) {
+function chartOptions(
+  config: Record<string, unknown>,
+  context: StoryWidgetContext,
+) {
   const compact = mobileMediaQuery().matches;
   return {
     interactiveTime: config.interactiveTime === true,
@@ -22,15 +31,25 @@ function chartOptions(config: Record<string, unknown>, context: StoryWidgetConte
   };
 }
 
-function requiredView(config: Record<string, unknown>, context: StoryWidgetContext): ZartiglStoryView {
+function requiredView(
+  config: Record<string, unknown>,
+  context: StoryWidgetContext,
+): ZartiglStoryView {
   const viewId = config.view;
-  if (typeof viewId !== "string") throw new Error("Widget config.view is required");
+  if (typeof viewId !== "string") {
+    throw new Error("Widget config.view is required");
+  }
   const adapter = context.getViewAdapter(viewId);
-  if (!(adapter instanceof ZartiglStoryView)) throw new Error(`Widget requires an active Zartigl view: ${viewId}`);
+  if (!(adapter instanceof ZartiglStoryView)) {
+    throw new Error(`Widget requires an active Zartigl view: ${viewId}`);
+  }
   return adapter;
 }
 
-function widgetShell(host: HTMLElement, context: StoryWidgetContext): { chart: HTMLElement; provenance: HTMLElement } {
+function widgetShell(
+  host: HTMLElement,
+  context: StoryWidgetContext,
+): { chart: HTMLElement; provenance: HTMLElement } {
   const chart = document.createElement("div");
   chart.className = "chart";
   const caption = document.createElement("p");
@@ -46,7 +65,15 @@ function widgetShell(host: HTMLElement, context: StoryWidgetContext): { chart: H
 }
 
 function formatTime(ms: number): string {
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" }).format(new Date(ms));
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(ms));
 }
 
 function datasetForVariable(variableId: string): string {
@@ -56,33 +83,70 @@ function datasetForVariable(variableId: string): string {
 }
 
 export function registerStoryWidgets(registry: StoryRegistry): void {
-  registry.registerWidgetType("arctic-series", async (host, config, context) => {
-    const { chart, provenance } = widgetShell(host, context);
-    const view = requiredView(config, context);
-    view.setArcticMeasurementPoint();
-    renderChartStatus(chart, "Loading measurements");
-    const result = await view.zartigl.queryTimeSeries({ longitude: ARCTIC_POINT.longitude, latitude: ARCTIC_POINT.latitude, maxPoints: 420 });
-    if (context.signal.aborted) return;
-    view.setArcticMeasurementPoint({ longitude: result.longitude, latitude: result.latitude });
-    const controller = renderArcticChart(chart, result, "sithick", view.zartigl.getVariableMeta().units ?? "m", chartOptions(config, context));
-    context.setTimeCursor(controller.setCursor);
-    provenance.textContent = `${datasetForVariable("sithick")} · nearest grid point ${result.latitude.toFixed(3)}°, ${result.longitude.toFixed(3)}° · ${result.points.length} samples`;
-    return () => controller.destroy();
-  });
+  registry.registerWidgetType(
+    "arctic-series",
+    async (host, config, context) => {
+      const { chart, provenance } = widgetShell(host, context);
+      const view = requiredView(config, context);
+      view.setArcticMeasurementPoint();
+      renderChartStatus(chart, "Loading measurements");
+      const result = await view.zartigl.queryTimeSeries({
+        longitude: ARCTIC_POINT.longitude,
+        latitude: ARCTIC_POINT.latitude,
+        maxPoints: 420,
+      });
+      if (context.signal.aborted) {
+        return;
+      }
+      view.setArcticMeasurementPoint({
+        longitude: result.longitude,
+        latitude: result.latitude,
+      });
+      const controller = renderArcticChart(
+        chart,
+        result,
+        "sithick",
+        view.zartigl.getVariableMeta().units ?? "m",
+        chartOptions(config, context),
+      );
+      context.setTimeCursor(controller.setCursor);
+      provenance.textContent = `${datasetForVariable(
+        "sithick",
+      )} · nearest grid point ${result.latitude.toFixed(
+        3,
+      )}°, ${result.longitude.toFixed(3)}° · ${result.points.length} samples`;
+      return () => controller.destroy();
+    },
+  );
   registry.registerWidgetType("enso-series", (host, config, context) => {
-    if (context.signal.aborted) return;
+    if (context.signal.aborted) {
+      return;
+    }
     const { chart, provenance } = widgetShell(host, context);
     const data = ensoJson as EnsoStoryData;
-    const controller = renderEnsoChart(chart, data, chartOptions(config, context));
+    const controller = renderEnsoChart(
+      chart,
+      data,
+      chartOptions(config, context),
+    );
     context.setTimeCursor(controller.setCursor);
-    provenance.textContent = `Area-weighted native-grid means · ${data.source.datasetId} · generated ${formatTime(Date.parse(data.generatedAt))}`;
+    provenance.textContent = `Area-weighted native-grid means · ${
+      data.source.datasetId
+    } · generated ${formatTime(Date.parse(data.generatedAt))}`;
     return () => controller.destroy();
   });
   registry.registerWidgetType("baltic-hypoxia", (host, config, context) => {
-    if (context.signal.aborted) return;
+    if (context.signal.aborted) {
+      return;
+    }
     const { chart, provenance } = widgetShell(host, context);
     const data = balticHypoxiaJson as BalticHypoxiaStoryData;
-    const controller = renderBalticHypoxiaChart(chart, data, chartOptions(config, context), context.locale);
+    const controller = renderBalticHypoxiaChart(
+      chart,
+      data,
+      chartOptions(config, context),
+      context.locale,
+    );
     context.setTimeCursor(controller.setCursor);
     const limitation = context.locale.startsWith("fr")
       ? "réanalyse modélisée; l’O₂ profond peut être surestimé"
@@ -95,7 +159,9 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
       link.rel = "noopener noreferrer";
       link.textContent = reference.label;
       provenance.append(link);
-      if (index < data.references.length - 1) provenance.append(" · ");
+      if (index < data.references.length - 1) {
+        provenance.append(" · ");
+      }
     });
     return () => controller.destroy();
   });
@@ -103,11 +169,27 @@ export function registerStoryWidgets(registry: StoryRegistry): void {
     const { chart, provenance } = widgetShell(host, context);
     const view = requiredView(config, context);
     renderChartStatus(chart, "Loading measurements");
-    const result = await view.zartigl.queryTimeSeries({ longitude: MAYOTTE_POINT.longitude, latitude: MAYOTTE_POINT.latitude, maxPoints: 180 });
-    if (context.signal.aborted) return;
-    const controller = renderMayotteChart(chart, result, chartOptions(config, context));
+    const result = await view.zartigl.queryTimeSeries({
+      longitude: MAYOTTE_POINT.longitude,
+      latitude: MAYOTTE_POINT.latitude,
+      maxPoints: 180,
+    });
+    if (context.signal.aborted) {
+      return;
+    }
+    const controller = renderMayotteChart(
+      chart,
+      result,
+      chartOptions(config, context),
+    );
     context.setTimeCursor(controller.setCursor);
-    provenance.textContent = `Hourly sea-surface wind (not station gust): ${datasetForVariable("eastward_wind")} · nearest grid point ${result.latitude.toFixed(4)}°, ${result.longitude.toFixed(4)}° · Track: ${chidoTrackJson.source.name} ${chidoTrackJson.source.version}`;
+    provenance.textContent = `Hourly sea-surface wind (not station gust): ${datasetForVariable(
+      "eastward_wind",
+    )} · nearest grid point ${result.latitude.toFixed(
+      4,
+    )}°, ${result.longitude.toFixed(4)}° · Track: ${
+      chidoTrackJson.source.name
+    } ${chidoTrackJson.source.version}`;
     return () => controller.destroy();
   });
 }

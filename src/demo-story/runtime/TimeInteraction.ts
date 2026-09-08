@@ -29,10 +29,14 @@ export class StoryTimeInteraction {
     private readonly frames: StoryFrameScheduler = browserFrames,
   ) {}
 
-  get interacting(): boolean { return this.active; }
+  get interacting(): boolean {
+    return this.active;
+  }
 
   begin(): void {
-    if (this.active) return;
+    if (this.active) {
+      return;
+    }
     this.active = true;
     this.resumeAfterInteraction = this.callbacks.isPlaying();
     this.latestTime = null;
@@ -41,21 +45,31 @@ export class StoryTimeInteraction {
   }
 
   request(time: number): void {
-    if (!this.active || !Number.isFinite(time)) return;
+    if (!this.active || !Number.isFinite(time)) {
+      return;
+    }
     this.latestTime = time;
     this.callbacks.present(time);
-    if (this.frame !== null) return;
+    if (this.frame !== null) {
+      return;
+    }
     this.frame = this.frames.request(() => {
       this.frame = null;
-      if (!this.active || this.latestTime === null) return;
+      if (!this.active || this.latestTime === null) {
+        return;
+      }
       this.applyLatest();
     });
   }
 
   end(): void {
-    if (!this.active) return;
+    if (!this.active) {
+      return;
+    }
     this.cancelFrame();
-    if (this.latestTime !== null && this.latestTime !== this.appliedTime) this.applyLatest();
+    if (this.latestTime !== null && this.latestTime !== this.appliedTime) {
+      this.applyLatest();
+    }
     const time = this.latestTime;
     const resume = this.resumeAfterInteraction;
     this.active = false;
@@ -76,13 +90,17 @@ export class StoryTimeInteraction {
 
   private applyLatest(): void {
     const time = this.latestTime;
-    if (time === null) return;
+    if (time === null) {
+      return;
+    }
     this.appliedTime = time;
     this.callbacks.apply(time);
   }
 
   private cancelFrame(): void {
-    if (this.frame === null) return;
+    if (this.frame === null) {
+      return;
+    }
     this.frames.cancel(this.frame);
     this.frame = null;
   }

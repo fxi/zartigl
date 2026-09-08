@@ -62,12 +62,21 @@ export interface StoryTextBlock extends StoryBlockBase {
   variant?: "standard" | "small";
 }
 
-export type StoryBlock = StoryCopyBlock | StoryViewBlock | StoryWidgetBlock | StoryTextBlock;
+export type StoryBlock =
+  | StoryCopyBlock
+  | StoryViewBlock
+  | StoryWidgetBlock
+  | StoryTextBlock;
 
 export type StoryPlayback =
   | { mode: "none" }
   | { mode: "autoplay" }
-  | { mode: "sequence"; times: string[]; intervalMs: number; direction?: "loop" | "ping-pong" };
+  | {
+      mode: "sequence";
+      times: string[];
+      intervalMs: number;
+      direction?: "loop" | "ping-pong";
+    };
 
 export interface StoryScene {
   id: string;

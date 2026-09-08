@@ -22,7 +22,12 @@ export interface CatalogVectorDerivation {
 
 export type CatalogVariables =
   | { kind: "scalar"; value: string }
-  | { kind: "vector"; u?: string; v?: string; derivation?: CatalogVectorDerivation };
+  | {
+      kind: "vector";
+      u?: string;
+      v?: string;
+      derivation?: CatalogVectorDerivation;
+    };
 
 interface CatalogSourceBase {
   id: string;
@@ -53,7 +58,10 @@ export interface CatalogGeoVideoSource extends CatalogSourceBase {
   manifestUrl: string;
 }
 
-export type CatalogSource = CatalogZarrSource | CatalogWmtsSource | CatalogGeoVideoSource;
+export type CatalogSource =
+  | CatalogZarrSource
+  | CatalogWmtsSource
+  | CatalogGeoVideoSource;
 export type CatalogSourceType = CatalogSource["type"];
 export type CatalogSourcePreference = "auto" | CatalogSourceType | string;
 

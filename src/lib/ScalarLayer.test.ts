@@ -34,19 +34,25 @@ function scalarData(overrides: Partial<VelocityData> = {}): VelocityData {
 
 describe("ScalarLayer point sampling", () => {
   it("rejects invalid fixed color domains", () => {
-    expect(() => new ScalarLayer({
-      id: "invalid-domain",
-      source: "https://example.test/scalar.zarr",
-      variable: "temperature",
-      colorDomain: [3, -3],
-    })).toThrow(/finite, increasing/);
+    expect(
+      () =>
+        new ScalarLayer({
+          id: "invalid-domain",
+          source: "https://example.test/scalar.zarr",
+          variable: "temperature",
+          colorDomain: [3, -3],
+        }),
+    ).toThrow(/finite, increasing/);
   });
 
   it("re-encodes the active frame when the color domain changes", () => {
     const data = scalarData();
     const layer = layerWithData(data);
-    const field = (layer as unknown as { activeField: VelocityField }).activeField;
-    const update = vi.spyOn(field, "update").mockImplementation(() => undefined);
+    const field = (layer as unknown as { activeField: VelocityField })
+      .activeField;
+    const update = vi
+      .spyOn(field, "update")
+      .mockImplementation(() => undefined);
 
     layer.setColorDomain([-3, 3]);
 
@@ -70,10 +76,12 @@ describe("ScalarLayer point sampling", () => {
     const ascending = layerWithData(scalarData({ latDescending: false }));
     const descending = layerWithData(scalarData({ latDescending: true }));
 
-    await expect(ascending.samplePoint({ longitude: 1, latitude: 12 }))
-      .resolves.toMatchObject({ value: 21 });
-    await expect(descending.samplePoint({ longitude: 1, latitude: 12 }))
-      .resolves.toMatchObject({ value: 11 });
+    await expect(
+      ascending.samplePoint({ longitude: 1, latitude: 12 }),
+    ).resolves.toMatchObject({ value: 21 });
+    await expect(
+      descending.samplePoint({ longitude: 1, latitude: 12 }),
+    ).resolves.toMatchObject({ value: 11 });
   });
 
   it("returns nodata outside the displayed frame", async () => {
@@ -141,6 +149,8 @@ describe("ScalarLayer point sampling", () => {
     expect(cancel).toHaveBeenCalledOnce();
 
     layer.resume();
-    await vi.waitFor(() => expect(fetchFrame).toHaveBeenCalledWith(123, expect.any(Function)));
+    await vi.waitFor(() =>
+      expect(fetchFrame).toHaveBeenCalledWith(123, expect.any(Function)),
+    );
   });
 });

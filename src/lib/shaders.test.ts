@@ -38,7 +38,9 @@ describe("particle shader invalid-state guards", () => {
     expect(updateFrag).toContain("maxParticleSegmentPx");
     expect(updateFrag).toContain("bool invalidOffset = offset.x != offset.x");
     expect(updateFrag).toContain("segmentPx > maxParticleSegmentPx(zoomScale)");
-    expect(updateFrag).toContain("invalidInputPos || invalidNewPos || invalidOffset");
+    expect(updateFrag).toContain(
+      "invalidInputPos || invalidNewPos || invalidOffset",
+    );
   });
 
   it("hides invalid particles before projection in the draw shader", () => {
@@ -54,8 +56,12 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).toContain("vec2 headPos = currPos");
     expect(drawVert).toContain("vec2 tailPos = currPos - offset");
     expect(drawVert).toContain("segmentPx > maxSegmentPx");
-    expect(drawVert).toContain("dataValidityAtPosition(headPos) < u_valid_threshold");
-    expect(drawVert).toContain("dataValidityAtPosition(tailPos) < u_valid_threshold");
+    expect(drawVert).toContain(
+      "dataValidityAtPosition(headPos) < u_valid_threshold",
+    );
+    expect(drawVert).toContain(
+      "dataValidityAtPosition(tailPos) < u_valid_threshold",
+    );
     expect(drawVert).toContain("vec2 pos = mix(tailPos, headPos, a_is_curr)");
   });
 

@@ -6,7 +6,10 @@ import {
 } from "./snippet";
 import pkg from "../../package.json";
 
-const maplibreVersion = pkg.devDependencies["maplibre-gl"].replace(/^[^\d]*/, "");
+const maplibreVersion = pkg.devDependencies["maplibre-gl"].replace(
+  /^[^\d]*/,
+  "",
+);
 
 describe("buildMapxWidgetSnippet", () => {
   it("builds a MapX widget handler using the ARCO extension", () => {
@@ -28,19 +31,21 @@ describe("buildMapxWidgetSnippet", () => {
 
     expect(snippet).toContain("function handler()");
     expect(snippet).toContain("moduleLoad");
-    expect(snippet).toContain("\"arco_time_map_legend\"");
+    expect(snippet).toContain('"arco_time_map_legend"');
     expect(snippet).toContain("const local = {");
     expect(snippet).toContain("arco: null");
-    expect(snippet).toContain("const elLegend = getViewLegend(widget.opt.view, { clone: false })");
+    expect(snippet).toContain(
+      "const elLegend = getViewLegend(widget.opt.view, { clone: false })",
+    );
     expect(snippet).toContain("local.arco = new ArcoMapLegend({");
     expect(snippet).toContain("await local.arco.init()");
     expect(snippet).toContain("elInputs: widget.elContent");
-    expect(snippet).toContain("source: \"zarr\"");
-    expect(snippet).toContain("layer: \"b15be4e7-94ca-4887-a874-3fab37d29638\"");
+    expect(snippet).toContain('source: "zarr"');
+    expect(snippet).toContain('layer: "b15be4e7-94ca-4887-a874-3fab37d29638"');
     expect(snippet).toContain("settings: {");
-    expect(snippet).toContain("\"opacity\": 0.8");
+    expect(snippet).toContain('"opacity": 0.8');
     expect(snippet).toContain('"renderMode": "raster+particles"');
-    expect(snippet).toContain("time: new Date(\"2026-06-04T00:00:00.000Z\")");
+    expect(snippet).toContain('time: new Date("2026-06-04T00:00:00.000Z")');
     expect(snippet).toContain("depth: 10");
     expect(snippet).toContain('"trailing": "P1M"');
     expect(snippet).toContain("geoVideo: {");
@@ -125,15 +130,19 @@ describe("buildStandaloneDemoSnippet", () => {
     );
     expect(snippet).toContain("new maplibregl.Map({");
     expect(snippet).toContain("s2cloudless-2025_3857");
-    expect(snippet).toContain('EOxCloudless <a href="https://cloudless.eox.at">');
-    expect(snippet).toContain('<a href="https://eox.at">EOX IT Services GmbH</a>');
+    expect(snippet).toContain(
+      'EOxCloudless <a href="https://cloudless.eox.at">',
+    );
+    expect(snippet).toContain(
+      '<a href="https://eox.at">EOX IT Services GmbH</a>',
+    );
     expect(snippet).toContain('map.once("style.load", async () => {');
     expect(snippet).toContain("map.jumpTo({");
     expect(snippet).toContain("center: [6.1, 46.2]");
     expect(snippet).toContain("zoom: 4.123");
     expect(snippet).toContain("bearing: 12.5");
     expect(snippet).toContain("pitch: 20");
-    expect(snippet).toContain("map.setProjection({ type: \"globe\" })");
+    expect(snippet).toContain('map.setProjection({ type: "globe" })');
     expect(snippet).toContain("map.setSky({");
     expect(snippet).toContain('"sky-color": "#05070f"');
     expect(snippet).toContain("new Zartigl({");
@@ -150,9 +159,9 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet.indexOf('map.once("style.load"')).toBeLessThan(
       snippet.indexOf('map.setProjection({ type: "globe" })'),
     );
-    expect(snippet.indexOf('map.setProjection({ type: "globe" })')).toBeLessThan(
-      snippet.indexOf("map.jumpTo({"),
-    );
+    expect(
+      snippet.indexOf('map.setProjection({ type: "globe" })'),
+    ).toBeLessThan(snippet.indexOf("map.jumpTo({"));
     expect(snippet.indexOf("map.jumpTo({")).toBeLessThan(
       snippet.indexOf("new Zartigl({"),
     );
@@ -200,6 +209,8 @@ describe("buildStandaloneDemoHtml", () => {
     expect(html).toContain('<div id="map"></div>');
     expect(html).toContain('<script type="module">');
     expect(html).toContain(script);
-    expect(html).toContain(`maplibre-gl@${maplibreVersion}/dist/maplibre-gl.css`);
+    expect(html).toContain(
+      `maplibre-gl@${maplibreVersion}/dist/maplibre-gl.css`,
+    );
   });
 });

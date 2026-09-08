@@ -44,7 +44,11 @@ export interface VectorLayerOptions {
   unit?: string;
 }
 
-export type CatalogRenderLayerBackend = "vector-zarr" | "scalar-zarr" | "scalar-geovideo" | "scalar-wmts";
+export type CatalogRenderLayerBackend =
+  | "vector-zarr"
+  | "scalar-zarr"
+  | "scalar-geovideo"
+  | "scalar-wmts";
 
 export interface CatalogRenderLayerOptions
   extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatHypoxiaReadout, nearestChartTime, spreadChartLabels } from "./StoryCharts";
+import {
+  formatHypoxiaReadout,
+  nearestChartTime,
+  spreadChartLabels,
+} from "./StoryCharts";
 
 describe("nearestChartTime", () => {
   const times = [100, 200, 400, 800];
@@ -36,10 +40,12 @@ describe("spreadChartLabels", () => {
 
 describe("formatHypoxiaReadout", () => {
   it("formats the monthly extent and affected fraction", () => {
-    expect(formatHypoxiaReadout({
-      time: "1994-09-01T00:00:00Z",
-      hypoxicAreaKm2: 2500,
-      hypoxicFractionPct: 25,
-    })).toBe("SEP 1994 · 2,500 km² · 25%");
+    expect(
+      formatHypoxiaReadout({
+        time: "1994-09-01T00:00:00Z",
+        hypoxicAreaKm2: 2500,
+        hypoxicFractionPct: 25,
+      }),
+    ).toBe("SEP 1994 · 2,500 km² · 25%");
   });
 });

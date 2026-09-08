@@ -23,7 +23,7 @@ import gridFrag from "./shaders/grid.frag.glsl?raw";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 
-export type RenderMode = 'raster' | 'particles' | 'raster+particles';
+export type RenderMode = "raster" | "particles" | "raster+particles";
 export type ParticleStateMode = "auto" | "rgba8";
 export type ParticleStateKind = StateTextureFormat["kind"];
 
@@ -64,9 +64,9 @@ const RASTER_GRID_LAT_SEGMENTS = 64;
  * smoothly instead of lingering ~2s. Driven by per-frame viewport-bounds change;
  * decays back to the configured dropRate once the camera settles.
  */
-const REDISTRIB_GAIN = 1.0;      // boost per unit per-frame bounds change
-const REDISTRIB_DECAY = 0.92;    // per-frame decay (boost outlives the gesture ~0.5–1s)
-const REDISTRIB_MAX_DROP = 0.1;  // ceiling on effective drop rate during the transition
+const REDISTRIB_GAIN = 1.0; // boost per unit per-frame bounds change
+const REDISTRIB_DECAY = 0.92; // per-frame decay (boost outlives the gesture ~0.5–1s)
+const REDISTRIB_MAX_DROP = 0.1; // ceiling on effective drop rate during the transition
 
 // Trail history is screen-space and cannot remain geographically exact while
 // the camera moves. Retain a few frames for visual continuity, but decay them
@@ -81,14 +81,24 @@ const MOVING_FADE_IN_MS = 300;
 const PARTICLE_VALID_THRESHOLD = 0.98;
 
 function float32ToFloat16(value: number): number {
-  if (Number.isNaN(value)) return 0x7e00;
-  if (value === Infinity) return 0x7c00;
-  if (value === -Infinity) return 0xfc00;
+  if (Number.isNaN(value)) {
+    return 0x7e00;
+  }
+  if (value === Infinity) {
+    return 0x7c00;
+  }
+  if (value === -Infinity) {
+    return 0xfc00;
+  }
 
   const sign = value < 0 ? 0x8000 : 0;
   const abs = Math.abs(value);
-  if (abs === 0) return sign;
-  if (abs >= 65504) return sign | 0x7bff;
+  if (abs === 0) {
+    return sign;
+  }
+  if (abs >= 65504) {
+    return sign | 0x7bff;
+  }
   if (abs < 0.00006103515625) {
     return sign | Math.round(abs / 0.000000059604644775390625);
   }
@@ -150,7 +160,12 @@ export class ParticleSimulation {
   private numParticles = 0;
 
   // Smooth redistribution after camera changes (see REDISTRIB_* constants).
-  private prevBounds: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+  private prevBounds: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  } | null = null;
   private redistributionBoost = 0;
 
   // Camera-aware trail retention transition. This is separate from the public
@@ -180,7 +195,7 @@ export class ParticleSimulation {
   private colorRampTexture!: WebGLTexture;
 
   // Render mode
-  renderMode: RenderMode = 'raster+particles';
+  renderMode: RenderMode = "raster+particles";
 
   // Uniform locations (cached)
   private updateLocs!: Record<string, WebGLUniformLocation | null>;
@@ -199,10 +214,14 @@ export class ParticleSimulation {
   init(gl: WebGLRenderingContext): void {
     this.gl = gl;
     this.webglInfo = getWebGLRendererInfo(gl);
-    this.stateFormat = this.params.particleState === "rgba8"
-      ? rgba8StateTextureFormat(gl)
-      : detectStateTextureFormat(gl);
-    const stateDefine = this.stateFormat.kind !== "rgba8-packed" ? "#define USE_FLOAT_STATE 1\n" : "";
+    this.stateFormat =
+      this.params.particleState === "rgba8"
+        ? rgba8StateTextureFormat(gl)
+        : detectStateTextureFormat(gl);
+    const stateDefine =
+      this.stateFormat.kind !== "rgba8-packed"
+        ? "#define USE_FLOAT_STATE 1\n"
+        : "";
 
     // Compile programs
     this.updateProgram = createProgram(gl, quadVert, stateDefine + updateFrag);
@@ -288,7 +307,6 @@ export class ParticleSimulation {
       "u_scalar_mode",
     ]);
 
-
     // Shared resources
     this.quadBuffer = createQuadBuffer(gl);
     this.initRasterGrid();
@@ -315,16 +333,22 @@ export class ParticleSimulation {
     const n = res * res * 4;
     if (this.stateFormat?.kind === "float32") {
       const data = new Float32Array(n);
-      for (let i = 0; i < n; i++) data[i] = Math.random();
+      for (let i = 0; i < n; i++) {
+        data[i] = Math.random();
+      }
       return data;
     }
     if (this.stateFormat?.kind === "float16") {
       const data = new Uint16Array(n);
-      for (let i = 0; i < n; i++) data[i] = float32ToFloat16(Math.random());
+      for (let i = 0; i < n; i++) {
+        data[i] = float32ToFloat16(Math.random());
+      }
       return data;
     }
     const data = new Uint8Array(n);
-    for (let i = 0; i < n; i++) data[i] = Math.floor(Math.random() * 256);
+    for (let i = 0; i < n; i++) {
+      data[i] = Math.floor(Math.random() * 256);
+    }
     return data;
   }
 
@@ -358,10 +382,10 @@ export class ParticleSimulation {
     const indices = new Float32Array(MAX_PARTICLES * 2);
     const isCurr = new Float32Array(MAX_PARTICLES * 2);
     for (let i = 0; i < MAX_PARTICLES; i++) {
-      indices[i * 2]     = i;
+      indices[i * 2] = i;
       indices[i * 2 + 1] = i;
-      isCurr[i * 2]      = 0.0;
-      isCurr[i * 2 + 1]  = 1.0;
+      isCurr[i * 2] = 0.0;
+      isCurr[i * 2 + 1] = 1.0;
     }
 
     this.particleIndexBuffer = gl.createBuffer()!;
@@ -386,7 +410,9 @@ export class ParticleSimulation {
       }
     }
 
-    const indices = new Uint16Array(RASTER_GRID_LON_SEGMENTS * RASTER_GRID_LAT_SEGMENTS * 6);
+    const indices = new Uint16Array(
+      RASTER_GRID_LON_SEGMENTS * RASTER_GRID_LAT_SEGMENTS * 6,
+    );
     let i = 0;
     const rowStride = RASTER_GRID_LON_SEGMENTS + 1;
     for (let y = 0; y < RASTER_GRID_LAT_SEGMENTS; y++) {
@@ -422,10 +448,15 @@ export class ParticleSimulation {
     // Always recompute active count — density or canvas size may have changed
     this.numParticles = Math.max(
       1,
-      Math.min(MAX_PARTICLES, Math.round(width * height * this.params.particleDensity)),
+      Math.min(
+        MAX_PARTICLES,
+        Math.round(width * height * this.params.particleDensity),
+      ),
     );
 
-    if (width === this.screenWidth && height === this.screenHeight) return;
+    if (width === this.screenWidth && height === this.screenHeight) {
+      return;
+    }
 
     const gl = this.gl;
     this.screenWidth = width;
@@ -467,10 +498,14 @@ export class ParticleSimulation {
   ): void {
     const gl = this.gl;
 
-    if (this.screenWidth === 0 || this.screenHeight === 0) return;
+    if (this.screenWidth === 0 || this.screenHeight === 0) {
+      return;
+    }
 
     // Capture MapLibre's current framebuffer so we can restore it for the final blit
-    const mapFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+    const mapFramebuffer = gl.getParameter(
+      gl.FRAMEBUFFER_BINDING,
+    ) as WebGLFramebuffer | null;
 
     const suppressRgba8Particles = this.shouldSuppressRgba8Particles(worldSize);
     if (suppressRgba8Particles && !this.lastRgba8ParticlesSuppressed) {
@@ -480,11 +515,12 @@ export class ParticleSimulation {
 
     const runParticles =
       !suppressRgba8Particles &&
-      (this.renderMode === 'particles' || this.renderMode === 'raster+particles');
+      (this.renderMode === "particles" ||
+        this.renderMode === "raster+particles");
     const runGrid =
       suppressRgba8Particles ||
-      this.renderMode === 'raster' ||
-      this.renderMode === 'raster+particles';
+      this.renderMode === "raster" ||
+      this.renderMode === "raster+particles";
     let didParticleUpdate = false;
 
     // --- 1. Update pass: advance particle positions (always — keeps simulation live) ---
@@ -499,8 +535,16 @@ export class ParticleSimulation {
       gl.uniform1i(this.updateLocs["u_particles"], 0);
 
       gl.uniform1i(this.updateLocs["u_velocity"], velocityTexUnit);
-      gl.uniform2f(this.updateLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
-      gl.uniform2f(this.updateLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
+      gl.uniform2f(
+        this.updateLocs["u_velocity_min"],
+        velocityMin[0],
+        velocityMin[1],
+      );
+      gl.uniform2f(
+        this.updateLocs["u_velocity_max"],
+        velocityMax[0],
+        velocityMax[1],
+      );
       gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
       gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
       gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
@@ -527,23 +571,43 @@ export class ParticleSimulation {
           delta * REDISTRIB_GAIN,
         );
       }
-      this.prevBounds = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
-      const effectiveDrop = Math.min(this.params.dropRate + this.redistributionBoost, REDISTRIB_MAX_DROP);
+      this.prevBounds = {
+        minX: bounds.minX,
+        minY: bounds.minY,
+        maxX: bounds.maxX,
+        maxY: bounds.maxY,
+      };
+      const effectiveDrop = Math.min(
+        this.params.dropRate + this.redistributionBoost,
+        REDISTRIB_MAX_DROP,
+      );
 
       gl.uniform1f(this.updateLocs["u_drop_rate"], effectiveDrop);
-      gl.uniform1f(this.updateLocs["u_drop_rate_bump"], this.params.dropRateBump);
+      gl.uniform1f(
+        this.updateLocs["u_drop_rate_bump"],
+        this.params.dropRateBump,
+      );
       gl.uniform4f(
         this.updateLocs["u_bounds"],
-        bounds.minX, bounds.minY, bounds.maxX, bounds.maxY,
+        bounds.minX,
+        bounds.minY,
+        bounds.maxX,
+        bounds.maxY,
       );
       gl.uniform1f(this.updateLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
       if (geoBounds) {
         gl.uniform4f(
           this.updateLocs["u_geo_bounds"],
-          geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+          geoBounds.west,
+          geoBounds.south,
+          geoBounds.east,
+          geoBounds.north,
         );
       }
-      gl.uniform1f(this.updateLocs["u_valid_threshold"], PARTICLE_VALID_THRESHOLD);
+      gl.uniform1f(
+        this.updateLocs["u_valid_threshold"],
+        PARTICLE_VALID_THRESHOLD,
+      );
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFramebuffers[1]);
       this.drawQuad();
@@ -558,7 +622,10 @@ export class ParticleSimulation {
 
     bindTexture(gl, this.screenTextures[0], 0);
     gl.uniform1i(this.fadeLocs["u_screen"], 0);
-    gl.uniform1f(this.fadeLocs["u_opacity"], this.updateTrailFadeOpacity(performance.now()));
+    gl.uniform1f(
+      this.fadeLocs["u_opacity"],
+      this.updateTrailFadeOpacity(performance.now()),
+    );
     this.drawQuad();
 
     // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
@@ -597,12 +664,23 @@ export class ParticleSimulation {
       gl.uniform1i(this.drawLocs["u_prev_particles"], 3);
 
       gl.uniform1i(this.drawLocs["u_velocity"], velocityTexUnit);
-      gl.uniform2f(this.drawLocs["u_velocity_min"], velocityMin[0], velocityMin[1]);
-      gl.uniform2f(this.drawLocs["u_velocity_max"], velocityMax[0], velocityMax[1]);
+      gl.uniform2f(
+        this.drawLocs["u_velocity_min"],
+        velocityMin[0],
+        velocityMin[1],
+      );
+      gl.uniform2f(
+        this.drawLocs["u_velocity_max"],
+        velocityMax[0],
+        velocityMax[1],
+      );
       if (geoBounds) {
         gl.uniform4f(
           this.drawLocs["u_geo_bounds"],
-          geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+          geoBounds.west,
+          geoBounds.south,
+          geoBounds.east,
+          geoBounds.north,
         );
       }
 
@@ -615,13 +693,19 @@ export class ParticleSimulation {
 
       gl.uniform1f(
         this.drawLocs["u_particle_contrast"],
-        this.renderMode === 'raster+particles' ? 1.0 : 0.0,
+        this.renderMode === "raster+particles" ? 1.0 : 0.0,
       );
 
       gl.uniform1f(this.drawLocs["u_opacity"], this.params.opacity);
-      gl.uniform1f(this.drawLocs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
+      gl.uniform1f(
+        this.drawLocs["u_log_scale"],
+        this.params.logScale ? 1.0 : 0.0,
+      );
       gl.uniform1f(this.drawLocs["u_vibrance"], this.params.vibrance);
-      gl.uniform1f(this.drawLocs["u_valid_threshold"], PARTICLE_VALID_THRESHOLD);
+      gl.uniform1f(
+        this.drawLocs["u_valid_threshold"],
+        PARTICLE_VALID_THRESHOLD,
+      );
       gl.uniform1f(this.drawLocs["u_is_globe"], isGlobe ? 1.0 : 0.0);
       gl.uniform3f(
         this.drawLocs["u_globe_center"],
@@ -633,7 +717,9 @@ export class ParticleSimulation {
       gl.uniformMatrix4fv(
         this.drawLocs["u_matrix"],
         false,
-        matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
+        matrix instanceof Float32Array
+          ? matrix
+          : new Float32Array(Array.from(matrix)),
       );
 
       const aIndex = gl.getAttribLocation(this.drawProgram, "a_index");
@@ -694,15 +780,26 @@ export class ParticleSimulation {
     gl.disable(gl.STENCIL_TEST);
     gl.disable(gl.BLEND);
 
-    this.setGridFieldUniforms(this.gridLocs, velocityTexUnit, velocityMin, velocityMax, opacityScale);
+    this.setGridFieldUniforms(
+      this.gridLocs,
+      velocityTexUnit,
+      velocityMin,
+      velocityMax,
+      opacityScale,
+    );
     gl.uniformMatrix4fv(
       this.gridLocs["u_matrix"],
       false,
-      matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
+      matrix instanceof Float32Array
+        ? matrix
+        : new Float32Array(Array.from(matrix)),
     );
     gl.uniform4f(
       this.gridLocs["u_geo_bounds"],
-      geoBounds.west, geoBounds.south, geoBounds.east, geoBounds.north,
+      geoBounds.west,
+      geoBounds.south,
+      geoBounds.east,
+      geoBounds.north,
     );
     gl.uniform1f(this.gridLocs["u_world_size"], worldSize);
 
@@ -711,7 +808,12 @@ export class ParticleSimulation {
     this.bindRasterGrid(this.gridProgram);
     for (const offset of worldCopyOffsets) {
       gl.uniform1f(this.gridLocs["u_world_offset"], offset);
-      gl.drawElements(gl.TRIANGLES, this.rasterGridIndexCount, gl.UNSIGNED_SHORT, 0);
+      gl.drawElements(
+        gl.TRIANGLES,
+        this.rasterGridIndexCount,
+        gl.UNSIGNED_SHORT,
+        0,
+      );
     }
     this.unbindRasterGrid(this.gridProgram);
     gl.disable(gl.BLEND);
@@ -732,11 +834,19 @@ export class ParticleSimulation {
     gl.disable(gl.STENCIL_TEST);
     gl.disable(gl.BLEND);
 
-    this.setGridFieldUniforms(this.gridGlobeLocs, velocityTexUnit, velocityMin, velocityMax, opacityScale);
+    this.setGridFieldUniforms(
+      this.gridGlobeLocs,
+      velocityTexUnit,
+      velocityMin,
+      velocityMax,
+      opacityScale,
+    );
     gl.uniformMatrix4fv(
       this.gridGlobeLocs["u_matrix"],
       false,
-      matrix instanceof Float32Array ? matrix : new Float32Array(Array.from(matrix)),
+      matrix instanceof Float32Array
+        ? matrix
+        : new Float32Array(Array.from(matrix)),
     );
     gl.uniform4f(
       this.gridGlobeLocs["u_geo_bounds"],
@@ -756,7 +866,12 @@ export class ParticleSimulation {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     this.bindRasterGrid(this.gridGlobeProgram);
-    gl.drawElements(gl.TRIANGLES, this.rasterGridIndexCount, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(
+      gl.TRIANGLES,
+      this.rasterGridIndexCount,
+      gl.UNSIGNED_SHORT,
+      0,
+    );
     this.unbindRasterGrid(this.gridGlobeProgram);
     gl.disable(gl.BLEND);
   }
@@ -776,7 +891,7 @@ export class ParticleSimulation {
 
     const maxSpeed = Math.sqrt(
       Math.max(Math.abs(velocityMin[0]), Math.abs(velocityMax[0])) ** 2 +
-      Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
+        Math.max(Math.abs(velocityMin[1]), Math.abs(velocityMax[1])) ** 2,
     );
     gl.uniform1f(locs["u_field_min"], 0.0);
     gl.uniform1f(locs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
@@ -836,7 +951,9 @@ export class ParticleSimulation {
 
   /** Smoothly switch between normal and camera-motion trail retention. */
   setCameraMoving(moving: boolean): void {
-    if (moving === this.cameraMoving) return;
+    if (moving === this.cameraMoving) {
+      return;
+    }
 
     const now = performance.now();
     this.updateTrailFadeOpacity(now);
@@ -846,28 +963,40 @@ export class ParticleSimulation {
       ? MOVING_FADE_OPACITY
       : this.params.fadeOpacity;
     this.fadeTransitionStartMs = now;
-    this.fadeTransitionDurationMs = moving ? MOVING_FADE_OUT_MS : MOVING_FADE_IN_MS;
+    this.fadeTransitionDurationMs = moving
+      ? MOVING_FADE_OUT_MS
+      : MOVING_FADE_IN_MS;
   }
 
   private updateTrailFadeOpacity(now: number): number {
-    if (this.fadeTransitionDurationMs <= 0) return this.currentFadeOpacity;
+    if (this.fadeTransitionDurationMs <= 0) {
+      return this.currentFadeOpacity;
+    }
 
     const progress = Math.min(
       1,
-      Math.max(0, (now - this.fadeTransitionStartMs) / this.fadeTransitionDurationMs),
+      Math.max(
+        0,
+        (now - this.fadeTransitionStartMs) / this.fadeTransitionDurationMs,
+      ),
     );
     // Smoothstep avoids visible slope changes at the beginning and end.
     const eased = progress * progress * (3 - 2 * progress);
     this.currentFadeOpacity =
       this.fadeTransitionStartOpacity +
-      (this.fadeTransitionTargetOpacity - this.fadeTransitionStartOpacity) * eased;
+      (this.fadeTransitionTargetOpacity - this.fadeTransitionStartOpacity) *
+        eased;
 
-    if (progress === 1) this.fadeTransitionDurationMs = 0;
+    if (progress === 1) {
+      this.fadeTransitionDurationMs = 0;
+    }
     return this.currentFadeOpacity;
   }
 
   private shouldSuppressRgba8Particles(worldSize: number): boolean {
-    if (this.stateFormat?.kind !== "rgba8-packed") return false;
+    if (this.stateFormat?.kind !== "rgba8-packed") {
+      return false;
+    }
     const zoom = Math.log2(Math.max(worldSize, 1) / 512);
     return zoom > this.params.rgba8MaxParticleZoom;
   }
@@ -885,7 +1014,10 @@ export class ParticleSimulation {
     // Recompute active count with current canvas dimensions
     this.numParticles = Math.max(
       1,
-      Math.min(MAX_PARTICLES, Math.round(this.screenWidth * this.screenHeight * density)),
+      Math.min(
+        MAX_PARTICLES,
+        Math.round(this.screenWidth * this.screenHeight * density),
+      ),
     );
   }
 
@@ -932,8 +1064,15 @@ export class ParticleSimulation {
     for (const tex of this.particleStateTextures) {
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(
-        gl.TEXTURE_2D, 0, this.stateFormat.internalFormat, res, res, 0,
-        gl.RGBA, this.stateFormat.type, stateData,
+        gl.TEXTURE_2D,
+        0,
+        this.stateFormat.internalFormat,
+        res,
+        res,
+        0,
+        gl.RGBA,
+        this.stateFormat.type,
+        stateData,
       );
     }
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -947,7 +1086,9 @@ export class ParticleSimulation {
    */
   clearState(): void {
     const gl = this.gl;
-    if (!this.screenFramebuffers) return;
+    if (!this.screenFramebuffers) {
+      return;
+    }
     for (let i = 0; i < 2; i++) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenFramebuffers[i]);
       gl.clearColor(0, 0, 0, 0);
@@ -974,7 +1115,8 @@ export class ParticleSimulation {
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
       scalarMode: this.params.scalarMode,
-      devicePixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : undefined,
+      devicePixelRatio:
+        typeof window !== "undefined" ? window.devicePixelRatio : undefined,
       webgl: this.webglInfo,
     };
   }
@@ -986,13 +1128,21 @@ export class ParticleSimulation {
     gl.deleteProgram(this.fadeProgram);
     gl.deleteProgram(this.gridProgram);
     gl.deleteProgram(this.gridGlobeProgram);
-    for (const t of this.particleStateTextures) gl.deleteTexture(t);
-    for (const f of this.particleFramebuffers) gl.deleteFramebuffer(f);
+    for (const t of this.particleStateTextures) {
+      gl.deleteTexture(t);
+    }
+    for (const f of this.particleFramebuffers) {
+      gl.deleteFramebuffer(f);
+    }
     gl.deleteBuffer(this.rasterGridBuffer);
     gl.deleteBuffer(this.rasterGridIndexBuffer);
     if (this.screenTextures) {
-      for (const t of this.screenTextures) gl.deleteTexture(t);
-      for (const f of this.screenFramebuffers) gl.deleteFramebuffer(f);
+      for (const t of this.screenTextures) {
+        gl.deleteTexture(t);
+      }
+      for (const f of this.screenFramebuffers) {
+        gl.deleteFramebuffer(f);
+      }
     }
     gl.deleteBuffer(this.quadBuffer);
     gl.deleteBuffer(this.particleIndexBuffer);

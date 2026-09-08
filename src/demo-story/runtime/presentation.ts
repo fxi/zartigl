@@ -1,13 +1,17 @@
 import type { StoryScene } from "./types";
 
 export function sceneShowsTime(scene: StoryScene): boolean {
-  return scene.blocks.some((block) => block.type === "copy" && block.showTime === true);
+  return scene.blocks.some(
+    (block) => block.type === "copy" && block.showTime === true,
+  );
 }
 
 export class StoryTimePresentation {
   private enabled = false;
 
-  get visible(): boolean { return this.enabled; }
+  get visible(): boolean {
+    return this.enabled;
+  }
 
   setScene(scene: StoryScene): void {
     this.enabled = sceneShowsTime(scene);
@@ -24,19 +28,32 @@ export function advanceStorySequence(
   length: number,
   mode: "loop" | "ping-pong",
 ): { index: number; direction: 1 | -1 } {
-  if (length <= 1) return { index: 0, direction: 1 };
+  if (length <= 1) {
+    return { index: 0, direction: 1 };
+  }
   const next = index + direction;
-  if (next >= 0 && next < length) return { index: next, direction };
-  if (mode === "loop") return { index: direction === 1 ? 0 : length - 1, direction };
+  if (next >= 0 && next < length) {
+    return { index: next, direction };
+  }
+  if (mode === "loop") {
+    return { index: direction === 1 ? 0 : length - 1, direction };
+  }
   const nextDirection = direction === 1 ? -1 : 1;
   return { index: index + nextDirection, direction: nextDirection };
 }
 
-export function sequenceIndexAtOrBefore(times: readonly string[], time: number): number {
-  if (times.length === 0) return 0;
+export function sequenceIndexAtOrBefore(
+  times: readonly string[],
+  time: number,
+): number {
+  if (times.length === 0) {
+    return 0;
+  }
   let index = 0;
   for (let candidate = 1; candidate < times.length; candidate++) {
-    if (Date.parse(times[candidate]) > time) break;
+    if (Date.parse(times[candidate]) > time) {
+      break;
+    }
     index = candidate;
   }
   return index;

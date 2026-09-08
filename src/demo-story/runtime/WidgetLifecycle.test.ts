@@ -34,8 +34,12 @@ describe("StoryWidgetLifecycle", () => {
     const enso = lifecycle.begin();
     let cursor = "none";
 
-    enso.runIfCurrent(() => { cursor = "enso"; });
-    arctic.runIfCurrent(() => { cursor = "arctic"; });
+    enso.runIfCurrent(() => {
+      cursor = "enso";
+    });
+    arctic.runIfCurrent(() => {
+      cursor = "arctic";
+    });
     expect(cursor).toBe("enso");
   });
 
@@ -43,7 +47,9 @@ describe("StoryWidgetLifecycle", () => {
     const onError = vi.fn();
     const lifecycle = new StoryWidgetLifecycle(onError);
     const run = lifecycle.begin();
-    run.settle(() => { throw new Error("cleanup failed"); });
+    run.settle(() => {
+      throw new Error("cleanup failed");
+    });
 
     expect(() => lifecycle.cancel()).not.toThrow();
     expect(onError).toHaveBeenCalledOnce();

@@ -29,7 +29,10 @@ export class VelocityField {
    * Stored normalized to [0,1] using uMin/uMax/vMin/vMax, except scalar
    * fields may use a fixed color domain so fragments never decode physical values.
    */
-  update(data: VelocityData, colorDomain: ScalarColorDomain | null = null): void {
+  update(
+    data: VelocityData,
+    colorDomain: ScalarColorDomain | null = null,
+  ): void {
     const gl = this.gl!;
     const { u, v, width, height, uMin, uMax, vMin, vMax } = data;
 
@@ -42,8 +45,10 @@ export class VelocityField {
     this.vMax = vMax;
     this.geoBounds = data.bounds;
 
-    const scalarTextureMin = this.scalarMode && colorDomain ? colorDomain[0] : uMin;
-    const scalarTextureMax = this.scalarMode && colorDomain ? colorDomain[1] : uMax;
+    const scalarTextureMin =
+      this.scalarMode && colorDomain ? colorDomain[0] : uMin;
+    const scalarTextureMax =
+      this.scalarMode && colorDomain ? colorDomain[1] : uMax;
     const uRange = scalarTextureMax - scalarTextureMin || 1;
     const vRange = vMax - vMin || 1;
 
@@ -57,7 +62,10 @@ export class VelocityField {
       if (this.scalarMode) {
         // Scalar: pack R=normalized value, G=128 (neutral, ignored by shader), A=validity
         if (isNaN(uVal)) {
-          pixels[i * 4] = 0; pixels[i * 4 + 1] = 0; pixels[i * 4 + 2] = 0; pixels[i * 4 + 3] = 0;
+          pixels[i * 4] = 0;
+          pixels[i * 4 + 1] = 0;
+          pixels[i * 4 + 2] = 0;
+          pixels[i * 4 + 3] = 0;
         } else {
           pixels[i * 4] = Math.round(
             Math.max(0, Math.min(1, (uVal - scalarTextureMin) / uRange)) * 255,
@@ -75,10 +83,10 @@ export class VelocityField {
           pixels[i * 4 + 3] = 0; // no data → mask off
         } else {
           pixels[i * 4] = Math.round(
-            (Math.max(0, Math.min(1, (uVal - uMin) / uRange))) * 255,
+            Math.max(0, Math.min(1, (uVal - uMin) / uRange)) * 255,
           );
           pixels[i * 4 + 1] = Math.round(
-            (Math.max(0, Math.min(1, (vVal - vMin) / vRange))) * 255,
+            Math.max(0, Math.min(1, (vVal - vMin) / vRange)) * 255,
           );
           pixels[i * 4 + 2] = 0;
           pixels[i * 4 + 3] = 255; // valid ocean data
@@ -104,15 +112,20 @@ export class VelocityField {
     let validCount = 0;
     let nanCount = 0;
     for (let i = 0; i < width * height; i++) {
-      if (pixels[i * 4 + 3] === 255) validCount++;
-      else nanCount++;
+      if (pixels[i * 4 + 3] === 255) {
+        validCount++;
+      } else {
+        nanCount++;
+      }
     }
     console.log(
       `[zartigl] Velocity texture: ${width}x${height}, ` +
-      `valid=${validCount} (${(100 * validCount / (width * height)).toFixed(1)}%), ` +
-      `nodata=${nanCount}, ` +
-      `uRange=[${uMin.toFixed(4)}, ${uMax.toFixed(4)}], ` +
-      `vRange=[${vMin.toFixed(4)}, ${vMax.toFixed(4)}]`
+        `valid=${validCount} (${((100 * validCount) / (width * height)).toFixed(
+          1,
+        )}%), ` +
+        `nodata=${nanCount}, ` +
+        `uRange=[${uMin.toFixed(4)}, ${uMax.toFixed(4)}], ` +
+        `vRange=[${vMin.toFixed(4)}, ${vMax.toFixed(4)}]`,
     );
 
     if (!this.texture) {
@@ -145,11 +158,21 @@ export class VelocityField {
   /** Switch between bilinear (particles) and nearest-neighbour (raster) sampling. */
   setFilter(linear: boolean): void {
     this.linearFilter = linear;
-    if (!this.gl || !this.texture) return;
+    if (!this.gl || !this.texture) {
+      return;
+    }
     const filter = linear ? this.gl.LINEAR : this.gl.NEAREST;
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, filter);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filter);
+    this.gl.texParameteri(
+      this.gl.TEXTURE_2D,
+      this.gl.TEXTURE_MIN_FILTER,
+      filter,
+    );
+    this.gl.texParameteri(
+      this.gl.TEXTURE_2D,
+      this.gl.TEXTURE_MAG_FILTER,
+      filter,
+    );
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
   }
 
@@ -228,19 +251,35 @@ export function stitchVelocityChunks(
     vMax = -Infinity;
   for (let i = 0; i < u.length; i++) {
     if (!isNaN(u[i])) {
-      if (u[i] < uMin) uMin = u[i];
-      if (u[i] > uMax) uMax = u[i];
+      if (u[i] < uMin) {
+        uMin = u[i];
+      }
+      if (u[i] > uMax) {
+        uMax = u[i];
+      }
     }
     if (!isNaN(v[i])) {
-      if (v[i] < vMin) vMin = v[i];
-      if (v[i] > vMax) vMax = v[i];
+      if (v[i] < vMin) {
+        vMin = v[i];
+      }
+      if (v[i] > vMax) {
+        vMax = v[i];
+      }
     }
   }
 
-  if (!isFinite(uMin)) uMin = -1;
-  if (!isFinite(uMax)) uMax = 1;
-  if (!isFinite(vMin)) vMin = -1;
-  if (!isFinite(vMax)) vMax = 1;
+  if (!isFinite(uMin)) {
+    uMin = -1;
+  }
+  if (!isFinite(uMax)) {
+    uMax = 1;
+  }
+  if (!isFinite(vMin)) {
+    vMin = -1;
+  }
+  if (!isFinite(vMax)) {
+    vMax = 1;
+  }
 
   return {
     u,

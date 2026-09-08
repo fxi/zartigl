@@ -49,18 +49,30 @@ function makeFakeGl(options: FakeGlOptions = {}) {
     deleteFramebuffer: vi.fn(),
     deleteTexture: vi.fn(),
     getExtension: vi.fn((name: string) => {
-      if (name === "WEBGL_debug_renderer_info") return debugInfo;
+      if (name === "WEBGL_debug_renderer_info") {
+        return debugInfo;
+      }
       if (name === "OES_texture_half_float" && extensions.has(name)) {
         return { HALF_FLOAT_OES: 0x8d61 };
       }
       return extensions.has(name) ? {} : null;
     }),
     getParameter: vi.fn((key: number) => {
-      if (key === 0x1f00) return "Google Inc.";
-      if (key === 0x1f01) return "WebKit WebGL";
-      if (key === 0x1f02) return "WebGL 1.0";
-      if (key === debugInfo.UNMASKED_VENDOR_WEBGL) return "Google Inc. (Intel)";
-      if (key === debugInfo.UNMASKED_RENDERER_WEBGL) return "ANGLE (Intel, D3D11)";
+      if (key === 0x1f00) {
+        return "Google Inc.";
+      }
+      if (key === 0x1f01) {
+        return "WebKit WebGL";
+      }
+      if (key === 0x1f02) {
+        return "WebGL 1.0";
+      }
+      if (key === debugInfo.UNMASKED_VENDOR_WEBGL) {
+        return "Google Inc. (Intel)";
+      }
+      if (key === debugInfo.UNMASKED_RENDERER_WEBGL) {
+        return "ANGLE (Intel, D3D11)";
+      }
       return null;
     }),
   };
@@ -71,7 +83,13 @@ describe("WebGL utility helpers", () => {
     const gl = makeFakeGl();
     const data = new Uint8Array(16);
 
-    createTexture(gl as unknown as WebGLRenderingContext, gl.NEAREST, data, 2, 2);
+    createTexture(
+      gl as unknown as WebGLRenderingContext,
+      gl.NEAREST,
+      data,
+      2,
+      2,
+    );
 
     expect(gl.texImage2D).toHaveBeenCalledWith(
       gl.TEXTURE_2D,
@@ -89,7 +107,9 @@ describe("WebGL utility helpers", () => {
   it("reports masked and unmasked renderer information when available", () => {
     const gl = makeFakeGl();
 
-    expect(getWebGLRendererInfo(gl as unknown as WebGLRenderingContext)).toEqual({
+    expect(
+      getWebGLRendererInfo(gl as unknown as WebGLRenderingContext),
+    ).toEqual({
       vendor: "Google Inc.",
       renderer: "WebKit WebGL",
       unmaskedVendor: "Google Inc. (Intel)",
@@ -101,7 +121,9 @@ describe("WebGL utility helpers", () => {
   it("uses RGBA8 packed state when float render extensions are missing", () => {
     const gl = makeFakeGl();
 
-    expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
+    expect(
+      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+    ).toEqual({
       kind: "rgba8-packed",
       internalFormat: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
@@ -114,7 +136,9 @@ describe("WebGL utility helpers", () => {
       extensions: ["OES_texture_float", "WEBGL_color_buffer_float"],
     });
 
-    expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
+    expect(
+      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+    ).toEqual({
       kind: "float32",
       internalFormat: gl.RGBA,
       type: gl.FLOAT,
@@ -127,7 +151,9 @@ describe("WebGL utility helpers", () => {
       extensions: ["OES_texture_half_float", "EXT_color_buffer_half_float"],
     });
 
-    expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
+    expect(
+      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+    ).toEqual({
       kind: "float16",
       internalFormat: gl.RGBA,
       type: gl.HALF_FLOAT_OES,
@@ -141,7 +167,9 @@ describe("WebGL utility helpers", () => {
       framebufferStatus: 0x8cd6,
     });
 
-    expect(detectStateTextureFormat(gl as unknown as WebGLRenderingContext)).toEqual({
+    expect(
+      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+    ).toEqual({
       kind: "rgba8-packed",
       internalFormat: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
@@ -155,8 +183,17 @@ describe("WebGL utility helpers", () => {
     expect(palettes.map((palette) => palette.id)).toEqual(
       expect.arrayContaining(["mono-black", "mono-white", "mono-pink"]),
     );
-    expect(resolveColorRamp("mono-black")).toEqual({ 0: "#000000", 1: "#000000" });
-    expect(resolveColorRamp("mono-white")).toEqual({ 0: "#ffffff", 1: "#ffffff" });
-    expect(resolveColorRamp("mono-pink")).toEqual({ 0: "#ff2aa1", 1: "#ff2aa1" });
+    expect(resolveColorRamp("mono-black")).toEqual({
+      0: "#000000",
+      1: "#000000",
+    });
+    expect(resolveColorRamp("mono-white")).toEqual({
+      0: "#ffffff",
+      1: "#ffffff",
+    });
+    expect(resolveColorRamp("mono-pink")).toEqual({
+      0: "#ff2aa1",
+      1: "#ff2aa1",
+    });
   });
 });

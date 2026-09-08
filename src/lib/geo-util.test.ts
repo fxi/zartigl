@@ -55,13 +55,21 @@ describe("geo utilities", () => {
   });
 
   it("returns only the primary world for globe rendering", () => {
-    expect(visibleWorldCopyOffsets(bounds(-540, -10, 540, 10), true)).toEqual([0]);
+    expect(visibleWorldCopyOffsets(bounds(-540, -10, 540, 10), true)).toEqual([
+      0,
+    ]);
   });
 
   it("returns all visible mercator world copies", () => {
-    expect(visibleWorldCopyOffsets(bounds(-20, -20, 20, 20), false)).toEqual([0]);
-    expect(visibleWorldCopyOffsets(bounds(170, -20, 190, 20), false)).toEqual([0, 1]);
-    expect(visibleWorldCopyOffsets(bounds(-540, -10, 540, 10), false)).toEqual([-1, 0, 1, 2]);
+    expect(visibleWorldCopyOffsets(bounds(-20, -20, 20, 20), false)).toEqual([
+      0,
+    ]);
+    expect(visibleWorldCopyOffsets(bounds(170, -20, 190, 20), false)).toEqual([
+      0, 1,
+    ]);
+    expect(visibleWorldCopyOffsets(bounds(-540, -10, 540, 10), false)).toEqual([
+      -1, 0, 1, 2,
+    ]);
   });
 
   it("pads vector fetch latitude by one viewport height by default", () => {
@@ -85,9 +93,24 @@ describe("geo utilities", () => {
   it("detects whether active data covers the current viewport latitude", () => {
     const coverage = paddedViewportGeoBounds(bounds(-30, -10, 30, 20));
 
-    expect(coversViewportLatitude(coverage, viewportGeoBounds(bounds(0, -5, 10, 15)))).toBe(true);
-    expect(coversViewportLatitude(coverage, viewportGeoBounds(bounds(0, 45, 10, 55)))).toBe(false);
-    expect(coversViewportLatitude(coverage, viewportGeoBounds(bounds(0, -45, 10, -35)))).toBe(false);
+    expect(
+      coversViewportLatitude(
+        coverage,
+        viewportGeoBounds(bounds(0, -5, 10, 15)),
+      ),
+    ).toBe(true);
+    expect(
+      coversViewportLatitude(
+        coverage,
+        viewportGeoBounds(bounds(0, 45, 10, 55)),
+      ),
+    ).toBe(false);
+    expect(
+      coversViewportLatitude(
+        coverage,
+        viewportGeoBounds(bounds(0, -45, 10, -35)),
+      ),
+    ).toBe(false);
   });
 
   it("returns maplibre-compatible globe center vectors", () => {

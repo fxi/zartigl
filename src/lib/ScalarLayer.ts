@@ -130,7 +130,14 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    if (this.suspended || !this.map || !this.activeData || !this.activeField.hasData()) return;
+    if (
+      this.suspended ||
+      !this.map ||
+      !this.activeData ||
+      !this.activeField.hasData()
+    ) {
+      return;
+    }
 
     const saved = saveGLState(gl);
     try {
@@ -180,7 +187,9 @@ export class ScalarLayer implements CustomLayerInterface {
     this.generation++;
     this.requestId++;
     this.pendingReadyTime = null;
-    if (this.map && this.moveEndHandler) this.map.off("moveend", this.moveEndHandler);
+    if (this.map && this.moveEndHandler) {
+      this.map.off("moveend", this.moveEndHandler);
+    }
     this.zarrSource.cancelAll();
     this.activeField.destroy();
     this.simulation.destroy();
@@ -194,7 +203,9 @@ export class ScalarLayer implements CustomLayerInterface {
     this.requestId++;
     this.pendingReadyTime = null;
     this.time = time;
-    if (this.suspended) return;
+    if (this.suspended) {
+      return;
+    }
     const ms = this.timeToMs(time);
     const cached = this.frameCache.get(ms);
     if (cached) {
@@ -222,13 +233,19 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   async prefetchTime(ms: number): Promise<void> {
-    if (this.suspended || !this.map || !this.initialized) return;
-    if (this.frameCache.has(ms) || this.inflight.has(ms)) return;
+    if (this.suspended || !this.map || !this.initialized) {
+      return;
+    }
+    if (this.frameCache.has(ms) || this.inflight.has(ms)) {
+      return;
+    }
     this.inflight.add(ms);
     const generation = this.generation;
     try {
       const data = await this.fetchScalarData(ms);
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) {
+        return;
+      }
       this.frameCache.set(ms, data);
       this.emit("frameBuffered", ms);
     } catch (err) {
@@ -250,7 +267,9 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   suspend(): void {
-    if (this.suspended) return;
+    if (this.suspended) {
+      return;
+    }
     this.suspended = true;
     this.requestId++;
     this.pendingReadyTime = null;
@@ -260,7 +279,9 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   resume(): void {
-    if (!this.suspended) return;
+    if (!this.suspended) {
+      return;
+    }
     this.suspended = false;
     this.loadCurrent();
   }
@@ -287,7 +308,9 @@ export class ScalarLayer implements CustomLayerInterface {
 
   setColorDomain(domain: [number, number] | null): void {
     this.colorDomain = validateScalarColorDomain(domain);
-    if (this.activeData) this.activeField.update(this.activeData, this.colorDomain);
+    if (this.activeData) {
+      this.activeField.update(this.activeData, this.colorDomain);
+    }
     this.map?.triggerRepaint();
   }
 
@@ -316,7 +339,14 @@ export class ScalarLayer implements CustomLayerInterface {
     latitude: number;
     time?: string | number;
     depth?: number;
-  }): Promise<{ longitude: number; latitude: number; value: number; unit: string; time: number; depth?: number }> {
+  }): Promise<{
+    longitude: number;
+    latitude: number;
+    value: number;
+    unit: string;
+    time: number;
+    depth?: number;
+  }> {
     const data = this.activeData;
     if (!data) {
       return {
@@ -333,18 +363,25 @@ export class ScalarLayer implements CustomLayerInterface {
   }
 
   on<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
-    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
     this.listeners.get(event)!.add(handler);
     return this;
   }
 
-  off<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
+  off<K extends keyof LayerEventMap>(
+    event: K,
+    handler: LayerEventMap[K],
+  ): this {
     this.listeners.get(event)?.delete(handler);
     return this;
   }
 
   private async loadCurrent(): Promise<void> {
-    if (this.suspended || !this.map) return;
+    if (this.suspended || !this.map) {
+      return;
+    }
     if (this.loading) {
       this.reloadQueued = true;
       return;
@@ -357,12 +394,14 @@ export class ScalarLayer implements CustomLayerInterface {
     const requestedMs = this.timeToMs(requestedTime);
     try {
       await this.zarrSource.init();
-      if (generation !== this.generation || requestId !== this.requestId) return;
+      if (generation !== this.generation || requestId !== this.requestId) {
+        return;
+      }
       this.initialized = true;
 
-      const data = this.frameCache.get(requestedMs) ?? await this.fetchScalarData(
-        requestedTime,
-        (completed, total) => {
+      const data =
+        this.frameCache.get(requestedMs) ??
+        (await this.fetchScalarData(requestedTime, (completed, total) => {
           if (generation === this.generation && requestId === this.requestId) {
             this.emit("status", {
               phase: "fetching",
@@ -371,9 +410,10 @@ export class ScalarLayer implements CustomLayerInterface {
               total,
             });
           }
-        },
-      );
-      if (generation !== this.generation || requestId !== this.requestId) return;
+        }));
+      if (generation !== this.generation || requestId !== this.requestId) {
+        return;
+      }
       this.frameCache.set(requestedMs, data);
       this.setActive(data, requestedTime);
     } catch (err) {
@@ -428,36 +468,43 @@ export class ScalarLayer implements CustomLayerInterface {
     const missingStatuses: number[] = [];
     const missingUrls: string[] = [];
     onProgress?.(completed, total);
-    const chunks = await Promise.all(chunkInfos.map(async (info) => {
-      const result = await this.zarrSource.fetchSpatialChunkResult(this.variable, {
-        timeIndex: info.timeIdx,
-        verticalIndex: info.depthIdx,
-        latitudeChunkIndex: info.latIdx,
-        longitudeChunkIndex: info.lonIdx,
-      });
-      if (result.missing) {
-        if (result.status != null) missingStatuses.push(result.status);
-        missingUrls.push(result.url);
-      }
-      completed++;
-      onProgress?.(completed, total);
-      return {
-        data: result.data,
-        latStart: info.latIdx * chunkShape[latDim],
-        lonStart: info.lonIdx * chunkShape[lonDim],
-        latSize: info.latSize,
-        lonSize: info.lonSize,
-        lonChunkSize: chunkShape[lonDim],
-      };
-    }));
+    const chunks = await Promise.all(
+      chunkInfos.map(async (info) => {
+        const result = await this.zarrSource.fetchSpatialChunkResult(
+          this.variable,
+          {
+            timeIndex: info.timeIdx,
+            verticalIndex: info.depthIdx,
+            latitudeChunkIndex: info.latIdx,
+            longitudeChunkIndex: info.lonIdx,
+          },
+        );
+        if (result.missing) {
+          if (result.status != null) {
+            missingStatuses.push(result.status);
+          }
+          missingUrls.push(result.url);
+        }
+        completed++;
+        onProgress?.(completed, total);
+        return {
+          data: result.data,
+          latStart: info.latIdx * chunkShape[latDim],
+          lonStart: info.lonIdx * chunkShape[lonDim],
+          latSize: info.latSize,
+          lonSize: info.lonSize,
+          lonChunkSize: chunkShape[lonDim],
+        };
+      }),
+    );
 
-    const latPixMin = Math.min(...chunks.map(c => c.latStart));
-    const latPixMax = Math.max(...chunks.map(c => c.latStart + c.latSize));
-    const lonPixMin = Math.min(...chunks.map(c => c.lonStart));
-    const lonPixMax = Math.max(...chunks.map(c => c.lonStart + c.lonSize));
+    const latPixMin = Math.min(...chunks.map((c) => c.latStart));
+    const latPixMax = Math.max(...chunks.map((c) => c.latStart + c.latSize));
+    const lonPixMin = Math.min(...chunks.map((c) => c.lonStart));
+    const lonPixMax = Math.max(...chunks.map((c) => c.lonStart + c.lonSize));
     const fetchedHeight = latPixMax - latPixMin;
     const fetchedWidth = lonPixMax - lonPixMin;
-    const chunksRel = chunks.map(c => ({
+    const chunksRel = chunks.map((c) => ({
       ...c,
       latStart: c.latStart - latPixMin,
       lonStart: c.lonStart - lonPixMin,
@@ -507,7 +554,14 @@ export class ScalarLayer implements CustomLayerInterface {
     data: VelocityData,
     longitude: number,
     latitude: number,
-  ): { longitude: number; latitude: number; value: number; unit: string; time: number; depth?: number } {
+  ): {
+    longitude: number;
+    latitude: number;
+    value: number;
+    unit: string;
+    time: number;
+    depth?: number;
+  } {
     const { west, east, south, north } = data.bounds;
     const lonSpan = east - west;
     const latSpan = north - south;
@@ -522,9 +576,10 @@ export class ScalarLayer implements CustomLayerInterface {
       };
     }
 
-    const sampleLongitude = west >= 0 && east > 180
-      ? ((longitude % 360) + 360) % 360
-      : ((((longitude + 180) % 360) + 360) % 360) - 180;
+    const sampleLongitude =
+      west >= 0 && east > 180
+        ? ((longitude % 360) + 360) % 360
+        : ((((longitude + 180) % 360) + 360) % 360) - 180;
 
     if (
       sampleLongitude < west ||
@@ -546,8 +601,14 @@ export class ScalarLayer implements CustomLayerInterface {
     const y = data.latDescending
       ? (north - latitude) / latSpan
       : (latitude - south) / latSpan;
-    const col = Math.max(0, Math.min(data.width - 1, Math.round(x * (data.width - 1))));
-    const row = Math.max(0, Math.min(data.height - 1, Math.round(y * (data.height - 1))));
+    const col = Math.max(
+      0,
+      Math.min(data.width - 1, Math.round(x * (data.width - 1))),
+    );
+    const row = Math.max(
+      0,
+      Math.min(data.height - 1, Math.round(y * (data.height - 1))),
+    );
     const value = data.u[row * data.width + col] ?? NaN;
     const gridLongitude = west + (col / Math.max(1, data.width - 1)) * lonSpan;
     const gridLatitude = data.latDescending
@@ -564,9 +625,19 @@ export class ScalarLayer implements CustomLayerInterface {
     };
   }
 
-  private computeFieldMeta(data: VelocityData, time: string | number): FieldMeta {
-    const timeStr = typeof time === "string" ? time : new Date(time).toISOString();
-    return { min: data.uMin, max: data.uMax, unit: this.unit, time: timeStr, depth: this.depth };
+  private computeFieldMeta(
+    data: VelocityData,
+    time: string | number,
+  ): FieldMeta {
+    const timeStr =
+      typeof time === "string" ? time : new Date(time).toISOString();
+    return {
+      min: data.uMin,
+      max: data.uMax,
+      unit: this.unit,
+      time: timeStr,
+      depth: this.depth,
+    };
   }
 
   private timeToMs(time: string | number): number {
@@ -579,7 +650,9 @@ export class ScalarLayer implements CustomLayerInterface {
   ): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      for (const h of handlers) (h as Function)(...args);
+      for (const h of handlers) {
+        (h as Function)(...args);
+      }
     }
   }
 }

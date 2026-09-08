@@ -12,9 +12,14 @@ describe("buildLimitedTimeRange", () => {
     [true, false, { start: 1 }],
     [false, true, { end: 10 }],
     [true, true, { start: 1, end: 10 }],
-  ] as const)("supports start=%s and end=%s", (limitStart, limitEnd, expected) => {
-    expect(buildLimitedTimeRange(1, 10, limitStart, limitEnd)).toEqual(expected);
-  });
+  ] as const)(
+    "supports start=%s and end=%s",
+    (limitStart, limitEnd, expected) => {
+      expect(buildLimitedTimeRange(1, 10, limitStart, limitEnd)).toEqual(
+        expected,
+      );
+    },
+  );
 
   it("formats only enabled endpoints as ISO timestamps", () => {
     expect(isoTimeRange({ start: Date.UTC(2025, 0, 1) })).toEqual({

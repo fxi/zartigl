@@ -89,7 +89,9 @@ class FakeMap {
   triggerRepaint = vi.fn();
 
   on(event: string, handler: () => void): void {
-    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
     this.listeners.get(event)!.add(handler);
   }
 
@@ -127,7 +129,9 @@ class FakeMap {
   }
 }
 
-function createLayer(renderMode?: "particles" | "raster" | "raster+particles"): VectorLayer {
+function createLayer(
+  renderMode?: "particles" | "raster" | "raster+particles",
+): VectorLayer {
   return new VectorLayer({
     id: "particles",
     source: "https://example.test/current.zarr",
@@ -198,7 +202,9 @@ describe("VectorLayer camera particle state", () => {
 
     const gl = {
       canvas: { width: 800, height: 600 },
-      getParameter: vi.fn((key) => key === 10 ? new Int32Array([0, 0, 800, 600]) : 0),
+      getParameter: vi.fn((key) =>
+        key === 10 ? new Int32Array([0, 0, 800, 600]) : 0,
+      ),
       isEnabled: vi.fn(() => false),
       useProgram: vi.fn(),
       activeTexture: vi.fn(),
@@ -226,10 +232,13 @@ describe("VectorLayer camera particle state", () => {
     const clippingPlane: [number, number, number, number] = [0, 0, 1, 0];
     const matrix = new Float32Array(16);
 
-    layer.render(gl as never, {
-      modelViewProjectionMatrix: matrix,
-      defaultProjectionData: { clippingPlane },
-    } as never);
+    layer.render(
+      gl as never,
+      {
+        modelViewProjectionMatrix: matrix,
+        defaultProjectionData: { clippingPlane },
+      } as never,
+    );
 
     expect(mocks.simulationInstances[0].render).toHaveBeenCalledWith(
       1,
@@ -306,7 +315,9 @@ describe("VectorLayer camera particle state", () => {
     const layer = createLayer();
     const internals = layer as unknown as {
       map: FakeMap;
-      loadViewportVelocity(options?: { resetParticles?: boolean }): Promise<void>;
+      loadViewportVelocity(options?: {
+        resetParticles?: boolean;
+      }): Promise<void>;
     };
     internals.map = new FakeMap();
     const load = vi

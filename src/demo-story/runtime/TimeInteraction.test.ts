@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { StoryTimeInteraction, type StoryFrameScheduler } from "./TimeInteraction";
+import {
+  StoryTimeInteraction,
+  type StoryFrameScheduler,
+} from "./TimeInteraction";
 
 function harness(playing = true) {
   let frame: FrameRequestCallback | null = null;
   const frames: StoryFrameScheduler = {
-    request: vi.fn((callback) => { frame = callback; return 7; }),
+    request: vi.fn((callback) => {
+      frame = callback;
+      return 7;
+    }),
     cancel: vi.fn(),
   };
   const callbacks = {
@@ -15,7 +21,16 @@ function harness(playing = true) {
     finish: vi.fn(),
   };
   const interaction = new StoryTimeInteraction(callbacks, frames);
-  return { interaction, callbacks, frames, flush: () => { const callback = frame; frame = null; callback?.(0); } };
+  return {
+    interaction,
+    callbacks,
+    frames,
+    flush: () => {
+      const callback = frame;
+      frame = null;
+      callback?.(0);
+    },
+  };
 }
 
 describe("StoryTimeInteraction", () => {
@@ -27,7 +42,9 @@ describe("StoryTimeInteraction", () => {
     interaction.request(300);
 
     expect(callbacks.pause).toHaveBeenCalledOnce();
-    expect(callbacks.present.mock.calls.map(([time]) => time)).toEqual([100, 200, 300]);
+    expect(callbacks.present.mock.calls.map(([time]) => time)).toEqual([
+      100, 200, 300,
+    ]);
     expect(frames.request).toHaveBeenCalledOnce();
     expect(callbacks.apply).not.toHaveBeenCalled();
     flush();

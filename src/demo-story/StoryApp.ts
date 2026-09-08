@@ -3,11 +3,23 @@ import storyJson from "./story.json";
 import viewsJson from "./views.json";
 import { ZartiglStoryView } from "./adapters/ZartiglStoryView";
 import {
-  advanceStorySequence, initializeAfterStaticRender, LoadingIndicator, nextStoryIndex, parseStoryDocuments,
-  resolveLocalizedText, sceneViewId, sequenceIndexAtOrBefore, StoryRegistry, StoryTimeInteraction,
-  StoryTimePresentation, StoryWidgetLifecycle,
+  advanceStorySequence,
+  initializeAfterStaticRender,
+  LoadingIndicator,
+  nextStoryIndex,
+  parseStoryDocuments,
+  resolveLocalizedText,
+  sceneViewId,
+  sequenceIndexAtOrBefore,
+  StoryRegistry,
+  StoryTimeInteraction,
+  StoryTimePresentation,
+  StoryWidgetLifecycle,
   storyExternalLinkAttributes,
-  type StoryCopyBlock, type StoryScene, type StoryViewAdapter, type StoryWidgetRun,
+  type StoryCopyBlock,
+  type StoryScene,
+  type StoryViewAdapter,
+  type StoryWidgetRun,
 } from "./runtime";
 import { registerStoryWidgets } from "./widgets/storyWidgets";
 
@@ -15,28 +27,41 @@ const documents = parseStoryDocuments(storyJson, viewsJson);
 
 function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
-  if (!element) throw new Error(`Missing story element: ${selector}`);
+  if (!element) {
+    throw new Error(`Missing story element: ${selector}`);
+  }
   return element;
 }
 
 function formatTime(ms: number, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-    timeZone: "UTC", timeZoneName: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
   }).format(new Date(ms));
 }
 
 function mapStyle(): string {
   const token = import.meta.env.MAPTILER_TOKEN;
-  return token ? `https://api.maptiler.com/maps/satellite-v4/style.json?key=${token}` : "https://demotiles.maplibre.org/style.json";
+  return token
+    ? `https://api.maptiler.com/maps/satellite-v4/style.json?key=${token}`
+    : "https://demotiles.maplibre.org/style.json";
 }
 
 function selectLocale(): string {
   const available = new Set(Object.keys(documents.story.title));
   for (const language of navigator.languages) {
-    if (available.has(language)) return language;
+    if (available.has(language)) {
+      return language;
+    }
     const base = language.split("-")[0];
-    if (available.has(base)) return base;
+    if (available.has(base)) {
+      return base;
+    }
   }
   return documents.story.defaultLocale;
 }
@@ -62,7 +87,9 @@ export class StoryApp {
   private readonly widgetLifecycle = new StoryWidgetLifecycle();
   private readonly timePresentation = new StoryTimePresentation();
   private readonly locale = selectLocale();
-  private readonly viewById = new Map(documents.views.views.map((view) => [view.id, view]));
+  private readonly viewById = new Map(
+    documents.views.views.map((view) => [view.id, view]),
+  );
   private readonly loadingIndicator = new LoadingIndicator((visible) => {
     this.navigation.classList.toggle("is-loading", visible);
   });
@@ -85,8 +112,12 @@ export class StoryApp {
     apply: (time) => this.activeAdapter?.setTime?.(time),
     present: (time) => this.presentActiveTime(time),
     finish: (time, resume) => {
-      if (time !== null) this.anchorSequenceAt(time);
-      if (resume) this.resumePlayback(true);
+      if (time !== null) {
+        this.anchorSequenceAt(time);
+      }
+      if (resume) {
+        this.resumePlayback(true);
+      }
     },
   });
 
@@ -95,28 +126,50 @@ export class StoryApp {
     this.bindEvents();
     const initialScene = documents.story.scenes[0];
     const initialView = this.viewById.get(sceneViewId(initialScene)!);
-    const initialCamera = initialView?.config.camera as { center: [number, number]; zoom: number };
-    const map = await initializeAfterStaticRender(() => {
-      this.renderStatic(initialScene);
-    }, async () => {
-      const nextMap = new maplibregl.Map({ container: "map", style: mapStyle(), center: initialCamera.center, zoom: initialCamera.zoom, maxZoom: 9, attributionControl: false });
-      nextMap.scrollZoom.disable();
-      await new Promise<void>((resolve, reject) => {
-        nextMap.once("load", resolve);
-        nextMap.once("error", (event) => reject(event.error ?? new Error("Map failed to load")));
-      }).catch((error: unknown) => {
-        this.setStatus(error instanceof Error ? error.message : "Map failed to load", true);
-        throw error;
-      });
-      return nextMap;
-    });
+    const initialCamera = initialView?.config.camera as {
+      center: [number, number];
+      zoom: number;
+    };
+    const map = await initializeAfterStaticRender(
+      () => {
+        this.renderStatic(initialScene);
+      },
+      async () => {
+        const nextMap = new maplibregl.Map({
+          container: "map",
+          style: mapStyle(),
+          center: initialCamera.center,
+          zoom: initialCamera.zoom,
+          maxZoom: 9,
+          attributionControl: false,
+        });
+        nextMap.scrollZoom.disable();
+        await new Promise<void>((resolve, reject) => {
+          nextMap.once("load", resolve);
+          nextMap.once("error", (event) =>
+            reject(event.error ?? new Error("Map failed to load")),
+          );
+        }).catch((error: unknown) => {
+          this.setStatus(
+            error instanceof Error ? error.message : "Map failed to load",
+            true,
+          );
+          throw error;
+        });
+        return nextMap;
+      },
+    );
     map.setProjection({ type: "globe" });
     this.bindViewportResize(map);
 
-    this.registry.registerViewType("zartigl-map", () => new ZartiglStoryView(map, {
-      status: (message, error) => this.setStatus(message, error),
-      time: (time) => this.setActiveTime(time),
-    }));
+    this.registry.registerViewType(
+      "zartigl-map",
+      () =>
+        new ZartiglStoryView(map, {
+          status: (message, error) => this.setStatus(message, error),
+          time: (time) => this.setActiveTime(time),
+        }),
+    );
     registerStoryWidgets(this.registry);
     this.ready = true;
     this.renderControls(initialScene);
@@ -128,8 +181,14 @@ export class StoryApp {
     this.next.addEventListener("click", () => void this.go(1));
     this.playButton.addEventListener("click", () => this.togglePlayback());
     window.addEventListener("keydown", (event) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      if (
+        event.key === "ArrowRight" ||
+        event.key === "PageDown" ||
+        event.key === " "
+      ) {
         event.preventDefault();
         void this.go(1);
       } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
@@ -137,22 +196,33 @@ export class StoryApp {
         void this.go(-1);
       }
     });
-    this.story.addEventListener("wheel", (event) => {
-      if (Math.abs(event.deltaY) < 12 || Date.now() < this.wheelLockedUntil) return;
-      event.preventDefault();
-      this.wheelLockedUntil = Date.now() + 800;
-      void this.go(event.deltaY > 0 ? 1 : -1);
-    }, { passive: false });
+    this.story.addEventListener(
+      "wheel",
+      (event) => {
+        if (Math.abs(event.deltaY) < 12 || Date.now() < this.wheelLockedUntil) {
+          return;
+        }
+        event.preventDefault();
+        this.wheelLockedUntil = Date.now() + 800;
+        void this.go(event.deltaY > 0 ? 1 : -1);
+      },
+      { passive: false },
+    );
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) this.pausePlayback();
-      else if (this.playing && !this.timeInteraction.interacting) this.resumePlayback();
+      if (document.hidden) {
+        this.pausePlayback();
+      } else if (this.playing && !this.timeInteraction.interacting) {
+        this.resumePlayback();
+      }
     });
   }
 
   private bindViewportResize(map: maplibregl.Map): void {
     let scheduled = false;
     const scheduleResize = (): void => {
-      if (scheduled) return;
+      if (scheduled) {
+        return;
+      }
       scheduled = true;
       requestAnimationFrame(() => {
         scheduled = false;
@@ -165,9 +235,17 @@ export class StoryApp {
   }
 
   private async go(delta: number): Promise<void> {
-    if (!this.ready) return;
-    const target = nextStoryIndex(this.index, delta, documents.story.scenes.length);
-    if (target !== this.index) await this.activate(target);
+    if (!this.ready) {
+      return;
+    }
+    const target = nextStoryIndex(
+      this.index,
+      delta,
+      documents.story.scenes.length,
+    );
+    if (target !== this.index) {
+      await this.activate(target);
+    }
   }
 
   private async activate(index: number, render = true): Promise<void> {
@@ -180,7 +258,9 @@ export class StoryApp {
     this.timePresentation.setScene(scene);
     this.pausePlayback();
     this.chartCursor = () => undefined;
-    if (render) this.renderStatic(scene);
+    if (render) {
+      this.renderStatic(scene);
+    }
     const viewId = sceneViewId(scene);
     const view = viewId ? this.viewById.get(viewId) : undefined;
     if (!view) {
@@ -192,47 +272,95 @@ export class StoryApp {
       this.activeAdapter = adapter;
       this.activeViewId = view.id;
       await adapter.activate(view, scene);
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) {
+        return;
+      }
       this.prepareSequenceStart(scene);
       await this.renderWidget(scene, generation, widgetRun);
-      if (generation !== this.generation) return;
-      const current = adapter instanceof ZartiglStoryView ? adapter.getCurrentTime() : undefined;
-      if (current !== undefined) this.setActiveTime(current);
-      if (this.playing) this.resumePlayback();
+      if (generation !== this.generation) {
+        return;
+      }
+      const current =
+        adapter instanceof ZartiglStoryView
+          ? adapter.getCurrentTime()
+          : undefined;
+      if (current !== undefined) {
+        this.setActiveTime(current);
+      }
+      if (this.playing) {
+        this.resumePlayback();
+      }
     } catch (error) {
-      if (generation !== this.generation) return;
-      this.setStatus(error instanceof Error ? error.message : "Unable to activate this scene", true);
+      if (generation !== this.generation) {
+        return;
+      }
+      this.setStatus(
+        error instanceof Error
+          ? error.message
+          : "Unable to activate this scene",
+        true,
+      );
     }
   }
 
-  private async renderWidget(scene: StoryScene, generation: number, run: StoryWidgetRun): Promise<void> {
+  private async renderWidget(
+    scene: StoryScene,
+    generation: number,
+    run: StoryWidgetRun,
+  ): Promise<void> {
     const block = scene.blocks.find((entry) => entry.type === "widget");
-    if (!block || generation !== this.generation) return;
+    if (!block || generation !== this.generation) {
+      return;
+    }
     const host = document.createElement("div");
     host.className = "widget-host";
     this.analysis.replaceChildren(host);
-    const cleanup = await this.registry.getWidget(block.widget)(host, block.config ?? {}, {
-      scene, block, locale: this.locale, signal: run.signal,
-      getViewAdapter: (viewId) => viewId === this.activeViewId ? this.activeAdapter ?? undefined : undefined,
-      setTimeCursor: (cursor) => void run.runIfCurrent(() => {
-        if (generation === this.generation) this.chartCursor = cursor;
-      }),
-      beginTimeInteraction: () => void run.runIfCurrent(() => {
-        if (generation === this.generation) this.timeInteraction.begin();
-      }),
-      requestTime: (time) => void run.runIfCurrent(() => {
-        if (generation === this.generation) this.timeInteraction.request(time);
-      }),
-      endTimeInteraction: () => void run.runIfCurrent(() => {
-        if (generation === this.generation) this.timeInteraction.end();
-      }),
-    });
+    const cleanup = await this.registry.getWidget(block.widget)(
+      host,
+      block.config ?? {},
+      {
+        scene,
+        block,
+        locale: this.locale,
+        signal: run.signal,
+        getViewAdapter: (viewId) =>
+          viewId === this.activeViewId
+            ? (this.activeAdapter ?? undefined)
+            : undefined,
+        setTimeCursor: (cursor) =>
+          void run.runIfCurrent(() => {
+            if (generation === this.generation) {
+              this.chartCursor = cursor;
+            }
+          }),
+        beginTimeInteraction: () =>
+          void run.runIfCurrent(() => {
+            if (generation === this.generation) {
+              this.timeInteraction.begin();
+            }
+          }),
+        requestTime: (time) =>
+          void run.runIfCurrent(() => {
+            if (generation === this.generation) {
+              this.timeInteraction.request(time);
+            }
+          }),
+        endTimeInteraction: () =>
+          void run.runIfCurrent(() => {
+            if (generation === this.generation) {
+              this.timeInteraction.end();
+            }
+          }),
+      },
+    );
     run.settle(cleanup);
   }
 
   private renderStatic(scene: StoryScene): void {
     const theme = documents.story.themes[scene.theme];
-    const copy = scene.blocks.find((block): block is StoryCopyBlock => block.type === "copy");
+    const copy = scene.blocks.find(
+      (block): block is StoryCopyBlock => block.type === "copy",
+    );
     this.timePresentation.setScene(scene);
     this.story.dataset.scene = scene.id;
     this.story.dataset.layout = scene.layout;
@@ -249,24 +377,40 @@ export class StoryApp {
     this.title.textContent = copy ? this.text(copy.heading) : "";
     this.description.textContent = copy?.text ? this.text(copy.text) : "";
     this.references.replaceChildren();
-    this.references.dataset.label = this.locale.startsWith("fr") ? "Référence : " : "Source: ";
+    this.references.dataset.label = this.locale.startsWith("fr")
+      ? "Référence : "
+      : "Source: ";
     for (const [index, reference] of (copy?.references ?? []).entries()) {
-      if (index > 0) this.references.append(document.createTextNode(" · "));
+      if (index > 0) {
+        this.references.append(document.createTextNode(" · "));
+      }
       const link = document.createElement("a");
-      Object.assign(link, storyExternalLinkAttributes(reference, this.text(reference.label)));
+      Object.assign(
+        link,
+        storyExternalLinkAttributes(reference, this.text(reference.label)),
+      );
       this.references.append(link);
     }
     this.references.hidden = !copy?.references?.length;
     this.copy.dataset.orientation = copy?.orientation ?? "horizontal";
     this.timestamp.textContent = "";
     this.timestamp.hidden = !this.timePresentation.visible;
-    this.counter.textContent = `${String(this.index + 1).padStart(2, "0")} / ${String(documents.story.scenes.length).padStart(2, "0")}`;
-    this.progress.style.width = `${((this.index + 1) / documents.story.scenes.length) * 100}%`;
+    this.counter.textContent = `${String(this.index + 1).padStart(
+      2,
+      "0",
+    )} / ${String(documents.story.scenes.length).padStart(2, "0")}`;
+    this.progress.style.width = `${
+      ((this.index + 1) / documents.story.scenes.length) * 100
+    }%`;
     this.renderControls(scene);
-    this.analysis.hidden = !scene.blocks.some((block) => block.type === "widget");
+    this.analysis.hidden = !scene.blocks.some(
+      (block) => block.type === "widget",
+    );
     this.analysis.replaceChildren();
     this.renderExtraBlocks(scene);
-    for (const animation of this.copy.getAnimations()) animation.cancel();
+    for (const animation of this.copy.getAnimations()) {
+      animation.cancel();
+    }
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       this.copy.animate(
         [{ transform: "translateX(-1vw)" }, { transform: "none" }],
@@ -277,8 +421,10 @@ export class StoryApp {
 
   private renderControls(scene: StoryScene): void {
     this.previous.disabled = !this.ready || this.index === 0;
-    this.next.disabled = !this.ready || this.index === documents.story.scenes.length - 1;
-    const canPlay = scene.playback !== undefined && scene.playback.mode !== "none";
+    this.next.disabled =
+      !this.ready || this.index === documents.story.scenes.length - 1;
+    const canPlay =
+      scene.playback !== undefined && scene.playback.mode !== "none";
     this.playButton.hidden = !this.ready || !canPlay;
     this.playButton.textContent = this.playing ? "Pause" : "Play";
   }
@@ -286,8 +432,16 @@ export class StoryApp {
   private renderExtraBlocks(scene: StoryScene): void {
     this.extras.replaceChildren();
     for (const block of scene.blocks) {
-      if (block.type !== "text" && block.type !== "credit" && block.type !== "label") continue;
-      const element = document.createElement(block.type === "label" ? "span" : "p");
+      if (
+        block.type !== "text" &&
+        block.type !== "credit" &&
+        block.type !== "label"
+      ) {
+        continue;
+      }
+      const element = document.createElement(
+        block.type === "label" ? "span" : "p",
+      );
       element.className = `story-block story-block-${block.type}`;
       element.dataset.slot = block.slot;
       element.dataset.anchor = block.anchor ?? "center";
@@ -301,19 +455,30 @@ export class StoryApp {
   private togglePlayback(): void {
     this.playing = !this.playing;
     this.playButton.textContent = this.playing ? "Pause" : "Play";
-    if (this.playing) this.resumePlayback();
-    else this.pausePlayback();
+    if (this.playing) {
+      this.resumePlayback();
+    } else {
+      this.pausePlayback();
+    }
   }
 
   private pausePlayback(): void {
     this.activeAdapter?.pause?.();
-    if (this.sequenceTimer !== null) window.clearInterval(this.sequenceTimer);
+    if (this.sequenceTimer !== null) {
+      window.clearInterval(this.sequenceTimer);
+    }
     this.sequenceTimer = null;
   }
 
   private prepareSequenceStart(scene: StoryScene): void {
     const playback = scene.playback;
-    if (!playback || playback.mode !== "sequence" || playback.times.length === 0) return;
+    if (
+      !playback ||
+      playback.mode !== "sequence" ||
+      playback.times.length === 0
+    ) {
+      return;
+    }
     this.sequenceSceneIndex = this.index;
     this.sequenceIndex = 0;
     this.sequenceDirection = 1;
@@ -323,9 +488,13 @@ export class StoryApp {
   }
 
   private resumePlayback(afterTimeInteraction = false): void {
-    if (!this.playing || document.hidden) return;
+    if (!this.playing || document.hidden) {
+      return;
+    }
     const playback = documents.story.scenes[this.index].playback;
-    if (!playback || playback.mode === "none") return;
+    if (!playback || playback.mode === "none") {
+      return;
+    }
     if (playback.mode === "autoplay") {
       void this.activeAdapter?.play?.();
       return;
@@ -340,7 +509,9 @@ export class StoryApp {
       this.activeAdapter?.setTime?.(time);
       this.setActiveTime(time);
     };
-    if (!afterTimeInteraction) setSequenceTime();
+    if (!afterTimeInteraction) {
+      setSequenceTime();
+    }
     this.sequenceTimer = window.setInterval(() => {
       const next = advanceStorySequence(
         this.sequenceIndex,
@@ -355,7 +526,9 @@ export class StoryApp {
   }
 
   private setActiveTime(time: number): void {
-    if (this.timeInteraction.interacting) return;
+    if (this.timeInteraction.interacting) {
+      return;
+    }
     this.presentActiveTime(time);
   }
 
@@ -373,14 +546,25 @@ export class StoryApp {
 
   private anchorSequenceAt(time: number): void {
     const playback = documents.story.scenes[this.index].playback;
-    if (!playback || playback.mode !== "sequence" || playback.times.length === 0) return;
+    if (
+      !playback ||
+      playback.mode !== "sequence" ||
+      playback.times.length === 0
+    ) {
+      return;
+    }
     this.sequenceSceneIndex = this.index;
     this.sequenceIndex = sequenceIndexAtOrBefore(playback.times, time);
     this.sequenceDirection = 1;
   }
 
   private text(value: Record<string, string>): string {
-    return resolveLocalizedText(value, this.locale, documents.story.defaultLocale, documents.story.fallbackLocales);
+    return resolveLocalizedText(
+      value,
+      this.locale,
+      documents.story.defaultLocale,
+      documents.story.fallbackLocales,
+    );
   }
 
   private setStatus(message: string, error = false): void {

@@ -56,7 +56,9 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  if (argv.length === 0) return null;
+  if (argv.length === 0) {
+    return null;
+  }
   const args = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -78,20 +80,26 @@ function parseArgs(argv) {
       process.exit(2);
     }
   }
-  return [{
-    name: `${args.layer}-${args.mode}`,
-    layer: args.layer,
-    mode: args.mode,
-    lon: Number(args.lon),
-    lat: Number(args.lat),
-    expect: args.expect ?? "any",
-  }];
+  return [
+    {
+      name: `${args.layer}-${args.mode}`,
+      layer: args.layer,
+      mode: args.mode,
+      lon: Number(args.lon),
+      lat: Number(args.lat),
+      expect: args.expect ?? "any",
+    },
+  ];
 }
 
 function pointVariables(layer) {
   const source = layer.sources.find((candidate) => candidate.type === "zarr");
-  if (!source) throw new Error(`Layer has no Zarr source: ${layer.id}`);
-  if (source.variables.kind === "scalar") return [source.variables.value ?? "scalar"];
+  if (!source) {
+    throw new Error(`Layer has no Zarr source: ${layer.id}`);
+  }
+  if (source.variables.kind === "scalar") {
+    return [source.variables.value ?? "scalar"];
+  }
   if (source.variables.derivation) {
     return [
       source.variables.derivation.direction_variable,
@@ -109,7 +117,9 @@ function sampleWindow(source, maxPoints = 24) {
 }
 
 function valuesForPoint(point, variables, isVector) {
-  if (!isVector) return [point.values[variables[0]]];
+  if (!isVector) {
+    return [point.values[variables[0]]];
+  }
   const u = point.values[variables[0]];
   const v = point.values[variables[1]];
   return [
@@ -122,7 +132,9 @@ function valuesForPoint(point, variables, isVector) {
 function summarize(result, layer, scenario, unit) {
   const variables = pointVariables(layer);
   const isVector = layer.kind === "vector";
-  const samples = result.points.map((point) => valuesForPoint(point, variables, isVector)[0]);
+  const samples = result.points.map(
+    (point) => valuesForPoint(point, variables, isVector)[0],
+  );
   const valid = samples.filter(Number.isFinite);
   const firstValid = valid[0] ?? null;
   const min = valid.length ? Math.min(...valid) : null;
@@ -146,16 +158,29 @@ function summarize(result, layer, scenario, unit) {
 }
 
 async function runScenario(catalog, scenario) {
-  const layer = catalog.layers.find((candidate) => candidate.id === scenario.layer || candidate.aliases?.includes(scenario.layer));
-  if (!layer) throw new Error(`Unknown layer: ${scenario.layer}`);
-  const sourceConfig = layer.sources.find((candidate) => candidate.type === "zarr" && candidate.endpoints.pointSeries);
-  if (!sourceConfig) throw new Error(`Layer has no point-series source: ${layer.id}`);
+  const layer = catalog.layers.find(
+    (candidate) =>
+      candidate.id === scenario.layer ||
+      candidate.aliases?.includes(scenario.layer),
+  );
+  if (!layer) {
+    throw new Error(`Unknown layer: ${scenario.layer}`);
+  }
+  const sourceConfig = layer.sources.find(
+    (candidate) => candidate.type === "zarr" && candidate.endpoints.pointSeries,
+  );
+  if (!sourceConfig) {
+    throw new Error(`Layer has no point-series source: ${layer.id}`);
+  }
   if (scenario.mode !== "time" && scenario.mode !== "depth") {
     throw new Error(`Invalid mode: ${scenario.mode}`);
   }
   const source = new ZarrSource(sourceConfig.endpoints.pointSeries, 80);
   await source.init();
-  if (scenario.mode === "depth" && (source.getVerticalDimension()?.values.length ?? 0) <= 1) {
+  if (
+    scenario.mode === "depth" &&
+    (source.getVerticalDimension()?.values.length ?? 0) <= 1
+  ) {
     return {
       scenario: scenario.name,
       layer: layer.id,
@@ -167,35 +192,38 @@ async function runScenario(catalog, scenario) {
 
   const variables = pointVariables(layer);
   const attrs = source.getVariableAttrs(variables.at(-1));
-  const result = scenario.mode === "time"
-    ? await source.sampleTimeSeries({
-        variables,
-        longitude: scenario.lon,
-        latitude: scenario.lat,
-        depth: 0,
-        ...(() => {
-          const window = sampleWindow(source);
-          return {
-            timeStartIndex: window.start,
-            timeEndIndex: window.end,
-          };
-        })(),
-        stopAfterMissingSamples: 8,
-      })
-    : await source.sampleVerticalProfile({
-        variables,
-        longitude: scenario.lon,
-        latitude: scenario.lat,
-        time: source.getTimeDimension().max,
-        stopAfterMissingSamples: 8,
-      });
+  const result =
+    scenario.mode === "time"
+      ? await source.sampleTimeSeries({
+          variables,
+          longitude: scenario.lon,
+          latitude: scenario.lat,
+          depth: 0,
+          ...(() => {
+            const window = sampleWindow(source);
+            return {
+              timeStartIndex: window.start,
+              timeEndIndex: window.end,
+            };
+          })(),
+          stopAfterMissingSamples: 8,
+        })
+      : await source.sampleVerticalProfile({
+          variables,
+          longitude: scenario.lon,
+          latitude: scenario.lat,
+          time: source.getTimeDimension().max,
+          stopAfterMissingSamples: 8,
+        });
 
   const summary = summarize(result, layer, scenario, attrs.units ?? "");
   if (scenario.expect === "valid" && summary.validCount === 0) {
     throw new Error(`${scenario.name}: expected valid samples, got none`);
   }
   if (scenario.expect === "missing" && summary.validCount !== 0) {
-    throw new Error(`${scenario.name}: expected missing samples, got ${summary.validCount} valid`);
+    throw new Error(
+      `${scenario.name}: expected missing samples, got ${summary.validCount} valid`,
+    );
   }
   return summary;
 }

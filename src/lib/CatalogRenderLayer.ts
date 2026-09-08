@@ -13,7 +13,11 @@ import type {
   FieldMeta,
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
-import type { CatalogEntry, CatalogWmtsSource, CatalogZarrSource } from "../catalog/types";
+import type {
+  CatalogEntry,
+  CatalogWmtsSource,
+  CatalogZarrSource,
+} from "../catalog/types";
 import type { RenderMode } from "./ParticleSimulation";
 import type { ZartiglStatus } from "./load-status";
 import { GeoVideoLayer } from "./GeoVideoLayer";
@@ -41,7 +45,11 @@ export type CatalogRenderLayerDebugInfo = {
   time: string | number;
   depth: number;
   opacity: number;
-  delegate: VectorLayerDebugInfo | ScalarLayerDebugInfo | GeoVideoLayerDebugInfo | null;
+  delegate:
+    | VectorLayerDebugInfo
+    | ScalarLayerDebugInfo
+    | GeoVideoLayerDebugInfo
+    | null;
 };
 
 function toIsoTime(time: string | number): string {
@@ -68,8 +76,15 @@ export function resolveWmtsTileTemplate(options: {
     .replace(/\{TileMatrix\}/gi, "{z}")
     .replace(/\{TileRow\}/gi, "{y}")
     .replace(/\{TileCol\}/gi, "{x}");
-  if (options.tileMatrixSet != null) result = result.replace(/\{TileMatrixSet\}/gi, encodeParam(options.tileMatrixSet));
-  if (options.style != null) result = result.replace(/\{Style\}/gi, encodeParam(options.style));
+  if (options.tileMatrixSet != null) {
+    result = result.replace(
+      /\{TileMatrixSet\}/gi,
+      encodeParam(options.tileMatrixSet),
+    );
+  }
+  if (options.style != null) {
+    result = result.replace(/\{Style\}/gi, encodeParam(options.style));
+  }
   if (options.time != null) {
     result = result.replace(/\{time\}/gi, encodeParam(toIsoTime(options.time)));
   }
@@ -79,7 +94,9 @@ export function resolveWmtsTileTemplate(options: {
       encodeParam(wmtsElevation(options.depth, options.verticalLabel)),
     );
   }
-  return [...result.matchAll(/\{([^{}]+)\}/g)].some((match) => !/^(?:z|y|x)$/i.test(match[1]))
+  return [...result.matchAll(/\{([^{}]+)\}/g)].some(
+    (match) => !/^(?:z|y|x)$/i.test(match[1]),
+  )
     ? undefined
     : result;
 }
@@ -106,14 +123,24 @@ export function buildWmtsTileUrl(options: {
     ["TILECOL", "{x}"],
   ];
 
-  if (options.style) params.push(["STYLE", options.style]);
-  if (options.time != null) params.push(["time", toIsoTime(options.time)]);
+  if (options.style) {
+    params.push(["STYLE", options.style]);
+  }
+  if (options.time != null) {
+    params.push(["time", toIsoTime(options.time)]);
+  }
   if (options.depth != null) {
-    params.push(["elevation", String(wmtsElevation(options.depth, options.verticalLabel))]);
+    params.push([
+      "elevation",
+      String(wmtsElevation(options.depth, options.verticalLabel)),
+    ]);
   }
 
   const query = params
-    .map(([key, value]) => `${key}=${value.startsWith("{") ? value : encodeParam(value)}`)
+    .map(
+      ([key, value]) =>
+        `${key}=${value.startsWith("{") ? value : encodeParam(value)}`,
+    )
     .join("&");
   return `${options.baseUrl}?${query}`;
 }
@@ -130,13 +157,23 @@ export function buildWmtsLegendUrl(options: {
     ["LAYER", options.layer],
     ["FORMAT", options.format ?? "image/svg+xml"],
   ];
-  if (options.style) params.push(["STYLE", options.style]);
-  return `${options.baseUrl}?${params.map(([key, value]) => `${key}=${encodeParam(value)}`).join("&")}`;
+  if (options.style) {
+    params.push(["STYLE", options.style]);
+  }
+  return `${options.baseUrl}?${params
+    .map(([key, value]) => `${key}=${encodeParam(value)}`)
+    .join("&")}`;
 }
 
-export function selectCatalogRenderLayerBackend(options: CatalogRenderLayerOptions): CatalogRenderLayerBackend {
-  if (options.sourceConfig.type === "wmts") return "scalar-wmts";
-  if (options.sourceConfig.type === "geovideo") return "scalar-geovideo";
+export function selectCatalogRenderLayerBackend(
+  options: CatalogRenderLayerOptions,
+): CatalogRenderLayerBackend {
+  if (options.sourceConfig.type === "wmts") {
+    return "scalar-wmts";
+  }
+  if (options.sourceConfig.type === "geovideo") {
+    return "scalar-geovideo";
+  }
   return options.entry.kind === "vector" ? "vector-zarr" : "scalar-zarr";
 }
 
@@ -145,15 +182,21 @@ function scalarLayerVariable(source: CatalogZarrSource): string {
 }
 
 function vectorLayerU(source: CatalogZarrSource): string {
-  return source.variables.kind === "vector" ? (source.variables.u ?? "uo") : "uo";
+  return source.variables.kind === "vector"
+    ? (source.variables.u ?? "uo")
+    : "uo";
 }
 
 function vectorLayerV(source: CatalogZarrSource): string {
-  return source.variables.kind === "vector" ? (source.variables.v ?? "vo") : "vo";
+  return source.variables.kind === "vector"
+    ? (source.variables.v ?? "vo")
+    : "vo";
 }
 
 function vectorLayerDerivation(source: CatalogZarrSource) {
-  return source.variables.kind === "vector" ? source.variables.derivation : undefined;
+  return source.variables.kind === "vector"
+    ? source.variables.derivation
+    : undefined;
 }
 
 export class CatalogRenderLayer implements CustomLayerInterface {
@@ -215,7 +258,9 @@ export class CatalogRenderLayer implements CustomLayerInterface {
         unit: options.unit ?? "",
       });
     } else if (this.backend === "scalar-geovideo") {
-      if (options.sourceConfig.type !== "geovideo") throw new Error("Invalid GeoVideo source");
+      if (options.sourceConfig.type !== "geovideo") {
+        throw new Error("Invalid GeoVideo source");
+      }
       this.delegate = new GeoVideoLayer({
         id: options.id,
         manifest: options.geoVideoManifest ?? options.sourceConfig.manifestUrl,
@@ -243,7 +288,10 @@ export class CatalogRenderLayer implements CustomLayerInterface {
       backend: this.backend,
       catalogLayer: {
         id: this.options.entry.id,
-        title: this.options.entry.title.en ?? Object.values(this.options.entry.title)[0] ?? "",
+        title:
+          this.options.entry.title.en ??
+          Object.values(this.options.entry.title)[0] ??
+          "",
         kind: this.options.entry.kind,
       },
       time: this.time,
@@ -255,13 +303,17 @@ export class CatalogRenderLayer implements CustomLayerInterface {
 
   onAdd(map: MaplibreMap, gl: WebGLRenderingContext): void | Promise<void> {
     this.map = map;
-    if (this.delegate) return this.delegate.onAdd(map, gl);
+    if (this.delegate) {
+      return this.delegate.onAdd(map, gl);
+    }
     this.addOrUpdateWmts();
     this.emitLoaded();
   }
 
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    if (!this.suspended) this.delegate?.render(gl, options);
+    if (!this.suspended) {
+      this.delegate?.render(gl, options);
+    }
   }
 
   onRemove(): void {
@@ -272,7 +324,9 @@ export class CatalogRenderLayer implements CustomLayerInterface {
 
   setTime(time: string | number): void {
     this.time = time;
-    if (this.suspended) return;
+    if (this.suspended) {
+      return;
+    }
     if (this.delegate) {
       this.delegate.setTime(time);
       return;
@@ -284,7 +338,9 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   setTimeAndDepth(time: string | number, depth: number): void {
     this.time = time;
     this.depth = depth;
-    if (this.suspended) return;
+    if (this.suspended) {
+      return;
+    }
     if (this.delegate) {
       this.delegate.setTimeAndDepth(time, depth);
       return;
@@ -295,7 +351,9 @@ export class CatalogRenderLayer implements CustomLayerInterface {
 
   setDepth(depth: number): void {
     this.depth = depth;
-    if (this.suspended) return;
+    if (this.suspended) {
+      return;
+    }
     if (this.delegate) {
       this.delegate.setDepth(depth);
       return;
@@ -317,7 +375,9 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   suspend(): void {
-    if (this.suspended) return;
+    if (this.suspended) {
+      return;
+    }
     this.suspended = true;
     if (this.delegate) {
       this.delegate.suspend();
@@ -327,7 +387,9 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   resume(): void {
-    if (!this.suspended) return;
+    if (!this.suspended) {
+      return;
+    }
     this.suspended = false;
     if (this.delegate) {
       this.delegate.setTimeAndDepth(this.time, this.depth);
@@ -339,19 +401,27 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   setSpeed(v: number): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setSpeed(v);
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setSpeed(v);
+    }
   }
 
   setFade(v: number): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setFade(v);
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setFade(v);
+    }
   }
 
   setParticleDensity(density: number): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setParticleDensity(density);
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setParticleDensity(density);
+    }
   }
 
   setRenderMode(mode: RenderMode): void {
-    if (this.delegate instanceof VectorLayer) this.delegate.setRenderMode(mode);
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setRenderMode(mode);
+    }
   }
 
   setRgba8MaxParticleZoom(v: number): void {
@@ -374,9 +444,15 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   setLogScale(v: boolean): void {
-    if (this.delegate instanceof ScalarLayer) this.delegate.setLogScale(v);
-    if (this.delegate instanceof VectorLayer) this.delegate.setLogScale(v);
-    if (this.delegate instanceof GeoVideoLayer) this.delegate.setLogScale(v);
+    if (this.delegate instanceof ScalarLayer) {
+      this.delegate.setLogScale(v);
+    }
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setLogScale(v);
+    }
+    if (this.delegate instanceof GeoVideoLayer) {
+      this.delegate.setLogScale(v);
+    }
   }
 
   setVibrance(v: number): void {
@@ -384,32 +460,53 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   setColorDomain(domain: [number, number] | null): void {
-    if (this.delegate instanceof ScalarLayer) this.delegate.setColorDomain(domain);
-    if (this.delegate instanceof GeoVideoLayer) this.delegate.setColorDomain(domain);
+    if (this.delegate instanceof ScalarLayer) {
+      this.delegate.setColorDomain(domain);
+    }
+    if (this.delegate instanceof GeoVideoLayer) {
+      this.delegate.setColorDomain(domain);
+    }
   }
 
   async play(): Promise<void> {
-    if (this.delegate instanceof GeoVideoLayer) await this.delegate.play();
+    if (this.delegate instanceof GeoVideoLayer) {
+      await this.delegate.play();
+    }
   }
 
   pause(): void {
-    if (this.delegate instanceof GeoVideoLayer) this.delegate.pause();
+    if (this.delegate instanceof GeoVideoLayer) {
+      this.delegate.pause();
+    }
   }
 
   setLoop(loop: boolean): void {
-    if (this.delegate instanceof GeoVideoLayer) this.delegate.setLoop(loop);
+    if (this.delegate instanceof GeoVideoLayer) {
+      this.delegate.setLoop(loop);
+    }
   }
 
   setPlaybackRate(rate: number): void {
-    if (this.delegate instanceof GeoVideoLayer) this.delegate.setPlaybackRate(rate);
+    if (this.delegate instanceof GeoVideoLayer) {
+      this.delegate.setPlaybackRate(rate);
+    }
   }
 
   setTimeRange(range: [number, number]): void {
-    if (this.delegate instanceof GeoVideoLayer) this.delegate.setTimeRange(range);
+    if (this.delegate instanceof GeoVideoLayer) {
+      this.delegate.setTimeRange(range);
+    }
   }
 
-  async samplePoint(options: { longitude: number; latitude: number; time?: string | number; depth?: number }) {
-    if (this.delegate instanceof ScalarLayer) return this.delegate.samplePoint(options);
+  async samplePoint(options: {
+    longitude: number;
+    latitude: number;
+    time?: string | number;
+    depth?: number;
+  }) {
+    if (this.delegate instanceof ScalarLayer) {
+      return this.delegate.samplePoint(options);
+    }
     return undefined;
   }
 
@@ -418,12 +515,17 @@ export class CatalogRenderLayer implements CustomLayerInterface {
       on?: (name: string, callback: Function) => unknown;
     } | null;
     delegate?.on?.(event, handler);
-    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
     this.listeners.get(event)!.add(handler);
     return this;
   }
 
-  off<K extends keyof LayerEventMap>(event: K, handler: LayerEventMap[K]): this {
+  off<K extends keyof LayerEventMap>(
+    event: K,
+    handler: LayerEventMap[K],
+  ): this {
     const delegate = this.delegate as unknown as {
       off?: (name: string, callback: Function) => unknown;
     } | null;
@@ -433,37 +535,44 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   private addOrUpdateWmts(): void {
-    if (!this.map || this.options.sourceConfig.type !== "wmts") return;
+    if (!this.map || this.options.sourceConfig.type !== "wmts") {
+      return;
+    }
     this.removeWmts();
     const wmts = this.options.sourceConfig as CatalogWmtsSource;
     const tiles = wmts.tileUrlTemplate
-      ? [resolveWmtsTileTemplate({
-          template: wmts.tileUrlTemplate,
-          tileMatrixSet: wmts.tileMatrixSet,
-          style: wmts.style,
-          time: this.time,
-          depth: this.depth,
-          verticalLabel: this.options.verticalLabel,
-        }) ?? buildWmtsTileUrl({
-          baseUrl: wmts.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
-          layer: wmts.layer,
-          tileMatrixSet: wmts.tileMatrixSet ?? "EPSG:3857",
-          format: wmts.format ?? "image/png",
-          style: wmts.style,
-          time: this.time,
-          depth: this.depth,
-          verticalLabel: this.options.verticalLabel,
-        })]
-      : [buildWmtsTileUrl({
-          baseUrl: wmts.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
-          layer: wmts.layer,
-          tileMatrixSet: wmts.tileMatrixSet ?? "EPSG:3857",
-          format: wmts.format ?? "image/png",
-          style: wmts.style,
-          time: this.time,
-          depth: this.depth,
-          verticalLabel: this.options.verticalLabel,
-        })];
+      ? [
+          resolveWmtsTileTemplate({
+            template: wmts.tileUrlTemplate,
+            tileMatrixSet: wmts.tileMatrixSet,
+            style: wmts.style,
+            time: this.time,
+            depth: this.depth,
+            verticalLabel: this.options.verticalLabel,
+          }) ??
+            buildWmtsTileUrl({
+              baseUrl: wmts.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
+              layer: wmts.layer,
+              tileMatrixSet: wmts.tileMatrixSet ?? "EPSG:3857",
+              format: wmts.format ?? "image/png",
+              style: wmts.style,
+              time: this.time,
+              depth: this.depth,
+              verticalLabel: this.options.verticalLabel,
+            }),
+        ]
+      : [
+          buildWmtsTileUrl({
+            baseUrl: wmts.baseUrl ?? new URL(wmts.capabilitiesUrl).origin,
+            layer: wmts.layer,
+            tileMatrixSet: wmts.tileMatrixSet ?? "EPSG:3857",
+            format: wmts.format ?? "image/png",
+            style: wmts.style,
+            time: this.time,
+            depth: this.depth,
+            verticalLabel: this.options.verticalLabel,
+          }),
+        ];
     this.map.addSource(this.rasterSourceId, {
       type: "raster",
       tiles,
@@ -485,13 +594,20 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   private removeWmts(): void {
-    if (!this.map) return;
-    if (this.map.getLayer(this.rasterLayerId)) this.map.removeLayer(this.rasterLayerId);
-    if (this.map.getSource(this.rasterSourceId)) this.map.removeSource(this.rasterSourceId);
+    if (!this.map) {
+      return;
+    }
+    if (this.map.getLayer(this.rasterLayerId)) {
+      this.map.removeLayer(this.rasterLayerId);
+    }
+    if (this.map.getSource(this.rasterSourceId)) {
+      this.map.removeSource(this.rasterSourceId);
+    }
   }
 
   private emitLoaded(): void {
-    const time = typeof this.time === "number" ? this.time : new Date(this.time).getTime();
+    const time =
+      typeof this.time === "number" ? this.time : new Date(this.time).getTime();
     this.emit("status", { phase: "rendering", time });
     this.emit("loaded", {
       min: 0,
@@ -509,13 +625,17 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   ): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      for (const h of handlers) (h as Function)(...args);
+      for (const h of handlers) {
+        (h as Function)(...args);
+      }
     }
   }
 
   private getBeforeLayerId(): string | undefined {
     const before = this.options.before;
-    if (!before || !this.map?.getLayer(before)) return undefined;
+    if (!before || !this.map?.getLayer(before)) {
+      return undefined;
+    }
     return before;
   }
 }

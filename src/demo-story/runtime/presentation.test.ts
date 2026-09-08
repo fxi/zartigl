@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { advanceStorySequence, sceneShowsTime, sequenceIndexAtOrBefore, StoryTimePresentation } from "./presentation";
+import {
+  advanceStorySequence,
+  sceneShowsTime,
+  sequenceIndexAtOrBefore,
+  StoryTimePresentation,
+} from "./presentation";
 import type { StoryScene } from "./types";
 
 function scene(showTime: boolean): StoryScene {
@@ -8,13 +13,15 @@ function scene(showTime: boolean): StoryScene {
     name: { en: "Fixture scene" },
     theme: "fixture",
     layout: "full",
-    blocks: [{
-      id: "copy",
-      type: "copy",
-      slot: "copy",
-      heading: { en: "Fixture heading" },
-      showTime,
-    }],
+    blocks: [
+      {
+        id: "copy",
+        type: "copy",
+        slot: "copy",
+        heading: { en: "Fixture heading" },
+        showTime,
+      },
+    ],
   };
 }
 
@@ -27,7 +34,9 @@ describe("story presentation", () => {
   it("rejects a late dataset time after entering a timeless scene", () => {
     const presentation = new StoryTimePresentation();
     presentation.setScene(scene(true));
-    expect(presentation.accept(Date.parse("2024-12-14T12:00:00Z"))).not.toBeNull();
+    expect(
+      presentation.accept(Date.parse("2024-12-14T12:00:00Z")),
+    ).not.toBeNull();
 
     presentation.setScene(scene(false));
     expect(presentation.visible).toBe(false);
@@ -36,7 +45,10 @@ describe("story presentation", () => {
 
   it("loops forward from the last frame to the first", () => {
     const visited: number[] = [0];
-    let state: { index: number; direction: 1 | -1 } = { index: 0, direction: 1 };
+    let state: { index: number; direction: 1 | -1 } = {
+      index: 0,
+      direction: 1,
+    };
     for (let step = 0; step < 8; step++) {
       state = advanceStorySequence(state.index, state.direction, 8, "loop");
       visited.push(state.index);
@@ -46,11 +58,24 @@ describe("story presentation", () => {
   });
 
   it("resumes a sequence from the last frame at or before a requested time", () => {
-    const times = ["2024-12-14T00:00:00Z", "2024-12-14T03:00:00Z", "2024-12-14T21:00:00Z"];
-    expect(sequenceIndexAtOrBefore(times, Date.parse("2024-12-13T23:00:00Z"))).toBe(0);
-    expect(sequenceIndexAtOrBefore(times, Date.parse("2024-12-14T04:00:00Z"))).toBe(1);
-    const selected = sequenceIndexAtOrBefore(times, Date.parse("2024-12-14T22:00:00Z"));
+    const times = [
+      "2024-12-14T00:00:00Z",
+      "2024-12-14T03:00:00Z",
+      "2024-12-14T21:00:00Z",
+    ];
+    expect(
+      sequenceIndexAtOrBefore(times, Date.parse("2024-12-13T23:00:00Z")),
+    ).toBe(0);
+    expect(
+      sequenceIndexAtOrBefore(times, Date.parse("2024-12-14T04:00:00Z")),
+    ).toBe(1);
+    const selected = sequenceIndexAtOrBefore(
+      times,
+      Date.parse("2024-12-14T22:00:00Z"),
+    );
     expect(selected).toBe(2);
-    expect(advanceStorySequence(selected, 1, times.length, "loop").index).toBe(0);
+    expect(advanceStorySequence(selected, 1, times.length, "loop").index).toBe(
+      0,
+    );
   });
 });

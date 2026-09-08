@@ -11,7 +11,9 @@ export function buildLimitedTimeRange(
   limitStart: boolean,
   limitEnd: boolean,
 ): LimitedTimeRange | undefined {
-  if (!limitStart && !limitEnd) return undefined;
+  if (!limitStart && !limitEnd) {
+    return undefined;
+  }
   return {
     ...(limitStart ? { start } : {}),
     ...(limitEnd ? { end } : {}),
@@ -23,9 +25,13 @@ export function normalizeSharedTimeRange(
 ): LimitedTimeRange | undefined {
   if (Array.isArray(range)) {
     const [start, end] = range;
-    return Number.isFinite(start) && Number.isFinite(end) ? { start, end } : undefined;
+    return Number.isFinite(start) && Number.isFinite(end)
+      ? { start, end }
+      : undefined;
   }
-  if (!range) return undefined;
+  if (!range) {
+    return undefined;
+  }
   const start = Number.isFinite(range.start) ? range.start : undefined;
   const end = Number.isFinite(range.end) ? range.end : undefined;
   return start === undefined && end === undefined ? undefined : { start, end };
@@ -34,10 +40,16 @@ export function normalizeSharedTimeRange(
 export function isoTimeRange(
   range?: LimitedTimeRange,
 ): { start?: string; end?: string } | undefined {
-  if (!range) return undefined;
+  if (!range) {
+    return undefined;
+  }
   return {
-    ...(range.start !== undefined ? { start: new Date(range.start).toISOString() } : {}),
-    ...(range.end !== undefined ? { end: new Date(range.end).toISOString() } : {}),
+    ...(range.start !== undefined
+      ? { start: new Date(range.start).toISOString() }
+      : {}),
+    ...(range.end !== undefined
+      ? { end: new Date(range.end).toISOString() }
+      : {}),
   };
 }
 
