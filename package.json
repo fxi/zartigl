@@ -49,7 +49,12 @@
     "geovideo:calibrate:browser": "uv run scripts/geovideo/browser_calibrate.py",
     "smoke:sample": "npm run build:lib && node scripts/smoke-sample-point.mjs",
     "release:check": "npm run test && npm run catalog:validate && npm run build && npm run build:lib && npm run smoke:sample",
-    "prepublishOnly": "npm run build:lib"
+    "prepublishOnly": "npm run build:lib",
+    "format": "node node_modules/prettier/bin/prettier.cjs --write \"**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts}\"",
+    "format:check": "node node_modules/prettier/bin/prettier.cjs --check \"**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts}\"",
+    "lint": "node node_modules/eslint/bin/eslint.js . --max-warnings 0",
+    "lint:fix": "node node_modules/eslint/bin/eslint.js . --fix --max-warnings 0",
+    "quality": "npm run format:check && npm run lint"
   },
   "publishConfig": {
     "access": "public"
@@ -75,10 +80,15 @@
     "@tweakpane/core": "^2.0.5",
     "@types/d3": "^7.4.3",
     "@types/pako": "^2.0.4",
+    "@typescript-eslint/parser": "8.46.4",
     "d3": "^7.9.0",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "16.5.0",
     "maplibre-gl": "^5.17.0",
+    "prettier": "3.6.2",
     "tweakpane": "^4.0.5",
-    "typescript": "^5.9.3",
+    "typescript": "5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",
     "vite-plugin-glsl": "^1.5.5",
