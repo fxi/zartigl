@@ -3,7 +3,7 @@ import {
   buildLimitedTimeRange,
   isoTimeRange,
   normalizeSharedTimeRange,
-  shouldExportSelectedTime,
+  exportedSnippetTime,
 } from "./time-range";
 
 describe("buildLimitedTimeRange", () => {
@@ -39,13 +39,17 @@ describe("normalizeSharedTimeRange", () => {
   });
 });
 
-describe("shouldExportSelectedTime", () => {
-  it("omits an open-ended latest selection", () => {
-    expect(shouldExportSelectedTime(10, 10, false)).toBe(false);
+describe("exportedSnippetTime", () => {
+  it("omits any unpinned selection, including a forecast before its maximum", () => {
+    expect(exportedSnippetTime(5, false)).toBeUndefined();
+    expect(exportedSnippetTime(10, false)).toBeUndefined();
   });
 
-  it("keeps historical and fixed-end selections", () => {
-    expect(shouldExportSelectedTime(5, 10, false)).toBe(true);
-    expect(shouldExportSelectedTime(10, 10, true)).toBe(true);
+  it("exports a pinned selection", () => {
+    expect(exportedSnippetTime(5, true)).toEqual(new Date(5));
+  });
+
+  it("omits a pinned selection without a valid time", () => {
+    expect(exportedSnippetTime(NaN, true)).toBeUndefined();
   });
 });

@@ -53,10 +53,13 @@ export function isoTimeRange(
   };
 }
 
-export function shouldExportSelectedTime(
+/**
+ * Time exported in generated code. Omitted unless the author pins it, so
+ * the runtime keeps resolving the latest available step at load time.
+ */
+export function exportedSnippetTime(
   selected: number,
-  maximum: number,
-  limitEnd: boolean,
-): boolean {
-  return limitEnd || selected !== maximum;
+  pinned: boolean,
+): Date | undefined {
+  return pinned && Number.isFinite(selected) ? new Date(selected) : undefined;
 }

@@ -38,7 +38,7 @@ import {
   buildLimitedTimeRange,
   isoTimeRange,
   normalizeSharedTimeRange,
-  shouldExportSelectedTime,
+  exportedSnippetTime,
 } from "./time-range";
 import type { SharedTimeRange } from "./time-range";
 
@@ -51,6 +51,7 @@ interface DemoParams {
   allowedEnd: number;
   limitStart: boolean;
   limitEnd: boolean;
+  pinTime: boolean;
   geoVideoAutoplay: boolean;
   geoVideoLoop: boolean;
   geoVideoPlaybackRate: number;
@@ -88,6 +89,7 @@ interface HashState {
   vb: number;
   cd?: [number, number] | null;
   tr?: SharedTimeRange;
+  pt?: boolean;
   ga?: boolean;
   gl?: boolean;
   gr?: number;
@@ -671,6 +673,12 @@ export class DemoApp {
         label: "",
       },
     ) as BindingApi;
+
+    this.dataBindings.push(
+      this.timeFolder.addBinding(this.params, "pinTime", {
+        label: "pin in code",
+      }) as BindingApi,
+    );
 
     this.dataBindings.push(this.buildLimitRangeControls());
 
@@ -1559,15 +1567,12 @@ export class DemoApp {
       timeMeta.values?.[this.params.timeIndex] ??
       timeMeta.current ??
       timeMeta.max;
-    const includeTime =
-      this.currentBackend === "geovideo" ||
-      shouldExportSelectedTime(timeMs, timeMeta.max, this.params.limitEnd);
     return {
       layerId: layer.id,
       layerKind: layer.kind,
       source: this.currentSourceId,
       sourceType: this.currentBackend,
-      time: includeTime ? new Date(timeMs) : undefined,
+      time: exportedSnippetTime(timeMs, this.params.pinTime),
       timeRange: this.currentTimeRange(),
       geoVideo:
         this.currentBackend === "geovideo"
@@ -1608,6 +1613,7 @@ export class DemoApp {
       vb: this.params.vibrance,
       cd: this.params.colorDomain,
       tr: this.currentNumericTimeRange(),
+      pt: this.params.pinTime,
       ga: this.params.geoVideoAutoplay,
       gl: this.params.geoVideoLoop,
       gr: this.params.geoVideoPlaybackRate,
@@ -1696,6 +1702,7 @@ export class DemoApp {
       allowedEnd: 0,
       limitStart: false,
       limitEnd: false,
+      pinTime: false,
       geoVideoAutoplay: false,
       geoVideoLoop: true,
       geoVideoPlaybackRate: 1,
@@ -1751,12 +1758,14 @@ export class DemoApp {
     this.params.palette = d.palette ?? "rdylbu";
     this.params.limitStart = false;
     this.params.limitEnd = false;
+    this.params.pinTime = false;
   }
 
   private applyHashState(hash: HashState, layer: CatalogEntry): void {
     const timeRange = normalizeSharedTimeRange(hash.tr);
     this.params.limitStart = timeRange?.start !== undefined;
     this.params.limitEnd = timeRange?.end !== undefined;
+    this.params.pinTime = hash.pt === true;
     this.params.particleDensity = hash.pd;
     this.params.speed = hash.sp ?? 1.0;
     this.params.fade = hash.f ?? 0.7;
