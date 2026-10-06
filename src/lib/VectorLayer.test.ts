@@ -285,6 +285,37 @@ describe("VectorLayer camera particle state", () => {
     expect(map.listenerCount("moveend")).toBe(0);
   });
 
+  it("drops a load that resolves after the layer was removed", async () => {
+    const layer = createLayer();
+    const internals = layer as unknown as {
+      map: FakeMap;
+      zarrSource: { init(): Promise<void> };
+      loadViewportVelocity(): Promise<void>;
+      fetchVelocityData(): Promise<VelocityData>;
+    };
+    let resolveInit!: () => void;
+    internals.map = new FakeMap();
+    internals.zarrSource.init = () =>
+      new Promise<void>((resolve) => {
+        resolveInit = resolve;
+      });
+    const fetchFrame = vi.spyOn(internals, "fetchVelocityData");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const onError = vi.fn();
+    layer.on("error", onError);
+
+    const loading = internals.loadViewportVelocity();
+    layer.onRemove();
+    resolveInit();
+    await loading;
+
+    expect(fetchFrame).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it("caches and buffers a renderable sparse frame", async () => {
     const layer = createLayer();
     const internals = layer as unknown as {

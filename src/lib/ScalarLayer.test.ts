@@ -153,4 +153,41 @@ describe("ScalarLayer point sampling", () => {
       expect(fetchFrame).toHaveBeenCalledWith(123, expect.any(Function)),
     );
   });
+
+  it("drops a load that resolves after the layer was removed", async () => {
+    const layer = new ScalarLayer({
+      id: "scalar",
+      source: "https://example.test/scalar.zarr",
+      variable: "temperature",
+    });
+    const internals = layer as unknown as {
+      map: { getBounds(): unknown; triggerRepaint(): void };
+      zarrSource: { init(): Promise<void> };
+      simulation: { destroy(): void };
+      activeField: { destroy(): void };
+      loadCurrent(): Promise<void>;
+      fetchScalarData(): Promise<VelocityData>;
+    };
+    let resolveInit!: () => void;
+    internals.map = { getBounds: vi.fn(), triggerRepaint: vi.fn() };
+    vi.spyOn(internals.simulation, "destroy").mockImplementation(() => {});
+    vi.spyOn(internals.activeField, "destroy").mockImplementation(() => {});
+    vi.spyOn(internals.zarrSource, "init").mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveInit = resolve;
+        }),
+    );
+    const fetchFrame = vi.spyOn(internals, "fetchScalarData");
+    const onError = vi.fn();
+    layer.on("error", onError);
+
+    const loading = internals.loadCurrent();
+    layer.onRemove();
+    resolveInit();
+    await loading;
+
+    expect(fetchFrame).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
 });
