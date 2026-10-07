@@ -22,6 +22,36 @@ export interface GeoVideoSampleSequenceTimeline {
   values: string[];
 }
 
+export interface GeoVideoScalarEncoding {
+  kind: "scalar-luma";
+  bits: 8;
+  codeMin: number;
+  codeMax: number;
+  valueMin: number;
+  valueMax: number;
+  transfer: "linear";
+  colorSpace: "bt709";
+  colorRange: "limited" | "full";
+}
+
+/**
+ * u and v stacked vertically in luma (u rows on top). Each component maps
+ * [-valueDomain, valueDomain] to [codeMin, codeMax]; "sqrt" stores
+ * sign(x)·sqrt(|x|/valueDomain) to keep precision on slow flows. The static
+ * mask covers one component (media height / 2).
+ */
+export interface GeoVideoVectorEncoding {
+  kind: "vector-luma";
+  bits: 8;
+  codeMin: number;
+  codeMax: number;
+  valueDomain: number;
+  transfer: "linear" | "sqrt";
+  layout: "stacked-uv";
+  colorSpace: "bt709";
+  colorRange: "limited" | "full";
+}
+
 export interface GeoVideoManifest {
   schemaVersion: 3;
   id: string;
@@ -37,17 +67,7 @@ export interface GeoVideoManifest {
     durationSeconds: number;
     codec: "h264" | string;
   };
-  encoding: {
-    kind: "scalar-luma";
-    bits: 8;
-    codeMin: number;
-    codeMax: number;
-    valueMin: number;
-    valueMax: number;
-    transfer: "linear";
-    colorSpace: "bt709";
-    colorRange: "limited" | "full";
-  };
+  encoding: GeoVideoScalarEncoding | GeoVideoVectorEncoding;
   mask: {
     kind: "static-validity";
     url: string;
@@ -138,25 +158,38 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
   const encoding = manifest.encoding;
   if (
     !encoding ||
-    encoding.kind !== "scalar-luma" ||
     encoding.bits !== 8 ||
-    encoding.transfer !== "linear" ||
     encoding.colorSpace !== "bt709" ||
     (encoding.colorRange !== "limited" && encoding.colorRange !== "full")
   ) {
-    throw new Error("Invalid GeoVideo scalar-luma encoding");
+    throw new Error("Invalid GeoVideo encoding");
   }
   const codeMin = finite(encoding.codeMin, "encoding.codeMin");
   const codeMax = finite(encoding.codeMax, "encoding.codeMax");
-  const valueMin = finite(encoding.valueMin, "encoding.valueMin");
-  const valueMax = finite(encoding.valueMax, "encoding.valueMax");
-  if (
-    codeMin < 0 ||
-    codeMax > 255 ||
-    codeMin >= codeMax ||
-    valueMin >= valueMax
-  ) {
-    throw new Error("Invalid GeoVideo scalar-luma ranges");
+  if (codeMin < 0 || codeMax > 255 || codeMin >= codeMax) {
+    throw new Error("Invalid GeoVideo code range");
+  }
+  let maskHeight = media.height;
+  if (encoding.kind === "scalar-luma") {
+    if (
+      encoding.transfer !== "linear" ||
+      finite(encoding.valueMin, "encoding.valueMin") >=
+        finite(encoding.valueMax, "encoding.valueMax")
+    ) {
+      throw new Error("Invalid GeoVideo scalar-luma encoding");
+    }
+  } else if (encoding.kind === "vector-luma") {
+    if (
+      (encoding.transfer !== "linear" && encoding.transfer !== "sqrt") ||
+      encoding.layout !== "stacked-uv" ||
+      finite(encoding.valueDomain, "encoding.valueDomain") <= 0 ||
+      media.height % 2 !== 0
+    ) {
+      throw new Error("Invalid GeoVideo vector-luma encoding");
+    }
+    maskHeight = media.height / 2;
+  } else {
+    throw new Error("Unsupported GeoVideo encoding");
   }
   const mask = manifest.mask;
   if (
@@ -165,7 +198,7 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
     typeof mask.url !== "string" ||
     !mask.url ||
     finite(mask.width, "mask.width") !== media.width ||
-    finite(mask.height, "mask.height") !== media.height ||
+    finite(mask.height, "mask.height") !== maskHeight ||
     finite(mask.threshold, "mask.threshold") < 0 ||
     mask.threshold > 1
   ) {

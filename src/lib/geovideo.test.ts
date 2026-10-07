@@ -58,9 +58,63 @@ const manifest: GeoVideoManifest = {
   style: { palette: "balance", colorDomain: [-3, 3], unit: "degrees_C" },
 };
 
+const vectorManifest: GeoVideoManifest = {
+  ...manifest,
+  media: {
+    ...manifest.media,
+    width: 4,
+    height: 4,
+    fps: 4,
+    durationSeconds: 0.5,
+  },
+  encoding: {
+    kind: "vector-luma",
+    bits: 8,
+    codeMin: 16,
+    codeMax: 235,
+    valueDomain: 2,
+    transfer: "sqrt",
+    layout: "stacked-uv",
+    colorSpace: "bt709",
+    colorRange: "limited",
+  },
+  mask: { ...manifest.mask, width: 4, height: 2 },
+  timeline: {
+    kind: "sample-sequence",
+    values: ["2026-08-01T00:00:00Z", "2026-08-01T03:00:00Z"],
+  },
+  style: { palette: "viridis", colorDomain: [0, 2 * Math.SQRT2], unit: "m" },
+};
+
 describe("GeoVideo manifest", () => {
   it("validates a scalar-luma video with an external static mask", () => {
     expect(validateGeoVideoManifest(manifest)).toEqual(manifest);
+  });
+
+  it("validates a stacked u/v vector-luma video with a half-height mask", () => {
+    expect(validateGeoVideoManifest(vectorManifest)).toEqual(vectorManifest);
+  });
+
+  it("rejects vector-luma manifests with an inconsistent layout", () => {
+    expect(() =>
+      validateGeoVideoManifest({
+        ...vectorManifest,
+        mask: { ...vectorManifest.mask, height: 4 },
+      }),
+    ).toThrow(/static mask/);
+    expect(() =>
+      validateGeoVideoManifest({
+        ...vectorManifest,
+        encoding: { ...vectorManifest.encoding, valueDomain: 0 },
+      }),
+    ).toThrow(/vector-luma/);
+    expect(() =>
+      validateGeoVideoManifest({
+        ...vectorManifest,
+        media: { ...vectorManifest.media, height: 5 },
+        mask: { ...vectorManifest.mask, height: 2.5 },
+      }),
+    ).toThrow(/vector-luma/);
   });
 
   it("rejects removed manifest formats", () => {

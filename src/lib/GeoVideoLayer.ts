@@ -20,6 +20,7 @@ import {
   geoVideoTimeForSeconds,
   loadGeoVideoManifest,
   type GeoVideoManifest,
+  type GeoVideoScalarEncoding,
 } from "./geovideo";
 import type { FieldMeta } from "./types";
 import type { ZartiglStatus } from "./load-status";
@@ -209,6 +210,11 @@ export class GeoVideoLayer implements CustomLayerInterface {
         this.source,
         this.abortController.signal,
       );
+      if (this.manifest.encoding.kind !== "scalar-luma") {
+        throw new Error(
+          `GeoVideoLayer renders scalar-luma manifests, received ${this.manifest.encoding.kind}`,
+        );
+      }
       const timeline = geoVideoTimelineBounds(this.manifest);
       this.timeRange = this.requestedTimeRange
         ? [
@@ -337,10 +343,11 @@ export class GeoVideoLayer implements CustomLayerInterface {
         gl.getUniformLocation(program, "u_mask_threshold"),
         manifest.mask.threshold,
       );
-      const codeMin = manifest.encoding.codeMin / 255;
-      const codeMax = manifest.encoding.codeMax / 255;
-      const valueMin = manifest.encoding.valueMin;
-      const valueMax = manifest.encoding.valueMax;
+      const encoding = manifest.encoding as GeoVideoScalarEncoding;
+      const codeMin = encoding.codeMin / 255;
+      const codeMax = encoding.codeMax / 255;
+      const valueMin = encoding.valueMin;
+      const valueMax = encoding.valueMax;
       const domain = this.colorDomain ?? [valueMin, valueMax];
       gl.uniform2f(
         gl.getUniformLocation(program, "u_code_range"),
