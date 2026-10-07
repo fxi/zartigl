@@ -703,7 +703,7 @@ export class DemoApp {
     if (depthBinding) {
       this.dataBindings.push(depthBinding);
     }
-    if (this.currentBackend === "geovideo") {
+    if (this.usesNativeGeoVideoPlayback()) {
       const autoplay = this.dataFolder
         .addBinding(this.params, "geoVideoAutoplay", {
           label: "autoplay",
@@ -1574,10 +1574,9 @@ export class DemoApp {
       sourceType: this.currentBackend,
       time: exportedSnippetTime(timeMs, this.params.pinTime),
       timeRange: this.currentTimeRange(),
-      geoVideo:
-        this.currentBackend === "geovideo"
-          ? this.currentGeoVideoOptions()
-          : undefined,
+      geoVideo: this.usesNativeGeoVideoPlayback()
+        ? this.currentGeoVideoOptions()
+        : undefined,
       depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
       settings: this.buildSettings(),
     };
@@ -1627,6 +1626,13 @@ export class DemoApp {
 
   private updateLayerSelect(): void {
     this.layerPicker.setSelected(this.currentLayer);
+  }
+
+  /** Scalar GeoVideo plays natively; vector GeoVideo is decoded frame by frame. */
+  private usesNativeGeoVideoPlayback(): boolean {
+    return (
+      this.currentBackend === "geovideo" && this.currentLayer.kind !== "vector"
+    );
   }
 
   private updateSourceVisibility(): void {
