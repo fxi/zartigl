@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VectorLayer } from "./VectorLayer";
-import type { VelocityData } from "./types";
+import { stitchVelocityChunks } from "./VelocityField";
+import type { VectorFieldSource, VelocityData } from "./types";
 
 const mocks = vi.hoisted(() => {
   const simulationInstances: Array<{
@@ -283,6 +284,64 @@ describe("VectorLayer camera particle state", () => {
     expect(map.listenerCount("movestart")).toBe(0);
     expect(map.listenerCount("move")).toBe(0);
     expect(map.listenerCount("moveend")).toBe(0);
+  });
+
+  it("normalizes on the source value domain when it provides one", async () => {
+    const source = {
+      init: async () => undefined,
+      cancelAll: () => undefined,
+      getCoords: () => ({
+        time: new Float64Array([0]),
+        vertical: new Float32Array([0]),
+        latitude: new Float32Array([0.5]),
+        longitude: new Float32Array([0, 1]),
+      }),
+      getDimensions: () => ["time", "latitude", "longitude"],
+      getChunkShape: () => [1, 1, 2],
+      findTimeIndex: () => 0,
+      findDepthIndex: () => 0,
+      getChunksForBounds: () => [
+        {
+          timeIdx: 0,
+          depthIdx: 0,
+          latIdx: 0,
+          lonIdx: 0,
+          latRange: [0.5, 0.5] as [number, number],
+          lonRange: [0, 1] as [number, number],
+          latSize: 1,
+          lonSize: 2,
+        },
+      ],
+      fetchSpatialChunkResult: async () => ({
+        data: new Float32Array([1, 2]),
+        missing: false,
+        url: "",
+      }),
+    } satisfies VectorFieldSource;
+    const fetchFrame = (domain?: number) => {
+      vi.mocked(stitchVelocityChunks).mockReturnValueOnce(vectorData());
+      const layer = new VectorLayer({
+        id: "fixed",
+        source: "",
+        zarrSource:
+          domain == null ? source : { ...source, getValueDomain: () => domain },
+      });
+      const internals = layer as unknown as {
+        map: FakeMap;
+        fetchVelocityData(time: number): Promise<VelocityData>;
+      };
+      internals.map = new FakeMap();
+      return internals.fetchVelocityData(0);
+    };
+
+    const fixed = await fetchFrame(5);
+    expect([fixed.uMin, fixed.uMax, fixed.vMin, fixed.vMax]).toEqual([
+      -5, 5, -5, 5,
+    ]);
+    const extrema = await fetchFrame();
+    expect([extrema.uMin, extrema.uMax, extrema.vMin, extrema.vMax]).toEqual([
+      1, 2, 3, 4,
+    ]);
   });
 
   it("drops a load that resolves after the layer was removed", async () => {

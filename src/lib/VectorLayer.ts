@@ -3,7 +3,12 @@ import type {
   CustomLayerInterface,
   CustomRenderMethodInput,
 } from "maplibre-gl";
-import type { VectorLayerOptions, FieldMeta, VelocityData } from "./types";
+import type {
+  VectorLayerOptions,
+  VectorFieldSource,
+  FieldMeta,
+  VelocityData,
+} from "./types";
 import { saveGLState, restoreGLState } from "./gl-util";
 import type { ColorRampInput } from "./gl-util";
 import {
@@ -80,7 +85,7 @@ export class VectorLayer implements CustomLayerInterface {
 
   private simulation: ParticleSimulation;
   private velocityField: VelocityField;
-  private zarrSource: ZarrSource;
+  private zarrSource: VectorFieldSource;
 
   private variableU: string;
   private variableV: string;
@@ -363,6 +368,13 @@ export class VectorLayer implements CustomLayerInterface {
       dataGeoBounds,
       latDescending,
     );
+    const domain = this.zarrSource.getValueDomain?.();
+    if (domain != null && domain > 0) {
+      stitched.uMin = -domain;
+      stitched.uMax = domain;
+      stitched.vMin = -domain;
+      stitched.vMax = domain;
+    }
     if (!hasRenderableVector(stitched.u, stitched.v)) {
       throw new ZartiglFrameUnavailableError(
         this.timeToMs(time),

@@ -12,11 +12,34 @@ export interface DirectionMagnitudeVectorDerivation {
 
 export type VectorDerivation = DirectionMagnitudeVectorDerivation;
 
+/**
+ * Field source contract used by VectorLayer. ZarrSource satisfies it; frame
+ * sources such as GeoVideoVectorSource implement it to feed decoded frames.
+ */
+export type VectorFieldSource = Pick<
+  ZarrSource,
+  | "init"
+  | "cancelAll"
+  | "getCoords"
+  | "getDimensions"
+  | "getChunkShape"
+  | "findTimeIndex"
+  | "findDepthIndex"
+  | "getChunksForBounds"
+  | "fetchSpatialChunkResult"
+> & {
+  /**
+   * Fixed symmetric component domain [-d, d]. When provided, it replaces the
+   * per-frame min/max so speed and color normalization stay stable in time.
+   */
+  getValueDomain?(): number;
+};
+
 export interface VectorLayerOptions {
   id: string;
   source: string;
   /** Optional initialized/shared source. When omitted, the layer creates one from `source`. */
-  zarrSource?: ZarrSource;
+  zarrSource?: VectorFieldSource;
   variableU?: string;
   variableV?: string;
   vectorDerivation?: VectorDerivation;
@@ -48,12 +71,18 @@ export type CatalogRenderLayerBackend =
   | "vector-zarr"
   | "scalar-zarr"
   | "scalar-geovideo"
+  | "vector-geovideo"
   | "scalar-wmts";
 
 export interface CatalogRenderLayerOptions
-  extends Omit<VectorLayerOptions, "source" | "variableU" | "variableV"> {
+  extends Omit<
+    VectorLayerOptions,
+    "source" | "variableU" | "variableV" | "zarrSource"
+  > {
   entry: CatalogEntry;
   sourceConfig: CatalogSource;
+  /** Shared Zarr field source for Zarr backends. */
+  zarrSource?: ZarrSource;
   /** Fixed physical-value domain for scalar colors. Null/omitted uses frame extrema. */
   colorDomain?: [number, number] | null;
   geoVideoManifest?: GeoVideoManifest;
