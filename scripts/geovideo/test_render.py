@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from render import ScalarFrames, create_manifest, validate_config, validate_monthly_samples
+from render import ScalarFrames, create_manifest, require_bucket_cors, validate_config, validate_monthly_samples
 
 
 class GeoVideoSamplingTest(unittest.TestCase):
@@ -111,6 +111,44 @@ class GeoVideoSamplingTest(unittest.TestCase):
         frames.config = {"interpolation": "linear"}
         frames._slice = lambda index: np.array([index], dtype=np.float32)
         np.testing.assert_array_equal(frames._frame_at(frames.times[1]), np.array([1], dtype=np.float32))
+
+
+class FakeCorsClient:
+    class exceptions:
+        class ClientError(Exception):
+            pass
+
+    def __init__(self, rules=None):
+        self.rules = rules
+
+    def get_bucket_cors(self, Bucket):
+        if self.rules is None:
+            raise self.exceptions.ClientError("NoSuchCORSConfiguration")
+        return {"CORSRules": self.rules}
+
+    def put_bucket_cors(self, **kwargs):
+        raise AssertionError("publish must not rewrite bucket CORS")
+
+
+class BucketCorsTest(unittest.TestCase):
+    RANGE_RULE = {
+        "AllowedMethods": ["GET", "HEAD"],
+        "AllowedOrigins": ["*"],
+        "AllowedHeaders": ["Range"],
+        "ExposeHeaders": ["Accept-Ranges", "Content-Length", "Content-Range", "ETag"],
+    }
+
+    def test_accepts_range_read_rule(self):
+        require_bucket_cors(FakeCorsClient([self.RANGE_RULE]), "bucket")
+
+    def test_rejects_missing_configuration(self):
+        with self.assertRaisesRegex(RuntimeError, "no readable CORS"):
+            require_bucket_cors(FakeCorsClient(), "bucket")
+
+    def test_rejects_rule_without_range_header(self):
+        rule = {**self.RANGE_RULE, "AllowedHeaders": []}
+        with self.assertRaisesRegex(RuntimeError, "Range reads"):
+            require_bucket_cors(FakeCorsClient([rule]), "bucket")
 
 
 if __name__ == "__main__":

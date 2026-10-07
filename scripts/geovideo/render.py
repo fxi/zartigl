@@ -704,6 +704,23 @@ def create_manifest(
     }
 
 
+def require_bucket_cors(client: Any, bucket: str) -> None:
+    """Fail early when the bucket cannot serve browser Range reads; never rewrite shared bucket CORS."""
+    try:
+        rules = client.get_bucket_cors(Bucket=bucket)["CORSRules"]
+    except client.exceptions.ClientError as exc:
+        raise RuntimeError(
+            f"Bucket {bucket} has no readable CORS configuration; configure GET/HEAD with the Range header once"
+        ) from exc
+    for rule in rules:
+        methods = {method.upper() for method in rule.get("AllowedMethods", [])}
+        headers = {header.lower() for header in rule.get("AllowedHeaders", [])}
+        exposed = {header.lower() for header in rule.get("ExposeHeaders", [])}
+        if {"GET", "HEAD"} <= methods and ("range" in headers or "*" in headers) and "content-range" in exposed:
+            return
+    raise RuntimeError(f"Bucket {bucket} CORS does not allow GET/HEAD Range reads exposing Content-Range")
+
+
 def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
     import boto3
 
@@ -718,18 +735,7 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
         aws_access_key_id=env["S3_KEY"],
         aws_secret_access_key=env["S3_SECRET"],
     )
-    client.put_bucket_cors(
-        Bucket=env["S3_BUCKET"],
-        CORSConfiguration={
-            "CORSRules": [{
-                "AllowedMethods": ["GET", "HEAD"],
-                "AllowedOrigins": ["*"],
-                "AllowedHeaders": ["Range"],
-                "ExposeHeaders": ["Accept-Ranges", "Content-Length", "Content-Range", "ETag"],
-                "MaxAgeSeconds": 86400,
-            }],
-        },
-    )
+    require_bucket_cors(client, env["S3_BUCKET"])
     prefix = config.get("upload", {}).get("prefix", "geovideo")
     object_prefix = f"{prefix.strip('/')}/{config['catalogEntryId']}/{artifact_id}"
     media = directory / "video.mp4"
