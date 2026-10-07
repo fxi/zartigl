@@ -16,7 +16,7 @@ Every source has its own UUID and localized title. Put provider-native names und
 
 For Copernicus scalar entries, the default WMTS JSON legend is the authoritative visualization contract: palette, color domain, scale, clamp behavior, units, and extent. Deterministic locally derived univariate statistics are the fallback when upstream statistics are unavailable. Zarr `valid_min`/`valid_max` are validity bounds and are used only as the final range fallback.
 
-`defaults.querySourceId` may reference only a Zarr source with a point-series endpoint. Vector entries are Zarr-only. WMTS and GeoVideo entries are scalar.
+`defaults.querySourceId` may reference only a Zarr source with a point-series endpoint. WMTS sources are scalar-only. GeoVideo sources use a `scalar-luma` manifest on scalar entries and a `vector-luma` manifest (u over v, fixed `valueDomain`) on vector entries. A vector entry always keeps its Zarr source: GeoVideo is the default display transport when present, while point queries, depth, and dates outside the artifact period stay on Zarr.
 
 ## Source policy
 

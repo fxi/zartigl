@@ -95,8 +95,8 @@ def main():
         for source in sources:
             if default_locale not in source["title"]:
                 fail(f"{layer['id']}/{source['id']}: title.{default_locale} is required")
-            if layer["kind"] == "vector" and source["type"] != "zarr":
-                fail(f"{layer['id']}: vector entries only support Zarr render sources")
+            if layer["kind"] == "vector" and source["type"] not in ("zarr", "geovideo"):
+                fail(f"{layer['id']}: vector entries only support Zarr and GeoVideo render sources")
             if source["type"] != "zarr":
                 continue
             variables = source["variables"]
