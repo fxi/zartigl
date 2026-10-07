@@ -1,0 +1,78 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #0b1220;
+  color: #e5e7eb;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.controls label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.controls .time input {
+  width: 220px;
+}
+
+.maps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  min-height: 0;
+}
+
+@media (max-width: 800px) {
+  .maps {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+.pane {
+  position: relative;
+  min-height: 0;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 65%);
+  pointer-events: none;
+}
+
+.stats {
+  padding: 6px 12px;
+  border-top: 1px solid #1f2937;
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+}

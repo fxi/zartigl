@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vector GeoVideo lab</title>
+    <link rel="icon" href="data:," />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="controls">
+      <label>
+        Dataset
+        <select id="dataset"></select>
+      </label>
+      <label>
+        Candidate
+        <select id="variant"></select>
+      </label>
+      <label class="time">
+        Time
+        <input id="time" type="range" min="0" max="0" step="1" value="0" />
+        <output id="time-label"></output>
+      </label>
+      <label>
+        Render
+        <select id="render-mode">
+          <option value="particles">Particles</option>
+          <option value="raster+particles">Raster + particles</option>
+          <option value="raster">Raster</option>
+        </select>
+      </label>
+      <label>
+        Density
+        <input
+          id="density"
+          type="range"
+          min="0.005"
+          max="0.1"
+          step="0.005"
+          value="0.03" />
+      </label>
+    </header>
+    <main class="maps">
+      <section class="pane">
+        <div id="map-ref" class="map"></div>
+        <div class="badge">
+          Reference · float32 (clamped to encoding domain)
+        </div>
+      </section>
+      <section class="pane">
+        <div id="map-candidate" class="map"></div>
+        <div id="candidate-label" class="badge"></div>
+      </section>
+    </main>
+    <footer id="stats" class="stats">Loading…</footer>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

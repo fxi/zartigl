@@ -26,6 +26,7 @@
   "scripts": {
     "dev": "vite",
     "dev:story": "vite --config vite.config.story.ts",
+    "dev:geovideo-vector": "vite --config vite.config.geovideo-vector.ts",
     "dev:prod": "npm run dev",
     "test": "vitest run",
     "test:unit": "vitest run",
