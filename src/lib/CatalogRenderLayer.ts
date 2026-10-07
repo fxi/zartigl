@@ -21,6 +21,7 @@ import type {
 import type { RenderMode } from "./ParticleSimulation";
 import type { ZartiglStatus } from "./load-status";
 import { GeoVideoLayer } from "./GeoVideoLayer";
+import { GeoVideoVectorSource } from "./GeoVideoVectorSource";
 import type { GeoVideoLayerDebugInfo } from "./GeoVideoLayer";
 
 type LayerEventMap = {
@@ -172,7 +173,9 @@ export function selectCatalogRenderLayerBackend(
     return "scalar-wmts";
   }
   if (options.sourceConfig.type === "geovideo") {
-    return "scalar-geovideo";
+    return options.entry.kind === "vector"
+      ? "vector-geovideo"
+      : "scalar-geovideo";
   }
   return options.entry.kind === "vector" ? "vector-zarr" : "scalar-zarr";
 }
@@ -208,6 +211,7 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   private readonly options: CatalogRenderLayerOptions;
   private readonly backend: CatalogRenderLayerBackend;
   private delegate: ScalarLayer | VectorLayer | GeoVideoLayer | null = null;
+  private frameSource: GeoVideoVectorSource | null = null;
   private map: MaplibreMap | null = null;
   private rasterSourceId: string;
   private rasterLayerId: string;
@@ -237,6 +241,20 @@ export class CatalogRenderLayer implements CustomLayerInterface {
         variableU: vectorLayerU(sourceConfig),
         variableV: vectorLayerV(sourceConfig),
         vectorDerivation: vectorLayerDerivation(sourceConfig),
+        unit: options.unit ?? "",
+      });
+    } else if (this.backend === "vector-geovideo") {
+      if (!options.geoVideoManifest) {
+        throw new Error("Vector GeoVideo requires a loaded manifest");
+      }
+      this.frameSource = new GeoVideoVectorSource(options.geoVideoManifest);
+      this.delegate = new VectorLayer({
+        ...options,
+        source: options.geoVideoManifest.media.url,
+        zarrSource: this.frameSource,
+        variableU: "u",
+        variableV: "v",
+        vectorDerivation: undefined,
         unit: options.unit ?? "",
       });
     } else if (this.backend === "scalar-zarr") {
@@ -318,6 +336,7 @@ export class CatalogRenderLayer implements CustomLayerInterface {
 
   onRemove(): void {
     this.delegate?.onRemove();
+    this.frameSource?.release();
     this.removeWmts();
     this.map = null;
   }

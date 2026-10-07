@@ -5,6 +5,7 @@ import {
   getCatalogEntry,
   pickPreferredSource,
   searchCatalog,
+  sourceCoversTime,
 } from "./index";
 import type { CatalogEntry, CatalogSource } from "./types";
 
@@ -23,7 +24,18 @@ describe("catalog v2 discovery", () => {
     expect(searchCatalog("PT1H eastward_wind")[0].aliases).toContain(
       "surface-wind",
     );
-    expect(searchCatalog("geovideo").length).toBe(3);
+    const withGeoVideo = catalog.layers
+      .filter((entry) =>
+        entry.sources.some((source) => source.type === "geovideo"),
+      )
+      .map((entry) => entry.id)
+      .sort();
+    expect(withGeoVideo.length).toBeGreaterThan(0);
+    expect(
+      searchCatalog("geovideo")
+        .map((entry) => entry.id)
+        .sort(),
+    ).toEqual(withGeoVideo);
   });
 
   it("searches catalog and source identifiers", () => {
@@ -103,5 +115,109 @@ describe("pickPreferredSource", () => {
       defaults: { sourceId: wmts.id },
     };
     expect(pickPreferredSource(entry).id).toBe("s-zarr");
+  });
+
+  const fixedVideo: CatalogSource = {
+    ...geovideo,
+    id: "s-fixed-video",
+    temporal: {
+      mode: "fixed",
+      start: "2026-08-01T00:00:00Z",
+      end: "2026-09-30T21:00:00Z",
+    },
+  };
+  const at = (iso: string) => Date.parse(iso);
+
+  it("bounds only fixed-period sources by their declared period", () => {
+    expect(
+      sourceCoversTime(fixedVideo, { time: at("2026-08-14T00:00:00Z") }),
+    ).toBe(true);
+    expect(
+      sourceCoversTime(fixedVideo, { time: at("2024-12-14T00:00:00Z") }),
+    ).toBe(false);
+    expect(
+      sourceCoversTime(fixedVideo, {
+        start: at("2024-12-14T00:00:00Z"),
+        end: at("2024-12-14T22:00:00Z"),
+      }),
+    ).toBe(false);
+    expect(
+      sourceCoversTime(fixedVideo, {
+        start: at("2026-09-30T00:00:00Z"),
+        end: at("2026-10-05T00:00:00Z"),
+      }),
+    ).toBe(true);
+    expect(sourceCoversTime(fixedVideo)).toBe(true);
+    expect(sourceCoversTime(zarr, { time: at("1990-01-01T00:00:00Z") })).toBe(
+      true,
+    );
+  });
+
+  it("skips a fixed-period GeoVideo that cannot show the requested time", () => {
+    const vector: CatalogEntry = {
+      id: "e",
+      title: {},
+      category: "c",
+      kind: "vector",
+      sources: [zarr, fixedVideo],
+      defaults: { sourceId: zarr.id },
+    };
+    const chido = {
+      start: at("2024-12-14T00:00:00Z"),
+      end: at("2024-12-14T22:00:00Z"),
+    };
+    expect(pickPreferredSource(vector, chido).id).toBe("s-zarr");
+    expect(
+      pickPreferredSource(vector, { time: at("2026-08-14T00:00:00Z") }).id,
+    ).toBe("s-fixed-video");
+    expect(pickPreferredSource(vector).id).toBe("s-fixed-video");
+    expect(
+      pickPreferredSource(scalarEntry([zarr, wmts, fixedVideo]), chido).id,
+    ).toBe("s-wmts");
+  });
+
+  it("chooses among several GeoVideo periods by coverage, then recency", () => {
+    const olderVideo: CatalogSource = {
+      ...geovideo,
+      id: "s-2024-video",
+      temporal: {
+        mode: "fixed",
+        start: "2024-11-01T00:00:00Z",
+        end: "2024-12-31T23:00:00Z",
+      },
+    };
+    const vector: CatalogEntry = {
+      id: "e",
+      title: {},
+      category: "c",
+      kind: "vector",
+      sources: [zarr, olderVideo, fixedVideo],
+      defaults: { sourceId: zarr.id },
+    };
+    expect(
+      pickPreferredSource(vector, {
+        start: at("2024-12-14T00:00:00Z"),
+        end: at("2024-12-14T22:00:00Z"),
+      }).id,
+    ).toBe("s-2024-video");
+    expect(
+      pickPreferredSource(vector, { time: at("2026-08-14T00:00:00Z") }).id,
+    ).toBe("s-fixed-video");
+    expect(pickPreferredSource(vector).id).toBe("s-fixed-video");
+    expect(
+      pickPreferredSource(vector, { time: at("2025-06-01T00:00:00Z") }).id,
+    ).toBe("s-zarr");
+  });
+
+  it("prefers geovideo for vector entries and keeps zarr as fallback", () => {
+    const entry: CatalogEntry = {
+      id: "e",
+      title: {},
+      category: "c",
+      kind: "vector",
+      sources: [zarr, geovideo],
+      defaults: { sourceId: zarr.id },
+    };
+    expect(pickPreferredSource(entry).id).toBe("s-geovideo");
   });
 });

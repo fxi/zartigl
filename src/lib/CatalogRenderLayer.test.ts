@@ -129,6 +129,12 @@ describe("source dispatch", () => {
         entry: vectorEntry,
       }),
     ).toBe("vector-zarr");
+    expect(
+      selectCatalogRenderLayerBackend({
+        ...options(video),
+        entry: { ...vectorEntry, sources: [vectorSource, video] },
+      }),
+    ).toBe("vector-geovideo");
   });
 
   it("detaches WMTS while suspended and restores the latest time", () => {

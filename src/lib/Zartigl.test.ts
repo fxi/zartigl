@@ -302,6 +302,152 @@ describe("Zartigl facade", () => {
     vi.unstubAllGlobals();
   });
 
+  it("defaults a vector entry to its vector-luma GeoVideo and keeps Zarr for queries", async () => {
+    const base = vectorLayer({ id: GEO_ENTRY_ID });
+    const zarr = { ...base.sources[0], id: GEO_ZARR_ID };
+    const layer: CatalogEntry = {
+      ...base,
+      sources: [
+        zarr,
+        {
+          id: GEO_VIDEO_ID,
+          type: "geovideo",
+          title: { en: "Video" },
+          manifestUrl: "https://example.test/vector/manifest.json",
+        },
+      ],
+      defaults: { sourceId: GEO_ZARR_ID },
+    };
+    const manifest = {
+      schemaVersion: 3,
+      id: GEO_VIDEO_ID,
+      type: "geovideo",
+      projection: "equirectangular",
+      bounds: [-180, -80, 180, 90],
+      media: {
+        url: "video.mp4",
+        mimeType: "video/mp4",
+        width: 16,
+        height: 16,
+        fps: 4,
+        durationSeconds: 0.75,
+        codec: "h264",
+      },
+      encoding: {
+        kind: "vector-luma",
+        bits: 8,
+        codeMin: 16,
+        codeMax: 235,
+        valueDomain: 2,
+        transfer: "sqrt",
+        layout: "stacked-uv",
+        colorSpace: "bt709",
+        colorRange: "limited",
+      },
+      mask: {
+        kind: "static-validity",
+        url: "mask.png",
+        mimeType: "image/png",
+        width: 16,
+        height: 8,
+        threshold: 0.5,
+      },
+      timeline: {
+        kind: "sample-sequence",
+        values: [
+          "2026-08-01T00:00:00Z",
+          "2026-08-01T03:00:00Z",
+          "2026-08-01T06:00:00Z",
+        ],
+      },
+      provenance: {
+        catalogEntryId: GEO_ENTRY_ID,
+        inputSourceId: GEO_ZARR_ID,
+        variables: ["u", "v"],
+        generatedAt: "2026-10-07T00:00:00Z",
+      },
+      style: { palette: "viridis", colorDomain: [0, 2.83], unit: "m s-1" },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => manifest }),
+    );
+    vi.mocked(ZarrSource.prototype.init).mockClear();
+    const map = new FakeMap();
+    const z = await createZartigl(
+      { map: map as never, catalog: catalog(layer) },
+      GEO_ENTRY_ID,
+    );
+
+    expect(z.getSource()).toEqual({ id: GEO_VIDEO_ID, type: "geovideo" });
+    expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
+    expect(z.getTimeMeta()).toMatchObject({
+      size: 3,
+      timelineKind: "sample-sequence",
+    });
+    expect(z.getDepthMeta().values).toEqual([]);
+    expect(z.getLegend()).toMatchObject({ min: 0, max: 2.83, unit: "m s-1" });
+    const rendered = map.layers.get(z.getDebugInfo().id) as CatalogRenderLayer;
+    expect(rendered.getBackend()).toBe("vector-geovideo");
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps Zarr for auto when the requested window is outside the GeoVideo period", async () => {
+    // The mocked Zarr axis spans 0–9 s since epoch, far before the GeoVideo period.
+    const base = vectorLayer({ id: GEO_ENTRY_ID });
+    const layer: CatalogEntry = {
+      ...base,
+      sources: [
+        base.sources[0],
+        {
+          id: GEO_VIDEO_ID,
+          type: "geovideo",
+          title: { en: "Video" },
+          manifestUrl: "https://example.test/vector/manifest.json",
+          temporal: {
+            mode: "fixed",
+            start: "2026-08-01T00:00:00Z",
+            end: "2026-09-30T21:00:00Z",
+          },
+        },
+      ],
+    };
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const map = new FakeMap();
+    const chido = await createZartigl(
+      {
+        map: map as never,
+        catalog: catalog(layer),
+        timeRange: { start: 1_000, end: 5_000 },
+      },
+      GEO_ENTRY_ID,
+    );
+    expect(chido.getSource()?.type).toBe("zarr");
+    const pinned = await createZartigl(
+      {
+        map: map as never,
+        catalog: catalog(layer),
+        time: 3_000,
+      },
+      GEO_ENTRY_ID,
+    );
+    expect(pinned.getSource()?.type).toBe("zarr");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("still renders a vector entry from Zarr when it has no GeoVideo source", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      { map: map as never, catalog: catalog(vectorLayer()) },
+      "vector",
+    );
+    expect(z.getSource()?.type).toBe("zarr");
+    const rendered = map.layers.get(z.getDebugInfo().id) as CatalogRenderLayer;
+    expect(rendered.getBackend()).toBe("vector-zarr");
+  });
+
   it("keeps a caller-requested palette for a GeoVideo layer instead of the manifest default", async () => {
     const layer = scalarLayer({
       id: GEO_ENTRY_ID,

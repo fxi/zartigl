@@ -7,7 +7,11 @@ import type {
   CatalogWmtsSource,
   CatalogZarrSource,
 } from "../catalog/types";
-import { pickPreferredSource, resolveLocalizedText } from "../catalog";
+import {
+  pickPreferredSource,
+  resolveLocalizedText,
+  type SourceTimeRequest,
+} from "../catalog";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
 import { CatalogRenderLayer, buildWmtsLegendUrl } from "./CatalogRenderLayer";
 import type { CatalogRenderLayerDebugInfo } from "./CatalogRenderLayer";
@@ -690,8 +694,12 @@ export class Zartigl {
       throw new Error(`Unknown zartigl catalog entry: ${id}`);
     }
     const layerDefaults = defaultSettings(catalogLayer);
-    const requestedSource = this.resolveSource(catalogLayer, preference);
     const requestedTimeRange = context ? context.timeRange : this.timeRange;
+    const requestedSource = this.resolveSource(
+      catalogLayer,
+      preference,
+      this.sourceTimeRequest(requestedTimeRange),
+    );
     const requestedSettings = context?.settings ?? this.settings;
     const requestedColorDomainOverride =
       context?.colorDomainOverridden ?? this.colorDomainOverridden;
@@ -1520,13 +1528,38 @@ export class Zartigl {
     return source;
   }
 
+  /**
+   * Time the caller asked for, so "auto" skips fixed-period sources (such as a
+   * GeoVideo artifact) that cannot show it. A trailing window targets now.
+   */
+  private sourceTimeRequest(range?: TimeRange): SourceTimeRequest {
+    const time =
+      this.pendingTime ?? (this.initialized ? undefined : this.initialTime);
+    const request: SourceTimeRequest = {};
+    if (time != null) {
+      request.time = parseTime(time, "time");
+    }
+    if (range?.trailing) {
+      request.start = request.end = Date.now();
+    } else if (range) {
+      if (range.start != null) {
+        request.start = parseTime(range.start, "timeRange.start");
+      }
+      if (range.end != null) {
+        request.end = parseTime(range.end, "timeRange.end");
+      }
+    }
+    return request;
+  }
+
   private resolveSource(
     entry: CatalogEntry,
     preference: CatalogSourcePreference,
+    timeRequest?: SourceTimeRequest,
   ): CatalogSource {
     const selected =
       preference === "auto"
-        ? pickPreferredSource(entry)
+        ? pickPreferredSource(entry, timeRequest)
         : (entry.sources.find((source) => source.id === preference) ??
           entry.sources.find((source) => source.type === preference));
     if (!selected) {
@@ -1534,9 +1567,13 @@ export class Zartigl {
         `Catalog entry ${entry.id} does not provide source: ${preference}`,
       );
     }
-    if (entry.kind === "vector" && selected.type !== "zarr") {
+    if (
+      entry.kind === "vector" &&
+      selected.type !== "zarr" &&
+      selected.type !== "geovideo"
+    ) {
       throw new Error(
-        `Vector catalog entry ${entry.id} requires a Zarr source`,
+        `Vector catalog entry ${entry.id} requires a Zarr or GeoVideo source`,
       );
     }
     return selected;

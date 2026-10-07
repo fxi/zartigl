@@ -70,19 +70,73 @@ const SCALAR_SOURCE_PRIORITY: CatalogSource["type"][] = [
   "zarr",
 ];
 
-export function pickPreferredSource(entry: CatalogEntry): CatalogSource {
-  if (entry.kind === "vector") {
-    return (
-      entry.sources.find((source) => source.type === "zarr") ?? entry.sources[0]
-    );
+const VECTOR_SOURCE_PRIORITY: CatalogSource["type"][] = ["geovideo", "zarr"];
+
+/** Requested instant and/or window, in epoch milliseconds. */
+export interface SourceTimeRequest {
+  time?: number;
+  start?: number;
+  end?: number;
+}
+
+/**
+ * Whether a source can show the requested time. Only fixed-period sources
+ * (rendered artifacts such as GeoVideo) declare hard bounds; live sources are
+ * assumed to cover any request and are bounded by their own metadata.
+ */
+export function sourceCoversTime(
+  source: CatalogSource,
+  request: SourceTimeRequest = {},
+): boolean {
+  const temporal = source.temporal;
+  if (temporal?.mode !== "fixed") {
+    return true;
   }
-  for (const type of SCALAR_SOURCE_PRIORITY) {
-    const match = entry.sources.find((source) => source.type === type);
-    if (match) {
-      return match;
+  const start = temporal.start ? Date.parse(temporal.start) : -Infinity;
+  const end = temporal.end ? Date.parse(temporal.end) : Infinity;
+  if (request.time != null && (request.time < start || request.time > end)) {
+    return false;
+  }
+  return (
+    (request.start ?? -Infinity) <= end && (request.end ?? Infinity) >= start
+  );
+}
+
+/**
+ * Preferred render source: GeoVideo, then WMTS (scalar), then Zarr, skipping
+ * fixed-period sources that cannot show the requested time. Several GeoVideo
+ * periods may coexist; the latest covering one wins. GeoVideo is a
+ * lightweight display transport; Zarr stays the fallback and query source.
+ */
+export function pickPreferredSource(
+  entry: CatalogEntry,
+  request?: SourceTimeRequest,
+): CatalogSource {
+  const priority =
+    entry.kind === "vector" ? VECTOR_SOURCE_PRIORITY : SCALAR_SOURCE_PRIORITY;
+  const covering = entry.sources.filter((source) =>
+    sourceCoversTime(source, request),
+  );
+  for (const candidates of [covering, entry.sources]) {
+    for (const type of priority) {
+      const matches = candidates.filter((source) => source.type === type);
+      if (matches.length) {
+        return latestPeriod(matches);
+      }
     }
   }
   return entry.sources[0];
+}
+
+/** Among same-type sources, the one whose fixed period ends last; open-ended sources win. */
+function latestPeriod(sources: CatalogSource[]): CatalogSource {
+  const end = (source: CatalogSource) =>
+    source.temporal?.mode === "fixed" && source.temporal.end
+      ? Date.parse(source.temporal.end)
+      : Infinity;
+  return sources.reduce((best, source) =>
+    end(source) > end(best) ? source : best,
+  );
 }
 
 function sourceVariables(source: CatalogSource): string[] {
