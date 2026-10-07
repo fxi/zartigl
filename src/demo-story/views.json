@@ -119,6 +119,7 @@
       "type": "zartigl-map",
       "config": {
         "layerId": "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
+        "sourceId": "382973a2-4c6a-422d-8963-964f6b99b58d",
         "camera": {
           "center": [
             42.252791,
