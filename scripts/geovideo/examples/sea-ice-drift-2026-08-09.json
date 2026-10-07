@@ -1,0 +1,17 @@
+{
+  "id": "e53f8075-0b14-422d-b237-7ac67dc13b9a",
+  "catalogEntryId": "40733539-e493-448e-80b5-2a7874f47b85",
+  "dateStart": "2026-08-01T00:00:00Z",
+  "dateEnd": "2026-09-30T23:59:59Z",
+  "output": {
+    "factor": 3,
+    "crf": 14,
+    "gop": 12,
+    "fps": 4,
+    "transfer": "sqrt",
+    "directory": "artifacts/geovideo"
+  },
+  "upload": {
+    "prefix": "geovideo"
+  }
+}

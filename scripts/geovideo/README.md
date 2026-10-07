@@ -128,3 +128,45 @@ The harness checks at least 128 stable ramp levels, a maximum stable-ramp error
 of two codes, no temporal flicker, and an exact canvas/WebGL upload round trip.
 Run the HTML harness manually against the same artifact in Safari and Firefox
 before publishing a scalar-luma catalog artifact.
+
+## Vector-luma GeoVideo
+
+`render_vector.py` turns a vector catalog entry (u/v or direction/magnitude)
+into a `vector-luma` artifact. Each native time step becomes one H.264 frame
+(High profile, level 4.1, decodable in hardware on desktop, iOS Safari and
+Android). u and v are block-averaged (`output.factor`), mapped with a sqrt
+transfer to limited-range codes 16–235 and written straight into luma, u rows
+above v rows. The browser decodes one frame per time step through
+`GeoVideoVectorSource` (no continuous playback) and feeds the regular particle
+renderer with a fixed `valueDomain`.
+
+```bash
+uv run scripts/geovideo/render_vector.py scripts/geovideo/examples/swell-2026-08-09.json --dry-run
+uv run scripts/geovideo/render_vector.py scripts/geovideo/examples/swell-2026-08-09.json --upload
+```
+
+Configuration (see `examples/*-2026-08-09.json`):
+
+- `dateStart`/`dateEnd`: fixed period; `step` (`PTnH`/`PnD`) subsamples the
+  native cadence.
+- `output.factor` (block size), `crf` (14), `gop` (12), `fps` (4), `transfer`
+  (`sqrt`).
+- `output.domainPercentile` (99.9 by default): percentile of |u|,|v| used as
+  `valueDomain`. Use 100 when rare extremes are the subject, such as a cyclone
+  eye (`examples/surface-wind-chido-2024-12.json`).
+- `bounds` (optional): regional crop `[west, south, east, north]`, read at
+  native resolution with `factor: 1`.
+
+Rendering validates decoded codes against the expected ones (p99 error budget)
+before writing the manifest; `--upload` requires the bucket CORS rule to exist
+and never rewrites it.
+
+A catalog entry may list several GeoVideo sources, each with
+`temporal.mode: "fixed"` and its `start`/`end`. With `source: "auto"`, zartigl
+picks the GeoVideo covering the requested time or time range (the latest
+period when several do), and falls back to Zarr otherwise. A regional artifact
+is meant to be referenced explicitly by source id, as the story does for Chido.
+Point queries always use Zarr.
+
+`vector_lab.py` measures codec losses and exports the side-by-side browser lab
+(`npm run dev:geovideo-vector`).

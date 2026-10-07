@@ -1,0 +1,24 @@
+{
+  "id": "382973a2-4c6a-422d-8963-964f6b99b58d",
+  "catalogEntryId": "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
+  "dateStart": "2024-12-12T00:00:00Z",
+  "dateEnd": "2024-12-16T23:59:59Z",
+  "bounds": [
+    25,
+    -35,
+    75,
+    5
+  ],
+  "output": {
+    "factor": 1,
+    "crf": 14,
+    "gop": 12,
+    "fps": 4,
+    "transfer": "sqrt",
+    "directory": "artifacts/geovideo",
+    "domainPercentile": 100
+  },
+  "upload": {
+    "prefix": "geovideo"
+  }
+}
