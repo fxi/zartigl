@@ -608,7 +608,7 @@
               "dataset": "cmems_mod_bal_bgc_my_P1M-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/0b53441dac16/manifest.json",
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/0b53441dac16/manifest.json",
           "temporal": {
             "mode": "fixed",
             "cadence": "P1M",
@@ -910,7 +910,7 @@
               "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/d4ca59b665c4/manifest.json",
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/d4ca59b665c4/manifest.json",
           "temporal": {
             "mode": "fixed",
             "cadence": "P1D",
@@ -1091,7 +1091,7 @@
               "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/a4ba031cf7f3/manifest.json",
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/a4ba031cf7f3/manifest.json",
           "temporal": {
             "mode": "fixed",
             "cadence": "P1D",
