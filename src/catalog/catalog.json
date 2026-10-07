@@ -42,6 +42,27 @@
             "u": "uo",
             "v": "vo"
           }
+        },
+        {
+          "id": "839af56c-b57c-49ae-8e0f-246904b6656c",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/61a81ddd-6c8e-4020-a59f-06ef13a90419/93aec70f52e8/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "PT6H",
+            "start": "2026-08-01T00:00:00Z",
+            "end": "2026-09-30T18:00:00Z"
+          }
         }
       ],
       "defaults": {
@@ -100,6 +121,69 @@
             "kind": "vector",
             "u": "eastward_wind",
             "v": "northward_wind"
+          }
+        },
+        {
+          "id": "add14af2-0a37-4514-a41b-593aec73f4ee",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "WIND_GLO_PHY_L4_NRT_012_004",
+              "dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/7dbe2268d752/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "PT3H",
+            "start": "2026-08-01T00:00:00Z",
+            "end": "2026-09-30T21:00:00Z"
+          }
+        },
+        {
+          "id": "382973a2-4c6a-422d-8963-964f6b99b58d",
+          "type": "geovideo",
+          "title": {
+            "en": "Cyclone Chido, south-west Indian Ocean, hourly (2024-12-12 – 2024-12-16)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "WIND_GLO_PHY_L4_NRT_012_004",
+              "dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/451b558e4ac2/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "PT1H",
+            "start": "2024-12-12T00:00:00Z",
+            "end": "2024-12-16T23:00:00Z"
+          }
+        },
+        {
+          "id": "df4b7a37-eaa6-43c8-9990-dce021b20a0f",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation (2024-11-01 – 2024-12-31)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "WIND_GLO_PHY_L4_NRT_012_004",
+              "dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/aff95a2ece90/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "PT1H",
+            "start": "2024-11-01T00:00:00Z",
+            "end": "2024-12-31T23:00:00Z"
           }
         }
       ],
@@ -235,6 +319,27 @@
             "kind": "vector",
             "u": "VSDX",
             "v": "VSDY"
+          }
+        },
+        {
+          "id": "480380ea-4c8c-449c-b3c5-632fc78a2628",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88f00432-ffad-4ebd-85ac-9f8de1ee5213/e63a6066f299/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "PT3H",
+            "start": "2026-08-01T00:00:00Z",
+            "end": "2026-09-30T21:00:00Z"
           }
         }
       ],
@@ -1587,6 +1692,27 @@
               "output_direction": "toward"
             }
           }
+        },
+        {
+          "id": "a39a263d-2eb3-4574-882d-85cf90b55f33",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bb38fd23-b0b0-4cd0-b59d-0224be3052f9/2a156cb69eee/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "PT3H",
+            "start": "2026-08-01T00:00:00Z",
+            "end": "2026-09-30T21:00:00Z"
+          }
         }
       ],
       "defaults": {
@@ -1645,6 +1771,27 @@
             "kind": "vector",
             "u": "usi",
             "v": "vsi"
+          }
+        },
+        {
+          "id": "e53f8075-0b14-422d-b237-7ac67dc13b9a",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/40733539-e493-448e-80b5-2a7874f47b85/404bc6c89c25/manifest.json",
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1D",
+            "start": "2026-08-01T00:00:00Z",
+            "end": "2026-09-30T00:00:00Z"
           }
         }
       ],
