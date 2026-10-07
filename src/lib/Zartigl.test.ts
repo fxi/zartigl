@@ -437,6 +437,190 @@ describe("Zartigl facade", () => {
     vi.unstubAllGlobals();
   });
 
+  describe("GeoVideo source fallback", () => {
+    const OLD_VIDEO_ID = "0c6f4a2e-5d0b-4a43-9a0c-2b1f7c4e9d11";
+    const period = {
+      [GEO_VIDEO_ID]: ["2026-08-01T00:00:00Z", "2026-08-01T03:00:00Z"],
+      [OLD_VIDEO_ID]: ["2024-12-14T00:00:00Z", "2024-12-14T03:00:00Z"],
+    };
+    const inPeriod = Date.parse("2026-08-01T03:00:00Z");
+
+    function videoSource(id: keyof typeof period) {
+      return {
+        id,
+        type: "geovideo" as const,
+        title: { en: "Video" },
+        manifestUrl: `https://example.test/${id}.json`,
+        temporal: {
+          mode: "fixed" as const,
+          start: period[id][0],
+          end: period[id][1],
+        },
+      };
+    }
+
+    function manifest(id: keyof typeof period) {
+      return {
+        schemaVersion: 3,
+        id,
+        type: "geovideo",
+        projection: "equirectangular",
+        bounds: [-180, -80, 180, 90],
+        media: {
+          url: "video.mp4",
+          mimeType: "video/mp4",
+          width: 16,
+          height: 16,
+          fps: 4,
+          durationSeconds: 0.5,
+          codec: "h264",
+        },
+        encoding: {
+          kind: "vector-luma",
+          bits: 8,
+          codeMin: 16,
+          codeMax: 235,
+          valueDomain: 2,
+          transfer: "sqrt",
+          layout: "stacked-uv",
+          colorSpace: "bt709",
+          colorRange: "limited",
+        },
+        mask: {
+          kind: "static-validity",
+          url: "mask.png",
+          mimeType: "image/png",
+          width: 16,
+          height: 8,
+          threshold: 0.5,
+        },
+        timeline: { kind: "sample-sequence", values: period[id] },
+        provenance: {
+          catalogEntryId: GEO_ENTRY_ID,
+          inputSourceId: GEO_ZARR_ID,
+          variables: ["u", "v"],
+          generatedAt: "2026-10-07T00:00:00Z",
+        },
+        style: { palette: "viridis", colorDomain: [0, 2.83], unit: "m s-1" },
+      };
+    }
+
+    function geoCatalog(): Catalog {
+      const base = vectorLayer({ id: GEO_ENTRY_ID });
+      return {
+        schemaVersion: 2,
+        defaultLocale: "en",
+        layers: [
+          scalarLayer(),
+          {
+            ...base,
+            sources: [
+              { ...base.sources[0], id: GEO_ZARR_ID },
+              videoSource(GEO_VIDEO_ID),
+              videoSource(OLD_VIDEO_ID),
+            ],
+            defaults: { sourceId: GEO_ZARR_ID },
+          },
+        ],
+      };
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) => ({
+          ok: true,
+          json: async () =>
+            manifest(url.includes(OLD_VIDEO_ID) ? OLD_VIDEO_ID : GEO_VIDEO_ID),
+        })),
+      );
+      return () => vi.unstubAllGlobals();
+    });
+
+    it("leaves GeoVideo for Zarr when an update asks for a time outside its period", async () => {
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog() },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+
+      await z.update({ time: 3_000 });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getTimeMeta().current).toBe(3_000);
+
+      // One-way: a time inside the period again stays on Zarr.
+      await z.update({ time: inPeriod });
+      expect(z.getSource()?.type).toBe("zarr");
+    });
+
+    it("honors the time of a layer switch when selecting its source", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          source: "zarr",
+        },
+        "scalar",
+      );
+      await z.update({ layer: GEO_ENTRY_ID, time: 3_000 });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getTimeMeta().current).toBe(3_000);
+    });
+
+    it("keeps GeoVideo for the surface and leaves it for deeper levels", async () => {
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ depth: 2 });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+
+      await z.update({ depth: 18 });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getDepthMeta().current).toBe(20);
+    });
+
+    it("selects Zarr at init for a non-surface depth", async () => {
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), depth: 30 },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getDepthMeta().current).toBe(30);
+    });
+
+    it("picks the covering artifact for a type-level GeoVideo request", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          source: "geovideo",
+          time: "2024-12-14T03:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.id).toBe(OLD_VIDEO_ID);
+
+      await z.update({ time: inPeriod });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getTimeMeta().current).toBe(inPeriod);
+    });
+
+    it("keeps a pinned GeoVideo source for any time or depth", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          source: GEO_VIDEO_ID,
+        },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ time: 3_000, depth: 20 });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getTimeMeta().current).toBe(Date.parse("2026-08-01T00:00:00Z"));
+    });
+  });
+
   it("still renders a vector entry from Zarr when it has no GeoVideo source", async () => {
     const map = new FakeMap();
     const z = await createZartigl(

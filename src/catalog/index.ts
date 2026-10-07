@@ -112,8 +112,24 @@ export function pickPreferredSource(
   entry: CatalogEntry,
   request?: SourceTimeRequest,
 ): CatalogSource {
-  const priority =
-    entry.kind === "vector" ? VECTOR_SOURCE_PRIORITY : SCALAR_SOURCE_PRIORITY;
+  return (
+    pickSourceByPriority(
+      entry,
+      entry.kind === "vector" ? VECTOR_SOURCE_PRIORITY : SCALAR_SOURCE_PRIORITY,
+      request,
+    ) ?? entry.sources[0]
+  );
+}
+
+/**
+ * First source type in `priority` that the entry provides, preferring sources
+ * covering the request, then the latest period. Undefined when no type matches.
+ */
+export function pickSourceByPriority(
+  entry: CatalogEntry,
+  priority: readonly CatalogSource["type"][],
+  request?: SourceTimeRequest,
+): CatalogSource | undefined {
   const covering = entry.sources.filter((source) =>
     sourceCoversTime(source, request),
   );
@@ -125,7 +141,7 @@ export function pickPreferredSource(
       }
     }
   }
-  return entry.sources[0];
+  return undefined;
 }
 
 /** Among same-type sources, the one whose fixed period ends last; open-ended sources win. */

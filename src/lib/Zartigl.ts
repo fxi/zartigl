@@ -9,7 +9,9 @@ import type {
 } from "../catalog/types";
 import {
   pickPreferredSource,
+  pickSourceByPriority,
   resolveLocalizedText,
+  sourceCoversTime,
   type SourceTimeRequest,
 } from "../catalog";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
@@ -72,6 +74,12 @@ export interface ZartiglUpdate {
   settings?: Partial<ZartiglSettings>;
   geoVideo?: GeoVideoOptions;
   visible?: boolean;
+}
+
+/** Time and depth about to be applied; they steer source selection. */
+interface SourceTarget {
+  time?: Date | string | number;
+  depth?: number;
 }
 
 export interface GeoVideoOptions {
@@ -395,6 +403,14 @@ function variableNames(source: CatalogZarrSource): string[] {
   return [source.variables.u ?? "uo", source.variables.v ?? "vo"];
 }
 
+/** A preference naming one source id, rather than "auto" or a source type. */
+function isPinnedSource(
+  entry: CatalogEntry,
+  preference: CatalogSourcePreference,
+): boolean {
+  return entry.sources.some((source) => source.id === preference);
+}
+
 function sortedDepthValues(values: readonly number[]): number[] {
   return [...values].sort((a, b) => {
     const da = Math.abs(a);
@@ -546,7 +562,13 @@ export class Zartigl {
       throw new Error("Zartigl has already been initialized");
     }
     this.initStarted = true;
-    await this.loadLayer(this.initialLayer, this.sourcePreference);
+    await this.loadLayer(this.initialLayer, this.sourcePreference, {
+      timeRange: this.timeRange,
+      settings: { ...this.settings },
+      colorDomainOverridden: this.colorDomainOverridden,
+      paletteOverridden: this.paletteOverridden,
+      target: { time: this.initialTime, depth: this.initialDepth },
+    });
     if (this.initialTime != null && this.initialDepth != null) {
       this.applyTimeAndDepth(this.initialTime, this.initialDepth);
     } else {
@@ -607,6 +629,7 @@ export class Zartigl {
     const changesSource =
       change.source != null &&
       (changesLayer || change.source !== this.sourcePreference);
+    const target: SourceTarget = { time: change.time, depth: change.depth };
 
     if (changesLayer) {
       await this.loadLayer(
@@ -618,6 +641,7 @@ export class Zartigl {
           settings: { ...(change.settings ?? {}) },
           colorDomainOverridden: change.settings?.colorDomain !== undefined,
           paletteOverridden: change.settings?.palette !== undefined,
+          target,
         },
         generation,
       );
@@ -626,13 +650,14 @@ export class Zartigl {
         change,
         "timeRange",
       );
+      const range = hasTimeRange
+        ? (change.timeRange ?? undefined)
+        : this.timeRange;
       if (changesSource) {
-        await this.changeSource(
-          change.source!,
-          hasTimeRange ? (change.timeRange ?? undefined) : this.timeRange,
-        );
-      }
-      if (hasTimeRange && !changesSource) {
+        await this.changeSource(change.source!, range, target);
+      } else if (await this.needsSourceFallback(range, target, hasTimeRange)) {
+        await this.changeSource(this.sourcePreference, range, target);
+      } else if (hasTimeRange) {
         this.applyTimeRange(change.timeRange ?? null);
       }
     }
@@ -683,6 +708,7 @@ export class Zartigl {
       settings: Partial<ZartiglSettings>;
       colorDomainOverridden: boolean;
       paletteOverridden: boolean;
+      target?: SourceTarget;
     },
     requestedGeneration?: number,
   ): Promise<void> {
@@ -695,18 +721,20 @@ export class Zartigl {
     }
     const layerDefaults = defaultSettings(catalogLayer);
     const requestedTimeRange = context ? context.timeRange : this.timeRange;
-    const requestedSource = this.resolveSource(
+    // Reserve the generation before awaiting source selection so a later
+    // layer request still supersedes this one.
+    const generation = requestedGeneration ?? ++this.switchGeneration;
+    const requestedSource = await this.selectSource(
       catalogLayer,
       preference,
-      this.sourceTimeRequest(requestedTimeRange),
+      requestedTimeRange,
+      context?.target,
     );
     const requestedSettings = context?.settings ?? this.settings;
     const requestedColorDomainOverride =
       context?.colorDomainOverridden ?? this.colorDomainOverridden;
     const requestedPaletteOverride =
       context?.paletteOverridden ?? this.paletteOverridden;
-
-    const generation = requestedGeneration ?? ++this.switchGeneration;
     if (requestedSource.type === "geovideo") {
       this.emit("status", { phase: "metadata" });
       try {
@@ -907,7 +935,11 @@ export class Zartigl {
       typeof unitAttrs.standard_name === "string"
         ? unitAttrs.standard_name
         : undefined;
-    this.time = latestTimeAtOrBefore(this.timeMeta.values, Date.now());
+    this.time =
+      this.pendingTime == null
+        ? latestTimeAtOrBefore(this.timeMeta.values, Date.now())
+        : nearestValue(this.timeMeta.values, this.pendingTime);
+    this.pendingTime = null;
     this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
     const overriddenColorDomain = requestedSettings.colorDomain;
     this.settings = { ...layerDefaults, ...requestedSettings };
@@ -923,19 +955,60 @@ export class Zartigl {
   private async changeSource(
     preference: CatalogSourcePreference,
     timeRange: TimeRange | undefined = this.timeRange,
+    target: SourceTarget = {},
   ): Promise<void> {
     this.assertAlive();
     if (!this.catalogLayer) {
       this.sourcePreference = preference;
       return;
     }
-    this.pendingTime = this.time;
+    this.pendingTime =
+      target.time == null ? this.time : parseTime(target.time, "time");
     await this.loadLayer(this.catalogLayer.id, preference, {
       timeRange,
       settings: { ...this.settings },
       colorDomainOverridden: this.colorDomainOverridden,
       paletteOverridden: this.paletteOverridden,
+      target: { time: this.pendingTime ?? undefined, depth: target.depth },
     });
+  }
+
+  /**
+   * One-way fallback after init: leave the current GeoVideo only when it
+   * cannot show the requested time, window, or depth and another source can.
+   * Never switches back, so scrubbing a Zarr timeline does not flip sources.
+   */
+  private async needsSourceFallback(
+    range: TimeRange | undefined,
+    target: SourceTarget,
+    timeRangeChanged: boolean,
+  ): Promise<boolean> {
+    const entry = this.catalogLayer;
+    const current = this.catalogSource;
+    if (
+      !entry ||
+      current?.type !== "geovideo" ||
+      isPinnedSource(entry, this.sourcePreference)
+    ) {
+      return false;
+    }
+    const coversTime =
+      (target.time == null && !timeRangeChanged) ||
+      sourceCoversTime(current, this.sourceTimeRequest(range, target.time));
+    const servesDepth =
+      target.depth == null ||
+      this.sourcePreference !== "auto" ||
+      (await this.geoVideoServesDepth(entry, target.depth));
+    if (coversTime && servesDepth) {
+      return false;
+    }
+    const next = await this.selectSource(
+      entry,
+      this.sourcePreference,
+      range,
+      target,
+    );
+    return next.id !== current.id;
   }
 
   private applyVisible(visible: boolean): void {
@@ -1529,12 +1602,14 @@ export class Zartigl {
   }
 
   /**
-   * Time the caller asked for, so "auto" skips fixed-period sources (such as a
-   * GeoVideo artifact) that cannot show it. A trailing window targets now.
+   * Time the caller asked for, so selection skips fixed-period sources (such
+   * as a GeoVideo artifact) that cannot show it. A trailing window targets now.
    */
-  private sourceTimeRequest(range?: TimeRange): SourceTimeRequest {
-    const time =
-      this.pendingTime ?? (this.initialized ? undefined : this.initialTime);
+  private sourceTimeRequest(
+    range?: TimeRange,
+    requestedTime?: Date | string | number,
+  ): SourceTimeRequest {
+    const time = requestedTime ?? this.pendingTime;
     const request: SourceTimeRequest = {};
     if (time != null) {
       request.time = parseTime(time, "time");
@@ -1552,16 +1627,70 @@ export class Zartigl {
     return request;
   }
 
+  /**
+   * Source for a preference and target. In "auto", a GeoVideo that cannot show
+   * the requested depth (it renders the surface level) yields to Zarr.
+   */
+  private async selectSource(
+    entry: CatalogEntry,
+    preference: CatalogSourcePreference,
+    range: TimeRange | undefined,
+    target: SourceTarget = {},
+  ): Promise<CatalogSource> {
+    const request = this.sourceTimeRequest(range, target.time);
+    const selected = this.resolveSource(entry, preference, request);
+    if (
+      selected.type !== "geovideo" ||
+      preference !== "auto" ||
+      target.depth == null ||
+      (await this.geoVideoServesDepth(entry, target.depth))
+    ) {
+      return selected;
+    }
+    return pickSourceByPriority(entry, ["zarr"], request) ?? selected;
+  }
+
+  /** Whether `depth` resolves to the surface level that GeoVideo renders. */
+  private async geoVideoServesDepth(
+    entry: CatalogEntry,
+    depth: number,
+  ): Promise<boolean> {
+    const zarr = pickSourceByPriority(entry, ["zarr"]);
+    if (zarr?.type !== "zarr") {
+      return true;
+    }
+    const source = this.getFieldSource(zarr.endpoints.field);
+    try {
+      await source.init();
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.emit("status", { phase: "error", error: err });
+      this.emit("error", err);
+      throw err;
+    }
+    const values =
+      source.getVerticalDimension(variableNames(zarr)[0])?.values ?? [];
+    return (
+      values.length === 0 ||
+      nearestValue(values, depth) === sortedDepthValues(values)[0]
+    );
+  }
+
   private resolveSource(
     entry: CatalogEntry,
     preference: CatalogSourcePreference,
     timeRequest?: SourceTimeRequest,
   ): CatalogSource {
+    // A type preference picks among same-type sources by period, like "auto".
     const selected =
       preference === "auto"
         ? pickPreferredSource(entry, timeRequest)
         : (entry.sources.find((source) => source.id === preference) ??
-          entry.sources.find((source) => source.type === preference));
+          pickSourceByPriority(
+            entry,
+            [preference as CatalogSource["type"]],
+            timeRequest,
+          ));
     if (!selected) {
       throw new Error(
         `Catalog entry ${entry.id} does not provide source: ${preference}`,

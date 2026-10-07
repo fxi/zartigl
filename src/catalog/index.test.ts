@@ -4,6 +4,7 @@ import {
   findCatalogEntries,
   getCatalogEntry,
   pickPreferredSource,
+  pickSourceByPriority,
   searchCatalog,
   sourceCoversTime,
 } from "./index";
@@ -105,7 +106,7 @@ describe("pickPreferredSource", () => {
     expect(pickPreferredSource(scalarEntry([zarr])).id).toBe("s-zarr");
   });
 
-  it("always resolves vector entries to zarr", () => {
+  it("never resolves vector entries to wmts", () => {
     const entry: CatalogEntry = {
       id: "e",
       title: {},
@@ -207,6 +208,29 @@ describe("pickPreferredSource", () => {
     expect(
       pickPreferredSource(vector, { time: at("2025-06-01T00:00:00Z") }).id,
     ).toBe("s-zarr");
+  });
+
+  it("picks one source type by coverage, then recency", () => {
+    const olderVideo: CatalogSource = {
+      ...fixedVideo,
+      id: "s-2024-video",
+      temporal: {
+        mode: "fixed",
+        start: "2024-11-01T00:00:00Z",
+        end: "2024-12-31T23:00:00Z",
+      },
+    };
+    const entry = scalarEntry([zarr, fixedVideo, olderVideo]);
+    const pick = (time?: string) =>
+      pickSourceByPriority(
+        entry,
+        ["geovideo"],
+        time ? { time: at(time) } : undefined,
+      )?.id;
+    expect(pick("2024-12-14T00:00:00Z")).toBe("s-2024-video");
+    expect(pick("2025-06-01T00:00:00Z")).toBe("s-fixed-video");
+    expect(pick()).toBe("s-fixed-video");
+    expect(pickSourceByPriority(scalarEntry([zarr]), ["wmts"])).toBeUndefined();
   });
 
   it("prefers geovideo for vector entries and keeps zarr as fallback", () => {
