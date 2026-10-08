@@ -421,6 +421,8 @@ export class DemoApp {
   private dataFolder!: FolderApi;
   private vectorFolder!: FolderApi;
   private dataBindings: { dispose(): void }[] = [];
+  /** Native GeoVideo playback controls, shown while that backend is active. */
+  private playbackBindings: { dispose(): void }[] = [];
   private dataStatusBlade!: BladeApi;
   private timeSliderBinding: BindingApi | null = null;
   private timeLabelBinding: BindingApi | null = null;
@@ -534,6 +536,7 @@ export class DemoApp {
       if (layer.kind === "scalar") {
         this.frameColorDomain = [meta.min, meta.max];
       }
+      this.syncActiveSource();
       this.syncLegend();
     });
     activeZartigl.on("status", (status) => {
@@ -714,6 +717,36 @@ export class DemoApp {
     if (depthBinding) {
       this.dataBindings.push(depthBinding);
     }
+    this.rebuildPlaybackControls();
+  }
+
+  /**
+   * Follow the source the facade shows, which a time change can move between
+   * Zarr and GeoVideo, so playback controls, time sync and shared links match.
+   */
+  private syncActiveSource(): void {
+    const source = this.z?.getSource();
+    if (!source || source.id === this.currentSourceId) {
+      return;
+    }
+    const nativePlayback = this.usesNativeGeoVideoPlayback();
+    this.currentSourceId = source.id;
+    this.currentBackend = source.type;
+    if (this.sourceSelectEl) {
+      this.sourceSelectEl.value = source.id;
+    }
+    if (nativePlayback !== this.usesNativeGeoVideoPlayback()) {
+      // Leaves the time slider alone, which may be mid-drag.
+      this.rebuildPlaybackControls();
+    }
+    this.syncColorDomainVisibility();
+  }
+
+  private rebuildPlaybackControls(): void {
+    for (const binding of this.playbackBindings) {
+      binding.dispose();
+    }
+    this.playbackBindings = [];
     if (this.usesNativeGeoVideoPlayback()) {
       const autoplay = this.dataFolder
         .addBinding(this.params, "geoVideoAutoplay", {
@@ -747,7 +780,7 @@ export class DemoApp {
           (event) =>
             void this.z?.update({ geoVideo: { stepsPerSecond: event.value } }),
         );
-      this.dataBindings.push(autoplay, loop, rate);
+      this.playbackBindings.push(autoplay, loop, rate);
     }
 
     // Status is static, but moving its blade to the end keeps it below controls
