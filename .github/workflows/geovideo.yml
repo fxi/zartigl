@@ -41,11 +41,16 @@ jobs:
         with:
           node-version: 22
 
+      - uses: astral-sh/setup-uv@v6
+
       - name: Check tools
         run: |
-          uv --version
-          ffmpeg -hide_banner -encoders | grep -q libx264
-          ffprobe -version | head -1
+          missing=0
+          uv --version || missing=1
+          ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libx264 || { echo "ffmpeg with libx264 not found"; missing=1; }
+          ffprobe -version 2>/dev/null | head -1 || missing=1
+          command -v ffprobe >/dev/null || { echo "ffprobe not found"; missing=1; }
+          exit $missing
 
       - run: npm run test:geovideo
 
