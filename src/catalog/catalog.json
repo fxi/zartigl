@@ -44,10 +44,10 @@
           }
         },
         {
-          "id": "839af56c-b57c-49ae-8e0f-246904b6656c",
+          "id": "4f0f1677-be89-4751-b2b5-c387a81c477a",
           "type": "geovideo",
           "title": {
-            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+            "en": "Particle animation archive"
           },
           "provenance": {
             "provider": "copernicus-marine",
@@ -56,13 +56,11 @@
               "dataset": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/61a81ddd-6c8e-4020-a59f-06ef13a90419/93aec70f52e8/manifest.json",
           "temporal": {
-            "mode": "fixed",
-            "cadence": "PT6H",
-            "start": "2026-08-01T00:00:00Z",
-            "end": "2026-09-30T18:00:00Z"
-          }
+            "mode": "analysis-forecast",
+            "cadence": "PT6H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/61a81ddd-6c8e-4020-a59f-06ef13a90419/4f0f1677-be89-4751-b2b5-c387a81c477a/index.json"
         }
       ],
       "defaults": {
@@ -124,27 +122,6 @@
           }
         },
         {
-          "id": "add14af2-0a37-4514-a41b-593aec73f4ee",
-          "type": "geovideo",
-          "title": {
-            "en": "Particle animation (2026-08-01 – 2026-09-30)"
-          },
-          "provenance": {
-            "provider": "copernicus-marine",
-            "identifiers": {
-              "product": "WIND_GLO_PHY_L4_NRT_012_004",
-              "dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H"
-            }
-          },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/7dbe2268d752/manifest.json",
-          "temporal": {
-            "mode": "fixed",
-            "cadence": "PT3H",
-            "start": "2026-08-01T00:00:00Z",
-            "end": "2026-09-30T21:00:00Z"
-          }
-        },
-        {
           "id": "382973a2-4c6a-422d-8963-964f6b99b58d",
           "type": "geovideo",
           "title": {
@@ -166,10 +143,10 @@
           }
         },
         {
-          "id": "df4b7a37-eaa6-43c8-9990-dce021b20a0f",
+          "id": "98157b79-2ffb-44b2-b067-36af80ce4cd5",
           "type": "geovideo",
           "title": {
-            "en": "Particle animation (2024-11-01 – 2024-12-31)"
+            "en": "Particle animation archive"
           },
           "provenance": {
             "provider": "copernicus-marine",
@@ -178,13 +155,11 @@
               "dataset": "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/aff95a2ece90/manifest.json",
           "temporal": {
-            "mode": "fixed",
-            "cadence": "PT1H",
-            "start": "2024-11-01T00:00:00Z",
-            "end": "2024-12-31T23:00:00Z"
-          }
+            "mode": "near-real-time",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/98157b79-2ffb-44b2-b067-36af80ce4cd5/index.json"
         }
       ],
       "defaults": {
@@ -267,6 +242,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:algae,logScale"
+        },
+        {
+          "id": "5a2fbc5e-389a-49db-b4bf-eae7ee1f5d0d",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/39296bd8-f93f-4fce-91ab-44faf9d91e90/5a2fbc5e-389a-49db-b4bf-eae7ee1f5d0d/index.json"
         }
       ],
       "defaults": {
@@ -326,10 +320,10 @@
           }
         },
         {
-          "id": "480380ea-4c8c-449c-b3c5-632fc78a2628",
+          "id": "35a8e696-157f-4faf-ad2d-1ac5dff1009e",
           "type": "geovideo",
           "title": {
-            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+            "en": "Particle animation archive"
           },
           "provenance": {
             "provider": "copernicus-marine",
@@ -338,13 +332,11 @@
               "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88f00432-ffad-4ebd-85ac-9f8de1ee5213/e63a6066f299/manifest.json",
           "temporal": {
-            "mode": "fixed",
-            "cadence": "PT3H",
-            "start": "2026-08-01T00:00:00Z",
-            "end": "2026-09-30T21:00:00Z"
-          }
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88f00432-ffad-4ebd-85ac-9f8de1ee5213/35a8e696-157f-4faf-ad2d-1ac5dff1009e/index.json"
         }
       ],
       "defaults": {
@@ -426,6 +418,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/dissic",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "4a339c9c-66eb-4528-a202-d1f8d5284791",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/28599e51-320c-42f8-835a-02ad06f7a131/4a339c9c-66eb-4528-a202-d1f8d5284791/index.json"
         }
       ],
       "defaults": {
@@ -505,6 +516,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311/ph",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "a7240768-e655-4de3-9f60-7ff7a85167be",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/4609f41a-7089-4389-963f-38716335509b/a7240768-e655-4de3-9f60-7ff7a85167be/index.json"
         }
       ],
       "defaults": {
@@ -584,6 +614,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/nppv",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "2a998955-7f72-4ec4-9f22-cb433c115b6a",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/287d265b-6342-4f4a-bd57-aa861f84a269/2a998955-7f72-4ec4-9f22-cb433c115b6a/index.json"
         }
       ],
       "defaults": {
@@ -663,6 +712,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m_202311/o2",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "aa076d8f-af69-4c87-8c95-e68eb661128b",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b38f7b2c-9ff4-4b3c-96ab-eb4c01e69a45/aa076d8f-af69-4c87-8c95-e68eb661128b/index.json"
         }
       ],
       "defaults": {
@@ -740,6 +808,25 @@
             "start": "1993-09-01T00:00:00Z",
             "end": "2025-09-01T00:00:00Z"
           }
+        },
+        {
+          "id": "c67b6ca4-3924-456e-b197-16dc85daff25",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "BALTICSEA_MULTIYEAR_BGC_003_012",
+              "dataset": "cmems_mod_bal_bgc_my_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/c67b6ca4-3924-456e-b197-16dc85daff25/index.json"
         }
       ],
       "defaults": {
@@ -819,6 +906,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/no3",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "6eb2e47c-1627-49ff-9073-4a1de68135d0",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/840609cc-28d2-42f8-afc7-5dfb322e93da/6eb2e47c-1627-49ff-9073-4a1de68135d0/index.json"
         }
       ],
       "defaults": {
@@ -898,6 +1004,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311/po4",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "25fcf580-fa4b-46d5-8231-95ca3abb941d",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/83bfbf02-d5a4-40d6-8265-a16ef2c7a8a4/25fcf580-fa4b-46d5-8231-95ca3abb941d/index.json"
         }
       ],
       "defaults": {
@@ -977,6 +1102,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_BGC_001_028/cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m_202311/spco2",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "6ea81ae4-618d-4602-957c-a027053d22e0",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_BGC_001_028",
+              "dataset": "cmems_mod_glo_bgc-co2_anfc_0.25deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/04ad1cbd-3f21-4e84-845d-cd17930a49a2/6ea81ae4-618d-4602-957c-a027053d22e0/index.json"
         }
       ],
       "defaults": {
@@ -1054,6 +1198,25 @@
             "start": "2022-06-01T00:00:00Z",
             "end": "2026-08-27T00:00:00Z"
           }
+        },
+        {
+          "id": "2d53f9dd-cd8d-4031-9826-09f40ad0f959",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/2d53f9dd-cd8d-4031-9826-09f40ad0f959/index.json"
         }
       ],
       "defaults": {
@@ -1133,6 +1296,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406/thetao",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "1c21d5ae-ee20-47aa-aec0-30e69506bc9b",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/3db0120b-17d2-4789-9952-efcc0953ecc4/1c21d5ae-ee20-47aa-aec0-30e69506bc9b/index.json"
         }
       ],
       "defaults": {
@@ -1239,6 +1421,25 @@
             "start": "2026-02-01T00:00:00Z",
             "end": "2026-08-01T00:00:00Z"
           }
+        },
+        {
+          "id": "5250b6f9-d877-4e9e-a11a-f63205688b61",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/5250b6f9-d877-4e9e-a11a-f63205688b61/index.json"
         }
       ],
       "defaults": {
@@ -1318,6 +1519,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406/so",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "1cdd2e31-f466-4bf6-add0-adb948888c57",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/95553290-0513-43bd-9806-a5bb060737b7/1cdd2e31-f466-4bf6-add0-adb948888c57/index.json"
         }
       ],
       "defaults": {
@@ -1397,6 +1617,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m_202406/wo",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "6a271f03-c682-495b-a730-2b9140233b3e",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa853610-4656-4308-a0c3-8a2ac546326f/6a271f03-c682-495b-a730-2b9140233b3e/index.json"
         }
       ],
       "defaults": {
@@ -1453,6 +1692,25 @@
             "kind": "scalar",
             "value": "mlotst"
           }
+        },
+        {
+          "id": "e37da4a3-e5b2-4041-8484-99ddfb06a670",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/ccb8500b-5bc1-41a1-acb3-cbd8cd758b92/e37da4a3-e5b2-4041-8484-99ddfb06a670/index.json"
         }
       ],
       "defaults": {
@@ -1690,6 +1948,25 @@
           "layer": "GLOBAL_ANALYSISFORECAST_WAV_001_027/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_202411/VHM0_SW1",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
+        },
+        {
+          "id": "8e457f46-45d9-4190-80bb-a252174cebe8",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "GLOBAL_ANALYSISFORECAST_WAV_001_027",
+              "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
+            }
+          },
+          "temporal": {
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/67cc53f8-8810-42d9-adbf-bd28b16227c2/8e457f46-45d9-4190-80bb-a252174cebe8/index.json"
         }
       ],
       "defaults": {
@@ -1754,10 +2031,10 @@
           }
         },
         {
-          "id": "a39a263d-2eb3-4574-882d-85cf90b55f33",
+          "id": "a88028a4-8ea7-4d63-b164-7c2a56b2a46e",
           "type": "geovideo",
           "title": {
-            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+            "en": "Particle animation archive"
           },
           "provenance": {
             "provider": "copernicus-marine",
@@ -1766,13 +2043,11 @@
               "dataset": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bb38fd23-b0b0-4cd0-b59d-0224be3052f9/2a156cb69eee/manifest.json",
           "temporal": {
-            "mode": "fixed",
-            "cadence": "PT3H",
-            "start": "2026-08-01T00:00:00Z",
-            "end": "2026-09-30T21:00:00Z"
-          }
+            "mode": "analysis-forecast",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bb38fd23-b0b0-4cd0-b59d-0224be3052f9/a88028a4-8ea7-4d63-b164-7c2a56b2a46e/index.json"
         }
       ],
       "defaults": {
@@ -1834,10 +2109,10 @@
           }
         },
         {
-          "id": "e53f8075-0b14-422d-b237-7ac67dc13b9a",
+          "id": "03d4ad76-edbc-4c90-8c7f-78d86583c8e0",
           "type": "geovideo",
           "title": {
-            "en": "Particle animation (2026-08-01 – 2026-09-30)"
+            "en": "Particle animation archive"
           },
           "provenance": {
             "provider": "copernicus-marine",
@@ -1846,13 +2121,11 @@
               "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
             }
           },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/40733539-e493-448e-80b5-2a7874f47b85/404bc6c89c25/manifest.json",
           "temporal": {
-            "mode": "fixed",
-            "cadence": "P1D",
-            "start": "2026-08-01T00:00:00Z",
-            "end": "2026-09-30T00:00:00Z"
-          }
+            "mode": "analysis-forecast",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/40733539-e493-448e-80b5-2a7874f47b85/03d4ad76-edbc-4c90-8c7f-78d86583c8e0/index.json"
         }
       ],
       "defaults": {
@@ -1935,6 +2208,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:thermal"
+        },
+        {
+          "id": "1de88e28-2847-4c2e-8f6c-883169fc5c7e",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-temp_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/f0812aa5-f9b6-4149-ab51-3de9d9d100c3/1de88e28-2847-4c2e-8f6c-883169fc5c7e/index.json"
         }
       ],
       "defaults": {
@@ -2015,6 +2307,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:thermal"
+        },
+        {
+          "id": "743ef7b8-aed4-4871-9990-2f8418f520f2",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-temp_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0e05907e-a3e9-4537-a68a-bc0780d261f2/743ef7b8-aed4-4871-9990-2f8418f520f2/index.json"
         }
       ],
       "defaults": {
@@ -2095,6 +2406,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:haline"
+        },
+        {
+          "id": "47a6002f-5660-4ab6-b78e-bf0ed3fec155",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-sal_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7a499cff-5934-4145-96ac-27477faf58f0/47a6002f-5660-4ab6-b78e-bf0ed3fec155/index.json"
         }
       ],
       "defaults": {
@@ -2175,6 +2505,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "fbdc7c5d-40aa-4e2b-b58e-b3d97e34c44b",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-ssh_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/ddf10ab0-2654-4c37-88d9-1bbd9b0ee947/fbdc7c5d-40aa-4e2b-b58e-b3d97e34c44b/index.json"
         }
       ],
       "defaults": {
@@ -2255,6 +2604,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:plasma"
+        },
+        {
+          "id": "7e6c6f46-b8ae-4a5d-95d2-be36aa462c92",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-mld_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/43fbd59e-060a-4797-8588-529d0fb79542/7e6c6f46-b8ae-4a5d-95d2-be36aa462c92/index.json"
         }
       ],
       "defaults": {
@@ -2335,6 +2703,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "a87f3237-52ed-4a83-9579-7a62b8a463e7",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5c3c8139-bb64-46fc-847a-b3c0750b49b6/a87f3237-52ed-4a83-9579-7a62b8a463e7/index.json"
         }
       ],
       "defaults": {
@@ -2415,6 +2802,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "94284f8a-754e-4ad4-921a-3019f13f7617",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f9843e3-a525-4fa0-b982-419e3e63d1d0/94284f8a-754e-4ad4-921a-3019f13f7617/index.json"
         }
       ],
       "defaults": {
@@ -2495,6 +2901,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "e21f7e51-1aea-4c0a-8e5f-0df51a999f39",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/123bd37b-f9ec-484c-adb9-e365e35c367f/e21f7e51-1aea-4c0a-8e5f-0df51a999f39/index.json"
         }
       ],
       "defaults": {
@@ -2575,6 +3000,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "d52db46a-45c9-4fd7-a7b5-267fc6579e70",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6f4bf0dc-7c62-4879-8fb7-a8e1d89fbde9/d52db46a-45c9-4fd7-a7b5-267fc6579e70/index.json"
         }
       ],
       "defaults": {
@@ -2655,6 +3099,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "fcf9ced6-05ae-4ac1-a722-7215665920e4",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/552aaa35-3255-4151-848c-8995409f8518/fcf9ced6-05ae-4ac1-a722-7215665920e4/index.json"
         }
       ],
       "defaults": {
@@ -2735,6 +3198,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "8930edc4-ecb5-4b95-9044-911b0c371533",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-wflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9fce8c6e-f639-4fc9-9ae0-52d435a033ff/8930edc4-ecb5-4b95-9044-911b0c371533/index.json"
         }
       ],
       "defaults": {
@@ -2815,6 +3297,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "4c25cbfe-0748-4104-a87c-572ab2b65f9e",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-wflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/52b3d290-4da7-45ca-9a25-e35c61c6726e/4c25cbfe-0748-4104-a87c-572ab2b65f9e/index.json"
         }
       ],
       "defaults": {
@@ -2895,6 +3396,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:dense"
+        },
+        {
+          "id": "66b49e58-3d66-4fd5-9e44-2a2d485118e3",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f60b714-82eb-4a1b-ae97-829923bbe97a/66b49e58-3d66-4fd5-9e44-2a2d485118e3/index.json"
         }
       ],
       "defaults": {
@@ -2975,6 +3495,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "c2cf00bb-7c14-40e8-8757-37370b5493c9",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/d6a9f6d0-479c-4bbd-b093-74b3ad88a4a9/c2cf00bb-7c14-40e8-8757-37370b5493c9/index.json"
         }
       ],
       "defaults": {
@@ -3055,6 +3594,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:viridis"
+        },
+        {
+          "id": "d3fd3adb-f8d9-48b5-96e0-85f37cb6fa92",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/213acff6-54fb-4be4-ad14-1e7cae1b926c/d3fd3adb-f8d9-48b5-96e0-85f37cb6fa92/index.json"
         }
       ],
       "defaults": {
@@ -3135,6 +3693,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "abae156e-0bd7-416a-940c-8faae9312c2b",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-co2_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/d9b6b74c-63d2-48a5-9be6-dc81e93a9468/abae156e-0bd7-416a-940c-8faae9312c2b/index.json"
         }
       ],
       "defaults": {
@@ -3215,18 +3792,37 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "11964751-d798-4bd6-98c8-38b459e05a84",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-co2_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/94dd0605-52f3-43e9-a428-0d9b491253dc/11964751-d798-4bd6-98c8-38b459e05a84/index.json"
         }
       ],
       "defaults": {
         "sourceId": "0ba36ddc-d46a-48dc-8f8a-ac08ed35751a",
-        "palette": "matter",
+        "palette": "balance",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
           "vibrance": 0.15,
           "colorDomain": [
-            -1.0154252683136634e-9,
-            6.881201840975169e-12
+            -1.0143485127450718e-9,
+            1.320106910159959e-9
           ]
         },
         "querySourceId": "0ba36ddc-d46a-48dc-8f8a-ac08ed35751a"
@@ -3295,6 +3891,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "776d6a01-3576-41cc-9e86-3d4c30f30340",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5b2d0fa7-a73f-4c0a-9ec0-a43b6fd00a53/776d6a01-3576-41cc-9e86-3d4c30f30340/index.json"
         }
       ],
       "defaults": {
@@ -3375,6 +3990,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:dense"
+        },
+        {
+          "id": "a7655702-31f0-47f0-b2d0-aed5b3fd00ec",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/acf3b528-6915-4c3c-8a31-0d5200fc800b/a7655702-31f0-47f0-b2d0-aed5b3fd00ec/index.json"
         }
       ],
       "defaults": {
@@ -3455,6 +4089,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:dense"
+        },
+        {
+          "id": "4101fcc1-9bb5-4fcd-a21c-dedc65510717",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f1ca7a7-0ca4-45b2-bcb0-419cf3baca5e/4101fcc1-9bb5-4fcd-a21c-dedc65510717/index.json"
         }
       ],
       "defaults": {
@@ -3535,6 +4188,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:algae"
+        },
+        {
+          "id": "05401397-037c-49ef-81c6-d26f5ac289b9",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-plankton_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/dc379e9d-c53a-4456-b62e-892c4755c336/05401397-037c-49ef-81c6-d26f5ac289b9/index.json"
         }
       ],
       "defaults": {
@@ -3615,6 +4287,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "0aa7cb1f-117e-47f1-ab74-945537893c53",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-plankton_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fd5977e0-4a6a-4fcd-b9c8-d9c88e0c57bc/0aa7cb1f-117e-47f1-ab74-945537893c53/index.json"
         }
       ],
       "defaults": {
@@ -3695,6 +4386,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "f51e03a3-712d-4ae4-a552-d082f054801a",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-bio_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/92e90806-496c-466c-b0c7-0d22f74bdc1c/f51e03a3-712d-4ae4-a552-d082f054801a/index.json"
         }
       ],
       "defaults": {
@@ -3775,6 +4485,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "db577c1e-42fc-4ca6-9fe6-b76b319015c7",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-bio_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/26ff90d9-fc53-44f7-bc96-35b8a135933a/db577c1e-42fc-4ca6-9fe6-b76b319015c7/index.json"
         }
       ],
       "defaults": {
@@ -3855,6 +4584,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:amp"
+        },
+        {
+          "id": "6f350879-4684-4a11-9a8d-411748cde9d7",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fb2f7a2b-3e20-45f5-bea3-fdaaeb964226/6f350879-4684-4a11-9a8d-411748cde9d7/index.json"
         }
       ],
       "defaults": {
@@ -3935,6 +4683,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:tempo"
+        },
+        {
+          "id": "abbce022-e9cf-4f83-bb32-9edec196ff32",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bc4c2a48-eba3-470e-a37e-7ed8ac67c58a/abbce022-e9cf-4f83-bb32-9edec196ff32/index.json"
         }
       ],
       "defaults": {
@@ -4015,6 +4782,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:tempo"
+        },
+        {
+          "id": "b59c1e11-da3d-4cab-9ce4-efd79094374c",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/98f55236-7380-4430-9d5b-9bc011546ea7/b59c1e11-da3d-4cab-9ce4-efd79094374c/index.json"
         }
       ],
       "defaults": {
@@ -4095,6 +4881,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:amp"
+        },
+        {
+          "id": "9216bc20-a130-460d-8005-25cac805e08c",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa73cf0e-f78e-4f46-8a06-23a13f4cccbe/9216bc20-a130-460d-8005-25cac805e08c/index.json"
         }
       ],
       "defaults": {
@@ -4175,6 +4980,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:amp"
+        },
+        {
+          "id": "ca2a5fa0-6a0b-4050-ba3a-0155d552077d",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/255de3fe-a0fe-491a-a35c-e605953d8b62/ca2a5fa0-6a0b-4050-ba3a-0155d552077d/index.json"
         }
       ],
       "defaults": {
@@ -4255,6 +5079,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:amp"
+        },
+        {
+          "id": "c82a3a55-c5c1-4de5-ad14-8d6c21519f52",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/724706e2-924c-4ae6-9bdb-8f4128324245/c82a3a55-c5c1-4de5-ad14-8d6c21519f52/index.json"
         }
       ],
       "defaults": {
@@ -4335,6 +5178,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:plasma"
+        },
+        {
+          "id": "6ce11edc-f2db-485b-9187-392cf9638f24",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "SEALEVEL_EUR_PHY_L4_MY_008_068",
+              "dataset": "cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/075b8ee5-c521-4eee-91cb-0d0a3ec7d93a/6ce11edc-f2db-485b-9187-392cf9638f24/index.json"
         }
       ],
       "defaults": {
@@ -4415,6 +5277,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:algae"
+        },
+        {
+          "id": "7bb0c2ae-ccea-4edb-93cd-3a1c1696d899",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "OCEANCOLOUR_MED_BGC_L4_MY_009_144",
+              "dataset": "cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7bf14fbb-f7bf-44e2-8f88-dbe72480d3b1/7bb0c2ae-ccea-4edb-93cd-3a1c1696d899/index.json"
         }
       ],
       "defaults": {
@@ -4495,6 +5376,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:matter"
+        },
+        {
+          "id": "70b6748e-5ed1-4456-8952-c09ec0d5ca22",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "OCEANCOLOUR_MED_BGC_L4_MY_009_144",
+              "dataset": "cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1508bd3a-5a24-4499-a329-7cfc77d8259a/70b6748e-5ed1-4456-8952-c09ec0d5ca22/index.json"
         }
       ],
       "defaults": {
@@ -4575,6 +5475,25 @@
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png",
           "style": "cmap:thermal"
+        },
+        {
+          "id": "c049fd05-3596-48bc-95b0-daecc774c292",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "SST_MED_SST_L4_REP_OBSERVATIONS_010_021",
+              "dataset": "cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/688114b5-3118-4617-8306-6bfa00a8b233/c049fd05-3596-48bc-95b0-daecc774c292/index.json"
         }
       ],
       "defaults": {
@@ -4632,6 +5551,25 @@
             "u": "uo",
             "v": "vo"
           }
+        },
+        {
+          "id": "85f82a7d-215d-4383-b4ae-b08712a03cbd",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-cur_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/35bd7fd2-747c-4d10-a704-181f4538f935/85f82a7d-215d-4383-b4ae-b08712a03cbd/index.json"
         }
       ],
       "defaults": {
@@ -4691,6 +5629,25 @@
             "u": "tauuo",
             "v": "tauvo"
           }
+        },
+        {
+          "id": "fdf758b0-b198-4dba-b363-f7227253eb32",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-mflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7c8fa700-91cf-4365-bbda-52b445bb87ad/fdf758b0-b198-4dba-b363-f7227253eb32/index.json"
         }
       ],
       "defaults": {
@@ -4750,6 +5707,25 @@
             "u": "VSDX",
             "v": "VSDY"
           }
+        },
+        {
+          "id": "6936e31b-3a1d-4ba3-b99e-f150815d48ee",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/cd27eb64-c6d0-4dfa-83ab-a2a731d1b16a/6936e31b-3a1d-4ba3-b99e-f150815d48ee/index.json"
         }
       ],
       "defaults": {
@@ -4814,6 +5790,25 @@
               "output_direction": "toward"
             }
           }
+        },
+        {
+          "id": "df45a7d5-a7c4-42d1-9bad-afdc86848ec8",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation archive"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9e1a9c3a-e5ba-40a6-8a43-fad9720fcbc3/df45a7d5-a7c4-42d1-9bad-afdc86848ec8/index.json"
         }
       ],
       "defaults": {
