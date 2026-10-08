@@ -22,7 +22,11 @@ import type { RenderMode } from "./ParticleSimulation";
 import type { ZartiglStatus } from "./load-status";
 import { GeoVideoLayer } from "./GeoVideoLayer";
 import { GeoVideoVectorSource } from "./GeoVideoVectorSource";
-import type { GeoVideoLayerDebugInfo } from "./GeoVideoLayer";
+import type { GeoVideoManifest } from "./geovideo";
+import type {
+  GeoVideoLayerDebugInfo,
+  GeoVideoReplaceOptions,
+} from "./GeoVideoLayer";
 
 type LayerEventMap = {
   loading: () => void;
@@ -521,6 +525,39 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     if (this.delegate instanceof GeoVideoLayer) {
       this.delegate.setTimeRange(range);
     }
+  }
+
+  /**
+   * Move a scalar GeoVideo to another artifact, such as the next archive
+   * chunk, without rebuilding the map layer. False when a new layer is needed.
+   */
+  replaceGeoVideoManifest(
+    manifest: GeoVideoManifest,
+    options: GeoVideoReplaceOptions,
+  ): boolean {
+    if (
+      this.suspended ||
+      !(this.delegate instanceof GeoVideoLayer) ||
+      !this.delegate.replaceManifest(manifest, options)
+    ) {
+      return false;
+    }
+    if (options.time != null) {
+      this.time = options.time;
+    }
+    return true;
+  }
+
+  /** Load the scalar GeoVideo artifact expected next, such as the next archive chunk. */
+  preloadGeoVideoManifest(
+    manifest: GeoVideoManifest,
+    options: GeoVideoReplaceOptions,
+  ): boolean {
+    return (
+      !this.suspended &&
+      this.delegate instanceof GeoVideoLayer &&
+      this.delegate.preloadManifest(manifest, options)
+    );
   }
 
   async samplePoint(options: {

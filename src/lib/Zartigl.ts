@@ -559,6 +559,11 @@ export class Zartigl {
     string,
     { chunks: Promise<CatalogSource[]>; expires: number }
   >();
+  /** Manifest of the archive chunk expected next, requested ahead of it. */
+  private nextChunkManifest: {
+    url: string;
+    manifest: Promise<GeoVideoManifest>;
+  } | null = null;
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
   private destroyed = false;
@@ -798,7 +803,7 @@ export class Zartigl {
             `GeoVideo archive source was not resolved to a chunk: ${requestedSource.id}`,
           );
         }
-        const manifest = await loadGeoVideoManifest(
+        const manifest = await this.loadChunkManifest(
           requestedSource.manifestUrl,
         );
         const inputSource = catalogLayer.sources.find(
@@ -854,7 +859,11 @@ export class Zartigl {
           requestedTimeRange,
         ).values;
         const shownValues = artifactValues.length ? artifactValues : values;
-        this.detach();
+        const swapInPlace =
+          this.catalogLayer?.id === catalogLayer.id &&
+          this.catalogSource?.type === "geovideo" &&
+          catalogLayer.kind !== "vector";
+        const previousPalette = this.settings.palette;
         this.catalogLayer = catalogLayer;
         this.catalogSource = requestedSource;
         this.sourcePreference = preference;
@@ -890,6 +899,10 @@ export class Zartigl {
           ? this.settings.palette
           : (catalogLayer.defaults.palette ?? manifest.style.palette);
         this.lastMeta = null;
+        if (swapInPlace && this.replaceGeoVideoInPlace(previousPalette)) {
+          return;
+        }
+        this.detach();
         this.attachWhenReady();
         return;
       } catch (error) {
@@ -1592,14 +1605,7 @@ export class Zartigl {
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
       geoVideoAutoplay: this.autoplay,
-      // Archive chunks loop across the whole archive instead of one chunk.
-      geoVideoLoop:
-        this.loop &&
-        !(this.catalogSource && this.isArchiveChunk(this.catalogSource)),
-      geoVideoPlaybackRate: this.effectivePlaybackRate(),
-      geoVideoTimeRange: this.timeMeta
-        ? [this.timeMeta.min, this.timeMeta.max]
-        : undefined,
+      ...this.geoVideoPlayback(),
       particleState: this.settings.particleState,
       rgba8MaxParticleZoom: this.settings.rgba8MaxParticleZoom,
       zarrSource: this.activeFieldSource ?? undefined,
@@ -1623,9 +1629,12 @@ export class Zartigl {
       this.time = nearestValue(this.timeMeta?.values ?? [], time);
       this.emit("timeChange", this.time);
     });
-    layer.on("playbackChange", (playing) =>
-      this.emit("playbackChange", playing),
-    );
+    layer.on("playbackChange", (playing) => {
+      this.emit("playbackChange", playing);
+      if (playing) {
+        void this.preloadNextArchiveChunk(layer);
+      }
+    });
     layer.on("playbackEnd", () => void this.continueArchivePlayback());
     this.layer = layer;
     const before = this.getBeforeLayerId();
@@ -1634,6 +1643,59 @@ export class Zartigl {
       return;
     }
     this.map.addLayer(layer);
+  }
+
+  /** GeoVideo playback options shared by a new layer and an in-place swap. */
+  private geoVideoPlayback(): {
+    geoVideoLoop: boolean;
+    geoVideoPlaybackRate: number;
+    geoVideoTimeRange?: [number, number];
+  } {
+    return {
+      // Archive chunks loop across the whole archive instead of one chunk.
+      geoVideoLoop:
+        this.loop &&
+        !(this.catalogSource && this.isArchiveChunk(this.catalogSource)),
+      geoVideoPlaybackRate: this.effectivePlaybackRate(),
+      geoVideoTimeRange: this.timeMeta
+        ? [this.timeMeta.min, this.timeMeta.max]
+        : undefined,
+    };
+  }
+
+  /**
+   * Show another artifact of the same scalar GeoVideo entry, such as the next
+   * archive chunk, in the attached layer. The last frame stays on screen until
+   * the new media is ready, instead of a blank map while a new layer loads.
+   */
+  private replaceGeoVideoInPlace(
+    previousPalette: ColorRampInput | undefined,
+  ): boolean {
+    const layer = this.layer;
+    if (
+      !layer ||
+      !this.geoVideoManifest ||
+      !this.map.getLayer(layer.id) ||
+      layer.getBackend() !== "scalar-geovideo"
+    ) {
+      return false;
+    }
+    const playback = this.geoVideoPlayback();
+    if (
+      !layer.replaceGeoVideoManifest(this.geoVideoManifest, {
+        time: this.time,
+        timeRange: playback.geoVideoTimeRange,
+        loop: playback.geoVideoLoop,
+        playbackRate: playback.geoVideoPlaybackRate,
+      })
+    ) {
+      return false;
+    }
+    layer.setColorDomain(this.settings.colorDomain ?? null);
+    if (this.settings.palette && this.settings.palette !== previousPalette) {
+      layer.setColorRamp(this.settings.palette);
+    }
+    return true;
   }
 
   private detach(): void {
@@ -1818,49 +1880,119 @@ export class Zartigl {
   }
 
   /**
+   * The archive chunk that follows the current one inside the active time
+   * range, or with loop on, the first one, with the time playback resumes at.
+   */
+  private async nextArchiveChunk(): Promise<{
+    source: CatalogSource;
+    time: number;
+  } | null> {
+    const entry = this.catalogLayer;
+    const current = this.catalogSource;
+    if (!entry || !current || !this.isArchiveChunk(current)) {
+      return null;
+    }
+    const chunks = (await this.resolveArchives(entry)).sources
+      .filter(
+        (source) => source.id === current.id && source.temporal?.start != null,
+      )
+      .map((source) => ({
+        source,
+        start: Date.parse(source.temporal!.start!),
+        end: Date.parse(source.temporal!.end ?? source.temporal!.start!),
+      }))
+      .sort((a, b) => a.start - b.start);
+    const [rangeStart, rangeEnd] = this.resolvedTimeRange ?? [
+      -Infinity,
+      Infinity,
+    ];
+    const currentEnd = Date.parse(current.temporal?.end ?? "");
+    const next =
+      chunks.find(
+        (chunk) => chunk.start > currentEnd && chunk.start <= rangeEnd,
+      ) ??
+      (this.loop
+        ? chunks.find(
+            (chunk) => chunk.end >= rangeStart && chunk.start <= rangeEnd,
+          )
+        : undefined);
+    return next
+      ? { source: next.source, time: Math.max(next.start, rangeStart) }
+      : null;
+  }
+
+  /** A chunk manifest, reusing the one requested ahead for the next chunk. */
+  private loadChunkManifest(url: string): Promise<GeoVideoManifest> {
+    return this.nextChunkManifest?.url === url
+      ? this.nextChunkManifest.manifest
+      : loadGeoVideoManifest(url);
+  }
+
+  /**
+   * While a scalar archive chunk plays, load the next chunk into the layer so
+   * playback moves on without waiting for its manifest and media.
+   */
+  private async preloadNextArchiveChunk(
+    layer: CatalogRenderLayer,
+  ): Promise<void> {
+    const current = this.catalogSource;
+    if (this.catalogLayer?.kind === "vector" || !current) {
+      return;
+    }
+    try {
+      const next = await this.nextArchiveChunk();
+      const url = next?.source.type === "geovideo" && next.source.manifestUrl;
+      if (!next || !url) {
+        return;
+      }
+      if (this.nextChunkManifest?.url !== url) {
+        this.nextChunkManifest = { url, manifest: loadGeoVideoManifest(url) };
+      }
+      const manifest = await this.nextChunkManifest.manifest;
+      if (
+        this.destroyed ||
+        layer !== this.layer ||
+        current !== this.catalogSource
+      ) {
+        return;
+      }
+      layer.preloadGeoVideoManifest(manifest, {
+        time: next.time,
+        timeRange: this.geoVideoPlayback().geoVideoTimeRange,
+      });
+    } catch (error) {
+      this.nextChunkManifest = null;
+      console.warn("[zartigl] GeoVideo chunk preload failed:", error);
+    }
+  }
+
+  /**
    * Keep playing across an archive: when a chunk ends, play the next chunk
    * inside the active time range, or with loop on, the first one.
    */
   private async continueArchivePlayback(): Promise<void> {
-    const entry = this.catalogLayer;
-    const current = this.catalogSource;
-    if (!entry || !current || !this.isArchiveChunk(current)) {
+    if (!this.catalogSource || !this.isArchiveChunk(this.catalogSource)) {
       return;
     }
     try {
-      const chunks = (await this.resolveArchives(entry)).sources
-        .filter(
-          (source) =>
-            source.id === current.id && source.temporal?.start != null,
-        )
-        .map((source) => ({
-          start: Date.parse(source.temporal!.start!),
-          end: Date.parse(source.temporal!.end ?? source.temporal!.start!),
-        }))
-        .sort((a, b) => a.start - b.start);
-      const [rangeStart, rangeEnd] = this.resolvedTimeRange ?? [
-        -Infinity,
-        Infinity,
-      ];
-      const currentEnd = Date.parse(current.temporal?.end ?? "");
-      const next =
-        chunks.find(
-          (chunk) => chunk.start > currentEnd && chunk.start <= rangeEnd,
-        ) ??
-        (this.loop
-          ? chunks.find(
-              (chunk) => chunk.end >= rangeStart && chunk.start <= rangeEnd,
-            )
-          : undefined);
-      if (!next || this.destroyed) {
+      const next = await this.nextArchiveChunk();
+      if (this.destroyed) {
         return;
       }
-      await this.update({ time: Math.max(next.start, rangeStart) });
+      if (!next) {
+        // Settle a layer that ended waiting for a chunk no longer next.
+        this.layer?.pause();
+        return;
+      }
+      await this.update({ time: next.time });
       if (!this.destroyed) {
         await this.play();
       }
     } catch (error) {
       console.warn("[zartigl] GeoVideo archive playback stopped:", error);
+      if (!this.destroyed) {
+        this.layer?.pause();
+      }
     }
   }
 

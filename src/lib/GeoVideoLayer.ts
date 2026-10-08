@@ -53,6 +53,19 @@ function geoVideoTimelineBounds(manifest: GeoVideoManifest): [number, number] {
   ];
 }
 
+function clampTimeRange(
+  timeline: [number, number],
+  requested?: [number, number],
+): [number, number] {
+  return requested
+    ? [Math.max(timeline[0], requested[0]), Math.min(timeline[1], requested[1])]
+    : timeline;
+}
+
+function clampTime([min, max]: [number, number], time: number): number {
+  return Math.max(min, Math.min(max, time));
+}
+
 function geoVideoEndSecondsForTime(
   manifest: GeoVideoManifest,
   time: number,
@@ -99,6 +112,17 @@ export interface GeoVideoLayerOptions {
   vibrance?: number;
 }
 
+/**
+ * Playback state for an artifact swapped in with `replaceManifest`, or
+ * loaded ahead with `preloadManifest`.
+ */
+export interface GeoVideoReplaceOptions {
+  time?: number;
+  timeRange?: [number, number];
+  loop?: boolean;
+  playbackRate?: number;
+}
+
 export interface GeoVideoLayerDebugInfo {
   kind: "scalar-geovideo";
   id: string;
@@ -107,6 +131,8 @@ export interface GeoVideoLayerDebugInfo {
   currentTime: number;
   manifestId?: string;
   mediaUrl?: string;
+  /** Media loaded ahead for the next swap. */
+  preloadedMediaUrl?: string;
   decodedFrames: number;
   bufferedFrames: number;
   skippedFrames: number;
@@ -132,13 +158,23 @@ type VideoWithFrameCallback = HTMLVideoElement & {
   cancelVideoFrameCallback?: (handle: number) => void;
 };
 
+/** Artifact loaded ahead of its swap, opened at its start time. */
+interface GeoVideoStandby {
+  manifest: GeoVideoManifest;
+  video: VideoWithFrameCallback;
+  /** Mask image, when it differs from the one shown at preload time. */
+  mask: HTMLImageElement | null;
+  time: number;
+}
+
 export class GeoVideoLayer implements CustomLayerInterface {
   readonly id: string;
   readonly type = "custom" as const;
   readonly renderingMode = "3d" as const;
 
   private readonly source: string | GeoVideoManifest;
-  private readonly autoplay: boolean;
+  /** Start playback once ready: autoplay, or a swap that was playing. */
+  private playOnReady: boolean;
   private loop: boolean;
   private playbackRate: number;
   private requestedTime: number | null;
@@ -153,6 +189,14 @@ export class GeoVideoLayer implements CustomLayerInterface {
   private gl: WebGLRenderingContext | null = null;
   private manifest: GeoVideoManifest | null = null;
   private video: VideoWithFrameCallback | null = null;
+  /** Manifest of `video`, which still differs from `manifest` mid-swap. */
+  private videoManifest: GeoVideoManifest | null = null;
+  /** Incoming media of a swap, shown once its first frame is decodable. */
+  private pendingVideo: VideoWithFrameCallback | null = null;
+  private standby: GeoVideoStandby | null = null;
+  /** Ended on a preloaded artifact: playing until it is swapped in or paused. */
+  private awaitingNext = false;
+  private maskUrl: string | null = null;
   private colorTexture: WebGLTexture | null = null;
   private maskTexture: WebGLTexture | null = null;
   private colorRampTexture: WebGLTexture | null = null;
@@ -193,7 +237,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.id = options.id;
     this.source = options.manifest;
     this.opacity = options.opacity ?? 1;
-    this.autoplay = options.autoplay ?? true;
+    this.playOnReady = options.autoplay ?? true;
     this.loop = options.loop ?? true;
     this.playbackRate = options.playbackRate ?? 1;
     const requestedTime =
@@ -226,13 +270,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
           `GeoVideoLayer renders scalar-luma manifests, received ${this.manifest.encoding.kind}`,
         );
       }
-      const timeline = geoVideoTimelineBounds(this.manifest);
-      this.timeRange = this.requestedTimeRange
-        ? [
-            Math.max(timeline[0], this.requestedTimeRange[0]),
-            Math.min(timeline[1], this.requestedTimeRange[1]),
-          ]
-        : timeline;
+      this.timeRange = clampTimeRange(
+        geoVideoTimelineBounds(this.manifest),
+        this.requestedTimeRange,
+      );
       if (this.timeRange[0] > this.timeRange[1]) {
         throw new Error(
           "GeoVideo time range does not overlap the manifest timeline",
@@ -264,7 +305,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    const manifest = this.manifest;
+    // Decode the texture with the manifest of the media it was uploaded from.
+    const manifest = this.videoManifest;
     const video = this.video;
     if (!manifest || !video || !this.colorTexture || !this.maskTexture) {
       return;
@@ -305,7 +347,12 @@ export class GeoVideoLayer implements CustomLayerInterface {
           return;
         }
       }
-      if (this.frameDirty) {
+      // Mid-seek or stalled media has no frame to show: keep the last one.
+      if (
+        this.frameDirty &&
+        !video.seeking &&
+        video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
         const uploadStarted = performance.now();
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.colorTexture);
@@ -434,17 +481,11 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.stopStepping(false);
     this.abortController?.abort();
     this.abortController = null;
-    const video = this.video;
-    if (video) {
-      video.pause();
-      if (this.frameCallback != null) {
-        video.cancelVideoFrameCallback?.(this.frameCallback);
-      }
-      video.removeAttribute("src");
-      video.load();
-    }
+    this.discardPendingVideo();
+    this.discardStandby();
+    this.awaitingNext = false;
+    this.releaseVideo();
     this.stopRepaintLoop();
-    this.frameCallback = null;
     if (this.gl) {
       if (this.colorTexture) {
         this.gl.deleteTexture(this.colorTexture);
@@ -469,6 +510,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
       }
     }
     this.video = null;
+    this.videoManifest = null;
+    this.maskUrl = null;
     this.colorTexture = null;
     this.maskTexture = null;
     this.colorRampTexture = null;
@@ -505,13 +548,169 @@ export class GeoVideoLayer implements CustomLayerInterface {
       return;
     }
     this.requestedTime = requested;
-    if (!this.video || !this.manifest) {
+    const video = this.pendingVideo ?? this.video;
+    if (!video || !this.manifest) {
       return;
     }
     const [min, max] = this.timeRange ?? geoVideoTimelineBounds(this.manifest);
     const ms = Math.max(min, Math.min(max, requested));
-    this.video.currentTime = geoVideoSecondsForTime(this.manifest, ms);
+    video.currentTime = geoVideoSecondsForTime(this.manifest, ms);
     this.map?.triggerRepaint();
+  }
+
+  /**
+   * Switch to another artifact of the same frame size, such as the next
+   * archive chunk, keeping the map layer and GL state. The current frame stays
+   * on screen until the new media can show its first one, at once when it was
+   * preloaded. Returns false when the artifact needs a new layer.
+   */
+  replaceManifest(
+    manifest: GeoVideoManifest,
+    options: GeoVideoReplaceOptions = {},
+  ): boolean {
+    const timeRange = this.replacementTimeRange(manifest, options);
+    if (!timeRange || !this.video) {
+      return false;
+    }
+    const standby = this.takeStandby(manifest);
+    if (this.pendingVideo) {
+      this.discardPendingVideo();
+    } else {
+      // Freeze the outgoing media on its last frame without reporting a pause.
+      // Keep an autoplay that has not started yet, or a handoff at its end.
+      this.playOnReady ||= this.isPlaying();
+      this.stopStepping(false);
+      this.stopRepaintLoop();
+      this.cancelFrameCallback();
+    }
+    this.awaitingNext = false;
+    this.manifest = manifest;
+    this.requestedTimeRange = options.timeRange;
+    this.timeRange = timeRange;
+    this.requestedTime = options.time ?? null;
+    this.loop = options.loop ?? this.loop;
+    this.playbackRate = options.playbackRate ?? this.playbackRate;
+    // Applied with the first frame, so mask and values stay in step.
+    const mask =
+      manifest.mask.url === this.maskUrl
+        ? null
+        : (standby?.mask ?? this.createMaskImage(manifest));
+    const video = standby?.video ?? this.createVideo(manifest);
+    this.pendingVideo = video;
+    this.video.pause();
+    const commit = () => {
+      if (
+        video !== this.pendingVideo ||
+        video.seeking ||
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
+        return;
+      }
+      if (!this.checkVideoSize(video, manifest)) {
+        this.discardPendingVideo();
+        return;
+      }
+      this.pendingVideo = null;
+      this.releaseVideo();
+      this.video = video;
+      this.videoManifest = manifest;
+      this.endEmitted = false;
+      video.defaultPlaybackRate = clampMediaRate(this.playbackRate);
+      video.playbackRate = video.defaultPlaybackRate;
+      if (mask) {
+        this.applyMask(manifest, mask);
+      }
+      this.startFrameCallbacks(video, manifest);
+      this.bufferFrame(video.currentTime);
+      this.mediaReady = true;
+      this.readyEmitted = false;
+      this.emitReady();
+    };
+    video.addEventListener("loadeddata", commit);
+    video.addEventListener("seeked", commit);
+    if (!standby) {
+      video.load();
+    } else if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      // Preloaded at its start: seek only when the swap asks for another time.
+      const seconds = geoVideoSecondsForTime(
+        manifest,
+        this.startTime(video, manifest),
+      );
+      if (Math.abs(video.currentTime - seconds) > 0.5 / manifest.media.fps) {
+        video.currentTime = seconds;
+      }
+      commit();
+    }
+    return true;
+  }
+
+  /**
+   * Load the artifact expected next, such as the following archive chunk, so
+   * `replaceManifest` can show it without waiting for the network. Until then,
+   * reaching the end of the current artifact keeps the playing state and
+   * emits `playbackEnd` for the caller to swap it in, or to pause. Returns
+   * false when the artifact cannot replace the current one in place.
+   */
+  preloadManifest(
+    manifest: GeoVideoManifest,
+    options: GeoVideoReplaceOptions = {},
+  ): boolean {
+    const timeRange = this.replacementTimeRange(manifest, options);
+    if (!timeRange || manifest.media.url === this.manifest?.media.url) {
+      return false;
+    }
+    const time = clampTime(timeRange, options.time ?? timeRange[0]);
+    if (this.standby?.manifest.media.url === manifest.media.url) {
+      this.standby.time = time;
+      return true;
+    }
+    this.discardStandby();
+    const video = this.createVideo(manifest);
+    this.standby = {
+      manifest,
+      video,
+      mask:
+        manifest.mask.url === this.maskUrl
+          ? null
+          : this.createMaskImage(manifest),
+      time,
+    };
+    video.load();
+    return true;
+  }
+
+  /** Clamped time range of a compatible replacement, else null. */
+  private replacementTimeRange(
+    manifest: GeoVideoManifest,
+    options: GeoVideoReplaceOptions,
+  ): [number, number] | null {
+    const current = this.manifest;
+    if (
+      !current ||
+      manifest.encoding.kind !== "scalar-luma" ||
+      manifest.media.width !== current.media.width ||
+      manifest.media.height !== current.media.height ||
+      manifest.mask.width !== current.mask.width ||
+      manifest.mask.height !== current.mask.height
+    ) {
+      return null;
+    }
+    const timeRange = clampTimeRange(
+      geoVideoTimelineBounds(manifest),
+      options.timeRange,
+    );
+    return timeRange[0] <= timeRange[1] ? timeRange : null;
+  }
+
+  /** The preloaded artifact when it holds this media; any other is dropped. */
+  private takeStandby(manifest: GeoVideoManifest): GeoVideoStandby | null {
+    const standby = this.standby;
+    if (standby?.manifest.media.url !== manifest.media.url) {
+      this.discardStandby();
+      return null;
+    }
+    this.standby = null;
+    return standby;
   }
 
   setTimeAndDepth(time: string | number, _depth: number): void {
@@ -566,6 +765,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   async play(): Promise<void> {
+    if (this.deferredPlayback()) {
+      this.playOnReady = true;
+      return;
+    }
     if (!this.video || !this.manifest) {
       return;
     }
@@ -586,11 +789,31 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   pause(): void {
+    if (this.deferredPlayback()) {
+      const playing = this.playOnReady;
+      this.playOnReady = false;
+      this.awaitingNext = false;
+      if (playing) {
+        this.emit("playbackChange", false);
+      }
+      return;
+    }
     this.stopStepping(true);
     this.video?.pause();
   }
 
+  /**
+   * Playback is a request, applied once ready, while the manifest loads,
+   * mid-swap, or at an end waiting for the preloaded artifact.
+   */
+  private deferredPlayback(): boolean {
+    return this.video == null || this.pendingVideo != null || this.awaitingNext;
+  }
+
   private isPlaying(): boolean {
+    if (this.deferredPlayback()) {
+      return this.playOnReady;
+    }
     return this.stepTimer != null || (this.video != null && !this.video.paused);
   }
 
@@ -636,8 +859,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     let next = video.currentTime + stepSeconds;
     if (next > geoVideoEndSecondsForTime(manifest, max)) {
       if (!this.loop) {
-        this.stopStepping(true);
-        this.emitEnd();
+        this.stopStepping(false);
+        this.reachEnd(true);
         return;
       }
       next = geoVideoSecondsForTime(manifest, min);
@@ -647,7 +870,17 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.map?.triggerRepaint();
   }
 
-  private emitEnd(): void {
+  /**
+   * The timeline ended without looping. With a preloaded artifact, keep the
+   * playing state for the caller to swap it in; otherwise stop.
+   */
+  private reachEnd(notifyPause: boolean): void {
+    if (this.standby) {
+      this.awaitingNext = true;
+      this.playOnReady = true;
+    } else if (notifyPause) {
+      this.emit("playbackChange", false);
+    }
     if (!this.endEmitted) {
       this.endEmitted = true;
       this.emit("playbackEnd");
@@ -656,8 +889,9 @@ export class GeoVideoLayer implements CustomLayerInterface {
 
   setLoop(loop: boolean): void {
     this.loop = loop;
-    if (this.video && this.manifest?.timeline.kind === "snapshot-loop") {
-      this.video.loop = loop;
+    const video = this.pendingVideo ?? this.video;
+    if (video && this.manifest?.timeline.kind === "snapshot-loop") {
+      video.loop = loop;
     }
   }
 
@@ -668,9 +902,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
     const stepping = this.stepTimer != null;
     const playing = this.isPlaying();
     this.playbackRate = rate;
-    if (this.video) {
-      this.video.defaultPlaybackRate = clampMediaRate(rate);
-      this.video.playbackRate = this.video.defaultPlaybackRate;
+    const video = this.pendingVideo ?? this.video;
+    if (video) {
+      video.defaultPlaybackRate = clampMediaRate(rate);
+      video.playbackRate = video.defaultPlaybackRate;
     }
     if (playing && stepping !== rate < MIN_MEDIA_RATE) {
       this.stopStepping(false);
@@ -688,19 +923,20 @@ export class GeoVideoLayer implements CustomLayerInterface {
     ) {
       throw new Error("Invalid GeoVideo time range");
     }
-    const timeline = this.manifest
-      ? geoVideoTimelineBounds(this.manifest)
-      : range;
     this.requestedTimeRange = range;
-    this.timeRange = [
-      Math.max(timeline[0], range[0]),
-      Math.min(timeline[1], range[1]),
-    ];
+    this.timeRange = clampTimeRange(
+      this.manifest ? geoVideoTimelineBounds(this.manifest) : range,
+      range,
+    );
     if (this.video && this.manifest) {
-      const current = geoVideoTimeForSeconds(
-        this.manifest,
-        this.video.currentTime,
-      );
+      // Mid-swap, the incoming media may not have reached its target yet.
+      const current =
+        this.pendingVideo && this.requestedTime != null
+          ? this.requestedTime
+          : geoVideoTimeForSeconds(
+              this.manifest,
+              (this.pendingVideo ?? this.video).currentTime,
+            );
       this.setTime(current);
     }
   }
@@ -721,6 +957,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
       currentTime: this.video?.currentTime ?? 0,
       manifestId: this.manifest?.id,
       mediaUrl: this.manifest?.media.url,
+      preloadedMediaUrl: this.standby?.manifest.media.url,
       decodedFrames: this.decodedFrames,
       bufferedFrames: this.bufferedFrames,
       skippedFrames: this.skippedFrames,
@@ -814,8 +1051,33 @@ export class GeoVideoLayer implements CustomLayerInterface {
     if (!this.maskContext) {
       throw new Error("Failed to create GeoVideo frame buffers");
     }
-    this.loadStaticMask(manifest);
+    this.applyMask(manifest, this.createMaskImage(manifest));
+    const video = this.createVideo(manifest);
+    video.addEventListener(
+      "loadeddata",
+      () => {
+        if (!this.checkVideoSize(video, manifest)) {
+          return;
+        }
+        this.bufferFrame(video.currentTime);
+        this.mediaReady = true;
+        this.emitReady();
+      },
+      { once: true },
+    );
+    this.video = video;
+    this.videoManifest = manifest;
+    this.startFrameCallbacks(video, manifest);
+    video.load();
+  }
+
+  /**
+   * Media element for a manifest. Its events drive the layer only while it is
+   * the current video and no swap is pending.
+   */
+  private createVideo(manifest: GeoVideoManifest): VideoWithFrameCallback {
     const video = document.createElement("video") as VideoWithFrameCallback;
+    const isCurrent = () => video === this.video && this.pendingVideo == null;
     video.crossOrigin = "anonymous";
     video.muted = true;
     video.loop = manifest.timeline.kind === "snapshot-loop" && this.loop;
@@ -830,37 +1092,25 @@ export class GeoVideoLayer implements CustomLayerInterface {
       "loadedmetadata",
       () => {
         video.playbackRate = clampMediaRate(this.playbackRate);
-        const [min, max] = this.timeRange ?? geoVideoTimelineBounds(manifest);
-        const requested = this.requestedTime ?? min;
-        const initialTime = Math.max(min, Math.min(max, requested));
-        video.currentTime = geoVideoSecondsForTime(manifest, initialTime);
-      },
-      { once: true },
-    );
-    video.addEventListener(
-      "loadeddata",
-      () => {
-        const expectedWidth = manifest.media.width;
-        const expectedHeight = manifest.media.height;
-        if (
-          video.videoWidth !== expectedWidth ||
-          video.videoHeight !== expectedHeight
-        ) {
-          const error = new Error(
-            `GeoVideo media dimensions ${video.videoWidth}x${video.videoHeight} do not match manifest ` +
-              `${expectedWidth}x${expectedHeight}`,
-          );
-          this.emit("status", { phase: "error", error });
-          this.emit("error", error);
-          return;
-        }
-        this.bufferFrame(video.currentTime);
-        this.mediaReady = true;
-        this.emitReady();
+        video.currentTime = geoVideoSecondsForTime(
+          manifest,
+          this.startTime(video, manifest),
+        );
       },
       { once: true },
     );
     video.addEventListener("error", () => {
+      // A failed preload is retried, and reported, by the swap itself.
+      if (video === this.standby?.video) {
+        this.discardStandby();
+        return;
+      }
+      if (video !== this.video && video !== this.pendingVideo) {
+        return;
+      }
+      if (video === this.pendingVideo) {
+        this.discardPendingVideo();
+      }
       const error = new Error(
         `Failed to load GeoVideo media: ${manifest.media.url}`,
       );
@@ -868,20 +1118,34 @@ export class GeoVideoLayer implements CustomLayerInterface {
       this.emit("error", error);
     });
     video.addEventListener("playing", () => {
+      if (!isCurrent()) {
+        return;
+      }
       if (!this.hasVideoFrameCallback) {
         this.startRepaintLoop();
       }
       this.emit("playbackChange", true);
     });
     video.addEventListener("pause", () => {
+      if (!isCurrent()) {
+        return;
+      }
       this.stopRepaintLoop();
-      // Stepped playback pauses the media on purpose; it reports its own state.
-      if (this.stepTimer == null && !(video.ended && this.loop)) {
+      // Stepped playback pauses the media on purpose, and the end of the
+      // timeline reports its own state.
+      if (this.stepTimer == null && !video.ended && !this.awaitingNext) {
         this.emit("playbackChange", false);
       }
     });
-    video.addEventListener("waiting", () => this.stopRepaintLoop());
+    video.addEventListener("waiting", () => {
+      if (isCurrent()) {
+        this.stopRepaintLoop();
+      }
+    });
     video.addEventListener("ended", () => {
+      if (!isCurrent()) {
+        return;
+      }
       this.stopRepaintLoop();
       if (this.loop) {
         const [min] = this.timeRange ?? geoVideoTimelineBounds(manifest);
@@ -889,12 +1153,18 @@ export class GeoVideoLayer implements CustomLayerInterface {
         void video.play().catch(() => this.emit("playbackChange", false));
         return;
       }
-      this.emit("playbackChange", false);
-      this.emitEnd();
+      this.reachEnd(true);
     });
-    this.video = video;
+    return video;
+  }
+
+  /** Track presented frames of the current video. */
+  private startFrameCallbacks(
+    video: VideoWithFrameCallback,
+    manifest: GeoVideoManifest,
+  ): void {
     const markFrame = (_now?: number, metadata?: VideoFrameMetadata) => {
-      if (!this.video) {
+      if (video !== this.video) {
         return;
       }
       this.decodedFrames = metadata?.presentedFrames ?? this.decodedFrames + 1;
@@ -925,9 +1195,10 @@ export class GeoVideoLayer implements CustomLayerInterface {
         if (this.loop && !video.paused) {
           video.currentTime = geoVideoSecondsForTime(manifest, min);
         } else if (!video.paused) {
+          // Before the pause event, which then knows about a handoff.
+          this.reachEnd(false);
           video.pause();
           video.currentTime = geoVideoSecondsForTime(manifest, max);
-          this.emitEnd();
         }
       } else {
         this.emit("timeChange", Math.max(min, time));
@@ -942,6 +1213,78 @@ export class GeoVideoLayer implements CustomLayerInterface {
     } else {
       video.addEventListener("timeupdate", () => markFrame());
     }
+  }
+
+  /**
+   * Time a loading video opens at: its preload target, or the requested time
+   * within the active range.
+   */
+  private startTime(
+    video: HTMLVideoElement,
+    manifest: GeoVideoManifest,
+  ): number {
+    if (video === this.standby?.video) {
+      return this.standby.time;
+    }
+    const range = this.timeRange ?? geoVideoTimelineBounds(manifest);
+    return clampTime(range, this.requestedTime ?? range[0]);
+  }
+
+  private checkVideoSize(
+    video: HTMLVideoElement,
+    manifest: GeoVideoManifest,
+  ): boolean {
+    if (
+      video.videoWidth === manifest.media.width &&
+      video.videoHeight === manifest.media.height
+    ) {
+      return true;
+    }
+    const error = new Error(
+      `GeoVideo media dimensions ${video.videoWidth}x${video.videoHeight} do not match manifest ` +
+        `${manifest.media.width}x${manifest.media.height}`,
+    );
+    this.emit("status", { phase: "error", error });
+    this.emit("error", error);
+    return false;
+  }
+
+  private cancelFrameCallback(): void {
+    if (this.frameCallback != null) {
+      this.video?.cancelVideoFrameCallback?.(this.frameCallback);
+    }
+    this.frameCallback = null;
+  }
+
+  /** Stop the current video and free its media resources. */
+  private releaseVideo(): void {
+    const video = this.video;
+    if (!video) {
+      return;
+    }
+    this.cancelFrameCallback();
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+  }
+
+  private discardStandby(): void {
+    const video = this.standby?.video;
+    if (!video) {
+      return;
+    }
+    this.standby = null;
+    video.removeAttribute("src");
+    video.load();
+  }
+
+  private discardPendingVideo(): void {
+    const video = this.pendingVideo;
+    if (!video) {
+      return;
+    }
+    this.pendingVideo = null;
+    video.removeAttribute("src");
     video.load();
   }
 
@@ -956,57 +1299,65 @@ export class GeoVideoLayer implements CustomLayerInterface {
     return true;
   }
 
-  private loadStaticMask(manifest: GeoVideoManifest): void {
+  private createMaskImage(manifest: GeoVideoManifest): HTMLImageElement {
     const image = document.createElement("img");
     image.crossOrigin = "anonymous";
-    image.addEventListener(
-      "load",
-      () => {
-        if (
-          !this.maskContext ||
-          !this.maskCanvas ||
-          this.abortController?.signal.aborted
-        ) {
-          return;
-        }
-        if (
-          image.naturalWidth !== manifest.mask.width ||
-          image.naturalHeight !== manifest.mask.height
-        ) {
-          const error = new Error(
-            `GeoVideo mask dimensions ${image.naturalWidth}x${image.naturalHeight} do not match manifest ` +
-              `${manifest.mask.width}x${manifest.mask.height}`,
-          );
-          this.emit("status", { phase: "error", error });
-          this.emit("error", error);
-          return;
-        }
-        this.maskContext.drawImage(
-          image,
-          0,
-          0,
-          manifest.mask.width,
-          manifest.mask.height,
-        );
-        this.maskCaptured = true;
-        this.maskDirty = true;
-        this.emitReady();
-        this.map?.triggerRepaint();
-      },
-      { once: true },
-    );
-    image.addEventListener(
-      "error",
-      () => {
+    image.src = manifest.mask.url;
+    return image;
+  }
+
+  /** Show the mask of a manifest once its image, possibly preloaded, loads. */
+  private applyMask(manifest: GeoVideoManifest, image: HTMLImageElement): void {
+    this.maskUrl = manifest.mask.url;
+    const draw = () => {
+      if (
+        !this.maskContext ||
+        !this.maskCanvas ||
+        this.abortController?.signal.aborted ||
+        manifest.mask.url !== this.maskUrl
+      ) {
+        return;
+      }
+      if (
+        image.naturalWidth !== manifest.mask.width ||
+        image.naturalHeight !== manifest.mask.height
+      ) {
         const error = new Error(
-          `Failed to load GeoVideo mask: ${manifest.mask.url}`,
+          `GeoVideo mask dimensions ${image.naturalWidth}x${image.naturalHeight} do not match manifest ` +
+            `${manifest.mask.width}x${manifest.mask.height}`,
         );
         this.emit("status", { phase: "error", error });
         this.emit("error", error);
-      },
-      { once: true },
-    );
-    image.src = manifest.mask.url;
+        return;
+      }
+      this.maskContext.drawImage(
+        image,
+        0,
+        0,
+        manifest.mask.width,
+        manifest.mask.height,
+      );
+      this.maskCaptured = true;
+      this.maskDirty = true;
+      this.emitReady();
+      this.map?.triggerRepaint();
+    };
+    const fail = () => {
+      if (manifest.mask.url !== this.maskUrl) {
+        return;
+      }
+      const error = new Error(
+        `Failed to load GeoVideo mask: ${manifest.mask.url}`,
+      );
+      this.emit("status", { phase: "error", error });
+      this.emit("error", error);
+    };
+    if (image.complete && image.naturalWidth > 0) {
+      draw();
+      return;
+    }
+    image.addEventListener("load", draw, { once: true });
+    image.addEventListener("error", fail, { once: true });
   }
 
   private emitReady(): void {
@@ -1015,6 +1366,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     if (
       !manifest ||
       !video ||
+      this.pendingVideo ||
       !this.mediaReady ||
       !this.maskCaptured ||
       this.readyEmitted
@@ -1031,7 +1383,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     });
     this.emit("status", { phase: "ready", time });
     this.map?.triggerRepaint();
-    if (this.autoplay) {
+    if (this.playOnReady) {
+      this.playOnReady = false;
       // Through play(), so speeds below the media minimum step frames.
       void this.play().catch(() => undefined);
     }

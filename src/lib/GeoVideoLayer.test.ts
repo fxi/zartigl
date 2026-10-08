@@ -63,6 +63,7 @@ class FakeVideo extends EventTarget {
   paused = true;
   ended = false;
   currentTime = 0;
+  seeking = false;
   playbackRate = 1;
   defaultPlaybackRate = 1;
   readyState = 2;
@@ -109,7 +110,7 @@ class FakeVideo extends EventTarget {
   }
 
   load(): void {}
-  removeAttribute(_name: string): void {}
+  readonly removeAttribute = vi.fn();
   getVideoPlaybackQuality(): VideoPlaybackQuality {
     return {
       creationTime: 0,
@@ -130,6 +131,7 @@ class FakeCanvas {
 }
 
 class FakeImage extends EventTarget {
+  complete = false;
   crossOrigin = "";
   src = "";
   naturalWidth = 16;
@@ -140,6 +142,7 @@ function setup(
   withVideoFrameCallback = true,
   manifestValue: GeoVideoManifest = manifest,
   options: Partial<GeoVideoLayerOptions> = {},
+  beforeInit?: (layer: GeoVideoLayer) => void,
 ) {
   const video = new FakeVideo(withVideoFrameCallback);
   video.videoWidth = manifestValue.media.width;
@@ -147,12 +150,19 @@ function setup(
   const triggerRepaint = vi.fn();
   const canvases: FakeCanvas[] = [];
   const images: FakeImage[] = [];
+  const videos: FakeVideo[] = [];
   const animationFrames = new Map<number, FrameRequestCallback>();
   let nextFrame = 1;
   vi.stubGlobal("document", {
     createElement: vi.fn((tag: string) => {
       if (tag === "video") {
-        return video;
+        const created = videos.length
+          ? new FakeVideo(withVideoFrameCallback)
+          : video;
+        created.videoWidth = manifestValue.media.width;
+        created.videoHeight = manifestValue.media.height;
+        videos.push(created);
+        return created;
       }
       if (tag === "img") {
         const image = new FakeImage();
@@ -164,7 +174,10 @@ function setup(
       return canvas;
     }),
   });
-  vi.stubGlobal("HTMLMediaElement", { HAVE_CURRENT_DATA: 2 });
+  vi.stubGlobal("HTMLMediaElement", {
+    HAVE_METADATA: 1,
+    HAVE_CURRENT_DATA: 2,
+  });
   vi.stubGlobal(
     "requestAnimationFrame",
     vi.fn((callback: FrameRequestCallback) => {
@@ -195,8 +208,17 @@ function setup(
   internal.map = { triggerRepaint };
   internal.manifest = manifestValue;
   internal.timeRange = options.timeRange ?? null;
+  beforeInit?.(layer);
   internal.initVideo(manifestValue);
-  return { layer, video, triggerRepaint, animationFrames, canvases, images };
+  return {
+    layer,
+    video,
+    videos,
+    triggerRepaint,
+    animationFrames,
+    canvases,
+    images,
+  };
 }
 
 afterEach(() => {
@@ -540,5 +562,340 @@ describe("GeoVideoLayer playback scheduling", () => {
 
     expect(animationFrames.size).toBe(0);
     expect(video.cancelledFrameCallback).toBe(42);
+  });
+});
+
+const nextManifest: GeoVideoManifest = {
+  ...manifest,
+  id: "test-values-next",
+  media: { ...manifest.media, url: "next.mp4" },
+  timeline: {
+    kind: "range",
+    dateStart: "2026-07-01T00:00:00Z",
+    dateEnd: "2027-01-01T00:00:00Z",
+    interpolation: "linear",
+  },
+};
+
+function ready(setupResult: ReturnType<typeof setup>) {
+  setupResult.images[0].dispatchEvent(new Event("load"));
+  setupResult.video.dispatchEvent(new Event("loadeddata"));
+}
+
+/** WebGL stub: constants and getters are inert, uploads are recorded. */
+function fakeGl() {
+  const calls = {
+    texImage2D: vi.fn(),
+    texSubImage2D: vi.fn(),
+    getParameter: vi.fn(() => [0, 0, 0, 0]),
+  };
+  return {
+    calls,
+    gl: new Proxy(calls, {
+      get: (target, prop) =>
+        prop in target ? target[prop as keyof typeof target] : () => null,
+    }) as unknown as WebGLRenderingContext,
+  };
+}
+
+describe("GeoVideoLayer artifact swap", () => {
+  it("keeps the shown media until the next artifact can show its first frame", async () => {
+    const context = setup();
+    const { layer, video: previous, videos, images } = context;
+    ready(context);
+    await layer.play();
+    const events: string[] = [];
+    layer.on("loading", () => events.push("loading"));
+    layer.on("loaded", () => events.push("loaded"));
+    layer.on("playbackChange", (playing) => events.push(`playing:${playing}`));
+    layer.on("playbackEnd", () => events.push("end"));
+    const target = Date.parse("2026-08-01T00:00:00Z");
+
+    expect(layer.replaceManifest(nextManifest, { time: target })).toBe(true);
+    expect(videos).toHaveLength(2);
+    const next = videos[1];
+    expect(next.src).toBe("next.mp4");
+    // Same mask: not loaded again.
+    expect(images).toHaveLength(1);
+    expect(previous.paused).toBe(true);
+    expect(previous.cancelledFrameCallback).toBe(42);
+    expect(previous.removeAttribute).not.toHaveBeenCalled();
+
+    // The outgoing media no longer drives the layer.
+    previous.ended = true;
+    previous.dispatchEvent(new Event("ended"));
+    expect(layer.getDebugInfo().mediaUrl).toBe("next.mp4");
+
+    next.dispatchEvent(new Event("loadedmetadata"));
+    expect(next.currentTime).toBeCloseTo(
+      geoVideoSecondsForTime(nextManifest, target),
+    );
+    next.seeking = true;
+    next.dispatchEvent(new Event("loadeddata"));
+    expect(events).toEqual([]);
+
+    next.seeking = false;
+    next.dispatchEvent(new Event("seeked"));
+    await Promise.resolve();
+    expect(previous.removeAttribute).toHaveBeenCalledWith("src");
+    expect(next.paused).toBe(false);
+    expect(events).toEqual(["loaded", "playing:true"]);
+    expect(layer.getDebugInfo().bufferedFrames).toBe(2);
+  });
+
+  it("resumes only when playing or asked to play during the swap", async () => {
+    const context = setup();
+    const { layer, videos } = context;
+    ready(context);
+
+    layer.replaceManifest(nextManifest);
+    layer.pause();
+    videos[1].dispatchEvent(new Event("loadeddata"));
+    await Promise.resolve();
+    expect(videos[1].paused).toBe(true);
+
+    layer.replaceManifest(manifest);
+    await layer.play();
+    expect(layer.getDebugInfo().playing).toBe(true);
+    videos[2].dispatchEvent(new Event("loadeddata"));
+    await Promise.resolve();
+    expect(videos[2].paused).toBe(false);
+  });
+
+  it("discards a superseded swap", () => {
+    const context = setup();
+    const { layer, videos } = context;
+    ready(context);
+    const loaded = vi.fn();
+    layer.on("loaded", loaded);
+
+    layer.replaceManifest(nextManifest);
+    layer.replaceManifest(manifest);
+    expect(videos[1].removeAttribute).toHaveBeenCalledWith("src");
+    videos[1].dispatchEvent(new Event("loadeddata"));
+    expect(loaded).not.toHaveBeenCalled();
+    videos[2].dispatchEvent(new Event("loadeddata"));
+    expect(loaded).toHaveBeenCalledOnce();
+
+    layer.replaceManifest(nextManifest);
+    layer.onRemove();
+    expect(videos[3].removeAttribute).toHaveBeenCalledWith("src");
+  });
+
+  it("asks for a new layer when the frame size differs", () => {
+    const context = setup();
+    ready(context);
+    const larger = {
+      ...nextManifest,
+      media: { ...nextManifest.media, width: 32 },
+    };
+    expect(context.layer.replaceManifest(larger)).toBe(false);
+    expect(context.videos).toHaveLength(1);
+  });
+
+  it("keeps the last uploaded frame while the media is seeking", () => {
+    const context = setup();
+    const { layer, video } = context;
+    ready(context);
+    Object.assign(layer as unknown as Record<string, unknown>, {
+      colorTexture: {},
+      maskTexture: {},
+    });
+    const { gl, calls } = fakeGl();
+    const options = {} as Parameters<GeoVideoLayer["render"]>[1];
+    const videoUploads = () =>
+      calls.texImage2D.mock.calls.filter((args) => args.includes(video));
+
+    video.seeking = true;
+    layer.render(gl, options);
+    video.seeking = false;
+    video.readyState = 1;
+    layer.render(gl, options);
+    expect(videoUploads()).toHaveLength(0);
+
+    video.readyState = 2;
+    layer.render(gl, options);
+    expect(videoUploads()).toHaveLength(1);
+  });
+});
+
+describe("GeoVideoLayer preloading", () => {
+  const nextStart = Date.parse("2026-07-01T00:00:00Z");
+  const withMask = {
+    ...nextManifest,
+    mask: { ...nextManifest.mask, url: "next-mask.png" },
+  };
+
+  /** Playing archive chunk with the next one preloaded and decodable. */
+  async function preloaded(next: GeoVideoManifest = nextManifest) {
+    const context = setup(true, manifest, { loop: false });
+    ready(context);
+    await context.layer.play();
+    expect(context.layer.preloadManifest(next, { time: nextStart })).toBe(true);
+    const standby = context.videos[1];
+    standby.dispatchEvent(new Event("loadedmetadata"));
+    standby.dispatchEvent(new Event("loadeddata"));
+    const events: string[] = [];
+    context.layer.on("loaded", () => events.push("loaded"));
+    context.layer.on("playbackChange", (playing) =>
+      events.push(`playing:${playing}`),
+    );
+    context.layer.on("playbackEnd", () => events.push("end"));
+    return { ...context, standby, events };
+  }
+
+  /** The current media plays to its end, as a browser reports it. */
+  function finish(video: FakeVideo) {
+    video.ended = true;
+    video.pause();
+    video.dispatchEvent(new Event("ended"));
+  }
+
+  it("hands off to the preloaded artifact without pausing or reloading", async () => {
+    const { layer, video, videos, standby, events } = await preloaded();
+    expect(standby.src).toBe("next.mp4");
+    expect(standby.currentTime).toBeCloseTo(
+      geoVideoSecondsForTime(nextManifest, nextStart),
+    );
+    expect(layer.getDebugInfo()).toMatchObject({
+      mediaUrl: "values.mp4",
+      preloadedMediaUrl: "next.mp4",
+    });
+
+    finish(video);
+    expect(events).toEqual(["end"]);
+    expect(layer.getDebugInfo().playing).toBe(true);
+
+    expect(layer.replaceManifest(nextManifest, { time: nextStart })).toBe(true);
+    // Shown at once: no new media element and no seek.
+    expect(videos).toHaveLength(2);
+    expect(layer.getDebugInfo()).toMatchObject({
+      mediaUrl: "next.mp4",
+      preloadedMediaUrl: undefined,
+    });
+    expect(video.removeAttribute).toHaveBeenCalledWith("src");
+    await Promise.resolve();
+    expect(standby.paused).toBe(false);
+    expect(events).toEqual(["end", "loaded", "playing:true"]);
+  });
+
+  it("seeks a preloaded artifact once when the swap asks for another time", async () => {
+    const { layer, standby, events } = await preloaded();
+    const target = Date.parse("2026-08-01T00:00:00Z");
+    // Like a browser, assigning the position starts a seek.
+    let position = standby.currentTime;
+    Object.defineProperty(standby, "currentTime", {
+      get: () => position,
+      set: (value: number) => {
+        position = value;
+        standby.seeking = true;
+      },
+    });
+
+    layer.replaceManifest(nextManifest, { time: target });
+    expect(standby.currentTime).toBeCloseTo(
+      geoVideoSecondsForTime(nextManifest, target),
+    );
+    expect(events).toEqual([]);
+
+    standby.seeking = false;
+    standby.dispatchEvent(new Event("seeked"));
+    expect(events).toEqual(["loaded", "playing:true"]);
+  });
+
+  it("reports a pause requested while waiting for the next artifact", async () => {
+    const { layer, video, standby, events } = await preloaded();
+    finish(video);
+
+    layer.pause();
+    expect(events).toEqual(["end", "playing:false"]);
+    expect(layer.getDebugInfo().playing).toBe(false);
+
+    layer.replaceManifest(nextManifest, { time: nextStart });
+    await Promise.resolve();
+    expect(standby.paused).toBe(true);
+    expect(events).toEqual(["end", "playing:false", "loaded"]);
+  });
+
+  it("plays once ready when asked before the manifest has loaded", async () => {
+    const states: boolean[] = [];
+    const context = setup(true, manifest, {}, (layer) => {
+      layer.on("playbackChange", (playing) => states.push(playing));
+      void layer.play();
+      expect(layer.getDebugInfo().playing).toBe(true);
+    });
+    expect(context.video.paused).toBe(true);
+
+    ready(context);
+    await Promise.resolve();
+    expect(context.video.paused).toBe(false);
+    expect(states).toEqual([true]);
+  });
+
+  it("stops at the end when nothing is preloaded", async () => {
+    const context = setup(true, manifest, { loop: false });
+    ready(context);
+    await context.layer.play();
+    const events: string[] = [];
+    context.layer.on("playbackChange", (playing) =>
+      events.push(`playing:${playing}`),
+    );
+    context.layer.on("playbackEnd", () => events.push("end"));
+
+    finish(context.video);
+    expect(events).toEqual(["playing:false", "end"]);
+    expect(context.layer.getDebugInfo().playing).toBe(false);
+  });
+
+  it("drops a preload that the swap or the layer no longer needs", async () => {
+    const { layer, videos, standby } = await preloaded();
+    const other = {
+      ...nextManifest,
+      media: { ...nextManifest.media, url: "other.mp4" },
+    };
+
+    layer.replaceManifest(other);
+    expect(standby.removeAttribute).toHaveBeenCalledWith("src");
+    expect(videos).toHaveLength(3);
+    expect(videos[2].src).toBe("other.mp4");
+
+    // The current media is not preloaded again.
+    expect(layer.preloadManifest(other)).toBe(false);
+    expect(layer.preloadManifest(nextManifest)).toBe(true);
+    layer.onRemove();
+    expect(videos[3].removeAttribute).toHaveBeenCalledWith("src");
+  });
+
+  it("ignores a failed preload until the swap loads the media itself", async () => {
+    const { layer, videos, standby, events } = await preloaded();
+    const errors = vi.fn();
+    layer.on("error", errors);
+
+    standby.dispatchEvent(new Event("error"));
+    expect(errors).not.toHaveBeenCalled();
+    expect(layer.getDebugInfo().preloadedMediaUrl).toBeUndefined();
+
+    layer.replaceManifest(nextManifest, { time: nextStart });
+    expect(videos).toHaveLength(3);
+    expect(events).toEqual([]);
+  });
+
+  it("shows a preloaded mask together with the first frame", async () => {
+    const { layer, canvases, images } = await preloaded(withMask);
+    const maskCanvas = canvases[0];
+    images[0].dispatchEvent(new Event("load"));
+    const draws = maskCanvas.drawImage.mock.calls.length;
+    expect(images[1].src).toBe("next-mask.png");
+    images[1].complete = true;
+
+    layer.replaceManifest(withMask, { time: nextStart });
+    expect(maskCanvas.drawImage).toHaveBeenCalledTimes(draws + 1);
+    expect(maskCanvas.drawImage).toHaveBeenLastCalledWith(
+      images[1],
+      0,
+      0,
+      withMask.mask.width,
+      withMask.mask.height,
+    );
   });
 });

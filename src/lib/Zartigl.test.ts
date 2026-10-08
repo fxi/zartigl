@@ -655,7 +655,7 @@ describe("Zartigl facade", () => {
     };
     let fetchSpy: ReturnType<typeof vi.fn>;
 
-    function archiveCatalog(): Catalog {
+    function archiveCatalog(kind: CatalogEntry["kind"] = "vector"): Catalog {
       const base = vectorLayer({ id: GEO_ENTRY_ID });
       return {
         schemaVersion: 2,
@@ -663,6 +663,7 @@ describe("Zartigl facade", () => {
         layers: [
           {
             ...base,
+            kind,
             sources: [
               { ...base.sources[0], id: GEO_ZARR_ID },
               {
@@ -855,6 +856,109 @@ describe("Zartigl facade", () => {
       await continuePlayback();
       expect(manifestRequests()).toHaveLength(requests);
       expect(play).toHaveBeenCalledTimes(2);
+    });
+
+    it("swaps a scalar chunk into the attached layer instead of rebuilding it", async () => {
+      const map = new FakeMap();
+      const z = await createZartigl(
+        {
+          map: map as never,
+          catalog: archiveCatalog("scalar"),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      vi.spyOn(z, "play").mockResolvedValue();
+      const replace = vi
+        .spyOn(CatalogRenderLayer.prototype, "replaceGeoVideoManifest")
+        .mockReturnValue(true);
+      onTestFinished(() => replace.mockRestore());
+      const id = z.getDebugInfo().id;
+      const attached = map.layers.get(id);
+      const continuePlayback = () =>
+        (
+          z as unknown as { continueArchivePlayback: () => Promise<void> }
+        ).continueArchivePlayback();
+
+      await continuePlayback();
+      expect(replace).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeline: expect.objectContaining({ values: chunks.september }),
+        }),
+        expect.objectContaining({
+          time: Date.parse(chunks.september[0]),
+          loop: false,
+        }),
+      );
+      expect(map.layers.get(id)).toBe(attached);
+      expect(map.addLayerCalls).toHaveLength(1);
+
+      // A layer that cannot swap, such as one not initialised yet, is rebuilt.
+      replace.mockReturnValue(false);
+      await continuePlayback();
+      expect(map.addLayerCalls).toHaveLength(2);
+      expect(map.layers.get(id)).not.toBe(attached);
+    });
+
+    it("preloads the next scalar chunk while playing and swaps it in without a new request", async () => {
+      const map = new FakeMap();
+      const z = await createZartigl(
+        {
+          map: map as never,
+          catalog: archiveCatalog("scalar"),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      vi.spyOn(z, "play").mockResolvedValue();
+      const preload = vi
+        .spyOn(CatalogRenderLayer.prototype, "preloadGeoVideoManifest")
+        .mockReturnValue(true);
+      const replace = vi
+        .spyOn(CatalogRenderLayer.prototype, "replaceGeoVideoManifest")
+        .mockReturnValue(true);
+      onTestFinished(() => {
+        preload.mockRestore();
+        replace.mockRestore();
+      });
+      const layer = map.layers.get(z.getDebugInfo().id) as unknown as {
+        emit: (event: "playbackChange", playing: boolean) => void;
+      };
+      const septemberRequests = () =>
+        manifestRequests().filter((url) => url.includes("september")).length;
+
+      layer.emit("playbackChange", true);
+      await vi.waitFor(() => expect(preload).toHaveBeenCalledOnce());
+      const [preloaded, options] = preload.mock.calls[0];
+      expect(preloaded.timeline).toMatchObject({ values: chunks.september });
+      expect(options.time).toBe(Date.parse(chunks.september[0]));
+      expect(septemberRequests()).toBe(1);
+
+      await (
+        z as unknown as { continueArchivePlayback: () => Promise<void> }
+      ).continueArchivePlayback();
+      expect(replace).toHaveBeenCalledWith(preloaded, expect.anything());
+      expect(septemberRequests()).toBe(1);
+    });
+
+    it("pauses a layer waiting at the end when no chunk follows", async () => {
+      const map = new FakeMap();
+      const z = await createZartigl(
+        {
+          map: map as never,
+          catalog: archiveCatalog("scalar"),
+          time: "2026-09-10T00:00:00Z",
+          geoVideo: { loop: false },
+        },
+        GEO_ENTRY_ID,
+      );
+      const pause = vi.spyOn(CatalogRenderLayer.prototype, "pause");
+      onTestFinished(() => pause.mockRestore());
+
+      await (
+        z as unknown as { continueArchivePlayback: () => Promise<void> }
+      ).continueArchivePlayback();
+      expect(pause).toHaveBeenCalledOnce();
     });
 
     it("maps steps per second to the chunk's media rate", async () => {
