@@ -274,8 +274,12 @@
         "palette": "algae",
         "raster": {
           "opacity": 0.9,
-          "logScale": true,
-          "vibrance": 0.2
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            0.0028339088894426823,
+            0.7750626325607299
+          ]
         },
         "querySourceId": "418e17e0-0804-459b-a711-238d6db7d5f0"
       }
@@ -426,11 +430,15 @@
       ],
       "defaults": {
         "sourceId": "9844aec5-ecbb-4269-8df1-f751a3c132cd",
-        "palette": "balance",
+        "palette": "dense",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.15
+          "vibrance": 0.15,
+          "colorDomain": [
+            1.984584093093872,
+            2.410898208618164
+          ]
         },
         "querySourceId": "9844aec5-ecbb-4269-8df1-f751a3c132cd"
       }
@@ -501,11 +509,15 @@
       ],
       "defaults": {
         "sourceId": "de3f2056-d7a9-46d8-b709-fda656b69b9b",
-        "palette": "balance",
+        "palette": "viridis",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.1
+          "vibrance": 0.1,
+          "colorDomain": [
+            7.618447780609131,
+            8.132478713989258
+          ]
         },
         "querySourceId": "de3f2056-d7a9-46d8-b709-fda656b69b9b"
       }
@@ -576,11 +588,15 @@
       ],
       "defaults": {
         "sourceId": "bc133871-5fc9-4df6-8dbd-f5f82f785e0c",
-        "palette": "algae",
+        "palette": "matter",
         "raster": {
           "opacity": 0.9,
-          "logScale": true,
-          "vibrance": 0.25
+          "logScale": false,
+          "vibrance": 0.25,
+          "colorDomain": [
+            0,
+            19.23426895141597
+          ]
         },
         "querySourceId": "bc133871-5fc9-4df6-8dbd-f5f82f785e0c"
       }
@@ -651,11 +667,15 @@
       ],
       "defaults": {
         "sourceId": "45464c62-e3a6-4492-846b-960f19b53bfc",
-        "palette": "balance",
+        "palette": "matter",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.15
+          "vibrance": 0.15,
+          "colorDomain": [
+            40.23836135864258,
+            378.4803161621094
+          ]
         },
         "querySourceId": "45464c62-e3a6-4492-846b-960f19b53bfc"
       }
@@ -803,11 +823,15 @@
       ],
       "defaults": {
         "sourceId": "1fb56ced-a234-4721-bf6e-060829ba8237",
-        "palette": "balance",
+        "palette": "matter",
         "raster": {
           "opacity": 0.9,
-          "logScale": true,
-          "vibrance": 0.2
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            0.0004645069653633982,
+            41.46251068115234
+          ]
         },
         "querySourceId": "1fb56ced-a234-4721-bf6e-060829ba8237"
       }
@@ -878,11 +902,15 @@
       ],
       "defaults": {
         "sourceId": "d09d4a02-18aa-467c-9352-d58ecf622d94",
-        "palette": "balance",
+        "palette": "dense",
         "raster": {
           "opacity": 0.9,
-          "logScale": true,
-          "vibrance": 0.2
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            0.0297259781509638,
+            2.998388338088988
+          ]
         },
         "querySourceId": "d09d4a02-18aa-467c-9352-d58ecf622d94"
       }
@@ -953,11 +981,15 @@
       ],
       "defaults": {
         "sourceId": "5b245710-ce6f-4eee-a771-c80b95b984ab",
-        "palette": "balance",
+        "palette": "matter",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.15
+          "vibrance": 0.15,
+          "colorDomain": [
+            27.82698287963867,
+            49.554125213623045
+          ]
         },
         "querySourceId": "5b245710-ce6f-4eee-a771-c80b95b984ab"
       }
@@ -1109,7 +1141,11 @@
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.2
+          "vibrance": 0.2,
+          "colorDomain": [
+            -1.7417628765106201,
+            30.036579132080078
+          ]
         },
         "querySourceId": "e18cff03-d2a3-4a41-bfd8-b4ea62bca2a3"
       }
@@ -1290,7 +1326,11 @@
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.15
+          "vibrance": 0.15,
+          "colorDomain": [
+            30.05903434753418,
+            36.789642333984375
+          ]
         },
         "querySourceId": "a083f619-aea0-4dc8-965d-503fd33a982a"
       }
@@ -1361,11 +1401,15 @@
       ],
       "defaults": {
         "sourceId": "62afeaf2-0332-43ad-8441-f2f22f2a7c34",
-        "palette": "rdylbu",
+        "palette": "viridis",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.15
+          "vibrance": 0.15,
+          "colorDomain": [
+            -0.00030419512768276036,
+            0.0003048275539185852
+          ]
         },
         "querySourceId": "62afeaf2-0332-43ad-8441-f2f22f2a7c34"
       }
@@ -1413,11 +1457,15 @@
       ],
       "defaults": {
         "sourceId": "8e1bba17-69ee-47c1-bac0-89c613eb2f04",
-        "palette": "deep",
+        "palette": "plasma",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.15
+          "vibrance": 0.15,
+          "colorDomain": [
+            10.46302318572998,
+            181.58725799560528
+          ]
         },
         "querySourceId": "8e1bba17-69ee-47c1-bac0-89c613eb2f04"
       }
@@ -1488,11 +1536,15 @@
       ],
       "defaults": {
         "sourceId": "50716bff-ea48-49b8-bee1-00d34c5cee3d",
-        "palette": "curl",
+        "palette": "cyclic",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.2
+          "vibrance": 0.2,
+          "colorDomain": [
+            19.850006103515625,
+            344.3399963378906
+          ]
         },
         "querySourceId": "50716bff-ea48-49b8-bee1-00d34c5cee3d"
       }
@@ -1563,11 +1615,15 @@
       ],
       "defaults": {
         "sourceId": "83c7d209-503f-441a-a162-1f1554e72695",
-        "palette": "rdylbu",
+        "palette": "tempo",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.2
+          "vibrance": 0.2,
+          "colorDomain": [
+            3.569999933242798,
+            12.319999694824219
+          ]
         },
         "querySourceId": "83c7d209-503f-441a-a162-1f1554e72695"
       }
@@ -1638,11 +1694,15 @@
       ],
       "defaults": {
         "sourceId": "cc9d3570-8324-4a84-a88e-46096e8365e0",
-        "palette": "deep",
+        "palette": "amp",
         "raster": {
           "opacity": 0.9,
           "logScale": false,
-          "vibrance": 0.2
+          "vibrance": 0.2,
+          "colorDomain": [
+            0.23999999463558197,
+            5.049999713897705
+          ]
         },
         "querySourceId": "cc9d3570-8324-4a84-a88e-46096e8365e0"
       }
@@ -1810,6 +1870,2967 @@
           "vibrance": 0
         },
         "querySourceId": "7b6998c9-299c-466a-a99a-0e1b384bde21"
+      }
+    },
+    {
+      "id": "f0812aa5-f9b6-4149-ab51-3de9d9d100c3",
+      "aliases": [
+        "med-sea-water-temperature"
+      ],
+      "title": {
+        "en": "Mediterranean Sea Water Temperature"
+      },
+      "description": {
+        "en": "Monthly sea water potential temperature from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "bf4fb6d5-b07f-4d42-972b-f1d17b989b5a",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-temp_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "thetao"
+          }
+        },
+        {
+          "id": "d1520c6b-86ec-4858-a123-ee90c998bb0f",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-temp_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511/thetao",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:thermal"
+        }
+      ],
+      "defaults": {
+        "sourceId": "bf4fb6d5-b07f-4d42-972b-f1d17b989b5a",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            12.931690216064453,
+            27.801399917602538
+          ]
+        },
+        "querySourceId": "bf4fb6d5-b07f-4d42-972b-f1d17b989b5a"
+      }
+    },
+    {
+      "id": "0e05907e-a3e9-4537-a68a-bc0780d261f2",
+      "aliases": [
+        "med-sea-bottom-temperature"
+      ],
+      "title": {
+        "en": "Mediterranean Sea Bottom Temperature"
+      },
+      "description": {
+        "en": "Monthly sea water potential temperature at the sea floor from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "3e0726ab-06af-4f80-94fe-c445ac950f30",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-temp_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "bottomT"
+          }
+        },
+        {
+          "id": "2453f2b0-c2f6-45b3-b371-e8a6a9871951",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-temp_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-temp_my_4.2km_P1M-m_202511/bottomT",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:thermal"
+        }
+      ],
+      "defaults": {
+        "sourceId": "3e0726ab-06af-4f80-94fe-c445ac950f30",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            12.918184070587158,
+            27.52301025390625
+          ]
+        },
+        "querySourceId": "3e0726ab-06af-4f80-94fe-c445ac950f30"
+      }
+    },
+    {
+      "id": "7a499cff-5934-4145-96ac-27477faf58f0",
+      "aliases": [
+        "med-sea-water-salinity"
+      ],
+      "title": {
+        "en": "Mediterranean Sea Water Salinity"
+      },
+      "description": {
+        "en": "Monthly sea water salinity from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "9a2af5de-c535-4d93-b551-39cf8157a5c0",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-sal_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-sal_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-sal_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "so"
+          }
+        },
+        {
+          "id": "6ada32fd-e9fa-4237-8fa0-bcacce467b66",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-sal_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-sal_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-sal_my_4.2km_P1M-m_202511/so",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:haline"
+        }
+      ],
+      "defaults": {
+        "sourceId": "9a2af5de-c535-4d93-b551-39cf8157a5c0",
+        "palette": "haline",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            36.91350555419922,
+            39.469520568847656
+          ]
+        },
+        "querySourceId": "9a2af5de-c535-4d93-b551-39cf8157a5c0"
+      }
+    },
+    {
+      "id": "ddf10ab0-2654-4c37-88d9-1bbd9b0ee947",
+      "aliases": [
+        "med-sea-surface-height"
+      ],
+      "title": {
+        "en": "Mediterranean Sea Surface Height"
+      },
+      "description": {
+        "en": "Monthly sea surface height above geoid from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "167e3e24-977d-47f3-8908-acd2e3b7e175",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-ssh_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-ssh_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-ssh_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "zos"
+          }
+        },
+        {
+          "id": "6d20826d-5cd3-412d-9c3a-c38195b0cb65",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-ssh_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-ssh_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-ssh_my_4.2km_P1M-m_202511/zos",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "167e3e24-977d-47f3-8908-acd2e3b7e175",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -0.5340245628356933,
+            -0.21125649005174635
+          ]
+        },
+        "querySourceId": "167e3e24-977d-47f3-8908-acd2e3b7e175"
+      }
+    },
+    {
+      "id": "43fbd59e-060a-4797-8588-529d0fb79542",
+      "aliases": [
+        "med-mixed-layer-depth"
+      ],
+      "title": {
+        "en": "Mediterranean Mixed Layer Depth"
+      },
+      "description": {
+        "en": "Monthly ocean mixed layer thickness (sigma theta) from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "14c2fcc1-3380-4423-9ea1-268afc8271f8",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-mld_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-mld_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-mld_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "mlotst"
+          }
+        },
+        {
+          "id": "d032d546-99e0-4503-8c01-201500da4b71",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-mld_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-mld_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-mld_my_4.2km_P1M-m_202511/mlotst",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:plasma"
+        }
+      ],
+      "defaults": {
+        "sourceId": "14c2fcc1-3380-4423-9ea1-268afc8271f8",
+        "palette": "plasma",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            11.976825008392334,
+            32.24494674682617
+          ]
+        },
+        "querySourceId": "14c2fcc1-3380-4423-9ea1-268afc8271f8"
+      }
+    },
+    {
+      "id": "5c3c8139-bb64-46fc-847a-b3c0750b49b6",
+      "aliases": [
+        "med-net-surface-heat-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Net Surface Heat Flux"
+      },
+      "description": {
+        "en": "Monthly surface downward heat flux in sea water from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "83ce47b0-2732-4f93-9aef-6b5f0e405cae",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "hfds"
+          }
+        },
+        {
+          "id": "ab5b22d8-3566-447b-aeef-1ce2eab8a403",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/hfds",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "83ce47b0-2732-4f93-9aef-6b5f0e405cae",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            92.21216079711914,
+            256.4447155761719
+          ]
+        },
+        "querySourceId": "83ce47b0-2732-4f93-9aef-6b5f0e405cae"
+      }
+    },
+    {
+      "id": "7f9843e3-a525-4fa0-b982-419e3e63d1d0",
+      "aliases": [
+        "med-surface-shortwave-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Net Shortwave Flux"
+      },
+      "description": {
+        "en": "Monthly net downward shortwave flux at the sea surface from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "4dcd9fa0-4626-4e4b-b02f-9b5e74349792",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "rsntds"
+          }
+        },
+        {
+          "id": "d74f3fda-ee94-4264-aafc-76b81b843708",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/rsntds",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "4dcd9fa0-4626-4e4b-b02f-9b5e74349792",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            299.08162780761717,
+            327.8770751953125
+          ]
+        },
+        "querySourceId": "4dcd9fa0-4626-4e4b-b02f-9b5e74349792"
+      }
+    },
+    {
+      "id": "123bd37b-f9ec-484c-adb9-e365e35c367f",
+      "aliases": [
+        "med-surface-longwave-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Net Longwave Flux"
+      },
+      "description": {
+        "en": "Monthly surface net downward longwave flux from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "cf0108e9-4ea0-466a-96d2-80cd4b9099be",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "rlds"
+          }
+        },
+        {
+          "id": "bf1b2d92-4d7b-4842-a5c4-21672d28edd6",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/rlds",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "cf0108e9-4ea0-466a-96d2-80cd4b9099be",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -92.56596786499023,
+            -68.66820220947265
+          ]
+        },
+        "querySourceId": "cf0108e9-4ea0-466a-96d2-80cd4b9099be"
+      }
+    },
+    {
+      "id": "6f4bf0dc-7c62-4879-8fb7-a8e1d89fbde9",
+      "aliases": [
+        "med-latent-heat-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Latent Heat Flux"
+      },
+      "description": {
+        "en": "Monthly surface downward latent heat flux from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "99e9cc5c-fd9b-4ab9-bf56-12ab6ad93731",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "hfls"
+          }
+        },
+        {
+          "id": "1c4960c5-a5f9-4ea6-8717-9f1561fa2275",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/hfls",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "99e9cc5c-fd9b-4ab9-bf56-12ab6ad93731",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -128.50850036621094,
+            -27.60765407562256
+          ]
+        },
+        "querySourceId": "99e9cc5c-fd9b-4ab9-bf56-12ab6ad93731"
+      }
+    },
+    {
+      "id": "552aaa35-3255-4151-848c-8995409f8518",
+      "aliases": [
+        "med-sensible-heat-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Sensible Heat Flux"
+      },
+      "description": {
+        "en": "Monthly surface downward sensible heat flux from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "32305a9d-a556-49e4-a4f1-700646a88c4c",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "hfss"
+          }
+        },
+        {
+          "id": "275c33aa-2ae8-4eef-8e30-3adb66ccfa5c",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-hflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-hflux_my_4.2km_P1M-m_202411/hfss",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "32305a9d-a556-49e4-a4f1-700646a88c4c",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -9.499833850860595,
+            18.08200008392334
+          ]
+        },
+        "querySourceId": "32305a9d-a556-49e4-a4f1-700646a88c4c"
+      }
+    },
+    {
+      "id": "9fce8c6e-f639-4fc9-9ae0-52d435a033ff",
+      "aliases": [
+        "med-precipitation-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Precipitation Flux"
+      },
+      "description": {
+        "en": "Monthly precipitation flux over the sea from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "e482623b-67b2-47f5-af8a-d0daee4c8ebf",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-wflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "pr"
+          }
+        },
+        {
+          "id": "14b86480-e164-4df9-ad54-184384f98e07",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-wflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411/pr",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "e482623b-67b2-47f5-af8a-d0daee4c8ebf",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            5.439895409131701e-11,
+            0.000010916074079432293
+          ]
+        },
+        "querySourceId": "e482623b-67b2-47f5-af8a-d0daee4c8ebf"
+      }
+    },
+    {
+      "id": "52b3d290-4da7-45ca-9a25-e35c61c6726e",
+      "aliases": [
+        "med-evaporation-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Evaporation Flux"
+      },
+      "description": {
+        "en": "Monthly surface water evaporation flux from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "025c4f6d-61d9-41d3-ac18-d3226859cf45",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-wflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "evs"
+          }
+        },
+        {
+          "id": "1dba23a2-9fd3-43da-b1af-c8655677d5a8",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-wflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-wflux_my_4.2km_P1M-m_202411/evs",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "025c4f6d-61d9-41d3-ac18-d3226859cf45",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.000011297337860014522,
+            0.00005262336992018391
+          ]
+        },
+        "querySourceId": "025c4f6d-61d9-41d3-ac18-d3226859cf45"
+      }
+    },
+    {
+      "id": "7f60b714-82eb-4a1b-ae97-829923bbe97a",
+      "aliases": [
+        "med-dissolved-inorganic-carbon"
+      ],
+      "title": {
+        "en": "Mediterranean Dissolved Inorganic Carbon"
+      },
+      "description": {
+        "en": "Monthly dissolved inorganic carbon concentration from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "8f237b7c-7446-49d4-a814-5f131b5f2941",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "dissic"
+          }
+        },
+        {
+          "id": "c503e4f1-b67a-464d-9aee-7063dfc28d5d",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/dissic",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:dense"
+        }
+      ],
+      "defaults": {
+        "sourceId": "8f237b7c-7446-49d4-a814-5f131b5f2941",
+        "palette": "dense",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            2.2633821964263916,
+            2.4173879623413086
+          ]
+        },
+        "querySourceId": "8f237b7c-7446-49d4-a814-5f131b5f2941"
+      }
+    },
+    {
+      "id": "d6a9f6d0-479c-4bbd-b093-74b3ad88a4a9",
+      "aliases": [
+        "med-total-alkalinity"
+      ],
+      "title": {
+        "en": "Mediterranean Total Alkalinity"
+      },
+      "description": {
+        "en": "Monthly sea water alkalinity from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "bac70528-97d8-41c0-b3e3-56984fed2273",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "talk"
+          }
+        },
+        {
+          "id": "2900e4bc-69cc-46ce-8ee4-7cba24f7d8ad",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/talk",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "bac70528-97d8-41c0-b3e3-56984fed2273",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            2.5656232833862305,
+            2.778794527053833
+          ]
+        },
+        "querySourceId": "bac70528-97d8-41c0-b3e3-56984fed2273"
+      }
+    },
+    {
+      "id": "213acff6-54fb-4be4-ad14-1e7cae1b926c",
+      "aliases": [
+        "med-ocean-ph"
+      ],
+      "title": {
+        "en": "Mediterranean Ocean pH"
+      },
+      "description": {
+        "en": "Monthly sea water pH (total scale) from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "14404b4f-96de-4018-b774-faf11ef5e405",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "ph"
+          }
+        },
+        {
+          "id": "a16ba0d1-b550-4a3d-a911-5e7f73ec17a7",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-car_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-car_my_4.2km_P1M-m_202511/ph",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:viridis"
+        }
+      ],
+      "defaults": {
+        "sourceId": "14404b4f-96de-4018-b774-faf11ef5e405",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            7.973138332366943,
+            8.130449295043945
+          ]
+        },
+        "querySourceId": "14404b4f-96de-4018-b774-faf11ef5e405"
+      }
+    },
+    {
+      "id": "d9b6b74c-63d2-48a5-9be6-dc81e93a9468",
+      "aliases": [
+        "med-surface-co2"
+      ],
+      "title": {
+        "en": "Mediterranean Surface CO₂ Partial Pressure"
+      },
+      "description": {
+        "en": "Monthly surface partial pressure of carbon dioxide in sea water from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "c433c643-e353-453d-a763-2350a70008c6",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-co2_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "spco2"
+          }
+        },
+        {
+          "id": "89ec410a-fff4-4967-a3d9-ac290855064d",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-co2_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511/spco2",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "c433c643-e353-453d-a763-2350a70008c6",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            43.83649185180664,
+            56.3255485534668
+          ]
+        },
+        "querySourceId": "c433c643-e353-453d-a763-2350a70008c6"
+      }
+    },
+    {
+      "id": "94dd0605-52f3-43e9-a428-0d9b491253dc",
+      "aliases": [
+        "med-co2-flux"
+      ],
+      "title": {
+        "en": "Mediterranean Air–Sea CO₂ Flux"
+      },
+      "description": {
+        "en": "Monthly surface downward mass flux of carbon dioxide expressed as carbon from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "0ba36ddc-d46a-48dc-8f8a-ac08ed35751a",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-co2_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "fpco2"
+          }
+        },
+        {
+          "id": "9456df73-fe61-43f5-8152-d27c46d601f1",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-co2_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-co2_my_4.2km_P1M-m_202511/fpco2",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "0ba36ddc-d46a-48dc-8f8a-ac08ed35751a",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -1.0154252683136634e-9,
+            6.881201840975169e-12
+          ]
+        },
+        "querySourceId": "0ba36ddc-d46a-48dc-8f8a-ac08ed35751a"
+      }
+    },
+    {
+      "id": "5b2d0fa7-a73f-4c0a-9ec0-a43b6fd00a53",
+      "aliases": [
+        "med-nitrate"
+      ],
+      "title": {
+        "en": "Mediterranean Nitrate"
+      },
+      "description": {
+        "en": "Monthly nitrate concentration from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "cdab5719-6621-483a-ab2d-7a80a0df4cfb",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "no3"
+          }
+        },
+        {
+          "id": "8bcec020-32f5-4bad-9ae8-c99e8879613c",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/no3",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "cdab5719-6621-483a-ab2d-7a80a0df4cfb",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.09935789853334427,
+            5.486237430572505
+          ]
+        },
+        "querySourceId": "cdab5719-6621-483a-ab2d-7a80a0df4cfb"
+      }
+    },
+    {
+      "id": "acf3b528-6915-4c3c-8a31-0d5200fc800b",
+      "aliases": [
+        "med-ammonium"
+      ],
+      "title": {
+        "en": "Mediterranean Ammonium"
+      },
+      "description": {
+        "en": "Monthly ammonium concentration from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "f14848f5-9fce-4de3-bab6-1f7a6ca97b63",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "nh4"
+          }
+        },
+        {
+          "id": "3c9d915d-8323-433c-81c3-42e13e94c309",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/nh4",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:dense"
+        }
+      ],
+      "defaults": {
+        "sourceId": "f14848f5-9fce-4de3-bab6-1f7a6ca97b63",
+        "palette": "dense",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.000005366723871702561,
+            0.6653536272048948
+          ]
+        },
+        "querySourceId": "f14848f5-9fce-4de3-bab6-1f7a6ca97b63"
+      }
+    },
+    {
+      "id": "7f1ca7a7-0ca4-45b2-bcb0-419cf3baca5e",
+      "aliases": [
+        "med-phosphate"
+      ],
+      "title": {
+        "en": "Mediterranean Phosphate"
+      },
+      "description": {
+        "en": "Monthly phosphate concentration from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "b6d22729-c0a6-4955-9f81-2aa7834a6215",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "po4"
+          }
+        },
+        {
+          "id": "9591b871-4505-4121-942c-5ffdf92d9d6d",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-nut_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-nut_my_4.2km_P1M-m_202511/po4",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:dense"
+        }
+      ],
+      "defaults": {
+        "sourceId": "b6d22729-c0a6-4955-9f81-2aa7834a6215",
+        "palette": "dense",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.006516531389206648,
+            0.2717009484767914
+          ]
+        },
+        "querySourceId": "b6d22729-c0a6-4955-9f81-2aa7834a6215"
+      }
+    },
+    {
+      "id": "dc379e9d-c53a-4456-b62e-892c4755c336",
+      "aliases": [
+        "med-chlorophyll"
+      ],
+      "title": {
+        "en": "Mediterranean Chlorophyll-a (Reanalysis)"
+      },
+      "description": {
+        "en": "Monthly chlorophyll-a concentration from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "73cc8955-f2e6-4f71-b974-34e92369a5f6",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-plankton_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "chl"
+          }
+        },
+        {
+          "id": "4faf2993-abf0-4c25-b852-72fc64d981c5",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-plankton_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511/chl",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:algae"
+        }
+      ],
+      "defaults": {
+        "sourceId": "73cc8955-f2e6-4f71-b974-34e92369a5f6",
+        "palette": "algae",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            5.393665618302901e-12,
+            0.35642954707145613
+          ]
+        },
+        "querySourceId": "73cc8955-f2e6-4f71-b974-34e92369a5f6"
+      }
+    },
+    {
+      "id": "fd5977e0-4a6a-4fcd-b9c8-d9c88e0c57bc",
+      "aliases": [
+        "med-phytoplankton-carbon"
+      ],
+      "title": {
+        "en": "Mediterranean Phytoplankton Carbon"
+      },
+      "description": {
+        "en": "Monthly phytoplankton concentration expressed as carbon from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "932b2003-fc49-494c-9cc2-a44553607715",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-plankton_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "phyc"
+          }
+        },
+        {
+          "id": "e164c131-c2c0-4f9e-95f5-fa17757101c9",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-plankton_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-plankton_my_4.2km_P1M-m_202511/phyc",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "932b2003-fc49-494c-9cc2-a44553607715",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            9.716046066657324e-13,
+            1.0759236526489255
+          ]
+        },
+        "querySourceId": "932b2003-fc49-494c-9cc2-a44553607715"
+      }
+    },
+    {
+      "id": "92e90806-496c-466c-b0c7-0d22f74bdc1c",
+      "aliases": [
+        "med-dissolved-oxygen"
+      ],
+      "title": {
+        "en": "Mediterranean Dissolved Oxygen"
+      },
+      "description": {
+        "en": "Monthly dissolved molecular oxygen concentration from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "377fa497-bc46-416d-bc87-f478c84c20ef",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-bio_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "o2"
+          }
+        },
+        {
+          "id": "2461602b-59a9-4a62-a506-40a4a5361c5f",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-bio_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511/o2",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "377fa497-bc46-416d-bc87-f478c84c20ef",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            201.18856811523438,
+            241.05203063964842
+          ]
+        },
+        "querySourceId": "377fa497-bc46-416d-bc87-f478c84c20ef"
+      }
+    },
+    {
+      "id": "26ff90d9-fc53-44f7-bc96-35b8a135933a",
+      "aliases": [
+        "med-primary-production"
+      ],
+      "title": {
+        "en": "Mediterranean Net Primary Production (Reanalysis)"
+      },
+      "description": {
+        "en": "Monthly net primary production of biomass expressed as carbon from the Mediterranean Sea multi-year biogeochemistry reanalysis."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "25b2bfc2-89e9-4da1-a39a-cd65a9c5c86e",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-bio_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-034/arco/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "nppv"
+          }
+        },
+        {
+          "id": "c6970a49-860c-4058-afbb-a85e3dfdbf52",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_BGC_006_008",
+              "dataset": "cmems_mod_med_bgc-bio_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_BGC_006_008/cmems_mod_med_bgc-bio_my_4.2km_P1M-m_202511/nppv",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "25b2bfc2-89e9-4da1-a39a-cd65a9c5c86e",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -0.07715943783521652,
+            7.023063049316397
+          ]
+        },
+        "querySourceId": "25b2bfc2-89e9-4da1-a39a-cd65a9c5c86e"
+      }
+    },
+    {
+      "id": "fb2f7a2b-3e20-45f5-bea3-fdaaeb964226",
+      "aliases": [
+        "med-significant-wave-height"
+      ],
+      "title": {
+        "en": "Mediterranean Significant Wave Height"
+      },
+      "description": {
+        "en": "Hourly sea surface wave significant height from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "c20b9877-94e0-493d-9d8c-ad4329eba866",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VHM0"
+          }
+        },
+        {
+          "id": "c6fb0562-1c5b-4a3c-9c06-2e0ada28b423",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/VHM0",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:amp"
+        }
+      ],
+      "defaults": {
+        "sourceId": "c20b9877-94e0-493d-9d8c-ad4329eba866",
+        "palette": "amp",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.1600000113248825,
+            2.115000009536743
+          ]
+        },
+        "querySourceId": "c20b9877-94e0-493d-9d8c-ad4329eba866"
+      }
+    },
+    {
+      "id": "bc4c2a48-eba3-470e-a37e-7ed8ac67c58a",
+      "aliases": [
+        "med-wave-mean-period"
+      ],
+      "title": {
+        "en": "Mediterranean Wave Mean Period"
+      },
+      "description": {
+        "en": "Hourly wave mean period (inverse frequency moment) from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "d803cf0d-3cd9-485d-9b6a-6f8ee4c3b43c",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VTM10"
+          }
+        },
+        {
+          "id": "9dc0497a-1601-44fe-bce4-6c43995ed02e",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/VTM10",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:tempo"
+        }
+      ],
+      "defaults": {
+        "sourceId": "d803cf0d-3cd9-485d-9b6a-6f8ee4c3b43c",
+        "palette": "tempo",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            2.7170002460479736,
+            9.731460647582999
+          ]
+        },
+        "querySourceId": "d803cf0d-3cd9-485d-9b6a-6f8ee4c3b43c"
+      }
+    },
+    {
+      "id": "98f55236-7380-4430-9d5b-9bc011546ea7",
+      "aliases": [
+        "med-wave-peak-period"
+      ],
+      "title": {
+        "en": "Mediterranean Wave Peak Period"
+      },
+      "description": {
+        "en": "Hourly wave period at spectral density maximum from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "67550f8e-4af1-4c6f-b9b7-fc69863f4fdf",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VTPK"
+          }
+        },
+        {
+          "id": "ea5e449a-3b8e-4e43-9db7-50028aab1fbd",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/VTPK",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:tempo"
+        }
+      ],
+      "defaults": {
+        "sourceId": "67550f8e-4af1-4c6f-b9b7-fc69863f4fdf",
+        "palette": "tempo",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            2.6730000972747803,
+            13.51300048828125
+          ]
+        },
+        "querySourceId": "67550f8e-4af1-4c6f-b9b7-fc69863f4fdf"
+      }
+    },
+    {
+      "id": "fa73cf0e-f78e-4f46-8a06-23a13f4cccbe",
+      "aliases": [
+        "med-wind-wave-height"
+      ],
+      "title": {
+        "en": "Mediterranean Wind Wave Height"
+      },
+      "description": {
+        "en": "Hourly wind wave significant height from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "5e217ad9-691e-4499-a4d5-1941a18e06be",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VHM0_WW"
+          }
+        },
+        {
+          "id": "763770d4-c65c-4432-a525-2ed77550e74f",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/VHM0_WW",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:amp"
+        }
+      ],
+      "defaults": {
+        "sourceId": "5e217ad9-691e-4499-a4d5-1941a18e06be",
+        "palette": "amp",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0,
+            1.315000057220459
+          ]
+        },
+        "querySourceId": "5e217ad9-691e-4499-a4d5-1941a18e06be"
+      }
+    },
+    {
+      "id": "255de3fe-a0fe-491a-a35c-e605953d8b62",
+      "aliases": [
+        "med-primary-swell-height"
+      ],
+      "title": {
+        "en": "Mediterranean Primary Swell Height"
+      },
+      "description": {
+        "en": "Hourly primary swell significant height from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "4528ff14-512d-4fa4-943c-fcfe17614fa4",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VHM0_SW1"
+          }
+        },
+        {
+          "id": "666440a8-1f3a-45a7-b2ae-8a14e7c2d8e0",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/VHM0_SW1",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:amp"
+        }
+      ],
+      "defaults": {
+        "sourceId": "4528ff14-512d-4fa4-943c-fcfe17614fa4",
+        "palette": "amp",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.08800000697374344,
+            1.7700001001358032
+          ]
+        },
+        "querySourceId": "4528ff14-512d-4fa4-943c-fcfe17614fa4"
+      }
+    },
+    {
+      "id": "724706e2-924c-4ae6-9bdb-8f4128324245",
+      "aliases": [
+        "med-secondary-swell-height"
+      ],
+      "title": {
+        "en": "Mediterranean Secondary Swell Height"
+      },
+      "description": {
+        "en": "Hourly secondary swell significant height from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "05dcaedf-d661-4fe9-9fd7-32e9ba922357",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "VHM0_SW2"
+          }
+        },
+        {
+          "id": "78fa9400-e66b-41f8-a8b0-bb237c7dcc9c",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/VHM0_SW2",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:amp"
+        }
+      ],
+      "defaults": {
+        "sourceId": "05dcaedf-d661-4fe9-9fd7-32e9ba922357",
+        "palette": "amp",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0,
+            1.13100004196167
+          ]
+        },
+        "querySourceId": "05dcaedf-d661-4fe9-9fd7-32e9ba922357"
+      }
+    },
+    {
+      "id": "075b8ee5-c521-4eee-91cb-0d0a3ec7d93a",
+      "aliases": [
+        "eur-sea-level-anomaly"
+      ],
+      "title": {
+        "en": "European Seas Sea Level Anomaly"
+      },
+      "description": {
+        "en": "Monthly multi-satellite gridded sea level anomaly over European seas (DUACS L4 reprocessed)."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "b0012792-1209-465c-b6b4-53b7e9d43eb5",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "SEALEVEL_EUR_PHY_L4_MY_008_068",
+              "dataset": "cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SEALEVEL_EUR_PHY_L4_MY_008_068/cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-045/arco/SEALEVEL_EUR_PHY_L4_MY_008_068/cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "sla"
+          }
+        },
+        {
+          "id": "1b8a2365-bca9-43f6-bc15-d8fc9df9cc30",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "SEALEVEL_EUR_PHY_L4_MY_008_068",
+              "dataset": "cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/SEALEVEL_EUR_PHY_L4_MY_008_068/cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "SEALEVEL_EUR_PHY_L4_MY_008_068/cmems_obs-sl_eur_phy-ssh_my_allsat-l4-duacs-0.0625deg_P1M-m_202411/sla",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:plasma"
+        }
+      ],
+      "defaults": {
+        "sourceId": "b0012792-1209-465c-b6b4-53b7e9d43eb5",
+        "palette": "plasma",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.007500000000000001,
+            0.2514
+          ]
+        },
+        "querySourceId": "b0012792-1209-465c-b6b4-53b7e9d43eb5"
+      }
+    },
+    {
+      "id": "7bf14fbb-f7bf-44e2-8f88-dbe72480d3b1",
+      "aliases": [
+        "med-chlorophyll-satellite"
+      ],
+      "title": {
+        "en": "Mediterranean Chlorophyll-a (Satellite, 1 km)"
+      },
+      "description": {
+        "en": "Monthly multi-sensor L4 satellite chlorophyll-a concentration over the Mediterranean Sea at 1 km."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "0b0f43ad-dc85-4fdd-813a-24b23b357dbb",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "OCEANCOLOUR_MED_BGC_L4_MY_009_144",
+              "dataset": "cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-045/arco/OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "CHL"
+          }
+        },
+        {
+          "id": "b95a2494-789a-4d58-861c-526072384579",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "OCEANCOLOUR_MED_BGC_L4_MY_009_144",
+              "dataset": "cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-plankton_my_l4-multi-1km_P1M_202311/CHL",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:algae"
+        }
+      ],
+      "defaults": {
+        "sourceId": "0b0f43ad-dc85-4fdd-813a-24b23b357dbb",
+        "palette": "algae",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.04034051641821861,
+            0.9097137618064904
+          ]
+        },
+        "querySourceId": "0b0f43ad-dc85-4fdd-813a-24b23b357dbb"
+      }
+    },
+    {
+      "id": "1508bd3a-5a24-4499-a329-7cfc77d8259a",
+      "aliases": [
+        "med-primary-production-satellite"
+      ],
+      "title": {
+        "en": "Mediterranean Primary Production (Satellite, 4 km)"
+      },
+      "description": {
+        "en": "Monthly multi-sensor L4 satellite primary productivity expressed as carbon over the Mediterranean Sea at 4 km."
+      },
+      "category": "biology",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "7e18cc85-a887-4d96-b3ed-8d9bf61016eb",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "OCEANCOLOUR_MED_BGC_L4_MY_009_144",
+              "dataset": "cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M_202311/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-045/arco/OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M_202311/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "PP"
+          }
+        },
+        {
+          "id": "09d96725-6c92-48b6-ac0b-5ccbf2e7725d",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "OCEANCOLOUR_MED_BGC_L4_MY_009_144",
+              "dataset": "cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M_202311?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "OCEANCOLOUR_MED_BGC_L4_MY_009_144/cmems_obs-oc_med_bgc-pp_my_l4-multi-4km_P1M_202311/PP",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:matter"
+        }
+      ],
+      "defaults": {
+        "sourceId": "7e18cc85-a887-4d96-b3ed-8d9bf61016eb",
+        "palette": "matter",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            0.30952240705490114,
+            0.5426497745513917
+          ]
+        },
+        "querySourceId": "7e18cc85-a887-4d96-b3ed-8d9bf61016eb"
+      }
+    },
+    {
+      "id": "688114b5-3118-4617-8306-6bfa00a8b233",
+      "aliases": [
+        "med-sea-surface-temperature-satellite"
+      ],
+      "title": {
+        "en": "Mediterranean Sea Surface Temperature (Satellite)"
+      },
+      "description": {
+        "en": "Daily high-resolution L4 reprocessed satellite sea surface temperature over the Mediterranean Sea."
+      },
+      "category": "ocean",
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "c3545cc4-fa0e-49f1-86a4-febd8d1aa3bf",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "SST_MED_SST_L4_REP_OBSERVATIONS_010_021",
+              "dataset": "cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-046/arco/SST_MED_SST_L4_REP_OBSERVATIONS_010_021/cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-046/arco/SST_MED_SST_L4_REP_OBSERVATIONS_010_021/cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "analysed_sst"
+          }
+        },
+        {
+          "id": "e94273cf-ee33-4507-a3f3-9563141ce105",
+          "type": "wmts",
+          "title": {
+            "en": "Copernicus Marine WMTS"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "SST_MED_SST_L4_REP_OBSERVATIONS_010_021",
+              "dataset": "cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1D"
+          },
+          "capabilitiesUrl": "https://wmts.marine.copernicus.eu/teroWmts/SST_MED_SST_L4_REP_OBSERVATIONS_010_021/cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021_202411?service=WMTS&request=GetCapabilities",
+          "baseUrl": "https://wmts.marine.copernicus.eu/teroWmts",
+          "layer": "SST_MED_SST_L4_REP_OBSERVATIONS_010_021/cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021_202411/analysed_sst",
+          "tileMatrixSet": "EPSG:3857",
+          "format": "image/png",
+          "style": "cmap:thermal"
+        }
+      ],
+      "defaults": {
+        "sourceId": "c3545cc4-fa0e-49f1-86a4-febd8d1aa3bf",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            290.9599914550781,
+            301.6199951171875
+          ]
+        },
+        "querySourceId": "c3545cc4-fa0e-49f1-86a4-febd8d1aa3bf"
+      }
+    },
+    {
+      "id": "35bd7fd2-747c-4d10-a704-181f4538f935",
+      "aliases": [
+        "med-ocean-current-velocity"
+      ],
+      "title": {
+        "en": "Mediterranean Ocean Current Velocity"
+      },
+      "description": {
+        "en": "Monthly eastward and northward sea water velocity from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "vector",
+      "sources": [
+        {
+          "id": "90e9d95d-1aa9-4c7c-933e-19e632a72cfc",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-cur_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-cur_my_4.2km_P1M-m_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-cur_my_4.2km_P1M-m_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "uo",
+            "v": "vo"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "90e9d95d-1aa9-4c7c-933e-19e632a72cfc",
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particles": {
+          "density": 0.033,
+          "speed": 1,
+          "fade": 0.7
+        },
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.39
+        },
+        "querySourceId": "90e9d95d-1aa9-4c7c-933e-19e632a72cfc"
+      }
+    },
+    {
+      "id": "7c8fa700-91cf-4365-bbda-52b445bb87ad",
+      "aliases": [
+        "med-surface-wind-stress"
+      ],
+      "title": {
+        "en": "Mediterranean Surface Wind Stress"
+      },
+      "description": {
+        "en": "Monthly surface downward x/y stress from the Mediterranean Sea multi-year physics reanalysis."
+      },
+      "category": "ocean",
+      "kind": "vector",
+      "sources": [
+        {
+          "id": "8e918515-d58d-4344-a9be-d961218192c5",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_PHY_006_004",
+              "dataset": "cmems_mod_med_phy-mflux_my_4.2km_P1M-m"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-mflux_my_4.2km_P1M-m_202411/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-035/arco/MEDSEA_MULTIYEAR_PHY_006_004/cmems_mod_med_phy-mflux_my_4.2km_P1M-m_202411/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "tauuo",
+            "v": "tauvo"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "8e918515-d58d-4344-a9be-d961218192c5",
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particles": {
+          "density": 0.033,
+          "speed": 1,
+          "fade": 0.7
+        },
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.39
+        },
+        "querySourceId": "8e918515-d58d-4344-a9be-d961218192c5"
+      }
+    },
+    {
+      "id": "cd27eb64-c6d0-4dfa-83ab-a2a731d1b16a",
+      "aliases": [
+        "med-wave-stokes-drift"
+      ],
+      "title": {
+        "en": "Mediterranean Wave Stokes Drift"
+      },
+      "description": {
+        "en": "Hourly sea surface wave Stokes drift from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "vector",
+      "sources": [
+        {
+          "id": "035d4117-002e-48ad-bc11-b830bcfb8bae",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "VSDX",
+            "v": "VSDY"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "035d4117-002e-48ad-bc11-b830bcfb8bae",
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particles": {
+          "density": 0.024,
+          "speed": 1,
+          "fade": 0.7
+        },
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 1
+        },
+        "querySourceId": "035d4117-002e-48ad-bc11-b830bcfb8bae"
+      }
+    },
+    {
+      "id": "9e1a9c3a-e5ba-40a6-8a43-fad9720fcbc3",
+      "aliases": [
+        "med-primary-swell-propagation"
+      ],
+      "title": {
+        "en": "Mediterranean Primary Swell Propagation"
+      },
+      "description": {
+        "en": "Derived primary swell propagation using significant height as magnitude and from-direction converted to travel direction, from the Mediterranean Sea multi-year wave reanalysis."
+      },
+      "category": "waves",
+      "kind": "vector",
+      "sources": [
+        {
+          "id": "4a4e3d29-1eee-44ac-9a03-55c3ee1479cc",
+          "type": "zarr",
+          "title": {
+            "en": "Copernicus Marine ARCO Zarr"
+          },
+          "provenance": {
+            "provider": "copernicus-marine",
+            "identifiers": {
+              "product": "MEDSEA_MULTIYEAR_WAV_006_012",
+              "dataset": "cmems_mod_med_wav_my_4.2km_PT1H-i"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "PT1H"
+          },
+          "endpoints": {
+            "field": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/timeChunked.zarr",
+            "pointSeries": "https://s3.waw3-1.cloudferro.com/mdl-arco-geo-036/arco/MEDSEA_MULTIYEAR_WAV_006_012/cmems_mod_med_wav_my_4.2km_PT1H-i_202511/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "derivation": {
+              "kind": "direction_magnitude",
+              "direction_variable": "VMDR_SW1",
+              "magnitude_variable": "VHM0_SW1",
+              "direction_convention": "from",
+              "output_direction": "toward"
+            }
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "4a4e3d29-1eee-44ac-9a03-55c3ee1479cc",
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particles": {
+          "density": 0.02,
+          "speed": 1,
+          "fade": 0.7
+        },
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.45
+        },
+        "querySourceId": "4a4e3d29-1eee-44ac-9a03-55c3ee1479cc"
       }
     }
   ]

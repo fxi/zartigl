@@ -143,6 +143,45 @@
       "#fde725"
     ]
   },
+  "plasma": {
+    "label": "Plasma",
+    "tags": ["sequential", "perceptual"],
+    "colors": [
+      "#0d0887",
+      "#5e01a6",
+      "#9c179e",
+      "#cc4778",
+      "#ed7953",
+      "#fdb42f",
+      "#f0f921"
+    ]
+  },
+  "cyclic": {
+    "label": "Cyclic",
+    "tags": ["cyclic", "direction"],
+    "colors": [
+      "#2e22ea",
+      "#b541fb",
+      "#fc93c0",
+      "#f1ee35",
+      "#77c80d",
+      "#458776",
+      "#2c24e9"
+    ]
+  },
+  "tempo": {
+    "label": "Tempo",
+    "tags": ["sequential"],
+    "colors": [
+      "#fff6f4",
+      "#c2d1b9",
+      "#7db390",
+      "#2a937f",
+      "#156d73",
+      "#1c455b",
+      "#151d44"
+    ]
+  },
   "turbid": {
     "label": "Turbid",
     "tags": ["sequential", "biology", "log"],

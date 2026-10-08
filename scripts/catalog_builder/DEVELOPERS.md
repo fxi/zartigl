@@ -10,7 +10,7 @@ Sources are discriminated and independently renderable:
 
 - `zarr`: field and optional point-series endpoints plus source-specific variables.
 - `wmts`: GetCapabilities URL, native layer identifier, and optional service overrides.
-- `geovideo`: a version 3 manifest URL.
+- `geovideo`: a version 3 `manifestUrl` for one artifact, or an `indexUrl` for an incremental archive whose policy lives in `scripts/geovideo/archive.json` (see `scripts/geovideo/README.md`).
 
 Every source has its own UUID and localized title. Put provider-native names under `provenance.provider` and `provenance.identifiers`; Copernicus uses `product` and `dataset`. Put discovery-only cadence and coverage mode under `temporal`. Live source metadata remains authoritative.
 
@@ -22,7 +22,7 @@ For Copernicus scalar entries, the default WMTS JSON legend is the authoritative
 
 Built-in sources must be public, browser/CORS accessible, and cloud-native. Prefer Copernicus Marine ARCO Zarr discovered with the local workflow. Other Zarr sources must match zartigl's coordinate/chunk contract. WMTS must expose a MapLibre-compatible Web Mercator matrix set. GeoVideo is a visualization transport and does not imply scientific point-query capability.
 
-Do not add GRIB/netCDF/HDF-only products, bespoke APIs, or sources requiring ingestion. Do not use general web search unless broader research is explicitly requested or the ARCO workflow cannot answer a specific question.
+Do not add GRIB/netCDF/HDF-only products, bespoke APIs, or sources requiring ingestion. Copernicus `omi-arco` stores (OMI trend and extreme-value maps) are static `[latitude, longitude]` fields; zartigl requires a time axis, so they are not catalog-ready yet. Do not use general web search unless broader research is explicitly requested or the ARCO workflow cannot answer a specific question.
 
 ## Workflow
 
@@ -30,13 +30,14 @@ Do not add GRIB/netCDF/HDF-only products, bespoke APIs, or sources requiring ing
 uv run scripts/catalog_builder/skills/list_layers.py
 uv run scripts/catalog_builder/skills/search_products.py <keyword> [keyword2 ...]
 uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
+uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --vector <u>,<v>
 uv run scripts/catalog_builder/skills/analyze_variable.py <zarr_url> --variable <scalar_id>
 uv run scripts/catalog_builder/skills/validate_catalog.py
 uv run scripts/catalog_builder/skills/validate_remote.py --entry <uuid-or-alias>
 ```
 
 1. Search the current catalog by aliases/native identifiers to avoid duplicates.
-2. Query the selected dataset with an explicit scalar variable; vector pairs remain auto-detected. Use the returned provider visualization defaults.
+2. Query the selected dataset with an explicit scalar variable; eastward/northward vector pairs are auto-detected, other pairs (stress, Stokes drift) are passed with `--vector`. Use the returned provider visualization defaults.
 3. If upstream visualization statistics are unavailable, run the maintained local analyzer rather than an ad hoc program.
 4. Generate UUIDv4 values once; never regenerate them during ordinary metadata updates.
 5. Ask for approval before appending a built-in entry.

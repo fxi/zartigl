@@ -22,6 +22,7 @@ Use these scripts first:
 uv run scripts/catalog_builder/skills/list_layers.py
 uv run scripts/catalog_builder/skills/search_products.py <keyword> [keyword2 ...]
 uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
+uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --vector <u>,<v>
 uv run scripts/catalog_builder/skills/validate_catalog.py
 uv run scripts/catalog_builder/skills/validate_remote.py --entry <uuid-or-alias>
 ```
