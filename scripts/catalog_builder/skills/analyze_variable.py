@@ -5,7 +5,7 @@
 #   "fsspec[http]>=2025.3",
 #   "numpy>=2.0",
 #   "xarray>=2025.1",
-#   "zarr>=2.18,<3",
+#   "zarr>=3",
 # ]
 # ///
 """Compute deterministic fallback univariate statistics for a Zarr variable.
@@ -30,7 +30,7 @@ HISTOGRAM_BINS = 65_536
 
 
 def selected_data(args: argparse.Namespace) -> xr.DataArray:
-    dataset = xr.open_zarr(args.zarr_url, consolidated=True, chunks=None)
+    dataset = xr.open_zarr(args.zarr_url, consolidated=True, chunks=None, zarr_format=2)
     if args.variable not in dataset:
         raise ValueError(f"Variable not found: {args.variable}")
     data = dataset[args.variable]

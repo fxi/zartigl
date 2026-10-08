@@ -8,6 +8,7 @@ Query a Copernicus Marine dataset and emit a structured JSON summary.
 
 Usage:
     uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> --variable <scalar_id>
+    uv run scripts/catalog_builder/skills/query_dataset.py <dataset_id> [--vector <u>,<v>]
 
 Output: JSON with zarr URLs, variables, dimensions, and suggested layer fields.
 """
@@ -98,15 +99,30 @@ def detect_vector_vars(svc) -> tuple[str, str] | None:
     return None
 
 
+def parse_vector_pair(value: str) -> tuple[str, str]:
+    parts = [part.strip() for part in value.split(",")]
+    if len(parts) != 2 or not all(parts):
+        raise ValueError("--vector expects <u>,<v>")
+    return parts[0], parts[1]
+
+
 def select_kind_and_variable(
     variables: dict[str, dict],
     requested: str | None,
     vector: tuple[str, str] | None,
+    requested_vector: tuple[str, str] | None = None,
 ) -> tuple[str, str | None, tuple[str, str] | None]:
+    if requested and requested_vector:
+        raise ValueError("--variable and --vector are mutually exclusive")
     if requested:
         if requested not in variables:
             raise ValueError(f"unknown variable: {requested}")
         return "scalar", requested, None
+    if requested_vector:
+        unknown = [name for name in requested_vector if name not in variables]
+        if unknown:
+            raise ValueError(f"unknown variable: {', '.join(unknown)}")
+        return "vector", None, requested_vector
     if vector:
         return "vector", None, vector
     raise ValueError("scalar discovery requires --variable")
@@ -118,6 +134,10 @@ def main():
     parser.add_argument(
         "--variable",
         help="Explicit scalar variable. Required for scalar catalog candidates.",
+    )
+    parser.add_argument(
+        "--vector",
+        help="Explicit u,v pair for vectors whose standard names lack eastward/northward, e.g. tauuo,tauvo.",
     )
     args = parser.parse_args()
     dataset_id = args.dataset_id
@@ -156,7 +176,10 @@ def main():
 
     vec = detect_vector_vars(svc_geo)
     try:
-        suggested_type, suggested_variable, vec = select_kind_and_variable(variables, args.variable, vec)
+        requested_vector = parse_vector_pair(args.vector) if args.vector else None
+        suggested_type, suggested_variable, vec = select_kind_and_variable(
+            variables, args.variable, vec, requested_vector
+        )
     except ValueError as exc:
         print(json.dumps({
             "error": str(exc),

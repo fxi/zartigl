@@ -1,7 +1,7 @@
 import unittest
 
 from copernicus_metadata import parse_wmts_visualization
-from query_dataset import select_kind_and_variable
+from query_dataset import parse_vector_pair, select_kind_and_variable
 
 
 CAPABILITIES = b"""<?xml version="1.0"?>
@@ -42,6 +42,19 @@ class CopernicusMetadataTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "requires --variable"):
             select_kind_and_variable(variables, None, None)
+
+    def test_explicit_vector_pair_overrides_detection(self):
+        variables = {"tauuo": {}, "tauvo": {}}
+        self.assertEqual(
+            select_kind_and_variable(variables, None, None, parse_vector_pair("tauuo, tauvo")),
+            ("vector", None, ("tauuo", "tauvo")),
+        )
+        with self.assertRaisesRegex(ValueError, "unknown variable: tauvx"):
+            select_kind_and_variable(variables, None, None, ("tauuo", "tauvx"))
+        with self.assertRaisesRegex(ValueError, "mutually exclusive"):
+            select_kind_and_variable(variables, "tauuo", None, ("tauuo", "tauvo"))
+        with self.assertRaisesRegex(ValueError, "expects"):
+            parse_vector_pair("tauuo")
 
     def test_resolves_default_json_legend(self):
         calls = []
