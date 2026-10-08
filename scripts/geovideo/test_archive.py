@@ -17,6 +17,7 @@ from archive import (
     plan_chunks,
     step_filter,
     window_interval,
+    without_gaps,
 )
 
 ENTRY = "89f148bd-dd9d-4428-85ee-21f8af513627"
@@ -169,6 +170,20 @@ class ScheduleTest(unittest.TestCase):
         threaded = {**ARCHIVE, "output": {"threads": 2}}
         self.assertEqual(chunk_key(encoding_profile(threaded, layer()), chunk),
                          chunk_key(encoding_profile(ARCHIVE, layer()), chunk))
+
+
+class GapTest(unittest.TestCase):
+    def test_gaps_are_dropped_recorded_and_keep_the_planned_key(self):
+        chunk = {"period": {"start": "2020-01-01T00:00:00Z", "end": "2030-01-01T00:00:00Z"}, "key": "k",
+                 "samples": ["2021-06-01T00:00:00Z", "2021-07-01T00:00:00Z", "2021-08-01T00:00:00Z"],
+                 "revision": None}
+        kept = without_gaps(chunk, ["2021-07-01T00:00:00Z"])
+        self.assertEqual(kept["samples"], ["2021-06-01T00:00:00Z", "2021-08-01T00:00:00Z"])
+        self.assertEqual((kept["key"], kept["gaps"]), ("k", ["2021-07-01T00:00:00Z"]))
+        entry = merge_chunk(empty_index(ARCHIVE), kept, ns("2026-10-08"))["chunks"][0]
+        self.assertEqual((entry["samples"], entry["gaps"]), (2, ["2021-07-01T00:00:00Z"]))
+        with self.assertRaisesRegex(ValueError, "fewer than two"):
+            without_gaps(chunk, chunk["samples"][1:])
 
 
 class IndexTest(unittest.TestCase):

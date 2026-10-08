@@ -252,6 +252,7 @@ def merge_chunk(index: dict[str, Any], chunk: dict[str, Any], now: np.datetime64
         "key": chunk["key"],
         "manifestUrl": f"{chunk['key']}/manifest.json",
         "provisional": chunk["revision"] is not None,
+        **({"gaps": chunk["gaps"]} if chunk.get("gaps") else {}),
     }
     chunks, superseded = [], list(index["superseded"])
     for existing in index["chunks"]:
@@ -311,8 +312,30 @@ def chunk_directory(archive: dict[str, Any], key: str) -> Path:
     return render.ROOT / "artifacts" / "geovideo-archive" / archive["sourceId"] / key
 
 
-def render_chunk(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[str, Any], threads: int | None = None) -> Path:
-    """Render one chunk. Encoder threads only share CPUs between workers and are not part of the key."""
+def without_gaps(chunk: dict[str, Any], empty: list[str]) -> dict[str, Any]:
+    """The chunk minus upstream gaps; its key stays tied to the planned timestamps."""
+    samples = [sample for sample in chunk["samples"] if sample not in set(empty)]
+    if len(samples) < 2:
+        raise ValueError(f"Chunk {chunk['period']['start']} has fewer than two timestamps with data")
+    return {**chunk, "samples": samples, "gaps": sorted(set(chunk.get("gaps", [])) | set(empty))}
+
+
+def render_chunk(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[str, Any],
+                 threads: int | None = None) -> dict[str, Any]:
+    """Render one chunk, dropping upstream gaps once; return the chunk as encoded."""
+    try:
+        render_samples(archive, layer, chunk, threads)
+        return chunk
+    except render.EmptySamplesError as exc:
+        print(f"Dropping upstream gaps {exc.samples} from {chunk['period']['start']}", file=sys.stderr, flush=True)
+        chunk = without_gaps(chunk, exc.samples)
+        render_samples(archive, layer, chunk, threads)
+        return chunk
+
+
+def render_samples(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[str, Any],
+                   threads: int | None = None) -> Path:
+    """Encoder threads only share CPUs between workers and are not part of the key."""
     dataset = open_source(layer)
     directory = chunk_directory(archive, chunk["key"])
     shutil.rmtree(directory, ignore_errors=True)
@@ -403,7 +426,7 @@ def render_and_publish(archive: dict[str, Any], layer: dict[str, Any], chunk: di
     """Worker task: render, validate, and upload one chunk; the caller owns the index."""
     directory = chunk_directory(archive, chunk["key"])
     try:
-        render_chunk(archive, layer, chunk, threads)
+        chunk = render_chunk(archive, layer, chunk, threads)
         render.publish(directory, {"upload": upload}, chunk["key"], f"{prefix}/{chunk['key']}")
     finally:
         shutil.rmtree(directory, ignore_errors=True)

@@ -41,11 +41,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from render import (  # noqa: E402
     CATALOG_PATH,
     ROOT,
+    EmptySamplesError,
     fill_invalid_for_video,
     open_arco_zarr,
     parse_iso,
     publish,
     required,
+    sample_iso,
     surface_index,
     uuid4,
     write_mask_png,
@@ -419,10 +421,13 @@ def render(config: dict[str, Any], layer: dict[str, Any], directory: Path, max_f
                                      config["output"].get("threads")))
     check_every = max(1, count // 16)
     expected: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+    empty_samples: list[str] = []
     tic = time.time()
     try:
         for position in range(count):
             u, v = frames.frame(position)
+            if not (np.isfinite(u) & np.isfinite(v)).any():
+                empty_samples.append(sample_iso(frames.times[position]))
             codes = luma_frame(u, v, static_valid, domain, transfer)
             write_frame(encoder, codes)
             if position % check_every == 0:
@@ -434,6 +439,8 @@ def render(config: dict[str, Any], layer: dict[str, Any], directory: Path, max_f
         encoder.stdin.close()
         if encoder.wait() != 0:
             raise RuntimeError("ffmpeg failed while encoding vector GeoVideo")
+    if empty_samples:
+        raise EmptySamplesError(empty_samples)
     errors = []
     for position, decoded in enumerate(decode_video(video, frames.height * 2, frames.width)):
         if position in expected:

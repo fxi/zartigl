@@ -239,6 +239,18 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
     return result
 
 
+class EmptySamplesError(RuntimeError):
+    """Source timestamps without a single valid cell (upstream gaps); the caller may drop them."""
+
+    def __init__(self, samples: list[str]):
+        super().__init__(f"Source timestamps without valid data: {samples}")
+        self.samples = samples
+
+
+def sample_iso(value: np.datetime64) -> str:
+    return np.datetime_as_string(np.datetime64(value, "s"), unit="s") + "Z"
+
+
 def positive_frames_per_sample(sampling: dict[str, Any]) -> int:
     value = sampling.get("framesPerSample", 1)
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
@@ -865,6 +877,7 @@ def render_artifact(
     config["style"]["unit"] = frames.unit
     command = ffmpeg_command(config, video_path)
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    empty_samples: list[str] = []
     static_mask: np.ndarray | None = None
     union_mask: np.ndarray | None = None
     expected_samples: list[tuple[np.ndarray, np.ndarray]] = []
@@ -881,6 +894,11 @@ def render_artifact(
         for index in range(frame_count):
             values = frames.frame(index, frame_count)
             valid = np.isfinite(values)
+            if frames.samples is not None and not valid.any():
+                empty = sample_iso(frames.samples[index // config["sampling"]["framesPerSample"]])
+                if empty not in empty_samples:
+                    empty_samples.append(empty)
+                continue
             finite = values[valid]
             if finite.size:
                 source_minimum = min(source_minimum, float(finite.min()))
@@ -910,6 +928,8 @@ def render_artifact(
     except Exception:
         process.kill()
         raise
+    if empty_samples:
+        raise EmptySamplesError(empty_samples)
 
     assert static_mask is not None and union_mask is not None
     write_mask_png(mask_path, static_mask)

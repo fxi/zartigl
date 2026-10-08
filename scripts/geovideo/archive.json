@@ -397,7 +397,9 @@
       "output": {
         "width": 1024,
         "height": 1024,
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -411,7 +413,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -425,7 +429,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -439,7 +445,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -453,7 +461,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -467,7 +477,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -481,7 +493,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -495,7 +509,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -509,7 +525,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -523,7 +541,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -537,7 +557,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -551,7 +573,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -565,7 +589,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -579,7 +605,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -593,7 +621,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -607,7 +637,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -621,7 +653,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -635,7 +669,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -649,7 +685,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -663,7 +701,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -677,7 +717,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -691,7 +733,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -705,7 +749,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -719,7 +765,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -733,7 +781,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -747,7 +797,9 @@
       ],
       "step": "PT3H",
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -761,7 +813,9 @@
       ],
       "step": "PT3H",
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -775,7 +829,9 @@
       ],
       "step": "PT3H",
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -789,7 +845,9 @@
       ],
       "step": "PT3H",
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -803,7 +861,9 @@
       ],
       "step": "PT3H",
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -817,7 +877,9 @@
       ],
       "step": "PT3H",
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -831,7 +893,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -845,7 +909,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -859,7 +925,9 @@
       ],
       "framesPerSample": 2,
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
@@ -872,7 +940,9 @@
         }
       ],
       "output": {
-        "tune": "psnr"
+        "tune": "psnr",
+        "crf": 8,
+        "maxBitrate": "48M"
       }
     },
     {
