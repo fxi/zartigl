@@ -1,11 +1,31 @@
 # zartigl
 
-A MapLibre GL JS plugin for exploring cloud-hosted Zarr geoscience data directly in the browser.
+Cloud-native ocean and climate data on a MapLibre map: a browser runtime, a
+curated catalog, and a pipeline that pre-renders long timelines as streamable
+video.
 
 [![Demo](https://img.shields.io/badge/demo-live-blue)](https://fxi.io/zartigl/)
 [![Story](https://img.shields.io/badge/story-explore-8b5cf6)](https://fxi.io/zartigl/story/)
 
-Zartigl renders scalar rasters and vector particle fields from multidimensional Zarr stores without a dedicated tile server. It is aimed at expert analysis workflows where time, depth or pressure level, point inspection, and reproducible map state matter as much as the visual layer.
+Zartigl started as a MapLibre plugin that renders scalar rasters and vector
+particle fields straight from multidimensional Zarr stores, without a tile
+server. It now also maintains the data side that makes those layers fast and
+reproducible: a provider-neutral catalog of Copernicus Marine products, and
+GeoVideo archives that turn years of daily or hourly fields into chunked H.264
+videos played back continuously in the browser. It is aimed at expert
+workflows where time, depth or pressure level, point inspection, and
+reproducible map state matter as much as the visual layer, and it powers the
+ARCO layers of [MapX](https://app.mapx.org).
+
+## What Is In This Repository
+
+| Part | Location | Role |
+| --- | --- | --- |
+| Runtime library | `src/lib/` | `@fxi/zartigl`: the `Zartigl` facade, Zarr/WMTS/GeoVideo layers, shaders, particle simulation, point queries |
+| Catalog | `src/catalog/`, `scripts/catalog_builder/` | `@fxi/zartigl/catalog` presets and the tools that discover, describe, and validate entries |
+| GeoVideo pipeline | `scripts/geovideo/`, `.github/workflows/geovideo.yml` | Single renders and incremental archives published to S3, rendered daily on a self-hosted runner |
+| Demos | `src/demo-prod/`, `src/demo-story/` | Technical demo and narrative story, deployed to GitHub Pages |
+| MapX integration | `src/mapx/` | Widget and standalone snippet generation for reproducible MapX views |
 
 ## Features
 
@@ -16,7 +36,9 @@ Zartigl renders scalar rasters and vector particle fields from multidimensional 
 - Point queries for time series and vertical profiles when a point-series store is available
 - UUID-addressed catalog entries with independently selectable Zarr, WMTS, and GeoVideo sources
 - MapLibre custom layer integration, including Mercator and globe rendering paths
-- Pre-rendered GeoVideo sources with true polar globe draping and portable masks
+- Pre-rendered scalar and vector GeoVideo with true polar globe draping and portable masks
+- GeoVideo archives split into calendar chunks, with the next chunk preloaded so
+  playback runs across the whole record without gaps
 - No server component required for public CORS-enabled stores
 
 ## Quick Start
@@ -49,7 +71,7 @@ const z = new Zartigl({
   time: new Date("2025-01-01T00:00:00Z"),
   depth: 0,
   settings: { palette: "rdylbu", opacity: 0.9 },
-  geoVideo: { autoplay: false, loop: true, playbackRate: 1 },
+  geoVideo: { autoplay: false, loop: true, stepsPerSecond: 4 },
 });
 
 z.on("status", (status) => console.log(status.phase));
@@ -114,7 +136,8 @@ z.on("status", (status) => {
 // GeoVideo uses native media playback and reports scientific time updates.
 z.on("timeChange", (time) => console.log(new Date(time)));
 z.on("playbackChange", (playing) => console.log({ playing }));
-await z.update({ geoVideo: { playbackRate: 2, loop: false } });
+// Speed in time steps per second means the same on every artifact.
+await z.update({ geoVideo: { stepsPerSecond: 16, loop: false } });
 
 // Embedding applications can stop rendering and abort field requests while
 // retaining the latest requested time/depth for one reload on resume.
@@ -235,17 +258,53 @@ const z = new Zartigl({
   geoVideo: {
     autoplay: true,
     loop: true,
-    playbackRate: 1,
+    stepsPerSecond: 8,
   },
 });
 
 await z.init();
 ```
 
-The source UUID selects the entry's published GeoVideo manifest. Globe projection demonstrates its polar
-coverage. `loop` and `playbackRate` are optional playback settings. Browsers
-may restrict autoplay, so embedding applications should provide a user-gesture
-fallback when necessary.
+The source UUID selects the entry's published GeoVideo. Globe projection
+demonstrates its polar coverage. `loop` and `stepsPerSecond` are optional
+playback settings. Browsers may restrict autoplay, so embedding applications
+should provide a user-gesture fallback when necessary.
+
+### Archives
+
+Most catalog entries carry a GeoVideo archive source: an `indexUrl` pointing to
+an `index.json` that lists immutable calendar chunks (monthly, yearly, or per
+decade, depending on cadence). zartigl reads the index at runtime, revalidates
+it every few minutes, and expands it into one source per chunk, so newly
+published chunks appear without a catalog release. Times outside the published
+chunks, deeper levels, and point queries fall back to Zarr.
+
+During playback the next chunk's manifest, media, and mask load while the
+current one plays; at its end the layer swaps media in place and keeps playing,
+so a whole archive plays as one continuous timeline.
+
+Archives are produced by `scripts/geovideo/archive.py` from the policies in
+[`scripts/geovideo/archive.json`](scripts/geovideo/archive.json). Every product
+is archived over its full upstream time axis; only event scenes, such as the
+regional Cyclone Chido archive, keep a fixed window. The
+[`GeoVideo archive`](.github/workflows/geovideo.yml) workflow renders pending
+chunks daily, and on demand with a longer budget, on the self-hosted `bigproc`
+runner. Published chunks are never dropped from an index, so an archive keeps
+periods that upstream later removes.
+
+Follow progress against the published indexes. The command reads the upstream
+time axes and the indexes with the S3 credentials in `.env`, writes nothing,
+and can run while the workflow renders:
+
+```bash
+npm run geovideo:progress
+#   80/500   Mediterranean Significant Wave Height
+# Total 971/5347 chunks (18.2%); 32/61 archives complete
+```
+
+`npm run geovideo:plan` prints the same plan as JSON, chunk by chunk.
+
+### Single Renders
 
 ```bash
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --dry-run
@@ -253,7 +312,9 @@ uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json
 uv run scripts/geovideo/render.py scripts/geovideo/examples/sst-anomaly.json --upload
 ```
 
-The Arctic sea-ice configuration covers June 2022 through August 2026 and is
+`render.py` (scalar) and `render_vector.py` (vector) produce one standalone
+artifact from a configuration in `scripts/geovideo/examples/`, such as the
+hourly Cyclone Chido wind scene used by the story. The Arctic sea-ice example is
 available at
 [`scripts/geovideo/examples/sea-ice-thickness-arctic.json`](scripts/geovideo/examples/sea-ice-thickness-arctic.json).
 
@@ -320,6 +381,7 @@ npm test
 npm run build:prod
 npm run build:lib
 npm run catalog:validate
+npm run test:geovideo
 ```
 
 `npm run release:check` runs the main validation path before publishing.
