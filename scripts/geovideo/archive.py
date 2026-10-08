@@ -20,7 +20,7 @@ timestamps (every one of them), so unchanged chunks are never rendered again. Ch
 the revision horizon carry a daily stamp and are re-rendered until they settle.
 
 Usage:
-  uv run scripts/geovideo/archive.py plan [--source <uuid>]
+  uv run scripts/geovideo/archive.py plan [--source <uuid>] [--summary]
   uv run scripts/geovideo/archive.py run [--source <uuid>] [--budget 5h] [--max-chunks N]
   uv run scripts/geovideo/archive.py domain --source <uuid>
 """
@@ -448,6 +448,24 @@ def resolve(archive: dict[str, Any], now: np.datetime64) -> tuple[dict[str, Any]
     return layer, chunks
 
 
+def summarize_plan(results: list[dict[str, Any]]) -> str:
+    """Published/required chunks of each incomplete or failing archive, then the total."""
+    lines = []
+    for result in results:
+        title = result.get("title") or result["sourceId"]
+        if "error" in result:
+            lines.append(f"{'error':>9}  {title}: {result['error']}")
+        elif result["pending"]:
+            lines.append(f"{result['present']:>4}/{result['required']:<4}  {title}")
+    planned = [result for result in results if "error" not in result]
+    present = sum(result["present"] for result in planned)
+    required = sum(result["required"] for result in planned)
+    share = f" ({100 * present / required:.1f}%)" if required else ""
+    complete = sum(not result["pending"] for result in planned)
+    lines.append(f"Total {present}/{required} chunks{share}; {complete}/{len(results)} archives complete")
+    return "\n".join(lines)
+
+
 def command_plan(args: argparse.Namespace) -> int:
     data = load_archives()
     client, env = render.s3_client()
@@ -471,7 +489,7 @@ def command_plan(args: argparse.Namespace) -> int:
                          "key": chunk["key"], "provisional": chunk["revision"] is not None}
                         for chunk in pending],
         })
-    print(json.dumps(results, indent=2))
+    print(summarize_plan(results) if args.summary else json.dumps(results, indent=2))
     return 1 if any("error" in result for result in results) else 0
 
 
@@ -582,6 +600,7 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     plan = commands.add_parser("plan", help="List required and pending chunks")
     plan.add_argument("--source")
+    plan.add_argument("--summary", action="store_true", help="Print progress per incomplete archive instead of JSON")
     run = commands.add_parser("run", help="Render, publish, and index pending chunks")
     run.add_argument("--source")
     run.add_argument("--budget", type=parse_budget, default=parse_budget("5h"))

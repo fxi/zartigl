@@ -16,6 +16,7 @@ from archive import (
     period_start,
     plan_chunks,
     step_filter,
+    summarize_plan,
     window_interval,
     without_gaps,
 )
@@ -214,3 +215,18 @@ class IndexTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SummaryTest(unittest.TestCase):
+    def test_lists_incomplete_and_failing_archives_then_the_total(self):
+        pending = [{"period": "2026-09-01T00:00:00Z", "samples": 30, "key": "a", "provisional": False}]
+        results = [
+            {"sourceId": SOURCE, "title": "Done", "required": 3, "present": 3, "pending": []},
+            {"sourceId": SOURCE, "title": "Running", "required": 4, "present": 1, "pending": pending * 3},
+            {"sourceId": ENTRY, "title": None, "error": "index unreadable"},
+        ]
+        self.assertEqual(summarize_plan(results).splitlines(), [
+            "   1/4     Running",
+            f"    error  {ENTRY}: index unreadable",
+            "Total 4/7 chunks (57.1%); 1/3 archives complete",
+        ])

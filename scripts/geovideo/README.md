@@ -183,6 +183,7 @@ both renderers and their validation; nothing is published unless it passes.
 
 ```bash
 npm run geovideo:plan                       # required, present, and pending chunks
+npm run geovideo:progress                   # published/required chunks per incomplete archive
 npm run geovideo:run -- --budget 90m        # render, publish, and index pending chunks
 npm run geovideo:run -- --jobs 4 --budget 20h     # parallel workers share the CPUs
 npm run geovideo:run -- --source <uuid> --max-chunks 1
