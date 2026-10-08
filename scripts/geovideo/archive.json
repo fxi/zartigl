@@ -9,7 +9,7 @@
       "title": "Ocean Current Velocity",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -27,11 +27,7 @@
       "title": "Surface Wind",
       "windows": [
         {
-          "rolling": "P60D"
-        },
-        {
-          "start": "2024-11-01T00:00:00Z",
-          "end": "2024-12-31T23:59:59Z"
+          "full": true
         }
       ],
       "step": "PT3H",
@@ -75,7 +71,7 @@
       "title": "Wave Stokes Drift",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -93,7 +89,7 @@
       "title": "Primary Swell Propagation",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -111,7 +107,7 @@
       "title": "Sea Ice Drift",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -129,7 +125,7 @@
       "title": "Sea Surface Temperature Anomaly",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "bounds": [
@@ -152,7 +148,7 @@
       "title": "Phytoplankton (Chlorophyll-a)",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -167,7 +163,7 @@
       "title": "Dissolved Inorganic Carbon",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -182,7 +178,7 @@
       "title": "Ocean pH",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -197,7 +193,7 @@
       "title": "Primary Production",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -212,7 +208,7 @@
       "title": "Dissolved Oxygen",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -227,7 +223,7 @@
       "title": "Nitrate",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -242,7 +238,7 @@
       "title": "Phosphate",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -257,7 +253,7 @@
       "title": "Surface CO2",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -272,7 +268,7 @@
       "title": "Sea Water Temperature",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -287,7 +283,7 @@
       "title": "Sea Water Salinity",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -302,7 +298,7 @@
       "title": "Upward Sea Water Velocity",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -317,7 +313,7 @@
       "title": "Mixed Layer Depth",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -332,7 +328,7 @@
       "title": "Primary Swell Period",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
@@ -347,7 +343,7 @@
       "title": "Primary Swell Height",
       "windows": [
         {
-          "rolling": "P60D"
+          "full": true
         }
       ],
       "output": {
