@@ -99,5 +99,17 @@ class ConfigTest(unittest.TestCase):
             validate_config({**CONFIG, "output": {"domainPercentile": 0}}, LAYER)
 
 
+    def test_explicit_times_and_pinned_domain(self):
+        times = ["2024-12-12T00:00:00Z", "2024-12-12T03:00:00Z"]
+        config = validate_config({**CONFIG, "times": times, "output": {"valueDomain": 38}}, LAYER)
+        self.assertEqual((config["times"], config["output"]["valueDomain"]), (times, 38))
+        for invalid in (times[:1], times[::-1], ["2024-12-11T00:00:00Z", "2024-12-12T00:00:00Z"]):
+            with self.assertRaises(ValueError):
+                validate_config({**CONFIG, "times": invalid}, LAYER)
+        for domain in (0, -1, True, "38"):
+            with self.assertRaisesRegex(ValueError, "valueDomain"):
+                validate_config({**CONFIG, "output": {"valueDomain": domain}}, LAYER)
+
+
 if __name__ == "__main__":
     unittest.main()

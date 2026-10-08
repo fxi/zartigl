@@ -42,9 +42,11 @@ from render import (  # noqa: E402
     CATALOG_PATH,
     ROOT,
     fill_invalid_for_video,
+    open_arco_zarr,
     parse_iso,
     publish,
     required,
+    surface_index,
     uuid4,
     write_mask_png,
     zarr_source,
@@ -194,6 +196,19 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any]) -> dict[str, Any
     domain_percentile = float(output.get("domainPercentile", 99.9))
     if not 0 < domain_percentile <= 100:
         raise ValueError("output.domainPercentile must be within (0, 100]")
+    fixed_domain = output.get("valueDomain")
+    if fixed_domain is not None and (isinstance(fixed_domain, bool) or not isinstance(fixed_domain, (int, float))
+                                     or not math.isfinite(fixed_domain) or fixed_domain <= 0):
+        raise ValueError("output.valueDomain must be a positive number")
+    times = raw.get("times")
+    if times is not None:
+        if not isinstance(times, list) or len(times) < 2:
+            raise ValueError("times must list at least two exact source timestamps")
+        parsed = [parse_iso(str(value)) for value in times]
+        if any(later <= earlier for earlier, later in zip(parsed, parsed[1:])):
+            raise ValueError("times must be strictly increasing")
+        if not (start <= parsed[0] and parsed[-1] <= end):
+            raise ValueError("times must lie within dateStart/dateEnd")
     if factor < 1 or not 0 <= crf <= 51 or gop < 1 or fps <= 0 or transfer not in {"linear", "sqrt"}:
         raise ValueError("Invalid output settings")
     bounds = raw.get("bounds")
@@ -250,15 +265,13 @@ class VectorFrames:
     """Native time steps of a catalog vector source on a block-averaged, north-up grid."""
 
     def __init__(self, layer: dict[str, Any], config: dict[str, Any]):
-        import xarray as xr
-
         source = zarr_source(layer)
         self.variables = source["variables"]
         self.factor = config["output"]["factor"]
-        dataset = xr.open_zarr(source["endpoints"]["field"], consolidated=True, chunks=None, zarr_format=2)
+        dataset = open_arco_zarr(source["endpoints"]["field"])
         for dim in list(dataset.dims):
-            if dim not in {"time", "latitude", "longitude"} and dim in dataset.coords:
-                dataset = dataset.isel({dim: int(np.argmin(np.abs(dataset[dim].values)))})
+            if dim not in {"time", "latitude", "longitude"}:
+                dataset = dataset.isel({dim: surface_index(dataset, dim)})
         if config.get("bounds"):
             dataset = crop(dataset, config["bounds"], self.factor)
         self.dataset = dataset
@@ -266,7 +279,12 @@ class VectorFrames:
         start, end = parse_iso(config["dateStart"]), parse_iso(config["dateEnd"])
         selected = np.nonzero((times >= start) & (times <= end))[0]
         step = parse_step(config.get("step"))
-        if step is not None:
+        if config.get("times") is not None:
+            wanted = np.array([parse_iso(str(value)) for value in config["times"]], dtype="datetime64[ns]")
+            selected = np.nonzero(np.isin(times, wanted))[0]
+            if len(selected) != len(wanted):
+                raise ValueError("times are not all exact source timestamps")
+        elif step is not None:
             keep, next_time = [], None
             for index in selected:
                 if next_time is None or times[index] >= next_time:
@@ -390,6 +408,8 @@ def render(config: dict[str, Any], layer: dict[str, Any], directory: Path, max_f
     count = len(frames.times)
     print(f"{count} frames {frames.times[0]} -> {frames.times[-1]}, grid {frames.width}x{frames.height}", flush=True)
     domain, static_valid = value_domain(frames, float(config["output"].get("domainPercentile", 99.9)))
+    if config["output"].get("valueDomain") is not None:
+        domain = float(config["output"]["valueDomain"])
     transfer = config["output"]["transfer"]
     print(f"value domain ±{domain} {frames.unit}", flush=True)
     directory.mkdir(parents=True, exist_ok=True)

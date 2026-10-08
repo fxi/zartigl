@@ -1,0 +1,965 @@
+{
+  "upload": {
+    "prefix": "geovideo"
+  },
+  "archives": [
+    {
+      "sourceId": "4f0f1677-be89-4751-b2b5-c387a81c477a",
+      "catalogEntryId": "61a81ddd-6c8e-4020-a59f-06ef13a90419",
+      "title": "Ocean Current Velocity",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "factor": 3,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 1.2
+      }
+    },
+    {
+      "sourceId": "98157b79-2ffb-44b2-b067-36af80ce4cd5",
+      "catalogEntryId": "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
+      "title": "Surface Wind",
+      "windows": [
+        {
+          "rolling": "P60D"
+        },
+        {
+          "start": "2024-11-01T00:00:00Z",
+          "end": "2024-12-31T23:59:59Z"
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "factor": 2,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 20
+      }
+    },
+    {
+      "sourceId": "b13fd0be-3766-4e78-91f3-d0c0a6c79df8",
+      "catalogEntryId": "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
+      "title": "Surface Wind — Cyclone Chido (regional)",
+      "windows": [
+        {
+          "start": "2024-12-12T00:00:00Z",
+          "end": "2024-12-16T23:59:59Z"
+        }
+      ],
+      "bounds": [
+        25,
+        -35,
+        75,
+        5
+      ],
+      "output": {
+        "factor": 1,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 38
+      }
+    },
+    {
+      "sourceId": "35a8e696-157f-4faf-ad2d-1ac5dff1009e",
+      "catalogEntryId": "88f00432-ffad-4ebd-85ac-9f8de1ee5213",
+      "title": "Wave Stokes Drift",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "factor": 3,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 0.3
+      }
+    },
+    {
+      "sourceId": "a88028a4-8ea7-4d63-b164-7c2a56b2a46e",
+      "catalogEntryId": "bb38fd23-b0b0-4cd0-b59d-0224be3052f9",
+      "title": "Primary Swell Propagation",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "factor": 3,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 6.3
+      }
+    },
+    {
+      "sourceId": "03d4ad76-edbc-4c90-8c7f-78d86583c8e0",
+      "catalogEntryId": "40733539-e493-448e-80b5-2a7874f47b85",
+      "title": "Sea Ice Drift",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "factor": 3,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 0.34
+      }
+    },
+    {
+      "sourceId": "5250b6f9-d877-4e9e-a11a-f63205688b61",
+      "catalogEntryId": "5e94f1b2-1342-4a1f-936e-09170d7d4db8",
+      "title": "Sea Surface Temperature Anomaly",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "bounds": [
+        -180,
+        -80,
+        179.9166717529297,
+        90
+      ],
+      "output": {
+        "width": 2048,
+        "height": 1024,
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "5a2fbc5e-389a-49db-b4bf-eae7ee1f5d0d",
+      "catalogEntryId": "39296bd8-f93f-4fce-91ab-44faf9d91e90",
+      "title": "Phytoplankton (Chlorophyll-a)",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "4a339c9c-66eb-4528-a202-d1f8d5284791",
+      "catalogEntryId": "28599e51-320c-42f8-835a-02ad06f7a131",
+      "title": "Dissolved Inorganic Carbon",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "a7240768-e655-4de3-9f60-7ff7a85167be",
+      "catalogEntryId": "4609f41a-7089-4389-963f-38716335509b",
+      "title": "Ocean pH",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "2a998955-7f72-4ec4-9f22-cb433c115b6a",
+      "catalogEntryId": "287d265b-6342-4f4a-bd57-aa861f84a269",
+      "title": "Primary Production",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "aa076d8f-af69-4c87-8c95-e68eb661128b",
+      "catalogEntryId": "b38f7b2c-9ff4-4b3c-96ab-eb4c01e69a45",
+      "title": "Dissolved Oxygen",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "6eb2e47c-1627-49ff-9073-4a1de68135d0",
+      "catalogEntryId": "840609cc-28d2-42f8-afc7-5dfb322e93da",
+      "title": "Nitrate",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "25fcf580-fa4b-46d5-8231-95ca3abb941d",
+      "catalogEntryId": "83bfbf02-d5a4-40d6-8265-a16ef2c7a8a4",
+      "title": "Phosphate",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "6ea81ae4-618d-4602-957c-a027053d22e0",
+      "catalogEntryId": "04ad1cbd-3f21-4e84-845d-cd17930a49a2",
+      "title": "Surface CO2",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "1c21d5ae-ee20-47aa-aec0-30e69506bc9b",
+      "catalogEntryId": "3db0120b-17d2-4789-9952-efcc0953ecc4",
+      "title": "Sea Water Temperature",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "1cdd2e31-f466-4bf6-add0-adb948888c57",
+      "catalogEntryId": "95553290-0513-43bd-9806-a5bb060737b7",
+      "title": "Sea Water Salinity",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "6a271f03-c682-495b-a730-2b9140233b3e",
+      "catalogEntryId": "fa853610-4656-4308-a0c3-8a2ac546326f",
+      "title": "Upward Sea Water Velocity",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "e37da4a3-e5b2-4041-8484-99ddfb06a670",
+      "catalogEntryId": "ccb8500b-5bc1-41a1-acb3-cbd8cd758b92",
+      "title": "Mixed Layer Depth",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "f5593cbd-e555-4fcd-b1f6-2e3d25c25d2d",
+      "catalogEntryId": "056b72a3-08a9-4c54-a7e6-f21223182aee",
+      "title": "Primary Swell Period",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "8e457f46-45d9-4190-80bb-a252174cebe8",
+      "catalogEntryId": "67cc53f8-8810-42d9-adbf-bd28b16227c2",
+      "title": "Primary Swell Height",
+      "windows": [
+        {
+          "rolling": "P60D"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "2d53f9dd-cd8d-4031-9826-09f40ad0f959",
+      "catalogEntryId": "a7d9835c-0a80-4112-8b43-694e359384ac",
+      "title": "Sea Ice Thickness",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "bounds": [
+        -180,
+        45,
+        180,
+        90
+      ],
+      "output": {
+        "width": 2048,
+        "height": 256,
+        "crf": 8,
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "c67b6ca4-3924-456e-b197-16dc85daff25",
+      "catalogEntryId": "89f148bd-dd9d-4428-85ee-21f8af513627",
+      "title": "Baltic Bottom Oxygen",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "bounds": [
+        9.041542053222656,
+        53.008296966552734,
+        30.207401275634766,
+        65.8909912109375
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "width": 1024,
+        "height": 1024,
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "1de88e28-2847-4c2e-8f6c-883169fc5c7e",
+      "catalogEntryId": "f0812aa5-f9b6-4149-ab51-3de9d9d100c3",
+      "title": "Mediterranean Sea Water Temperature",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "743ef7b8-aed4-4871-9990-2f8418f520f2",
+      "catalogEntryId": "0e05907e-a3e9-4537-a68a-bc0780d261f2",
+      "title": "Mediterranean Sea Bottom Temperature",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "47a6002f-5660-4ab6-b78e-bf0ed3fec155",
+      "catalogEntryId": "7a499cff-5934-4145-96ac-27477faf58f0",
+      "title": "Mediterranean Sea Water Salinity",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "fbdc7c5d-40aa-4e2b-b58e-b3d97e34c44b",
+      "catalogEntryId": "ddf10ab0-2654-4c37-88d9-1bbd9b0ee947",
+      "title": "Mediterranean Sea Surface Height",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "7e6c6f46-b8ae-4a5d-95d2-be36aa462c92",
+      "catalogEntryId": "43fbd59e-060a-4797-8588-529d0fb79542",
+      "title": "Mediterranean Mixed Layer Depth",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "a87f3237-52ed-4a83-9579-7a62b8a463e7",
+      "catalogEntryId": "5c3c8139-bb64-46fc-847a-b3c0750b49b6",
+      "title": "Mediterranean Net Surface Heat Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "94284f8a-754e-4ad4-921a-3019f13f7617",
+      "catalogEntryId": "7f9843e3-a525-4fa0-b982-419e3e63d1d0",
+      "title": "Mediterranean Net Shortwave Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "e21f7e51-1aea-4c0a-8e5f-0df51a999f39",
+      "catalogEntryId": "123bd37b-f9ec-484c-adb9-e365e35c367f",
+      "title": "Mediterranean Net Longwave Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "d52db46a-45c9-4fd7-a7b5-267fc6579e70",
+      "catalogEntryId": "6f4bf0dc-7c62-4879-8fb7-a8e1d89fbde9",
+      "title": "Mediterranean Latent Heat Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "fcf9ced6-05ae-4ac1-a722-7215665920e4",
+      "catalogEntryId": "552aaa35-3255-4151-848c-8995409f8518",
+      "title": "Mediterranean Sensible Heat Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "8930edc4-ecb5-4b95-9044-911b0c371533",
+      "catalogEntryId": "9fce8c6e-f639-4fc9-9ae0-52d435a033ff",
+      "title": "Mediterranean Precipitation Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "4c25cbfe-0748-4104-a87c-572ab2b65f9e",
+      "catalogEntryId": "52b3d290-4da7-45ca-9a25-e35c61c6726e",
+      "title": "Mediterranean Evaporation Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "66b49e58-3d66-4fd5-9e44-2a2d485118e3",
+      "catalogEntryId": "7f60b714-82eb-4a1b-ae97-829923bbe97a",
+      "title": "Mediterranean Dissolved Inorganic Carbon",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "c2cf00bb-7c14-40e8-8757-37370b5493c9",
+      "catalogEntryId": "d6a9f6d0-479c-4bbd-b093-74b3ad88a4a9",
+      "title": "Mediterranean Total Alkalinity",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "d3fd3adb-f8d9-48b5-96e0-85f37cb6fa92",
+      "catalogEntryId": "213acff6-54fb-4be4-ad14-1e7cae1b926c",
+      "title": "Mediterranean Ocean pH",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "abae156e-0bd7-416a-940c-8faae9312c2b",
+      "catalogEntryId": "d9b6b74c-63d2-48a5-9be6-dc81e93a9468",
+      "title": "Mediterranean Surface CO₂ Partial Pressure",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "11964751-d798-4bd6-98c8-38b459e05a84",
+      "catalogEntryId": "94dd0605-52f3-43e9-a428-0d9b491253dc",
+      "title": "Mediterranean Air–Sea CO₂ Flux",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "776d6a01-3576-41cc-9e86-3d4c30f30340",
+      "catalogEntryId": "5b2d0fa7-a73f-4c0a-9ec0-a43b6fd00a53",
+      "title": "Mediterranean Nitrate",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "a7655702-31f0-47f0-b2d0-aed5b3fd00ec",
+      "catalogEntryId": "acf3b528-6915-4c3c-8a31-0d5200fc800b",
+      "title": "Mediterranean Ammonium",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "4101fcc1-9bb5-4fcd-a21c-dedc65510717",
+      "catalogEntryId": "7f1ca7a7-0ca4-45b2-bcb0-419cf3baca5e",
+      "title": "Mediterranean Phosphate",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "05401397-037c-49ef-81c6-d26f5ac289b9",
+      "catalogEntryId": "dc379e9d-c53a-4456-b62e-892c4755c336",
+      "title": "Mediterranean Chlorophyll-a (Reanalysis)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "0aa7cb1f-117e-47f1-ab74-945537893c53",
+      "catalogEntryId": "fd5977e0-4a6a-4fcd-b9c8-d9c88e0c57bc",
+      "title": "Mediterranean Phytoplankton Carbon",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "f51e03a3-712d-4ae4-a552-d082f054801a",
+      "catalogEntryId": "92e90806-496c-466c-b0c7-0d22f74bdc1c",
+      "title": "Mediterranean Dissolved Oxygen",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "db577c1e-42fc-4ca6-9fe6-b76b319015c7",
+      "catalogEntryId": "26ff90d9-fc53-44f7-bc96-35b8a135933a",
+      "title": "Mediterranean Net Primary Production (Reanalysis)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "6f350879-4684-4a11-9a8d-411748cde9d7",
+      "catalogEntryId": "fb2f7a2b-3e20-45f5-bea3-fdaaeb964226",
+      "title": "Mediterranean Significant Wave Height",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "abbce022-e9cf-4f83-bb32-9edec196ff32",
+      "catalogEntryId": "bc4c2a48-eba3-470e-a37e-7ed8ac67c58a",
+      "title": "Mediterranean Wave Mean Period",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "b59c1e11-da3d-4cab-9ce4-efd79094374c",
+      "catalogEntryId": "98f55236-7380-4430-9d5b-9bc011546ea7",
+      "title": "Mediterranean Wave Peak Period",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "9216bc20-a130-460d-8005-25cac805e08c",
+      "catalogEntryId": "fa73cf0e-f78e-4f46-8a06-23a13f4cccbe",
+      "title": "Mediterranean Wind Wave Height",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "ca2a5fa0-6a0b-4050-ba3a-0155d552077d",
+      "catalogEntryId": "255de3fe-a0fe-491a-a35c-e605953d8b62",
+      "title": "Mediterranean Primary Swell Height",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "c82a3a55-c5c1-4de5-ad14-8d6c21519f52",
+      "catalogEntryId": "724706e2-924c-4ae6-9bdb-8f4128324245",
+      "title": "Mediterranean Secondary Swell Height",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "6ce11edc-f2db-485b-9187-392cf9638f24",
+      "catalogEntryId": "075b8ee5-c521-4eee-91cb-0d0a3ec7d93a",
+      "title": "European Seas Sea Level Anomaly",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "7bb0c2ae-ccea-4edb-93cd-3a1c1696d899",
+      "catalogEntryId": "7bf14fbb-f7bf-44e2-8f88-dbe72480d3b1",
+      "title": "Mediterranean Chlorophyll-a (Satellite, 1 km)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "70b6748e-5ed1-4456-8952-c09ec0d5ca22",
+      "catalogEntryId": "1508bd3a-5a24-4499-a329-7cfc77d8259a",
+      "title": "Mediterranean Primary Production (Satellite, 4 km)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "framesPerSample": 2,
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "c049fd05-3596-48bc-95b0-daecc774c292",
+      "catalogEntryId": "688114b5-3118-4617-8306-6bfa00a8b233",
+      "title": "Mediterranean Sea Surface Temperature (Satellite)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "output": {
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "85f82a7d-215d-4383-b4ae-b08712a03cbd",
+      "catalogEntryId": "35bd7fd2-747c-4d10-a704-181f4538f935",
+      "title": "Mediterranean Ocean Current Velocity",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "output": {
+        "factor": 1,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 0.5
+      }
+    },
+    {
+      "sourceId": "fdf758b0-b198-4dba-b363-f7227253eb32",
+      "catalogEntryId": "7c8fa700-91cf-4365-bbda-52b445bb87ad",
+      "title": "Mediterranean Surface Wind Stress",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "output": {
+        "factor": 1,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 0.24
+      }
+    },
+    {
+      "sourceId": "6936e31b-3a1d-4ba3-b99e-f150815d48ee",
+      "catalogEntryId": "cd27eb64-c6d0-4dfa-83ab-a2a731d1b16a",
+      "title": "Mediterranean Wave Stokes Drift",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "factor": 1,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 0.33
+      },
+      "bounds": [
+        -18.125,
+        30.1875,
+        36.29166793823242,
+        45.97916793823242
+      ]
+    },
+    {
+      "sourceId": "df45a7d5-a7c4-42d1-9bad-afdc86848ec8",
+      "catalogEntryId": "9e1a9c3a-e5ba-40a6-8a43-fad9720fcbc3",
+      "title": "Mediterranean Primary Swell Propagation",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "step": "PT3H",
+      "output": {
+        "factor": 1,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 5.2
+      },
+      "bounds": [
+        -18.125,
+        30.1875,
+        36.29166793823242,
+        45.97916793823242
+      ]
+    }
+  ]
+}

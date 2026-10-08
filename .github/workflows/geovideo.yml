@@ -1,0 +1,64 @@
+name: GeoVideo archive
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Archive sourceId from scripts/geovideo/archive.json (empty for all)
+        required: false
+      budget:
+        description: Time after which no new chunk starts, e.g. 90m or 20h
+        default: 5h
+      dry-run:
+        description: Plan only
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One writer per index.
+concurrency:
+  group: geovideo-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: [self-hosted, bigproc]
+    # Hang guard; the budget bounds normal runs and unfinished chunks resume next run.
+    timeout-minutes: 1440
+    env:
+      SOURCE: ${{ inputs.source }}
+      BUDGET: ${{ inputs.budget || '5h' }}
+      S3_KEY: ${{ secrets.S3_KEY }}
+      S3_SECRET: ${{ secrets.S3_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check tools
+        run: |
+          uv --version
+          ffmpeg -hide_banner -encoders | grep -q libx264
+          ffprobe -version | head -1
+
+      - run: npm run test:geovideo
+
+      - name: Plan
+        run: |
+          mkdir -p artifacts
+          npm run --silent geovideo:plan -- ${SOURCE:+--source "$SOURCE"} | tee artifacts/geovideo-plan.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geovideo-plan
+          path: artifacts/geovideo-plan.json
+
+      - name: Render and publish
+        if: ${{ !inputs.dry-run }}
+        run: npm run geovideo:run -- --budget "$BUDGET" ${SOURCE:+--source "$SOURCE"}

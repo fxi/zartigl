@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,9 @@ from urllib.request import urlopen
 
 import numpy as np
 import xarray as xr
-from fsspec.implementations.http import HTTPFileSystem
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from arco_zarr import open_arco_zarr  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src/catalog/catalog.json"
@@ -48,18 +51,8 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-class PublicArcoHttpFileSystem(HTTPFileSystem):
-    """Treat CloudFerro's 403 for absent sparse chunks as a normal missing key."""
-
-    def _raise_not_found_for_status(self, response: Any, url: str) -> None:
-        if response.status in (403, 404):
-            raise FileNotFoundError(url)
-        super()._raise_not_found_for_status(response, url)
-
-
 def open_http_zarr(url: str) -> xr.Dataset:
-    mapper = PublicArcoHttpFileSystem().get_mapper(url)
-    return xr.open_zarr(mapper, consolidated=True, chunks="auto", zarr_format=2)
+    return open_arco_zarr(url, chunks="auto")
 
 
 def catalog_layer(layer_id: str) -> dict[str, Any]:

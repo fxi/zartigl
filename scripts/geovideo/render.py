@@ -3,12 +3,12 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #   "boto3>=1.35",
-#   "fsspec>=2025.3",
+#   "fsspec[http]>=2025.3",
 #   "numpy>=2.0",
 #   "requests>=2.32",
 #   "s3fs>=2025.3",
 #   "xarray>=2025.1",
-#   "zarr>=2.18,<3",
+#   "zarr>=3",
 # ]
 # ///
 """Generate and optionally publish a scalar GeoVideo artifact.
@@ -40,6 +40,9 @@ import zlib
 import numpy as np
 import requests
 import xarray as xr
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from arco_zarr import open_arco_zarr  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
@@ -137,9 +140,13 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError("durationSeconds must be a finite positive number")
     else:
-        if not isinstance(sampling, dict) or sampling.get("kind") not in {"annual-month", "monthly"}:
-            raise ValueError("sampling.kind must be annual-month or monthly")
-        if sampling["kind"] == "annual-month":
+        if not isinstance(sampling, dict) or sampling.get("kind") not in {"annual-month", "monthly", "native"}:
+            raise ValueError("sampling.kind must be annual-month, monthly, or native")
+        if sampling["kind"] == "native":
+            sampling = {**sampling, "values": native_sample_values(sampling.get("values"))}
+            sampling["sampleCount"] = len(sampling["values"])
+            sampling["framesPerSample"] = positive_frames_per_sample(sampling)
+        elif sampling["kind"] == "annual-month":
             month = int(required(sampling, "month"))
             year_start = int(required(sampling, "yearStart"))
             year_end = int(required(sampling, "yearEnd"))
@@ -159,14 +166,7 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
             sample_start = str(required(sampling, "dateStart"))
             sample_end = str(required(sampling, "dateEnd"))
             sample_count = monthly_sample_count(sample_start, sample_end)
-            raw_frames_per_sample = sampling.get("framesPerSample", 1)
-            if (
-                isinstance(raw_frames_per_sample, bool)
-                or not isinstance(raw_frames_per_sample, int)
-                or raw_frames_per_sample < 1
-            ):
-                raise ValueError("sampling.framesPerSample must be a positive integer")
-            frames_per_sample = raw_frames_per_sample
+            frames_per_sample = positive_frames_per_sample(sampling)
             sampling = {
                 **sampling,
                 "dateStart": sample_start,
@@ -194,6 +194,10 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
     preset = str(output.get("preset", "fast"))
     if preset not in {"medium", "fast", "faster", "veryfast"}:
         raise ValueError("output.preset must be medium, fast, faster, or veryfast")
+    # psnr disables psychovisual tuning, which trades numeric fidelity for perceived quality.
+    tune = output.get("tune")
+    if tune not in {None, "psnr", "ssim"}:
+        raise ValueError("output.tune must be psnr or ssim")
     if width < 2 or height < 2 or width % 2 or height % 2 or fps <= 0:
         raise ValueError("Output width/height must be positive even numbers and fps must be positive")
     if not 0 <= crf <= 51:
@@ -224,6 +228,7 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
             "crf": crf,
             "maxBitrate": max_bitrate,
             "preset": preset,
+            **({"tune": tune} if tune else {}),
             "directory": str(output.get("directory", "artifacts/geovideo")),
         },
         "style": style,
@@ -232,6 +237,23 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
         result["dateStart"] = start
         result["dateEnd"] = end
     return result
+
+
+def positive_frames_per_sample(sampling: dict[str, Any]) -> int:
+    value = sampling.get("framesPerSample", 1)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError("sampling.framesPerSample must be a positive integer")
+    return value
+
+
+def native_sample_values(values: Any) -> list[str]:
+    """Exact source timestamps, strictly increasing; the archive resolves them from the store."""
+    if not isinstance(values, list) or not values:
+        raise ValueError("native sampling requires a non-empty values list")
+    parsed = [parse_iso(str(value)) for value in values]
+    if any(later <= earlier for earlier, later in zip(parsed, parsed[1:])):
+        raise ValueError("native sampling values must be strictly increasing")
+    return [str(value) for value in values]
 
 
 def artifact_hash(config: dict[str, Any], layer: dict[str, Any]) -> str:
@@ -278,13 +300,20 @@ def validate_monthly_samples(values: np.ndarray, start: np.datetime64, end: np.d
     return normalized
 
 
+def surface_index(dataset: Any, dimension: str) -> int:
+    """Vertical level nearest the surface; stores order depth or elevation either way."""
+    if dimension not in dataset.coords:
+        return 0
+    return int(np.argmin(np.abs(np.asarray(dataset[dimension].values, dtype=np.float64))))
+
+
 class ScalarFrames:
     def __init__(self, layer: dict[str, Any], config: dict[str, Any]):
         self.layer = layer
         self.config = config
         source = zarr_source(layer)
         store = source["endpoints"]["field"]
-        self.dataset = xr.open_zarr(store, consolidated=True, chunks=None)
+        self.dataset = open_arco_zarr(store)
         self.variable = source["variables"]["value"]
         if self.variable not in self.dataset:
             raise ValueError(f"Variable not found in store: {self.variable}")
@@ -292,7 +321,7 @@ class ScalarFrames:
         self.unit = str(self.data.attrs.get("units", ""))
         for dimension in list(self.data.dims):
             if dimension not in {"time", "latitude", "longitude"}:
-                self.data = self.data.isel({dimension: 0})
+                self.data = self.data.isel({dimension: surface_index(self.dataset, dimension)})
         self.data = self.data.transpose("time", "latitude", "longitude")
         self.times = normalize_times(np.asarray(self.dataset["time"].values))
         self.samples = self._resolve_sample_times()
@@ -316,6 +345,12 @@ class ScalarFrames:
         if sampling is None:
             return None
         timestamps = self.dataset["time"]
+        if sampling["kind"] == "native":
+            wanted = np.array([parse_iso(value) for value in sampling["values"]], dtype="datetime64[ns]")
+            missing = wanted[~np.isin(wanted, self.times)]
+            if missing.size:
+                raise ValueError(f"native sampling values are not source timestamps: {missing[:3].tolist()}")
+            return wanted
         if sampling["kind"] == "monthly":
             start = parse_iso(sampling["dateStart"])
             end = parse_iso(sampling["dateEnd"])
@@ -499,6 +534,7 @@ def ffmpeg_command(config: dict[str, Any], output: Path) -> list[str]:
         "-f", "rawvideo", "-pix_fmt", "rgb24",
         "-s", f"{width}x{height}", "-r", str(fps), "-i", "-", "-an",
         "-c:v", "libx264", "-preset", config["output"]["preset"], "-crf", str(config["output"]["crf"]),
+        *(["-tune", config["output"]["tune"]] if config["output"].get("tune") else []),
         "-maxrate", config["output"]["maxBitrate"], "-bufsize", "16M",
         "-g", str(max(1, round(fps * 2))), "-pix_fmt", "yuv420p",
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
@@ -721,7 +757,8 @@ def require_bucket_cors(client: Any, bucket: str) -> None:
     raise RuntimeError(f"Bucket {bucket} CORS does not allow GET/HEAD Range reads exposing Content-Range")
 
 
-def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
+def s3_client() -> tuple[Any, dict[str, str]]:
+    """S3 client and settings: public defaults from .env.demo, credentials from .env or the environment."""
     import boto3
 
     env = {**read_dotenv(ROOT / ".env.demo"), **read_dotenv(ROOT / ".env"), **os.environ}
@@ -735,9 +772,15 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
         aws_access_key_id=env["S3_KEY"],
         aws_secret_access_key=env["S3_SECRET"],
     )
+    return client, env
+
+
+def publish(directory: Path, config: dict[str, Any], artifact_id: str, object_prefix: str | None = None) -> str:
+    client, env = s3_client()
     require_bucket_cors(client, env["S3_BUCKET"])
-    prefix = config.get("upload", {}).get("prefix", "geovideo")
-    object_prefix = f"{prefix.strip('/')}/{config['catalogEntryId']}/{artifact_id}"
+    if object_prefix is None:
+        prefix = config.get("upload", {}).get("prefix", "geovideo")
+        object_prefix = f"{prefix.strip('/')}/{config['catalogEntryId']}/{artifact_id}"
     media = directory / "video.mp4"
     mask = directory / "mask.png"
     manifest = directory / "manifest.json"
@@ -810,51 +853,10 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str) -> str:
     raise RuntimeError("Published objects are not browser-readable: " + "; ".join(errors))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("config", type=Path)
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--upload", action="store_true")
-    parser.add_argument("--upload-only", action="store_true", help="Publish an already generated artifact")
-    parser.add_argument("--max-frames", type=int, help="Render only the first N frames for smoke tests")
-    args = parser.parse_args()
-
-    raw_config = json.loads(args.config.read_text())
-    layer = load_layer(str(required(raw_config, "catalogEntryId")))
-    config = validate_config(raw_config, layer)
-    artifact_id = artifact_hash(config, layer)
-    output_root = Path(config["output"]["directory"])
-    if not output_root.is_absolute():
-        output_root = ROOT / output_root
-    directory = output_root / f"{config['catalogEntryId']}-{artifact_id}"
-    frame_count = round(config["durationSeconds"] * config["output"]["fps"])
-    if args.max_frames is not None:
-        frame_count = min(frame_count, max(1, args.max_frames))
-    summary = {
-        "artifactId": artifact_id,
-        "directory": str(directory),
-        "frames": frame_count,
-        "mediaSize": [config["output"]["width"], config["output"]["height"]],
-        "estimatedRawBytes": frame_count * config["output"]["width"] * config["output"]["height"] * 3,
-        "resolvedStyle": config["style"],
-    }
-    print(json.dumps(summary, indent=2))
-    if args.dry_run:
-        return 0
-
-    if args.upload_only:
-        video_path = directory / "video.mp4"
-        mask_path = directory / "mask.png"
-        manifest_path = directory / "manifest.json"
-        report_path = directory / "report.json"
-        if not video_path.exists() or not mask_path.exists() or not manifest_path.exists():
-            raise RuntimeError(f"Generated artifact not found: {directory}")
-        probe_media(video_path, config, config["durationSeconds"])
-        validate_value_report(report_path)
-        url = publish(directory, config, artifact_id)
-        print(json.dumps({"manifestUrl": url}, indent=2))
-        return 0
-
+def render_artifact(
+    config: dict[str, Any], layer: dict[str, Any], directory: Path, frame_count: int, summary: dict[str, Any],
+) -> dict[str, Any]:
+    """Encode, validate, and write video, mask, manifest, and report; return the manifest."""
     directory.mkdir(parents=True, exist_ok=True)
     video_path = directory / "video.mp4"
     mask_path = directory / "mask.png"
@@ -942,7 +944,56 @@ def main() -> int:
         "manifest": manifest,
     }
     (directory / "report.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps({"video": str(video_path), "manifest": str(directory / "manifest.json")}, indent=2))
+    return manifest
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("config", type=Path)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--upload", action="store_true")
+    parser.add_argument("--upload-only", action="store_true", help="Publish an already generated artifact")
+    parser.add_argument("--max-frames", type=int, help="Render only the first N frames for smoke tests")
+    args = parser.parse_args()
+
+    raw_config = json.loads(args.config.read_text())
+    layer = load_layer(str(required(raw_config, "catalogEntryId")))
+    config = validate_config(raw_config, layer)
+    artifact_id = artifact_hash(config, layer)
+    output_root = Path(config["output"]["directory"])
+    if not output_root.is_absolute():
+        output_root = ROOT / output_root
+    directory = output_root / f"{config['catalogEntryId']}-{artifact_id}"
+    frame_count = round(config["durationSeconds"] * config["output"]["fps"])
+    if args.max_frames is not None:
+        frame_count = min(frame_count, max(1, args.max_frames))
+    summary = {
+        "artifactId": artifact_id,
+        "directory": str(directory),
+        "frames": frame_count,
+        "mediaSize": [config["output"]["width"], config["output"]["height"]],
+        "estimatedRawBytes": frame_count * config["output"]["width"] * config["output"]["height"] * 3,
+        "resolvedStyle": config["style"],
+    }
+    print(json.dumps(summary, indent=2))
+    if args.dry_run:
+        return 0
+
+    if args.upload_only:
+        video_path = directory / "video.mp4"
+        mask_path = directory / "mask.png"
+        manifest_path = directory / "manifest.json"
+        report_path = directory / "report.json"
+        if not video_path.exists() or not mask_path.exists() or not manifest_path.exists():
+            raise RuntimeError(f"Generated artifact not found: {directory}")
+        probe_media(video_path, config, config["durationSeconds"])
+        validate_value_report(report_path)
+        url = publish(directory, config, artifact_id)
+        print(json.dumps({"manifestUrl": url}, indent=2))
+        return 0
+
+    render_artifact(config, layer, directory, frame_count, summary)
+    print(json.dumps({"video": str(directory / "video.mp4"), "manifest": str(directory / "manifest.json")}, indent=2))
     if args.upload:
         url = publish(directory, config, artifact_id)
         print(json.dumps({"manifestUrl": url}, indent=2))

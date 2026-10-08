@@ -73,16 +73,20 @@ reduce it; giving the encoder more headroom at the standard CRF fixes this
 class of failure. `sst-anomaly.json`'s `maxBitrate: "24M"` is a resolved
 instance of this.
 
+Set `output.tune: "psnr"` for archives: it disables x264's psychovisual
+tuning, which trades numeric fidelity for perceived quality. Exact daily SST
+anomaly fields failed the budget (max 17–20) at CRF 10–12 whatever the
+ceiling, because the 16M VBV buffer starves low CRF; CRF 8 with a 48M ceiling
+and `tune: psnr` passes with margin (max ≈ 11) at about 6 MB per month.
+
 `report.json` also records source extrema and counts outside the provider
 display domain. Those values follow the provider's declared clamp semantics;
 GeoVideo reports them without inventing a scientific correction.
 
-`validate_remote.py` checks catalog defaults against the live provider WMTS
-legend, but nothing checks a deployed artifact's `manifestUrl` against the
-catalog's current `defaults.raster`/`palette`. After changing those defaults
-for an entry with a GeoVideo source, re-render, re-upload, and update
-`manifestUrl` by hand — there is no automated check that catches drift
-between a published artifact and current catalog defaults.
+Single artifacts referenced by `manifestUrl` are not checked against later
+catalog changes: after changing `defaults.raster.colorDomain` for such an
+entry, re-render, re-upload, and update `manifestUrl` by hand. Archive sources
+(below) detect and repair this drift themselves.
 
 For a cheap end-to-end check, copy the example, lower its resolution/duration,
 and pass `--max-frames 2`. `--max-frames` is intentionally a smoke-test option:
@@ -170,3 +174,60 @@ Point queries always use Zarr.
 
 `vector_lab.py` measures codec losses and exports the side-by-side browser lab
 (`npm run dev:geovideo-vector`).
+
+## Incremental archive
+
+`archive.py` maintains GeoVideo for whole time windows as immutable,
+calendar-aligned chunks plus one mutable index per archive source. It reuses
+both renderers and their validation; nothing is published unless it passes.
+
+```bash
+npm run geovideo:plan                       # required, present, and pending chunks
+npm run geovideo:run -- --budget 90m        # render, publish, and index pending chunks
+npm run geovideo:run -- --source <uuid> --max-chunks 1
+uv run scripts/geovideo/archive.py domain --source <uuid>   # suggest a vector valueDomain
+npm run test:geovideo
+```
+
+Policies live in `archive.json`, keyed by an archive `sourceId`:
+
+- `windows`: any of `{ "full": true }`, `{ "rolling": "P60D" }`, or
+  `{ "start": …, "end": … }`. A window selects every calendar chunk it
+  touches, and a chunk holds all source timestamps of its period up to now, so
+  "ten days in March 2025" publishes March 2025. Forecast steps are excluded.
+- `chunk`: optional; by default live sources use monthly chunks (a growing
+  chunk is re-rendered at each new timestamp) and final historical data uses
+  monthly (hourly), yearly (daily), or decade (monthly) chunks.
+- `step` (`PTnH`/`PnD`, anchored to the epoch), `bounds`, `output`, and
+  scalar `framesPerSample`. Scalar size defaults to the native grid within
+  2048×1024. Vector archives pin `output.valueDomain` so particle speeds and
+  colors stay continuous across chunks.
+- `revisionHorizon`: defaults to `P10D` for non-historical sources. Chunks
+  whose last sample is that recent carry a daily stamp and are re-rendered until
+  they settle.
+
+A chunk key hashes the encoding profile (store URL including the dataset
+version, variables, color domain or vector settings, bounds, output) and the
+exact timestamps. Palette and vibrance are excluded because the browser applies
+them; zartigl takes the palette from catalog defaults. A key already in the
+index is never rendered again; a changed key re-renders its period, which also
+repairs drift after a catalog or upstream change.
+
+Objects live under `geovideo/<entryId>/<sourceId>/<key>/` with
+`geovideo/<entryId>/<sourceId>/index.json` beside them. Chunks are uploaded
+before the index (short cache lifetime) is rewritten; a replaced chunk is
+deleted one day later so cached indexes stay valid. Runs are round-robin
+across archives, newest chunk first, and stop starting chunks when the budget
+is spent; the next run resumes. A failing chunk pauses only its archive and
+fails the run.
+
+To serve an archive, add a GeoVideo source with `indexUrl` (and no
+`manifestUrl`) to the catalog entry once its index exists. zartigl expands it
+to one fixed-period source per chunk; times between or outside chunks, depths
+below the surface, and point queries use Zarr. `validate_catalog.py` requires
+every catalog `indexUrl` source to have an `archive.json` policy.
+
+`.github/workflows/geovideo.yml` runs the archive daily and on demand on the
+`[self-hosted, bigproc]` runner (ffmpeg with libx264, uv, Node). It needs the
+`S3_KEY` and `S3_SECRET` repository secrets; endpoint and bucket come from
+`.env.demo`.

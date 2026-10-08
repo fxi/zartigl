@@ -1,8 +1,16 @@
 import unittest
 
 import numpy as np
+import xarray as xr
 
-from render import ScalarFrames, create_manifest, require_bucket_cors, validate_config, validate_monthly_samples
+from render import (
+    ScalarFrames,
+    create_manifest,
+    require_bucket_cors,
+    surface_index,
+    validate_config,
+    validate_monthly_samples,
+)
 
 
 class GeoVideoSamplingTest(unittest.TestCase):
@@ -86,6 +94,33 @@ class GeoVideoSamplingTest(unittest.TestCase):
         self.assertEqual(result["sampling"]["sampleCount"], 385)
         self.assertEqual(result["durationSeconds"], 770 / 24)
 
+    def test_native_sampling_encodes_exact_source_timestamps(self):
+        config = self.config()
+        config["sampling"] = {
+            "kind": "native",
+            "values": ["2024-01-01T00:00:00Z", "2024-01-02T00:00:00Z", "2024-01-03T00:00:00Z"],
+            "framesPerSample": 2,
+        }
+        result = validate_config(config)
+        self.assertEqual(result["sampling"]["sampleCount"], 3)
+        self.assertEqual(result["durationSeconds"], 6 / 24)
+        config["sampling"]["values"] = ["2024-01-02T00:00:00Z", "2024-01-01T00:00:00Z"]
+        with self.assertRaisesRegex(ValueError, "strictly increasing"):
+            validate_config(config)
+        config["sampling"]["values"] = []
+        with self.assertRaisesRegex(ValueError, "non-empty"):
+            validate_config(config)
+
+    def test_native_sampling_requires_source_timestamps(self):
+        frames = ScalarFrames.__new__(ScalarFrames)
+        frames.times = np.array(["2024-01-01", "2024-01-02"], dtype="datetime64[ns]")
+        frames.dataset = {"time": None}
+        frames.config = {"sampling": {"kind": "native", "values": ["2024-01-01T00:00:00Z", "2024-01-01T12:00:00Z"]}}
+        with self.assertRaisesRegex(ValueError, "not source timestamps"):
+            frames._resolve_sample_times()
+        frames.config["sampling"]["values"] = ["2024-01-02T00:00:00Z"]
+        np.testing.assert_array_equal(frames._resolve_sample_times(), frames.times[1:])
+
     def test_monthly_sampling_rejects_missing_or_duplicate_months(self):
         start = np.datetime64("2024-01-01", "ns")
         end = np.datetime64("2024-03-01", "ns")
@@ -111,6 +146,15 @@ class GeoVideoSamplingTest(unittest.TestCase):
         frames.config = {"interpolation": "linear"}
         frames._slice = lambda index: np.array([index], dtype=np.float32)
         np.testing.assert_array_equal(frames._frame_at(frames.times[1]), np.array([1], dtype=np.float32))
+
+
+class SurfaceIndexTest(unittest.TestCase):
+    def test_picks_the_level_nearest_the_surface_in_either_order(self):
+        depth = xr.Dataset(coords={"depth": [0.5, 10.0, 100.0]})
+        elevation = xr.Dataset(coords={"elevation": [-4000.0, -100.0, -1.5]})
+        self.assertEqual(surface_index(depth, "depth"), 0)
+        self.assertEqual(surface_index(elevation, "elevation"), 2)
+        self.assertEqual(surface_index(xr.Dataset(), "level"), 0)
 
 
 class FakeCorsClient:
