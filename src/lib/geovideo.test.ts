@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  geoVideoNativeStepsPerSecond,
+  geoVideoPlaybackRate,
   geoVideoSecondsForTime,
   geoVideoTimeForSeconds,
   geoVideoTimelineValues,
@@ -85,6 +87,17 @@ const vectorManifest: GeoVideoManifest = {
   },
   style: { palette: "viridis", colorDomain: [0, 2 * Math.SQRT2], unit: "m" },
 };
+
+describe("GeoVideo playback speed", () => {
+  it("expresses speed in time steps per second on any artifact", () => {
+    // Two samples over 0.5 s of media: four steps per second at rate 1.
+    expect(geoVideoNativeStepsPerSecond(vectorManifest)).toBe(4);
+    expect(geoVideoPlaybackRate(vectorManifest, 1)).toBe(0.25);
+    // Range timelines advance one frame per step.
+    expect(geoVideoNativeStepsPerSecond(manifest)).toBe(24);
+    expect(geoVideoPlaybackRate(manifest, 48)).toBe(2);
+  });
+});
 
 describe("GeoVideo manifest", () => {
   it("validates a scalar-luma video with an external static mask", () => {

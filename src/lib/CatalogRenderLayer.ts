@@ -33,6 +33,7 @@ type LayerEventMap = {
   cacheInvalidated: () => void;
   timeChange: (time: number) => void;
   playbackChange: (playing: boolean) => void;
+  playbackEnd: () => void;
 };
 
 export type CatalogRenderLayerDebugInfo = {

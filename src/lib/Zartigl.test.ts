@@ -426,12 +426,18 @@ describe("Zartigl facade", () => {
     );
 
     expect(z.getSource()).toEqual({ id: GEO_VIDEO_ID, type: "geovideo" });
-    expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
-    expect(z.getTimeMeta()).toMatchObject({
-      size: 3,
-      timelineKind: "sample-sequence",
-    });
-    expect(z.getDepthMeta().values).toEqual([]);
+    // Zarr is read only for its axes, so time and depth controls reach it.
+    expect(ZarrSource.prototype.init).toHaveBeenCalledOnce();
+    const timeMeta = z.getTimeMeta();
+    expect(timeMeta.timelineKind).toBe("sample-sequence");
+    expect(timeMeta.values).toEqual(
+      expect.arrayContaining(manifest.timeline.values.map(Date.parse)),
+    );
+    expect(timeMeta.size).toBeGreaterThan(3);
+    expect(timeMeta.current).toBe(Date.parse("2026-08-01T00:00:00Z"));
+    const depthMeta = z.getDepthMeta();
+    expect(depthMeta.values.length).toBeGreaterThan(1);
+    expect(depthMeta.current).toBe(depthMeta.values[0]);
     expect(z.getLegend()).toMatchObject({ min: 0, max: 2.83, unit: "m s-1" });
     const rendered = map.layers.get(z.getDebugInfo().id) as CatalogRenderLayer;
     expect(rendered.getBackend()).toBe("vector-geovideo");
@@ -794,6 +800,86 @@ describe("Zartigl facade", () => {
       now.mockReturnValue(1_000_000 + 61_000 + 5 * 60_000 + 1);
       await z.update({ time: "2026-09-10T00:00:00Z" });
       expect(indexRequests()).toBe(2);
+    });
+
+    it("spans the Zarr time and depth axes while a chunk is shown", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      const timeMeta = z.getTimeMeta();
+      expect(timeMeta.values).toEqual(
+        expect.arrayContaining([...chunks.august.map(Date.parse), 0]),
+      );
+      expect(timeMeta.current).toBe(Date.parse(chunks.august[0]));
+      expect(z.getDepthMeta().values.length).toBeGreaterThan(1);
+
+      await z.update({ depth: 20 });
+      expect(z.getSource()?.type).toBe("zarr");
+    });
+
+    it("plays on into the next chunk, then loops to the first", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      const play = vi.spyOn(z, "play").mockResolvedValue();
+      const continuePlayback = () =>
+        (
+          z as unknown as { continueArchivePlayback: () => Promise<void> }
+        ).continueArchivePlayback();
+
+      await continuePlayback();
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/september/manifest.json",
+      );
+      expect(play).toHaveBeenCalledOnce();
+
+      await continuePlayback();
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/august/manifest.json",
+      );
+      expect(play).toHaveBeenCalledTimes(2);
+
+      await z.update({ geoVideo: { loop: false } });
+      await z.update({ time: "2026-09-10T00:00:00Z" });
+      const requests = manifestRequests().length;
+      await continuePlayback();
+      expect(manifestRequests()).toHaveLength(requests);
+      expect(play).toHaveBeenCalledTimes(2);
+    });
+
+    it("maps steps per second to the chunk's media rate", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+          geoVideo: { stepsPerSecond: 2 },
+        },
+        GEO_ENTRY_ID,
+      );
+      // Two samples over 0.5 s of media: four native steps per second.
+      expect(z.getDebugInfo().geoVideo).toMatchObject({
+        stepsPerSecond: 2,
+        playbackRate: 0.5,
+      });
+      await z.update({ geoVideo: { playbackRate: 3 } });
+      expect(z.getDebugInfo().geoVideo).toMatchObject({
+        stepsPerSecond: null,
+        playbackRate: 3,
+      });
+      await expect(
+        z.update({ geoVideo: { stepsPerSecond: 0 } }),
+      ).rejects.toThrow("Steps per second must be positive");
     });
 
     it("falls back to Zarr when the index is unavailable", async () => {

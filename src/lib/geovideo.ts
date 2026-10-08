@@ -305,6 +305,27 @@ export function geoVideoTimelineValues(manifest: GeoVideoManifest): number[] {
   );
 }
 
+/** Time steps the media advances per second at playback rate 1. */
+export function geoVideoNativeStepsPerSecond(
+  manifest: GeoVideoManifest,
+): number {
+  if (manifest.timeline.kind === "sample-sequence") {
+    return manifest.timeline.values.length / manifest.media.durationSeconds;
+  }
+  return manifest.media.fps;
+}
+
+/**
+ * Media playback rate showing `stepsPerSecond` time steps per second, so a
+ * speed means the same on monthly and hourly artifacts.
+ */
+export function geoVideoPlaybackRate(
+  manifest: GeoVideoManifest,
+  stepsPerSecond: number,
+): number {
+  return stepsPerSecond / geoVideoNativeStepsPerSecond(manifest);
+}
+
 export function geoVideoSecondsForTime(
   manifest: GeoVideoManifest,
   timeMs: number,

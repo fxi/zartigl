@@ -26,7 +26,14 @@ import type { FieldMeta } from "./types";
 import type { ZartiglStatus } from "./load-status";
 
 const GRID_LON_SEGMENTS = 128;
+/** Media playback rates browsers accept; slower speeds step through samples. */
+const MIN_MEDIA_RATE = 1 / 16;
+const MAX_MEDIA_RATE = 16;
 const GRID_LAT_SEGMENTS = 64;
+
+function clampMediaRate(rate: number): number {
+  return Math.max(MIN_MEDIA_RATE, Math.min(MAX_MEDIA_RATE, rate));
+}
 
 function geoVideoTimelineBounds(manifest: GeoVideoManifest): [number, number] {
   if (manifest.timeline.kind === "snapshot-loop") {
@@ -73,6 +80,8 @@ type GeoVideoEventMap = {
   status: (status: ZartiglStatus) => void;
   timeChange: (time: number) => void;
   playbackChange: (playing: boolean) => void;
+  /** Playback reached the end of the timeline without looping. */
+  playbackEnd: () => void;
 };
 
 export interface GeoVideoLayerOptions {
@@ -176,6 +185,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
   private lastUploadDurationMs = 0;
   private abortController: AbortController | null = null;
   private resumePlayback = false;
+  private stepTimer: ReturnType<typeof setInterval> | null = null;
+  private endEmitted = false;
   private listeners = new Map<keyof GeoVideoEventMap, Set<Function>>();
 
   constructor(options: GeoVideoLayerOptions) {
@@ -420,6 +431,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   onRemove(): void {
+    this.stopStepping(false);
     this.abortController?.abort();
     this.abortController = null;
     const video = this.video;
@@ -512,7 +524,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
   cancelPrefetches(): void {}
   suspend(): void {
-    this.resumePlayback = this.video != null && !this.video.paused;
+    this.resumePlayback = this.isPlaying();
     this.pause();
   }
   resume(): void {
@@ -557,6 +569,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     if (!this.video || !this.manifest) {
       return;
     }
+    this.endEmitted = false;
     const [, max] = this.timeRange ?? geoVideoTimelineBounds(this.manifest);
     if (
       this.video.currentTime >= geoVideoEndSecondsForTime(this.manifest, max)
@@ -565,11 +578,80 @@ export class GeoVideoLayer implements CustomLayerInterface {
         (this.timeRange ?? geoVideoTimelineBounds(this.manifest))[0],
       );
     }
+    if (this.playbackRate < MIN_MEDIA_RATE) {
+      this.startStepping();
+      return;
+    }
     await this.video.play();
   }
 
   pause(): void {
+    this.stopStepping(true);
     this.video?.pause();
+  }
+
+  private isPlaying(): boolean {
+    return this.stepTimer != null || (this.video != null && !this.video.paused);
+  }
+
+  /**
+   * Below the slowest media rate browsers accept, keep the video paused and
+   * seek one sample (or frame) at a time.
+   */
+  private startStepping(): void {
+    const manifest = this.manifest;
+    if (!manifest || !this.video) {
+      return;
+    }
+    this.stopStepping(false);
+    this.video.pause();
+    const stepSeconds =
+      manifest.timeline.kind === "sample-sequence"
+        ? manifest.media.durationSeconds / manifest.timeline.values.length
+        : 1 / manifest.media.fps;
+    this.stepTimer = setInterval(
+      () => this.step(manifest, stepSeconds),
+      Math.max(16, (stepSeconds / this.playbackRate) * 1000),
+    );
+    this.emit("playbackChange", true);
+  }
+
+  private stopStepping(notify: boolean): void {
+    if (this.stepTimer == null) {
+      return;
+    }
+    clearInterval(this.stepTimer);
+    this.stepTimer = null;
+    if (notify) {
+      this.emit("playbackChange", false);
+    }
+  }
+
+  private step(manifest: GeoVideoManifest, stepSeconds: number): void {
+    const video = this.video;
+    if (!video) {
+      return;
+    }
+    const [min, max] = this.timeRange ?? geoVideoTimelineBounds(manifest);
+    let next = video.currentTime + stepSeconds;
+    if (next > geoVideoEndSecondsForTime(manifest, max)) {
+      if (!this.loop) {
+        this.stopStepping(true);
+        this.emitEnd();
+        return;
+      }
+      next = geoVideoSecondsForTime(manifest, min);
+    }
+    video.currentTime = next;
+    this.emit("timeChange", geoVideoTimeForSeconds(manifest, next));
+    this.map?.triggerRepaint();
+  }
+
+  private emitEnd(): void {
+    if (!this.endEmitted) {
+      this.endEmitted = true;
+      this.emit("playbackEnd");
+    }
   }
 
   setLoop(loop: boolean): void {
@@ -583,9 +665,17 @@ export class GeoVideoLayer implements CustomLayerInterface {
     if (!Number.isFinite(rate) || rate <= 0) {
       throw new Error("GeoVideo playback rate must be positive");
     }
+    const stepping = this.stepTimer != null;
+    const playing = this.isPlaying();
     this.playbackRate = rate;
     if (this.video) {
-      this.video.playbackRate = rate;
+      this.video.playbackRate = clampMediaRate(rate);
+    }
+    if (playing && stepping !== rate < MIN_MEDIA_RATE) {
+      this.stopStepping(false);
+      void this.play();
+    } else if (stepping) {
+      this.startStepping();
     }
   }
 
@@ -626,7 +716,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
         this.manifest != null &&
         this.colorTexture != null &&
         this.maskTexture != null,
-      playing: this.video != null && !this.video.paused,
+      playing: this.isPlaying(),
       currentTime: this.video?.currentTime ?? 0,
       manifestId: this.manifest?.id,
       mediaUrl: this.manifest?.media.url,
@@ -728,7 +818,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     video.crossOrigin = "anonymous";
     video.muted = true;
     video.loop = manifest.timeline.kind === "snapshot-loop" && this.loop;
-    video.playbackRate = this.playbackRate;
+    video.playbackRate = clampMediaRate(this.playbackRate);
     video.playsInline = true;
     video.preload = "auto";
     video.src = manifest.media.url;
@@ -780,7 +870,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     });
     video.addEventListener("pause", () => {
       this.stopRepaintLoop();
-      if (!(video.ended && this.loop)) {
+      // Stepped playback pauses the media on purpose; it reports its own state.
+      if (this.stepTimer == null && !(video.ended && this.loop)) {
         this.emit("playbackChange", false);
       }
     });
@@ -794,6 +885,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
         return;
       }
       this.emit("playbackChange", false);
+      this.emitEnd();
     });
     this.video = video;
     const markFrame = (_now?: number, metadata?: VideoFrameMetadata) => {
@@ -830,6 +922,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
         } else if (!video.paused) {
           video.pause();
           video.currentTime = geoVideoSecondsForTime(manifest, max);
+          this.emitEnd();
         }
       } else {
         this.emit("timeChange", Math.max(min, time));

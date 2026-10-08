@@ -54,7 +54,8 @@ interface DemoParams {
   pinTime: boolean;
   geoVideoAutoplay: boolean;
   geoVideoLoop: boolean;
-  geoVideoPlaybackRate: number;
+  /** Time steps shown per second. */
+  geoVideoStepsPerSecond: number;
   depth: number;
   particleDensity: number;
   speed: number;
@@ -68,6 +69,9 @@ interface DemoParams {
   colorDomainMin: number;
   colorDomainMax: number;
 }
+
+/** Playback speeds in time steps per second, the same on every artifact. */
+const GEOVIDEO_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32];
 
 interface HashState {
   d: string;
@@ -92,7 +96,9 @@ interface HashState {
   pt?: boolean;
   ga?: boolean;
   gl?: boolean;
+  /** Legacy playback-rate multiplier, read from older links only. */
   gr?: number;
+  gs?: number;
 }
 
 type PopupMode = "time" | "depth";
@@ -511,7 +517,12 @@ export class DemoApp {
       geoVideo: {
         autoplay: hashState?.ga ?? this.params.geoVideoAutoplay,
         loop: hashState?.gl ?? this.params.geoVideoLoop,
-        playbackRate: hashState?.gr ?? this.params.geoVideoPlaybackRate,
+        ...(hashState?.gs == null && hashState?.gr != null
+          ? { playbackRate: hashState.gr }
+          : {
+              stepsPerSecond:
+                hashState?.gs ?? this.params.geoVideoStepsPerSecond,
+            }),
       },
       visible: true,
     });
@@ -575,8 +586,8 @@ export class DemoApp {
     this.params.geoVideoAutoplay =
       hashState?.ga ?? this.params.geoVideoAutoplay;
     this.params.geoVideoLoop = hashState?.gl ?? this.params.geoVideoLoop;
-    this.params.geoVideoPlaybackRate =
-      hashState?.gr ?? this.params.geoVideoPlaybackRate;
+    this.params.geoVideoStepsPerSecond =
+      hashState?.gs ?? this.params.geoVideoStepsPerSecond;
 
     if (hashState) {
       this.params.timeIndex = Math.max(
@@ -724,17 +735,17 @@ export class DemoApp {
           (event) => void this.z?.update({ geoVideo: { loop: event.value } }),
         );
       const rate = this.dataFolder
-        .addBinding(this.params, "geoVideoPlaybackRate", {
-          label: "playback rate",
-          options: [0.5, 1, 2, 5, 10].map((value) => ({
-            text: `${value}×`,
+        .addBinding(this.params, "geoVideoStepsPerSecond", {
+          label: "speed",
+          options: GEOVIDEO_SPEEDS.map((value) => ({
+            text: `${value} steps/s`,
             value,
           })),
         })
         .on(
           "change",
           (event) =>
-            void this.z?.update({ geoVideo: { playbackRate: event.value } }),
+            void this.z?.update({ geoVideo: { stepsPerSecond: event.value } }),
         );
       this.dataBindings.push(autoplay, loop, rate);
     }
@@ -1615,7 +1626,7 @@ export class DemoApp {
       pt: this.params.pinTime,
       ga: this.params.geoVideoAutoplay,
       gl: this.params.geoVideoLoop,
-      gr: this.params.geoVideoPlaybackRate,
+      gs: this.params.geoVideoStepsPerSecond,
     };
     const hash = btoa(JSON.stringify(state));
     const url = `${location.origin}${location.pathname}#${hash}`;
@@ -1711,7 +1722,7 @@ export class DemoApp {
       pinTime: false,
       geoVideoAutoplay: false,
       geoVideoLoop: true,
-      geoVideoPlaybackRate: 1,
+      geoVideoStepsPerSecond: 2,
       depth: 0,
       particleDensity: 0.05,
       speed: 1.0,
@@ -1744,7 +1755,7 @@ export class DemoApp {
     return {
       autoplay: this.params.geoVideoAutoplay,
       loop: this.params.geoVideoLoop,
-      playbackRate: this.params.geoVideoPlaybackRate,
+      stepsPerSecond: this.params.geoVideoStepsPerSecond,
     };
   }
 

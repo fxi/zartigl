@@ -433,6 +433,76 @@ describe("GeoVideoLayer playback scheduling", () => {
     );
   });
 
+  it("reports the end of playback once when looping is disabled", async () => {
+    const { layer, video } = setup();
+    const ends: number[] = [];
+    layer.on("playbackEnd", () => ends.push(1));
+    layer.setLoop(false);
+    await layer.play();
+
+    video.frameCallback!(10, { mediaTime: 30, presentedFrames: 1 });
+    video.ended = true;
+    video.dispatchEvent(new Event("ended"));
+    expect(ends).toHaveLength(1);
+
+    layer.pause();
+    expect(ends).toHaveLength(1);
+  });
+
+  it("steps through frames below the slowest media rate browsers accept", async () => {
+    vi.useFakeTimers();
+    try {
+      const { layer, video } = setup();
+      const states: boolean[] = [];
+      const ends: number[] = [];
+      layer.on("playbackChange", (playing) => states.push(playing));
+      layer.on("playbackEnd", () => ends.push(1));
+      layer.setLoop(false);
+      layer.setPlaybackRate(1 / 100);
+      expect(video.playbackRate).toBe(1 / 16);
+
+      await layer.play();
+      expect(video.paused).toBe(true);
+      expect(layer.getDebugInfo().playing).toBe(true);
+      const start = video.currentTime;
+      // One frame (1/24 s of media) per 1/24 / (1/100) s = ~4.17 s.
+      vi.advanceTimersByTime(4200);
+      expect(video.currentTime).toBeCloseTo(start + 1 / 24);
+
+      layer.pause();
+      const paused = video.currentTime;
+      vi.advanceTimersByTime(10_000);
+      expect(video.currentTime).toBe(paused);
+      expect(states).toEqual([true, false]);
+
+      video.currentTime = 29.8;
+      await layer.play();
+      vi.advanceTimersByTime(60_000);
+      expect(ends).toHaveLength(1);
+      expect(layer.getDebugInfo().playing).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns from stepped to native playback when the rate rises", async () => {
+    vi.useFakeTimers();
+    try {
+      const { layer, video } = setup();
+      layer.setPlaybackRate(1 / 100);
+      await layer.play();
+      layer.setPlaybackRate(2);
+      await Promise.resolve();
+      expect(video.paused).toBe(false);
+      expect(video.playbackRate).toBe(2);
+      const time = video.currentTime;
+      vi.advanceTimersByTime(10_000);
+      expect(video.currentTime).toBe(time);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("restarts at the allowed range start when the media ends while looping", async () => {
     const { layer, video } = setup();
     const states: boolean[] = [];

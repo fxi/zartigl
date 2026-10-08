@@ -28,6 +28,7 @@ import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
 import type { ZartiglStatus } from "./load-status";
 import {
+  geoVideoPlaybackRate,
   geoVideoTimelineValues,
   loadGeoVideoManifest,
   type GeoVideoManifest,
@@ -91,7 +92,10 @@ interface SourceTarget {
 export interface GeoVideoOptions {
   autoplay?: boolean;
   loop?: boolean;
+  /** Media rate multiplier; prefer `stepsPerSecond`, which means the same on every artifact. */
   playbackRate?: number;
+  /** Time steps shown per second; takes precedence over `playbackRate`. */
+  stepsPerSecond?: number;
 }
 
 export interface ZartiglDebugInfo {
@@ -116,7 +120,9 @@ export interface ZartiglDebugInfo {
   depth: number;
   settings: Partial<ZartiglSettings>;
   timeRange?: TimeRange;
-  geoVideo: Required<GeoVideoOptions>;
+  geoVideo: Required<Omit<GeoVideoOptions, "stepsPerSecond">> & {
+    stepsPerSecond: number | null;
+  };
   layer: CatalogRenderLayerDebugInfo | null;
 }
 
@@ -454,6 +460,38 @@ function nearestValue(values: readonly number[], target: number): number {
   return nearest;
 }
 
+function validateGeoVideoSpeed(options?: GeoVideoOptions): void {
+  for (const [value, label] of [
+    [options?.playbackRate, "Playback rate"],
+    [options?.stepsPerSecond, "Steps per second"],
+  ] as const) {
+    if (value != null && (!Number.isFinite(value) || value <= 0)) {
+      throw new Error(`${label} must be positive`);
+    }
+  }
+}
+
+/** Union of the artifact samples and the Zarr time axis. */
+function mergeTimeAxes(
+  geoVideo: ZarrTimeDimension,
+  zarr: ZarrTimeDimension | null,
+): ZarrTimeDimension {
+  if (!zarr || zarr.values.length === 0) {
+    return geoVideo;
+  }
+  const values = [...new Set([...zarr.values, ...geoVideo.values])].sort(
+    (a, b) => a - b,
+  );
+  return {
+    min: values[0],
+    max: values[values.length - 1],
+    step: values.length === zarr.values.length ? zarr.step : undefined,
+    size: values.length,
+    units: geoVideo.units,
+    values,
+  };
+}
+
 /** Archive indexes are mutable: revalidate them, and retry failures sooner. */
 const ARCHIVE_INDEX_TTL_MS = 5 * 60_000;
 const ARCHIVE_INDEX_RETRY_MS = 60_000;
@@ -495,6 +533,7 @@ export class Zartigl {
   private autoplay: boolean;
   private loop: boolean;
   private playbackRate: number;
+  private stepsPerSecond: number | null;
   private readonly metadata?: Record<string, unknown>;
   private readonly before?: string;
   private visible: boolean;
@@ -545,13 +584,7 @@ export class Zartigl {
     if (options.depth != null && !Number.isFinite(options.depth)) {
       throw new Error("Depth must be finite");
     }
-    if (
-      options.geoVideo?.playbackRate != null &&
-      (!Number.isFinite(options.geoVideo.playbackRate) ||
-        options.geoVideo.playbackRate <= 0)
-    ) {
-      throw new Error("Playback rate must be positive");
-    }
+    validateGeoVideoSpeed(options.geoVideo);
     this.id = options.id ?? "zartigl";
     this.map = options.map;
     this.catalog = options.catalog;
@@ -563,6 +596,7 @@ export class Zartigl {
     this.autoplay = options.geoVideo?.autoplay ?? true;
     this.loop = options.geoVideo?.loop ?? true;
     this.playbackRate = options.geoVideo?.playbackRate ?? 1;
+    this.stepsPerSecond = options.geoVideo?.stepsPerSecond ?? null;
     this.metadata = options.metadata ? { ...options.metadata } : undefined;
     this.before = options.before;
     this.visible = options.visible ?? true;
@@ -618,13 +652,7 @@ export class Zartigl {
     if (change.time != null) {
       parseTime(change.time, "time");
     }
-    if (
-      change.geoVideo?.playbackRate != null &&
-      (!Number.isFinite(change.geoVideo.playbackRate) ||
-        change.geoVideo.playbackRate <= 0)
-    ) {
-      throw new Error("Playback rate must be positive");
-    }
+    validateGeoVideoSpeed(change.geoVideo);
     if (change.settings?.colorDomain !== undefined) {
       validateScalarColorDomain(change.settings.colorDomain);
     }
@@ -704,7 +732,10 @@ export class Zartigl {
       if (change.geoVideo.loop != null) {
         this.applyLoop(change.geoVideo.loop);
       }
-      if (change.geoVideo.playbackRate != null) {
+      if (change.geoVideo.stepsPerSecond != null) {
+        this.stepsPerSecond = change.geoVideo.stepsPerSecond;
+        this.layer?.setPlaybackRate(this.effectivePlaybackRate());
+      } else if (change.geoVideo.playbackRate != null) {
         this.applyPlaybackRate(change.geoVideo.playbackRate);
       }
     }
@@ -782,6 +813,18 @@ export class Zartigl {
             `GeoVideo manifest identity does not match catalog entry/source: ${requestedSource.id}`,
           );
         }
+        // Where the source can switch to Zarr, time and depth controls span
+        // the Zarr axes: a time outside the artifact (auto or a pinned
+        // archive) or a deeper level (auto) then switches source instead of
+        // being unreachable. Fixed artifacts keep their own timeline.
+        const switchesTime =
+          preference === "auto" || isPinnedArchive(catalogLayer, preference);
+        const zarrAxes = switchesTime
+          ? await this.zarrAxes(catalogLayer)
+          : { time: null, vertical: null };
+        if (preference !== "auto") {
+          zarrAxes.vertical = null;
+        }
         if (generation !== this.switchGeneration) {
           throw new DOMException(
             "Layer selection was superseded",
@@ -797,14 +840,20 @@ export class Zartigl {
           units: "milliseconds since 1970-01-01T00:00:00Z",
           values,
         };
+        const axisTimeMeta = mergeTimeAxes(geoVideoTimeMeta, zarrAxes.time);
         const resolvedTimeRange = resolveTimeRange(
-          geoVideoTimeMeta,
+          axisTimeMeta,
           requestedTimeRange,
         );
         const filteredTimeMeta = applyTimeRange(
-          geoVideoTimeMeta,
+          axisTimeMeta,
           requestedTimeRange,
         );
+        const artifactValues = applyTimeRange(
+          geoVideoTimeMeta,
+          requestedTimeRange,
+        ).values;
+        const shownValues = artifactValues.length ? artifactValues : values;
         this.detach();
         this.catalogLayer = catalogLayer;
         this.catalogSource = requestedSource;
@@ -813,18 +862,21 @@ export class Zartigl {
         this.activeFieldSource = null;
         this.geoVideoManifest = manifest;
         this.wmtsMetadata = null;
-        this.fullTimeMeta = geoVideoTimeMeta;
+        this.fullTimeMeta = axisTimeMeta;
         this.resolvedTimeRange = resolvedTimeRange;
         this.timeMeta = filteredTimeMeta;
-        this.verticalMeta = null;
+        this.verticalMeta = zarrAxes.vertical;
         this.variableUnit = manifest.style.unit ?? "";
         this.variableStandardName = manifest.provenance.variables[0];
         this.time =
           this.pendingTime == null
-            ? this.timeMeta.values[0]
-            : nearestValue(this.timeMeta.values, this.pendingTime);
+            ? shownValues[0]
+            : nearestValue(shownValues, this.pendingTime);
         this.pendingTime = null;
-        this.depth = 0;
+        // GeoVideo renders the surface level.
+        this.depth = zarrAxes.vertical
+          ? sortedDepthValues(zarrAxes.vertical.values)[0]
+          : 0;
         const overriddenColorDomain = requestedSettings.colorDomain;
         this.settings = { ...layerDefaults, ...requestedSettings };
         this.colorDomainOverridden = requestedColorDomainOverride;
@@ -1125,7 +1177,9 @@ export class Zartigl {
   private applyLoop(loop: boolean): void {
     this.assertAlive();
     this.loop = loop;
-    this.layer?.setLoop(loop);
+    this.layer?.setLoop(
+      loop && !(this.catalogSource && this.isArchiveChunk(this.catalogSource)),
+    );
   }
 
   private applyPlaybackRate(rate: number): void {
@@ -1134,7 +1188,15 @@ export class Zartigl {
       throw new Error("Playback rate must be positive");
     }
     this.playbackRate = rate;
+    this.stepsPerSecond = null;
     this.layer?.setPlaybackRate(rate);
+  }
+
+  /** Media rate for the loaded artifact: steps per second when set, else the raw multiplier. */
+  private effectivePlaybackRate(): number {
+    return this.stepsPerSecond != null && this.geoVideoManifest
+      ? geoVideoPlaybackRate(this.geoVideoManifest, this.stepsPerSecond)
+      : this.playbackRate;
   }
 
   /** Apply or clear a time window without rebuilding source metadata or the map layer. */
@@ -1367,7 +1429,8 @@ export class Zartigl {
       geoVideo: {
         autoplay: this.autoplay,
         loop: this.loop,
-        playbackRate: this.playbackRate,
+        playbackRate: this.effectivePlaybackRate(),
+        stepsPerSecond: this.stepsPerSecond,
       },
       layer: this.layer?.getDebugInfo() ?? null,
     };
@@ -1529,8 +1592,11 @@ export class Zartigl {
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
       geoVideoAutoplay: this.autoplay,
-      geoVideoLoop: this.loop,
-      geoVideoPlaybackRate: this.playbackRate,
+      // Archive chunks loop across the whole archive instead of one chunk.
+      geoVideoLoop:
+        this.loop &&
+        !(this.catalogSource && this.isArchiveChunk(this.catalogSource)),
+      geoVideoPlaybackRate: this.effectivePlaybackRate(),
       geoVideoTimeRange: this.timeMeta
         ? [this.timeMeta.min, this.timeMeta.max]
         : undefined,
@@ -1560,6 +1626,7 @@ export class Zartigl {
     layer.on("playbackChange", (playing) =>
       this.emit("playbackChange", playing),
     );
+    layer.on("playbackEnd", () => void this.continueArchivePlayback());
     this.layer = layer;
     const before = this.getBeforeLayerId();
     if (before) {
@@ -1719,25 +1786,116 @@ export class Zartigl {
     entry: CatalogEntry,
     depth: number,
   ): Promise<boolean> {
-    const zarr = pickSourceByPriority(entry, ["zarr"]);
-    if (zarr?.type !== "zarr") {
-      return true;
-    }
-    const source = this.getFieldSource(zarr.endpoints.field);
+    let field: Awaited<ReturnType<Zartigl["entryFieldZarr"]>>;
     try {
-      await source.init();
+      field = await this.entryFieldZarr(entry);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.emit("status", { phase: "error", error: err });
       this.emit("error", err);
       throw err;
     }
+    if (!field) {
+      return true;
+    }
     const values =
-      source.getVerticalDimension(variableNames(zarr)[0])?.values ?? [];
+      field.source.getVerticalDimension(variableNames(field.zarr)[0])?.values ??
+      [];
     return (
       values.length === 0 ||
       nearestValue(values, depth) === sortedDepthValues(values)[0]
     );
+  }
+
+  private isArchiveChunk(source: CatalogSource): boolean {
+    return (
+      source.type === "geovideo" &&
+      !!this.catalogLayer?.sources.some(
+        (candidate) =>
+          candidate.id === source.id && isGeoVideoArchiveSource(candidate),
+      )
+    );
+  }
+
+  /**
+   * Keep playing across an archive: when a chunk ends, play the next chunk
+   * inside the active time range, or with loop on, the first one.
+   */
+  private async continueArchivePlayback(): Promise<void> {
+    const entry = this.catalogLayer;
+    const current = this.catalogSource;
+    if (!entry || !current || !this.isArchiveChunk(current)) {
+      return;
+    }
+    try {
+      const chunks = (await this.resolveArchives(entry)).sources
+        .filter(
+          (source) =>
+            source.id === current.id && source.temporal?.start != null,
+        )
+        .map((source) => ({
+          start: Date.parse(source.temporal!.start!),
+          end: Date.parse(source.temporal!.end ?? source.temporal!.start!),
+        }))
+        .sort((a, b) => a.start - b.start);
+      const [rangeStart, rangeEnd] = this.resolvedTimeRange ?? [
+        -Infinity,
+        Infinity,
+      ];
+      const currentEnd = Date.parse(current.temporal?.end ?? "");
+      const next =
+        chunks.find(
+          (chunk) => chunk.start > currentEnd && chunk.start <= rangeEnd,
+        ) ??
+        (this.loop
+          ? chunks.find(
+              (chunk) => chunk.end >= rangeStart && chunk.start <= rangeEnd,
+            )
+          : undefined);
+      if (!next || this.destroyed) {
+        return;
+      }
+      await this.update({ time: Math.max(next.start, rangeStart) });
+      if (!this.destroyed) {
+        await this.play();
+      }
+    } catch (error) {
+      console.warn("[zartigl] GeoVideo archive playback stopped:", error);
+    }
+  }
+
+  /** The entry's initialised field Zarr, or null when it has none. */
+  private async entryFieldZarr(
+    entry: CatalogEntry,
+  ): Promise<{ zarr: CatalogZarrSource; source: ZarrSource } | null> {
+    const zarr = pickSourceByPriority(entry, ["zarr"]);
+    if (zarr?.type !== "zarr") {
+      return null;
+    }
+    const source = this.getFieldSource(zarr.endpoints.field);
+    await source.init();
+    return { zarr, source };
+  }
+
+  /** Zarr time and vertical axes; unavailable metadata leaves the artifact's own timeline. */
+  private async zarrAxes(entry: CatalogEntry): Promise<{
+    time: ZarrTimeDimension | null;
+    vertical: ZarrVerticalDimension | null;
+  }> {
+    try {
+      const field = await this.entryFieldZarr(entry);
+      return field
+        ? {
+            time: field.source.getTimeDimension(),
+            vertical:
+              field.source.getVerticalDimension(variableNames(field.zarr)[0]) ??
+              null,
+          }
+        : { time: null, vertical: null };
+    } catch (error) {
+      console.warn("[zartigl] Zarr axes unavailable for GeoVideo:", error);
+      return { time: null, vertical: null };
+    }
   }
 
   /**
