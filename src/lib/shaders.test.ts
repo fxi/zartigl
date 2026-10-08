@@ -72,6 +72,15 @@ describe("particle shader invalid-state guards", () => {
     expect(drawVert).toContain("v_valid < u_valid_threshold");
   });
 
+  it("repeats only global velocity grids in longitude", () => {
+    for (const shader of [updateFrag, drawVert]) {
+      expect(shader).toContain("mod(lng - u_geo_bounds.x, 360.0) / geoWidth");
+      expect(shader).toContain("geoWidth >= 359.0 ? fract(u) : u");
+      expect(shader).toContain("step(geoUV.x, 1.0)");
+      expect(shader).not.toContain("fract((lng - u_geo_bounds.x) / geoWidth)");
+    }
+  });
+
   it("does not wrap draw-time segment endpoints across the dateline", () => {
     expect(drawVert).not.toContain("pos.x = fract(pos.x)");
     expect(drawVert).toContain("invalidWrappedPosition(headPos)");

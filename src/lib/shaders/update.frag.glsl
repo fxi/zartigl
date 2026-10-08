@@ -58,6 +58,20 @@ float maxParticleSegmentPx(float zoomScale) {
     return max(128.0, u_speed * zoomScale * 128.0);
 }
 
+// Velocity texture u from longitude, wrapped by 360° so a global grid repeats
+// across the date line while a regional grid never repeats: outside its west
+// to east span u exceeds 1 and geoInData() rejects it.
+float geoU(float lng) {
+    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
+    float u = mod(lng - u_geo_bounds.x, 360.0) / geoWidth;
+    // Near-global grids close the gap of their last cell at the date line.
+    return geoWidth >= 359.0 ? fract(u) : u;
+}
+
+float geoInData(vec2 geoUV) {
+    return step(geoUV.x, 1.0) * step(0.0, geoUV.y) * step(geoUV.y, 1.0);
+}
+
 void main() {
     vec4 encoded = texture2D(u_particles, v_tex_coord);
 
@@ -83,13 +97,9 @@ void main() {
     float lat = u_is_globe > 0.5 ? (pos.y * 180.0 - 90.0) : mercToLat(pos.y);
 
     // Velocity texture UV from actual data geographic bounds
-    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
     float geoHeight = max(abs(u_geo_bounds.w - u_geo_bounds.y), 1e-6);
-    vec2 geoUV = vec2(
-        fract((lng - u_geo_bounds.x) / geoWidth),
-        (lat - u_geo_bounds.y) / geoHeight
-    );
-    float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
+    vec2 geoUV = vec2(geoU(lng), (lat - u_geo_bounds.y) / geoHeight);
+    float inData = geoInData(geoUV);
 
     // Sample velocity and decode from normalized [0,1] back to physical
     vec2 velNorm = texture2D(u_velocity, geoUV).rg;
@@ -172,7 +182,7 @@ void main() {
     float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
 
     // Drop if on land / no data (alpha channel = validity mask)
-    float valid = texture2D(u_velocity, geoUV).a * inDataY;
+    float valid = texture2D(u_velocity, geoUV).a * inData;
     float outOfData = 1.0 - step(u_valid_threshold, valid);
 
     // Also drop if out of viewport bounds

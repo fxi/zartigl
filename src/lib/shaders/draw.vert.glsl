@@ -62,21 +62,30 @@ float wrappedSegmentPx(vec2 a, vec2 b, float worldSize) {
     return length(vec2(dx, a.y - b.y) * worldSize);
 }
 
+// Velocity texture u from longitude, wrapped by 360° so a global grid repeats
+// across the date line while a regional grid never repeats: outside its west
+// to east span u exceeds 1 and geoInData() rejects it.
+float geoU(float lng) {
+    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
+    float u = mod(lng - u_geo_bounds.x, 360.0) / geoWidth;
+    // Near-global grids close the gap of their last cell at the date line.
+    return geoWidth >= 359.0 ? fract(u) : u;
+}
+
+float geoInData(vec2 geoUV) {
+    return step(geoUV.x, 1.0) * step(0.0, geoUV.y) * step(geoUV.y, 1.0);
+}
+
 vec2 geoUvFromPosition(vec2 p) {
     float lng = mercToLng(p.x);
     float lat = u_is_globe > 0.5 ? (p.y * 180.0 - 90.0) : mercToLat(p.y);
-    float geoWidth = max(abs(u_geo_bounds.z - u_geo_bounds.x), 1e-6);
     float geoHeight = max(abs(u_geo_bounds.w - u_geo_bounds.y), 1e-6);
-    return vec2(
-        fract((lng - u_geo_bounds.x) / geoWidth),
-        (lat - u_geo_bounds.y) / geoHeight
-    );
+    return vec2(geoU(lng), (lat - u_geo_bounds.y) / geoHeight);
 }
 
 float dataValidityAtPosition(vec2 p) {
     vec2 geoUV = geoUvFromPosition(p);
-    float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
-    return texture2D(u_velocity, geoUV).a * inDataY;
+    return texture2D(u_velocity, geoUV).a * geoInData(geoUV);
 }
 
 vec3 globeEcef(vec2 p) {
@@ -113,10 +122,9 @@ void main() {
     }
 
     vec2 geoUV = geoUvFromPosition(currPos);
-    float inDataY = step(0.0, geoUV.y) * step(geoUV.y, 1.0);
 
     vec4 velSample = texture2D(u_velocity, geoUV);
-    v_valid = velSample.a * inDataY;
+    v_valid = velSample.a * geoInData(geoUV);
     if (v_valid < u_valid_threshold) {
         hideParticle();
         return;
