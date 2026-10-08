@@ -9,6 +9,7 @@ from archive import (
     encoding_profile,
     expired_superseded,
     empty_index,
+    interleave,
     merge_chunk,
     pending_chunks,
     period_end,
@@ -153,6 +154,21 @@ class KeyTest(unittest.TestCase):
         version["sources"][0]["endpoints"]["field"] = "https://example.test/dataset_202511/timeChunked.zarr"
         output = {**ARCHIVE, "output": {"crf": 10}}
         self.assertEqual(len({self.key(base), self.key(domain), self.key(version), self.key(base, output)}), 4)
+
+
+class ScheduleTest(unittest.TestCase):
+    def test_interleave_is_round_robin_and_keeps_each_archive_order(self):
+        queues = [{"name": "a", "pending": ["a3", "a2", "a1"]}, {"name": "b", "pending": []},
+                  {"name": "c", "pending": ["c2", "c1"]}]
+        order = [chunk for _queue, chunk in interleave(queues)]
+        self.assertEqual(order, ["a3", "c2", "a2", "c1", "a1"])
+        self.assertEqual(interleave([]), [])
+
+    def test_encoder_threads_are_not_part_of_the_key(self):
+        chunk = {"samples": ["2026-09-01T00:00:00Z", "2026-09-30T23:00:00Z"], "revision": None}
+        threaded = {**ARCHIVE, "output": {"threads": 2}}
+        self.assertEqual(chunk_key(encoding_profile(threaded, layer()), chunk),
+                         chunk_key(encoding_profile(ARCHIVE, layer()), chunk))
 
 
 class IndexTest(unittest.TestCase):

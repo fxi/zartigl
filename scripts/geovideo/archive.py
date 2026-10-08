@@ -28,9 +28,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -203,7 +205,8 @@ def encoding_profile(archive: dict[str, Any], layer: dict[str, Any]) -> dict[str
         "variables": source["variables"],
         "bounds": archive.get("bounds"),
         "step": archive.get("step"),
-        "output": archive.get("output", {}),
+        # Encoder threads only schedule work; they do not change encoded values.
+        "output": {key: value for key, value in archive.get("output", {}).items() if key != "threads"},
     }
     if layer["kind"] == "scalar":
         profile["format"] = "geovideo-v3-scalar-luma-static-mask-intersection-exact-samples"
@@ -308,11 +311,15 @@ def chunk_directory(archive: dict[str, Any], key: str) -> Path:
     return render.ROOT / "artifacts" / "geovideo-archive" / archive["sourceId"] / key
 
 
-def render_chunk(archive: dict[str, Any], layer: dict[str, Any], dataset: Any, chunk: dict[str, Any]) -> Path:
+def render_chunk(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[str, Any], threads: int | None = None) -> Path:
+    """Render one chunk. Encoder threads only share CPUs between workers and are not part of the key."""
+    dataset = open_source(layer)
     directory = chunk_directory(archive, chunk["key"])
     shutil.rmtree(directory, ignore_errors=True)
     bounds = archive.get("bounds") or source_bounds(dataset)
     output = {**archive.get("output", {}), "directory": str(directory.parent)}
+    if threads and "threads" not in output:
+        output["threads"] = threads
     if layer["kind"] == "scalar":
         if "width" not in output or "height" not in output:
             output["width"], output["height"] = scalar_size(dataset, bounds)
@@ -383,7 +390,27 @@ def selected_archives(data: dict[str, Any], source: str | None) -> list[dict[str
     return archives
 
 
-def resolve(archive: dict[str, Any], now: np.datetime64) -> tuple[dict[str, Any], Any, list[dict[str, Any]]]:
+def interleave(queues: list[dict[str, Any]]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Round-robin across archives, each archive's chunks in their (newest-first) order."""
+    order = []
+    for position in range(max((len(queue["pending"]) for queue in queues), default=0)):
+        order.extend((queue, queue["pending"][position]) for queue in queues if position < len(queue["pending"]))
+    return order
+
+
+def render_and_publish(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[str, Any],
+                       upload: dict[str, Any], prefix: str, threads: int | None) -> dict[str, Any]:
+    """Worker task: render, validate, and upload one chunk; the caller owns the index."""
+    directory = chunk_directory(archive, chunk["key"])
+    try:
+        render_chunk(archive, layer, chunk, threads)
+        render.publish(directory, {"upload": upload}, chunk["key"], f"{prefix}/{chunk['key']}")
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
+    return chunk
+
+
+def resolve(archive: dict[str, Any], now: np.datetime64) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     layer = catalog_layer(archive["catalogEntryId"])
     if layer["kind"] == "vector" and not (archive.get("output") or {}).get("valueDomain"):
         raise ValueError(f"{archive['sourceId']}: vector archives pin output.valueDomain (see `archive.py domain`)")
@@ -395,7 +422,7 @@ def resolve(archive: dict[str, Any], now: np.datetime64) -> tuple[dict[str, Any]
     profile = encoding_profile(archive, layer)
     for chunk in chunks:
         chunk["key"] = chunk_key(profile, chunk)
-    return layer, dataset, chunks
+    return layer, chunks
 
 
 def command_plan(args: argparse.Namespace) -> int:
@@ -405,7 +432,7 @@ def command_plan(args: argparse.Namespace) -> int:
     results = []
     for archive in selected_archives(data, args.source):
         try:
-            _layer, _dataset, chunks = resolve(archive, now)
+            _layer, chunks = resolve(archive, now)
             prefix = object_prefix(data.get("upload", {}), archive)
             index = read_index(client, env["S3_BUCKET"], f"{prefix}/index.json", archive)
         except Exception as exc:
@@ -426,7 +453,10 @@ def command_plan(args: argparse.Namespace) -> int:
 
 
 def command_run(args: argparse.Namespace) -> int:
-    """Round-robin over archives, newest chunk first, so no backlog starves the others."""
+    """Round-robin over archives, newest chunk first, so no backlog starves the others.
+
+    Workers render and upload; this process alone rewrites each archive index.
+    """
     data = load_archives()
     upload = data.get("upload", {})
     client, env = render.s3_client()
@@ -438,7 +468,7 @@ def command_run(args: argparse.Namespace) -> int:
     for archive in selected_archives(data, args.source):
         try:
             now = utc_now()
-            layer, dataset, chunks = resolve(archive, now)
+            layer, chunks = resolve(archive, now)
             prefix = object_prefix(upload, archive)
             index = read_index(client, bucket, f"{prefix}/index.json", archive)
             expired, index = expired_superseded(index, now)
@@ -450,32 +480,43 @@ def command_run(args: argparse.Namespace) -> int:
             failures.append(f"{archive['sourceId']}: {exc}")
             print(f"Skipping {archive['sourceId']}: {exc}", file=sys.stderr, flush=True)
             continue
-        queues.append({"archive": archive, "layer": layer, "dataset": dataset, "prefix": prefix,
+        queues.append({"archive": archive, "layer": layer, "prefix": prefix,
                        "index": index, "pending": pending_chunks(chunks, index)})
-    rendered = 0
-    while any(queue["pending"] for queue in queues):
-        for queue in queues:
-            if not queue["pending"]:
-                continue
-            if time.monotonic() >= deadline or (args.max_chunks is not None and rendered >= args.max_chunks):
-                print("Budget reached; remaining chunks resume on the next run", file=sys.stderr)
-                return report_failures(failures)
-            archive, chunk = queue["archive"], queue["pending"].pop(0)
-            print(f"Rendering {archive['sourceId']} {chunk['period']['start']} "
-                  f"({len(chunk['samples'])} samples) -> {chunk['key']}", file=sys.stderr, flush=True)
-            directory = chunk_directory(archive, chunk["key"])
-            try:
-                render_chunk(archive, queue["layer"], queue["dataset"], chunk)
-                render.publish(directory, {"upload": upload}, chunk["key"], f"{queue['prefix']}/{chunk['key']}")
-                queue["index"] = merge_chunk(queue["index"], chunk, utc_now())
-                write_index(client, bucket, f"{queue['prefix']}/index.json", queue["index"])
-                rendered += 1
-            except Exception as exc:
-                failures.append(f"{archive['sourceId']} {chunk['period']['start']}: {exc}")
-                print(f"Chunk failed, archive paused for this run: {exc}", file=sys.stderr, flush=True)
-                queue["pending"] = []
-            finally:
-                shutil.rmtree(directory, ignore_errors=True)
+    threads = max(1, (os.cpu_count() or 1) // args.jobs)
+    tasks = iter(interleave(queues))
+    running: dict[Future, dict[str, Any]] = {}
+    submitted = 0
+    with ProcessPoolExecutor(max_workers=args.jobs) as pool:
+        while True:
+            while len(running) < args.jobs and time.monotonic() < deadline and (
+                    args.max_chunks is None or submitted < args.max_chunks):
+                task = next((item for item in tasks if not item[0].get("failed")), None)
+                if task is None:
+                    break
+                queue, chunk = task
+                print(f"Rendering {queue['archive']['sourceId']} {chunk['period']['start']} "
+                      f"({len(chunk['samples'])} samples) -> {chunk['key']}", file=sys.stderr, flush=True)
+                future = pool.submit(render_and_publish, queue["archive"], queue["layer"], chunk, upload,
+                                     queue["prefix"], threads)
+                running[future] = queue
+                submitted += 1
+            if not running:
+                break
+            done, _ = wait(running, return_when=FIRST_COMPLETED)
+            for future in done:
+                queue = running.pop(future)
+                try:
+                    chunk = future.result()
+                    queue["index"] = merge_chunk(queue["index"], chunk, utc_now())
+                    write_index(client, bucket, f"{queue['prefix']}/index.json", queue["index"])
+                    print(f"Published {queue['archive']['sourceId']} {chunk['period']['start']}",
+                          file=sys.stderr, flush=True)
+                except Exception as exc:
+                    failures.append(f"{queue['archive']['sourceId']}: {exc}")
+                    print(f"Chunk failed, archive paused for this run: {exc}", file=sys.stderr, flush=True)
+                    queue["failed"] = True
+    if time.monotonic() >= deadline:
+        print("Budget reached; remaining chunks resume on the next run", file=sys.stderr)
     return report_failures(failures)
 
 
@@ -522,6 +563,7 @@ def main() -> int:
     run.add_argument("--source")
     run.add_argument("--budget", type=parse_budget, default=parse_budget("5h"))
     run.add_argument("--max-chunks", type=int)
+    run.add_argument("--jobs", type=int, default=1, help="Chunks rendered in parallel")
     domain = commands.add_parser("domain", help="Suggest a pinned vector valueDomain")
     domain.add_argument("--source", required=True)
     args = parser.parse_args()

@@ -116,10 +116,10 @@ def ffmpeg() -> str:
     return path
 
 
-def h264_args(crf: int, gop: int) -> list[str]:
+def h264_args(crf: int, gop: int, threads: int | None = None) -> list[str]:
     """H.264 High profile, level 4.1: hardware decoding on iOS Safari, Android and desktop."""
     return ["-c:v", "libx264", "-preset", "slow", "-profile:v", "high", "-level:v", "4.1",
-            "-crf", str(crf), "-g", str(gop)]
+            "-crf", str(crf), "-g", str(gop), *(["-threads", str(int(threads))] if threads else [])]
 
 
 def open_encoder(path: Path, width: int, height: int, fps: float, codec: list[str]) -> subprocess.Popen:
@@ -415,7 +415,8 @@ def render(config: dict[str, Any], layer: dict[str, Any], directory: Path, max_f
     directory.mkdir(parents=True, exist_ok=True)
     video = directory / "video.mp4"
     encoder = open_encoder(video, frames.width, frames.height * 2, config["output"]["fps"],
-                           h264_args(config["output"]["crf"], config["output"]["gop"]))
+                           h264_args(config["output"]["crf"], config["output"]["gop"],
+                                     config["output"].get("threads")))
     check_every = max(1, count // 16)
     expected: dict[int, tuple[np.ndarray, np.ndarray]] = {}
     tic = time.time()

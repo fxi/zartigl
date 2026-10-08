@@ -184,6 +184,7 @@ both renderers and their validation; nothing is published unless it passes.
 ```bash
 npm run geovideo:plan                       # required, present, and pending chunks
 npm run geovideo:run -- --budget 90m        # render, publish, and index pending chunks
+npm run geovideo:run -- --jobs 4 --budget 20h     # parallel workers share the CPUs
 npm run geovideo:run -- --source <uuid> --max-chunks 1
 uv run scripts/geovideo/archive.py domain --source <uuid>   # suggest a vector valueDomain
 npm run test:geovideo
@@ -198,6 +199,8 @@ Policies live in `archive.json`, keyed by an archive `sourceId`:
 - `chunk`: optional; by default live sources use monthly chunks (a growing
   chunk is re-rendered at each new timestamp) and final historical data uses
   monthly (hourly), yearly (daily), or decade (monthly) chunks.
+- `output.threads`: optional x264 threads; by default `run --jobs N` gives each
+  worker `cpu_count / N`. Threads never change a chunk key.
 - `step` (`PTnH`/`PnD`, anchored to the epoch), `bounds`, `output`, and
   scalar `framesPerSample`. Scalar size defaults to the native grid within
   2048×1024. Vector archives pin `output.valueDomain` so particle speeds and
@@ -218,7 +221,8 @@ Objects live under `geovideo/<entryId>/<sourceId>/<key>/` with
 before the index (short cache lifetime) is rewritten; a replaced chunk is
 deleted one day later so cached indexes stay valid. Runs are round-robin
 across archives, newest chunk first, and stop starting chunks when the budget
-is spent; the next run resumes. A failing chunk pauses only its archive and
+is spent; the next run resumes. With `--jobs`, workers render and upload in
+parallel while the main process alone rewrites each index. A failing chunk pauses only its archive and
 fails the run.
 
 To serve an archive, add a GeoVideo source with `indexUrl` (and no

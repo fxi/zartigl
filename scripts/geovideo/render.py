@@ -535,6 +535,7 @@ def ffmpeg_command(config: dict[str, Any], output: Path) -> list[str]:
         "-s", f"{width}x{height}", "-r", str(fps), "-i", "-", "-an",
         "-c:v", "libx264", "-preset", config["output"]["preset"], "-crf", str(config["output"]["crf"]),
         *(["-tune", config["output"]["tune"]] if config["output"].get("tune") else []),
+        *(["-threads", str(int(config["output"]["threads"]))] if config["output"].get("threads") else []),
         "-maxrate", config["output"]["maxBitrate"], "-bufsize", "16M",
         "-g", str(max(1, round(fps * 2))), "-pix_fmt", "yuv420p",
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",

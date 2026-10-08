@@ -11,6 +11,9 @@ on:
       budget:
         description: Time after which no new chunk starts, e.g. 90m or 20h
         default: 5h
+      jobs:
+        description: Chunks rendered in parallel
+        default: "4"
       dry-run:
         description: Plan only
         type: boolean
@@ -32,6 +35,7 @@ jobs:
     env:
       SOURCE: ${{ inputs.source }}
       BUDGET: ${{ inputs.budget || '5h' }}
+      JOBS: ${{ inputs.jobs || '4' }}
       S3_KEY: ${{ secrets.S3_KEY }}
       S3_SECRET: ${{ secrets.S3_SECRET }}
     steps:
@@ -68,4 +72,4 @@ jobs:
 
       - name: Render and publish
         if: ${{ !inputs.dry-run }}
-        run: npm run geovideo:run -- --budget "$BUDGET" ${SOURCE:+--source "$SOURCE"}
+        run: npm run geovideo:run -- --budget "$BUDGET" --jobs "$JOBS" ${SOURCE:+--source "$SOURCE"}
