@@ -64,6 +64,7 @@ class FakeVideo extends EventTarget {
   ended = false;
   currentTime = 0;
   playbackRate = 1;
+  defaultPlaybackRate = 1;
   readyState = 2;
   networkState = 1;
   videoWidth = 16;
@@ -431,6 +432,15 @@ describe("GeoVideoLayer playback scheduling", () => {
     expect(times[times.length - 1]).toBe(
       new Date("2026-07-01T00:00:00Z").getTime(),
     );
+  });
+
+  it("keeps the requested speed after the media load resets the rate", () => {
+    const { video } = setup(true, manifest, { playbackRate: 0.25 });
+    expect(video.defaultPlaybackRate).toBe(0.25);
+    // HTMLMediaElement.load() restores playbackRate from defaultPlaybackRate.
+    video.playbackRate = 1;
+    video.dispatchEvent(new Event("loadedmetadata"));
+    expect(video.playbackRate).toBe(0.25);
   });
 
   it("reports the end of playback once when looping is disabled", async () => {

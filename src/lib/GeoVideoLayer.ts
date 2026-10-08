@@ -669,7 +669,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     const playing = this.isPlaying();
     this.playbackRate = rate;
     if (this.video) {
-      this.video.playbackRate = clampMediaRate(rate);
+      this.video.defaultPlaybackRate = clampMediaRate(rate);
+      this.video.playbackRate = this.video.defaultPlaybackRate;
     }
     if (playing && stepping !== rate < MIN_MEDIA_RATE) {
       this.stopStepping(false);
@@ -818,13 +819,17 @@ export class GeoVideoLayer implements CustomLayerInterface {
     video.crossOrigin = "anonymous";
     video.muted = true;
     video.loop = manifest.timeline.kind === "snapshot-loop" && this.loop;
-    video.playbackRate = clampMediaRate(this.playbackRate);
+    // Loading media resets playbackRate to defaultPlaybackRate, so set both
+    // and apply the rate again once metadata is known.
+    video.defaultPlaybackRate = clampMediaRate(this.playbackRate);
+    video.playbackRate = video.defaultPlaybackRate;
     video.playsInline = true;
     video.preload = "auto";
     video.src = manifest.media.url;
     video.addEventListener(
       "loadedmetadata",
       () => {
+        video.playbackRate = clampMediaRate(this.playbackRate);
         const [min, max] = this.timeRange ?? geoVideoTimelineBounds(manifest);
         const requested = this.requestedTime ?? min;
         const initialTime = Math.max(min, Math.min(max, requested));
@@ -1027,7 +1032,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.emit("status", { phase: "ready", time });
     this.map?.triggerRepaint();
     if (this.autoplay) {
-      void video.play().catch(() => undefined);
+      // Through play(), so speeds below the media minimum step frames.
+      void this.play().catch(() => undefined);
     }
   }
 
