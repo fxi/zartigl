@@ -32,6 +32,12 @@ import {
   loadGeoVideoManifest,
   type GeoVideoManifest,
 } from "./geovideo";
+import {
+  geoVideoChunkSources,
+  isGeoVideoArchiveSource,
+  isSameSource,
+  loadGeoVideoIndex,
+} from "./geovideo-index";
 import { loadWmtsCapabilities, type WmtsMetadata } from "./WmtsCapabilities";
 
 export interface ZartiglSettings {
@@ -411,6 +417,16 @@ function isPinnedSource(
   return entry.sources.some((source) => source.id === preference);
 }
 
+/** Pinned to an archive: its covering chunk, else Zarr, follow the time. */
+function isPinnedArchive(
+  entry: CatalogEntry,
+  preference: CatalogSourcePreference,
+): boolean {
+  return entry.sources.some(
+    (source) => source.id === preference && isGeoVideoArchiveSource(source),
+  );
+}
+
 function sortedDepthValues(values: readonly number[]): number[] {
   return [...values].sort((a, b) => {
     const da = Math.abs(a);
@@ -437,6 +453,10 @@ function nearestValue(values: readonly number[], target: number): number {
   }
   return nearest;
 }
+
+/** Archive indexes are mutable: revalidate them, and retry failures sooner. */
+const ARCHIVE_INDEX_TTL_MS = 5 * 60_000;
+const ARCHIVE_INDEX_RETRY_MS = 60_000;
 
 function defaultSettings(
   catalogLayer?: CatalogEntry,
@@ -496,6 +516,10 @@ export class Zartigl {
   private geoVideoManifest: GeoVideoManifest | null = null;
   private wmtsMetadata: WmtsMetadata | null = null;
   private fieldSources = new Map<string, ZarrSource>();
+  private archiveChunks = new Map<
+    string,
+    { chunks: Promise<CatalogSource[]>; expires: number }
+  >();
   private activeFieldSource: ZarrSource | null = null;
   private switchGeneration = 0;
   private destroyed = false;
@@ -738,6 +762,11 @@ export class Zartigl {
     if (requestedSource.type === "geovideo") {
       this.emit("status", { phase: "metadata" });
       try {
+        if (!requestedSource.manifestUrl) {
+          throw new Error(
+            `GeoVideo archive source was not resolved to a chunk: ${requestedSource.id}`,
+          );
+        }
         const manifest = await loadGeoVideoManifest(
           requestedSource.manifestUrl,
         );
@@ -803,9 +832,11 @@ export class Zartigl {
         this.settings.colorDomain = requestedColorDomainOverride
           ? (overriddenColorDomain ?? null)
           : manifest.style.colorDomain;
+        // Archive chunks are encoded independently of the palette, so the
+        // catalog default wins over the one recorded at render time.
         this.settings.palette = requestedPaletteOverride
           ? this.settings.palette
-          : manifest.style.palette;
+          : (catalogLayer.defaults.palette ?? manifest.style.palette);
         this.lastMeta = null;
         this.attachWhenReady();
         return;
@@ -985,16 +1016,21 @@ export class Zartigl {
   ): Promise<boolean> {
     const entry = this.catalogLayer;
     const current = this.catalogSource;
+    if (!entry || !current) {
+      return false;
+    }
+    // A pinned archive moves between its chunks and Zarr in both directions.
+    const pinnedArchive = isPinnedArchive(entry, this.sourcePreference);
     if (
-      !entry ||
-      current?.type !== "geovideo" ||
-      isPinnedSource(entry, this.sourcePreference)
+      (current.type !== "geovideo" && !pinnedArchive) ||
+      (isPinnedSource(entry, this.sourcePreference) && !pinnedArchive)
     ) {
       return false;
     }
     const coversTime =
       (target.time == null && !timeRangeChanged) ||
-      sourceCoversTime(current, this.sourceTimeRequest(range, target.time));
+      (current.type === "geovideo" &&
+        sourceCoversTime(current, this.sourceTimeRequest(range, target.time)));
     const servesDepth =
       target.depth == null ||
       this.sourcePreference !== "auto" ||
@@ -1008,7 +1044,7 @@ export class Zartigl {
       range,
       target,
     );
-    return next.id !== current.id;
+    return !isSameSource(next, current);
   }
 
   private applyVisible(visible: boolean): void {
@@ -1638,6 +1674,34 @@ export class Zartigl {
     target: SourceTarget = {},
   ): Promise<CatalogSource> {
     const request = this.sourceTimeRequest(range, target.time);
+    if (isPinnedArchive(entry, preference)) {
+      const resolved = await this.resolveArchives(entry);
+      const covering = resolved.sources.filter(
+        (source) =>
+          source.id === preference && sourceCoversTime(source, request),
+      );
+      const selected = covering.length
+        ? pickSourceByPriority(
+            { ...resolved, sources: covering },
+            ["geovideo"],
+            request,
+          )
+        : pickSourceByPriority(resolved, ["zarr"], request);
+      if (!selected) {
+        throw new Error(`Catalog entry ${entry.id} has no Zarr fallback`);
+      }
+      return selected;
+    }
+    if (entry.sources.some(isGeoVideoArchiveSource)) {
+      entry = await this.resolveArchives(entry);
+      // An unavailable archive must not fail a GeoVideo type preference.
+      if (
+        preference === "geovideo" &&
+        !entry.sources.some((source) => source.type === "geovideo")
+      ) {
+        preference = "auto";
+      }
+    }
     const selected = this.resolveSource(entry, preference, request);
     if (
       selected.type !== "geovideo" ||
@@ -1674,6 +1738,38 @@ export class Zartigl {
       values.length === 0 ||
       nearestValue(values, depth) === sortedDepthValues(values)[0]
     );
+  }
+
+  /**
+   * Entry whose archive sources are replaced by one fixed-period source per
+   * published chunk. An unreachable index drops the archive, so selection
+   * falls back to the entry's other sources.
+   */
+  private async resolveArchives(entry: CatalogEntry): Promise<CatalogEntry> {
+    const sources = await Promise.all(
+      entry.sources.map((source) => {
+        if (!isGeoVideoArchiveSource(source)) {
+          return [source];
+        }
+        const cached = this.archiveChunks.get(source.indexUrl);
+        if (cached && cached.expires > Date.now()) {
+          return cached.chunks;
+        }
+        const cacheEntry = {
+          expires: Date.now() + ARCHIVE_INDEX_TTL_MS,
+          chunks: loadGeoVideoIndex(source.indexUrl)
+            .then((index) => geoVideoChunkSources(source, index, entry))
+            .catch((error: unknown) => {
+              console.warn("[zartigl] GeoVideo archive unavailable:", error);
+              cacheEntry.expires = Date.now() + ARCHIVE_INDEX_RETRY_MS;
+              return [];
+            }),
+        };
+        this.archiveChunks.set(source.indexUrl, cacheEntry);
+        return cacheEntry.chunks;
+      }),
+    );
+    return { ...entry, sources: sources.flat() };
   }
 
   private resolveSource(

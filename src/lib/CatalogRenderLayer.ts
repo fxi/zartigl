@@ -276,12 +276,17 @@ export class CatalogRenderLayer implements CustomLayerInterface {
         unit: options.unit ?? "",
       });
     } else if (this.backend === "scalar-geovideo") {
-      if (options.sourceConfig.type !== "geovideo") {
+      const manifest =
+        options.geoVideoManifest ??
+        (options.sourceConfig.type === "geovideo"
+          ? options.sourceConfig.manifestUrl
+          : undefined);
+      if (!manifest) {
         throw new Error("Invalid GeoVideo source");
       }
       this.delegate = new GeoVideoLayer({
         id: options.id,
-        manifest: options.geoVideoManifest ?? options.sourceConfig.manifestUrl,
+        manifest,
         autoplay: options.geoVideoAutoplay,
         loop: options.geoVideoLoop,
         playbackRate: options.geoVideoPlaybackRate,

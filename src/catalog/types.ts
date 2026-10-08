@@ -53,15 +53,28 @@ export interface CatalogWmtsSource extends CatalogSourceBase {
   tileUrlTemplate?: string;
 }
 
+/** One published artifact. */
 export interface CatalogGeoVideoSource extends CatalogSourceBase {
   type: "geovideo";
   manifestUrl: string;
+  indexUrl?: never;
+}
+
+/**
+ * An incremental archive of calendar-aligned artifacts listed by a mutable
+ * index; zartigl resolves it to the chunk covering the requested time.
+ */
+export interface CatalogGeoVideoArchiveSource extends CatalogSourceBase {
+  type: "geovideo";
+  indexUrl: string;
+  manifestUrl?: never;
 }
 
 export type CatalogSource =
   | CatalogZarrSource
   | CatalogWmtsSource
-  | CatalogGeoVideoSource;
+  | CatalogGeoVideoSource
+  | CatalogGeoVideoArchiveSource;
 export type CatalogSourceType = CatalogSource["type"];
 export type CatalogSourcePreference = "auto" | CatalogSourceType | string;
 

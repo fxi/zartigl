@@ -102,12 +102,13 @@
       "allOf": [
         { "$ref": "#/$defs/SourceBase" },
         {
-          "type": "object", "required": ["id", "type", "title", "manifestUrl"], "additionalProperties": false,
+          "type": "object", "required": ["id", "type", "title"], "additionalProperties": false,
           "properties": {
             "id": { "$ref": "#/$defs/Uuid" }, "type": { "const": "geovideo" }, "title": { "$ref": "#/$defs/Localized" },
             "provenance": { "$ref": "#/$defs/Provenance" }, "temporal": { "$ref": "#/$defs/Temporal" },
-            "manifestUrl": { "$ref": "#/$defs/Url" }
-          }
+            "manifestUrl": { "$ref": "#/$defs/Url" }, "indexUrl": { "$ref": "#/$defs/Url" }
+          },
+          "oneOf": [{ "required": ["manifestUrl"] }, { "required": ["indexUrl"] }]
         }
       ]
     },

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { CatalogRenderLayer } from "./CatalogRenderLayer";
 import { Zartigl } from "./Zartigl";
 import type { ZartiglOptions } from "./Zartigl";
@@ -59,6 +59,52 @@ class FakeMap {
   getSource(id: string): unknown {
     return this.sources.get(id);
   }
+}
+
+function vectorManifest(id: string, values: string[]) {
+  return {
+    schemaVersion: 3,
+    id,
+    type: "geovideo",
+    projection: "equirectangular",
+    bounds: [-180, -80, 180, 90],
+    media: {
+      url: "video.mp4",
+      mimeType: "video/mp4",
+      width: 16,
+      height: 16,
+      fps: 4,
+      durationSeconds: 0.5,
+      codec: "h264",
+    },
+    encoding: {
+      kind: "vector-luma",
+      bits: 8,
+      codeMin: 16,
+      codeMax: 235,
+      valueDomain: 2,
+      transfer: "sqrt",
+      layout: "stacked-uv",
+      colorSpace: "bt709",
+      colorRange: "limited",
+    },
+    mask: {
+      kind: "static-validity",
+      url: "mask.png",
+      mimeType: "image/png",
+      width: 16,
+      height: 8,
+      threshold: 0.5,
+    },
+    timeline: { kind: "sample-sequence", values },
+    provenance: {
+      catalogEntryId: GEO_ENTRY_ID,
+      inputSourceId: GEO_ZARR_ID,
+      variables: ["u", "v"],
+      generatedAt: "2026-10-07T00:00:00Z",
+    },
+    style: { palette: "viridis", colorDomain: [0, 2.83], unit: "m s-1" },
+  };
 }
 
 function scalarLayer(extra: Record<string, any> = {}): CatalogEntry {
@@ -460,49 +506,7 @@ describe("Zartigl facade", () => {
     }
 
     function manifest(id: keyof typeof period) {
-      return {
-        schemaVersion: 3,
-        id,
-        type: "geovideo",
-        projection: "equirectangular",
-        bounds: [-180, -80, 180, 90],
-        media: {
-          url: "video.mp4",
-          mimeType: "video/mp4",
-          width: 16,
-          height: 16,
-          fps: 4,
-          durationSeconds: 0.5,
-          codec: "h264",
-        },
-        encoding: {
-          kind: "vector-luma",
-          bits: 8,
-          codeMin: 16,
-          codeMax: 235,
-          valueDomain: 2,
-          transfer: "sqrt",
-          layout: "stacked-uv",
-          colorSpace: "bt709",
-          colorRange: "limited",
-        },
-        mask: {
-          kind: "static-validity",
-          url: "mask.png",
-          mimeType: "image/png",
-          width: 16,
-          height: 8,
-          threshold: 0.5,
-        },
-        timeline: { kind: "sample-sequence", values: period[id] },
-        provenance: {
-          catalogEntryId: GEO_ENTRY_ID,
-          inputSourceId: GEO_ZARR_ID,
-          variables: ["u", "v"],
-          generatedAt: "2026-10-07T00:00:00Z",
-        },
-        style: { palette: "viridis", colorDomain: [0, 2.83], unit: "m s-1" },
-      };
+      return vectorManifest(id, period[id]);
     }
 
     function geoCatalog(): Catalog {
@@ -618,6 +622,190 @@ describe("Zartigl facade", () => {
       await z.update({ time: 3_000, depth: 20 });
       expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
       expect(z.getTimeMeta().current).toBe(Date.parse("2026-08-01T00:00:00Z"));
+    });
+  });
+
+  describe("GeoVideo archive", () => {
+    const ARCHIVE_ID = "3f0e9a52-8c1d-4b7e-9f6a-2d4c8b1e7a90";
+    const INDEX_URL = "https://example.test/archive/index.json";
+    const chunks = {
+      august: ["2026-08-01T00:00:00Z", "2026-08-31T21:00:00Z"],
+      september: ["2026-09-01T00:00:00Z", "2026-09-30T21:00:00Z"],
+    };
+    const index = {
+      schemaVersion: 1,
+      type: "geovideo-index",
+      catalogEntryId: GEO_ENTRY_ID,
+      sourceId: ARCHIVE_ID,
+      updatedAt: "2026-10-08T00:00:00Z",
+      chunks: Object.entries(chunks).map(([key, [start, end]]) => ({
+        period: { start, end },
+        start,
+        end,
+        samples: 2,
+        key,
+        manifestUrl: `${key}/manifest.json`,
+      })),
+    };
+    let fetchSpy: ReturnType<typeof vi.fn>;
+
+    function archiveCatalog(): Catalog {
+      const base = vectorLayer({ id: GEO_ENTRY_ID });
+      return {
+        schemaVersion: 2,
+        defaultLocale: "en",
+        layers: [
+          {
+            ...base,
+            sources: [
+              { ...base.sources[0], id: GEO_ZARR_ID },
+              {
+                id: ARCHIVE_ID,
+                type: "geovideo",
+                title: { en: "Archive" },
+                temporal: { mode: "analysis-forecast", cadence: "PT3H" },
+                indexUrl: INDEX_URL,
+              },
+            ],
+            defaults: { sourceId: GEO_ZARR_ID, palette: "rdylbu" },
+          },
+        ],
+      };
+    }
+
+    function stubFetch(indexResponse: { ok: boolean; body?: unknown }) {
+      fetchSpy = vi.fn(async (url: string) => {
+        if (url === INDEX_URL) {
+          return {
+            ok: indexResponse.ok,
+            status: indexResponse.ok ? 200 : 404,
+            json: async () => indexResponse.body,
+          };
+        }
+        const key = url.includes("august") ? "august" : "september";
+        return {
+          ok: true,
+          json: async () => vectorManifest(ARCHIVE_ID, chunks[key]),
+        };
+      });
+      vi.stubGlobal("fetch", fetchSpy);
+    }
+
+    function manifestRequests(): string[] {
+      return fetchSpy.mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url !== INDEX_URL);
+    }
+
+    beforeEach(() => {
+      stubFetch({ ok: true, body: index });
+      return () => vi.unstubAllGlobals();
+    });
+
+    it("loads the chunk covering the requested time and the catalog palette", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+      expect(manifestRequests()).toEqual([
+        "https://example.test/archive/august/manifest.json",
+      ]);
+      expect(z.getLegend()).toMatchObject({ palette: "rdylbu" });
+    });
+
+    it("moves to the next chunk, then to Zarr outside the archive", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ time: "2026-09-10T00:00:00Z" });
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/september/manifest.json",
+      );
+      expect(z.getTimeMeta().current).toBe(Date.parse("2026-09-01T00:00:00Z"));
+
+      await z.update({ time: 3_000 });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(
+        fetchSpy.mock.calls.filter(([url]) => url === INDEX_URL),
+      ).toHaveLength(1);
+    });
+
+    it("keeps moving between chunks when the archive is pinned", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          source: ARCHIVE_ID,
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ time: "2026-09-10T00:00:00Z" });
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/september/manifest.json",
+      );
+
+      await z.update({ time: 3_000 });
+      expect(z.getSource()?.type).toBe("zarr");
+
+      await z.update({ time: "2026-08-10T00:00:00Z" });
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/august/manifest.json",
+      );
+    });
+
+    it("revalidates the index and retries failures", async () => {
+      const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000);
+      onTestFinished(() => now.mockRestore());
+      stubFetch({ ok: false });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      onTestFinished(() => warn.mockRestore());
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          source: ARCHIVE_ID,
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.type).toBe("zarr");
+
+      stubFetch({ ok: true, body: index });
+      now.mockReturnValue(1_000_000 + 61_000);
+      await z.update({ time: "2026-09-10T00:00:00Z" });
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+
+      const indexRequests = () =>
+        fetchSpy.mock.calls.filter(([url]) => url === INDEX_URL).length;
+      await z.update({ time: "2026-08-10T00:00:00Z" });
+      expect(indexRequests()).toBe(1);
+      now.mockReturnValue(1_000_000 + 61_000 + 5 * 60_000 + 1);
+      await z.update({ time: "2026-09-10T00:00:00Z" });
+      expect(indexRequests()).toBe(2);
+    });
+
+    it("falls back to Zarr when the index is unavailable", async () => {
+      stubFetch({ ok: false });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: archiveCatalog() },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(warn).toHaveBeenCalledOnce();
+      warn.mockRestore();
     });
   });
 

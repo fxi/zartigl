@@ -22,6 +22,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SCHEMA_PATH = SCRIPT_DIR.parent / "schema.json"
 CATALOG_PATH = SCRIPT_DIR.parent.parent.parent / "src" / "catalog" / "catalog.json"
 PALETTES_PATH = SCRIPT_DIR.parent.parent.parent / "src" / "lib" / "palettes.json"
+ARCHIVE_PATH = SCRIPT_DIR.parent.parent / "geovideo" / "archive.json"
 
 
 def fail(message: str):
@@ -74,6 +75,9 @@ def main():
     if duplicate_aliases:
         fail(f"Duplicate search aliases: {duplicate_aliases}")
 
+    archives = json.loads(ARCHIVE_PATH.read_text())["archives"] if ARCHIVE_PATH.exists() else []
+    archive_entries = {archive["sourceId"]: archive["catalogEntryId"] for archive in archives}
+
     data_keys = []
     for layer in layers:
         if default_locale not in layer["title"]:
@@ -97,6 +101,8 @@ def main():
                 fail(f"{layer['id']}/{source['id']}: title.{default_locale} is required")
             if layer["kind"] == "vector" and source["type"] not in ("zarr", "geovideo"):
                 fail(f"{layer['id']}: vector entries only support Zarr and GeoVideo render sources")
+            if source.get("indexUrl") and archive_entries.get(source["id"]) != layer["id"]:
+                fail(f"{layer['id']}/{source['id']}: GeoVideo archive source has no policy in scripts/geovideo/archive.json")
             if source["type"] != "zarr":
                 continue
             variables = source["variables"]
