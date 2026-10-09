@@ -554,7 +554,12 @@ export class GeoVideoLayer implements CustomLayerInterface {
     }
     const [min, max] = this.timeRange ?? geoVideoTimelineBounds(this.manifest);
     const ms = Math.max(min, Math.min(max, requested));
-    video.currentTime = geoVideoSecondsForTime(this.manifest, ms);
+    const seconds = geoVideoSecondsForTime(this.manifest, ms);
+    // Already there: skip the seek. Safari drops the last frames of media
+    // seeked while it starts playing, as after an archive chunk swap.
+    if (Math.abs(video.currentTime - seconds) > 0.5 / this.manifest.media.fps) {
+      video.currentTime = seconds;
+    }
     this.map?.triggerRepaint();
   }
 

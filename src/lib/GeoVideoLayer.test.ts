@@ -899,3 +899,24 @@ describe("GeoVideoLayer preloading", () => {
     );
   });
 });
+
+describe("GeoVideoLayer seeking", () => {
+  it("does not seek media already at the requested time", () => {
+    const context = setup();
+    ready(context);
+    const target = Date.parse("2026-03-01T00:00:00Z");
+    context.layer.setTime(target);
+    const seconds = context.video.currentTime;
+    const seeks: number[] = [];
+    Object.defineProperty(context.video, "currentTime", {
+      get: () => seconds,
+      set: (value: number) => seeks.push(value),
+    });
+
+    // Safari drops the last frames of media seeked as it starts playing.
+    context.layer.setTime(target);
+    expect(seeks).toEqual([]);
+    context.layer.setTime(Date.parse("2026-04-01T00:00:00Z"));
+    expect(seeks).toHaveLength(1);
+  });
+});
