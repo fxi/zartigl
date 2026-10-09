@@ -27,7 +27,7 @@
       "title": "Surface Wind",
       "windows": [
         {
-          "full": true
+          "start": "2024-06-01T00:00:00Z"
         }
       ],
       "step": "PT3H",
@@ -318,7 +318,7 @@
       ],
       "output": {
         "crf": 8,
-        "maxBitrate": "48M",
+        "maxBitrate": "96M",
         "tune": "psnr"
       }
     },
@@ -333,7 +333,7 @@
       ],
       "output": {
         "crf": 8,
-        "maxBitrate": "48M",
+        "maxBitrate": "96M",
         "tune": "psnr"
       }
     },

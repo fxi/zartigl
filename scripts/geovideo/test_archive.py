@@ -71,6 +71,8 @@ class PeriodTest(unittest.TestCase):
         self.assertEqual(window_interval({"rolling": "P10D"}, now), (ns("2026-09-28"), now))
         self.assertEqual(window_interval({"start": "2025-03-01T00:00:00Z", "end": "2025-03-10T00:00:00Z"}, now),
                          (ns("2025-03-01"), ns("2025-03-10")))
+        # Open-ended: from a date, such as where upstream data begins, up to now.
+        self.assertEqual(window_interval({"start": "2024-06-01T00:00:00Z"}, now), (ns("2024-06-01"), now))
         for invalid in ({"full": False}, {"rolling": "P1X"}, {"start": "2025-03-10", "end": "2025-03-01"}, {}):
             with self.assertRaises(ValueError):
                 window_interval(invalid, now)

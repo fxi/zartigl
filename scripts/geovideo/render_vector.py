@@ -362,7 +362,11 @@ def value_domain(frames: VectorFrames, percentile: float = 99.9) -> tuple[float,
         ok = np.isfinite(u) & np.isfinite(v)
         valid |= ok
         components.append(np.abs(np.concatenate([u[ok], v[ok]])))
-    raw = float(np.percentile(np.concatenate(components), percentile))
+    values = np.concatenate(components)
+    if values.size == 0:
+        raise ValueError(f"No valid upstream data in the {len(positions)} frames sampled from "
+                         f"{frames.times[0]} to {frames.times[-1]}")
+    raw = float(np.percentile(values, percentile))
     if not math.isfinite(raw) or raw <= 0:
         raise ValueError("Cannot derive a positive vector value domain")
     magnitude = 10 ** math.floor(math.log10(raw))

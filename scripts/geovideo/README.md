@@ -78,6 +78,10 @@ tuning, which trades numeric fidelity for perceived quality. Exact daily SST
 anomaly fields failed the budget (max 17–20) at CRF 10–12 whatever the
 ceiling, because the 16M VBV buffer starves low CRF; CRF 8 with a 48M ceiling
 and `tune: psnr` passes with margin (max ≈ 11) at about 6 MB per month.
+Mixed layer depth and primary swell period are busier still: at 48M they fail
+(max 18–28) whatever the CRF, and pass with a 96M ceiling (max ≈ 10, about
+12 MB per month of daily frames). That ceiling raises the declared H.264 level
+from 4.1 to 5.0, which current phones and desktops decode in hardware.
 
 `report.json` also records source extrema and counts outside the provider
 display domain. Those values follow the provider's declared clamp semantics;
@@ -193,10 +197,12 @@ npm run test:geovideo
 
 Policies live in `archive.json`, keyed by an archive `sourceId`:
 
-- `windows`: any of `{ "full": true }`, `{ "rolling": "P60D" }`, or
-  `{ "start": …, "end": … }`. A window selects every calendar chunk it
-  touches, and a chunk holds all source timestamps of its period up to now, so
-  "ten days in March 2025" publishes March 2025. Forecast steps are excluded.
+- `windows`: any of `{ "full": true }`, `{ "rolling": "P60D" }`,
+  `{ "start": … }` (up to now), or `{ "start": …, "end": … }`. A window
+  selects every calendar chunk it touches, and a chunk holds all source
+  timestamps of its period up to now, so "ten days in March 2025" publishes
+  March 2025. Forecast steps are excluded. Use `start` where a store's time
+  axis precedes its data, such as the NRT wind product, empty before mid-2024.
 - `chunk`: optional; by default live sources use monthly chunks (a growing
   chunk is re-rendered at each new timestamp) and final historical data uses
   monthly (hourly), yearly (daily), or decade (monthly) chunks.

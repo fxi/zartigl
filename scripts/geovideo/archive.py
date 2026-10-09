@@ -117,12 +117,14 @@ def window_interval(window: dict[str, Any], now: np.datetime64) -> tuple[np.date
         return np.datetime64("1900-01-01", "ns"), now
     if set(window) == {"rolling"}:
         return now - render_vector.parse_step(window["rolling"]), now
+    if set(window) == {"start"}:
+        return render.parse_iso(window["start"]), now
     if set(window) == {"start", "end"}:
         start, end = render.parse_iso(window["start"]), render.parse_iso(window["end"])
         if end < start:
             raise ValueError("window end must not precede start")
         return start, end
-    raise ValueError(f"window must be {{full: true}}, {{rolling}} or {{start, end}}: {window}")
+    raise ValueError(f"window must be {{full: true}}, {{rolling}}, {{start}} or {{start, end}}: {window}")
 
 
 # ── chunk planning (pure) ───────────────────────────────────────────────
