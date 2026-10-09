@@ -10,6 +10,7 @@ from archive import (
     expired_superseded,
     empty_index,
     interleave,
+    is_transient,
     merge_chunk,
     pending_chunks,
     period_end,
@@ -232,3 +233,52 @@ class SummaryTest(unittest.TestCase):
             f"    error  {ENTRY}: index unreadable",
             "Total 4/7 chunks (57.1%); 1/3 archives complete",
         ])
+
+
+class ClientError(Exception):
+    """Stands for aiohttp's base class, matched by name."""
+
+
+class ServerDisconnectedError(ClientError):
+    pass
+
+
+class RetryTest(unittest.TestCase):
+    def test_network_failures_are_transient_and_rendering_failures_are_not(self):
+        self.assertTrue(is_transient(ServerDisconnectedError("Server disconnected")))
+        self.assertTrue(is_transient(ConnectionResetError()))
+        self.assertTrue(is_transient(TimeoutError()))
+        try:
+            try:
+                raise ServerDisconnectedError("Server disconnected")
+            except ServerDisconnectedError as cause:
+                raise RuntimeError("Zarr read failed") from cause
+        except RuntimeError as wrapped:
+            self.assertTrue(is_transient(wrapped))
+        self.assertFalse(is_transient(RuntimeError("Scalar-luma artifact exceeds its code error budget")))
+        self.assertFalse(is_transient(ValueError("No valid upstream data")))
+
+    def test_a_dropped_connection_retries_the_chunk(self):
+        import archive
+        from unittest import mock
+
+        chunk = {"period": {"start": "2026-06-01T00:00:00Z"}, "key": "abc"}
+        attempts = mock.Mock(side_effect=[ServerDisconnectedError("Server disconnected"), chunk])
+        with mock.patch.object(archive, "render_chunk", attempts), \
+                mock.patch.object(archive.render, "publish") as publish, \
+                mock.patch.object(archive.time, "sleep") as sleep:
+            self.assertIs(archive.render_and_publish({"sourceId": SOURCE}, {}, chunk, {}, "prefix", None), chunk)
+        self.assertEqual(attempts.call_count, 2)
+        sleep.assert_called_once_with(archive.TRANSIENT_RETRY_DELAYS[0])
+        publish.assert_called_once()
+
+    def test_a_rendering_failure_is_not_retried(self):
+        import archive
+        from unittest import mock
+
+        chunk = {"period": {"start": "2026-06-01T00:00:00Z"}, "key": "abc"}
+        failing = mock.Mock(side_effect=RuntimeError("exceeds its code error budget"))
+        with mock.patch.object(archive, "render_chunk", failing), mock.patch.object(archive.time, "sleep"):
+            with self.assertRaises(RuntimeError):
+                archive.render_and_publish({"sourceId": SOURCE}, {}, chunk, {}, "prefix", None)
+        self.assertEqual(failing.call_count, 1)

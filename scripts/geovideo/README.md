@@ -229,8 +229,9 @@ before the index (short cache lifetime) is rewritten; a replaced chunk is
 deleted one day later so cached indexes stay valid. Runs are round-robin
 across archives, newest chunk first, and stop starting chunks when the budget
 is spent; the next run resumes. With `--jobs`, workers render and upload in
-parallel while the main process alone rewrites each index. A failing chunk pauses only its archive and
-fails the run.
+parallel while the main process alone rewrites each index. A dropped
+connection to a store or the bucket retries the chunk after 30 s, then 60 s;
+any other failing chunk pauses only its archive and fails the run.
 
 To serve an archive, add a GeoVideo source with `indexUrl` (and no
 `manifestUrl`) to the catalog entry once its index exists. zartigl expands it

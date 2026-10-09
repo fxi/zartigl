@@ -57,6 +57,11 @@ CHUNK_PERIODS = {"P1M", "P1Y", "P10Y"}
 DEFAULT_REVISION_HORIZON = "P10D"
 SUPERSEDED_GRACE = np.timedelta64(1, "D")
 SCALAR_MAX_SIZE = (2048, 1024)
+# Waits before retrying a chunk after a dropped connection to a store or bucket.
+TRANSIENT_RETRY_DELAYS = (30, 60)
+# Exception classes, matched by name along the MRO, that a later attempt can
+# get past: aiohttp (Zarr reads), requests, and the standard library.
+TRANSIENT_ERRORS = {"ClientError", "RequestException", "ConnectionError", "TimeoutError"}
 
 
 def utc_now() -> np.datetime64:
@@ -423,16 +428,38 @@ def interleave(queues: list[dict[str, Any]]) -> list[tuple[dict[str, Any], dict[
     return order
 
 
+def is_transient(exc: BaseException) -> bool:
+    """A network failure, here or in its cause chain, rather than a rendering one."""
+    error: BaseException | None = exc
+    while error is not None:
+        if any(cls.__name__ in TRANSIENT_ERRORS for cls in type(error).__mro__):
+            return True
+        error = error.__cause__ or error.__context__
+    return False
+
+
 def render_and_publish(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[str, Any],
                        upload: dict[str, Any], prefix: str, threads: int | None) -> dict[str, Any]:
-    """Worker task: render, validate, and upload one chunk; the caller owns the index."""
+    """Worker task: render, validate, and upload one chunk; the caller owns the index.
+
+    A dropped connection retries the chunk, so one network hiccup does not
+    pause its archive for the rest of the run.
+    """
     directory = chunk_directory(archive, chunk["key"])
-    try:
-        chunk = render_chunk(archive, layer, chunk, threads)
-        render.publish(directory, {"upload": upload}, chunk["key"], f"{prefix}/{chunk['key']}")
-    finally:
-        shutil.rmtree(directory, ignore_errors=True)
-    return chunk
+    for delay in (*TRANSIENT_RETRY_DELAYS, None):
+        try:
+            rendered = render_chunk(archive, layer, chunk, threads)
+            render.publish(directory, {"upload": upload}, rendered["key"], f"{prefix}/{rendered['key']}")
+            return rendered
+        except Exception as exc:
+            if delay is None or not is_transient(exc):
+                raise
+            print(f"Network failure on {chunk['period']['start']}, retrying in {delay}s: {exc}",
+                  file=sys.stderr, flush=True)
+            time.sleep(delay)
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
+    raise AssertionError("unreachable")
 
 
 def resolve(archive: dict[str, Any], now: np.datetime64) -> tuple[dict[str, Any], list[dict[str, Any]]]:
