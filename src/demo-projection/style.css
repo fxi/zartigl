@@ -174,7 +174,6 @@ body {
 
 .ticks li {
   transform: translateY(50%);
-  color: var(--ink);
 }
 
 .days li::before,
@@ -205,26 +204,30 @@ body {
   cursor: pointer;
 }
 
+/* Same paddings, column and gap as the timeline, so ticks line up. */
 .legend {
-  padding: 16px 16px 20px;
+  padding: 18px 16px;
   border-bottom: 0;
 }
 
 .unit {
-  font-size: 18px;
-  margin-bottom: 12px;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .scale {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   height: 24vh;
   min-height: 120px;
 }
 
+/* Centered in the 18px column of the timeline range. */
 .ramp {
-  width: 9px;
-  border-radius: 5px;
+  width: 8px;
+  margin: 0 5px;
+  border-radius: 4px;
 }
 
 /* ---- footer ------------------------------------------------------------- */
@@ -241,6 +244,16 @@ body {
 .bar .picker + .picker,
 .bar .share {
   border-left: 1px solid var(--line);
+}
+
+.bar .picker,
+.bar .share {
+  color: var(--muted);
+}
+
+.bar .picker:hover,
+.bar .share:hover {
+  color: var(--ink);
 }
 
 /* Plain text, like the pickers. */
