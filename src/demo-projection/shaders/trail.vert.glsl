@@ -9,6 +9,7 @@ precision highp sampler2DArray;
 uniform sampler2DArray u_history;
 uniform int u_head;         // slot written by the last advection
 uniform int u_slots;
+uniform int u_segments;     // drawn per particle, at most u_slots - 1
 uniform int u_size;         // state texture side
 uniform mat3 u_rot;         // geographic -> rotated frame
 uniform float u_clip;
@@ -25,7 +26,7 @@ vec2 projectGeo(vec3 g, out float c) {
 }
 
 void main() {
-    int segments = u_slots - 1;
+    int segments = u_segments;
     int end = gl_VertexID % 2;
     int segment = (gl_VertexID / 2) % segments;
     int particle = gl_VertexID / (2 * segments);

@@ -34,8 +34,11 @@ import {
   dayTicks,
   formatUnit,
   legendTicks,
+  particleBudget,
+  particleSettings,
   rampGradient,
   rampPosition,
+  type ParticleSettings,
 } from "./scales";
 import { viewFrame, type View } from "./view";
 
@@ -155,6 +158,11 @@ class ProjectionDemo {
   /** Month chunks of the open layer's archive. */
   private chunks: CatalogGeoVideoSource[] = [];
   private chunkIndex = 0;
+  /** Particle settings of the open layer. */
+  private particleSettings: ParticleSettings = particleSettings(
+    undefined,
+    undefined,
+  );
   /** Next month, decoded ahead of the playhead. */
   private upcoming: Upcoming | null = null;
   /** Bumped on every layer or month switch; stale loads drop out. */
@@ -245,6 +253,10 @@ class ProjectionDemo {
     if (this.ramp) {
       this.gl.deleteTexture(this.ramp);
     }
+    this.particleSettings = particleSettings(
+      entry.defaults?.particles,
+      layer.particles,
+    );
     this.ramp = createColorRampTexture(
       this.gl as unknown as WebGLRenderingContext,
       layer.palette,
@@ -535,7 +547,11 @@ class ProjectionDemo {
       const style: ParticleStyle = {
         ramp: this.ramp,
         maxSpeed: field.maxSpeed,
-        speed: 1.6,
+        ...particleBudget(
+          this.particleSettings,
+          gl.drawingBufferWidth,
+          gl.drawingBufferHeight,
+        ),
         opacity: 0.28,
         drop: 0.003,
       };

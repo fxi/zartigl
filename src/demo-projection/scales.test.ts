@@ -3,6 +3,8 @@ import {
   dayTicks,
   formatUnit,
   legendTicks,
+  particleBudget,
+  particleSettings,
   rampGradient,
   rampPosition,
 } from "./scales";
@@ -46,5 +48,44 @@ describe("formatUnit", () => {
   it("writes per-second units with a slash", () => {
     expect(formatUnit("m s-1")).toBe("m/s");
     expect(formatUnit("m")).toBe("m");
+  });
+});
+
+describe("particleSettings", () => {
+  it("layers demo defaults, catalog defaults, then the local override", () => {
+    expect(particleSettings(undefined, undefined)).toEqual({
+      density: 0.033,
+      speed: 1,
+      fade: 0.7,
+    });
+    expect(
+      particleSettings({ density: 0.004, fade: 0.5 }, { fade: 0.9 }),
+    ).toEqual({ density: 0.004, speed: 1, fade: 0.9 });
+  });
+});
+
+describe("particleBudget", () => {
+  it("counts particles per device pixel, capped by the state texture", () => {
+    const wind = particleBudget(
+      { density: 0.004, speed: 1, fade: 0.7 },
+      2500,
+      1680,
+    );
+    expect(wind.count).toBe(16800);
+    const currents = particleBudget(
+      { density: 0.033, speed: 1, fade: 0.7 },
+      2500,
+      1680,
+    );
+    expect(currents.count).toBe(65536);
+  });
+
+  it("maps fade geometrically to trail segments and scales speed", () => {
+    const at = (fade: number) =>
+      particleBudget({ density: 0.01, speed: 2, fade }, 100, 100);
+    expect([at(0).segments, at(0.7).segments, at(1).segments]).toEqual([
+      8, 21, 31,
+    ]);
+    expect(at(0.7).speed).toBeCloseTo(3.2, 9);
   });
 });

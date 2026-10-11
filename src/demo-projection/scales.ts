@@ -79,3 +79,54 @@ export function dayTicks(
 export function formatUnit(unit: string | undefined): string {
   return (unit ?? "").replace(/ s-1$/, "/s").replace(/ s-2$/, "/s²");
 }
+
+/** zartigl particle settings, as in catalog `defaults.particles`. */
+export interface ParticleSettings {
+  /** Particles per device pixel. */
+  density: number;
+  /** Multiplier of the demo base speed. */
+  speed: number;
+  /** Trail length, 0–1. */
+  fade: number;
+}
+
+const DEFAULT_PARTICLES: ParticleSettings = {
+  density: 0.033,
+  speed: 1,
+  fade: 0.7,
+};
+
+/** Demo defaults, then the catalog entry defaults, then the demo override. */
+export function particleSettings(
+  catalog: Partial<ParticleSettings> | undefined,
+  override: Partial<ParticleSettings> | undefined,
+): ParticleSettings {
+  return { ...DEFAULT_PARTICLES, ...catalog, ...override };
+}
+
+/** Css px per frame at the top of the speed range, at speed = 1. */
+const BASE_SPEED = 1.6;
+const MAX_PARTICLES = 256 * 256;
+/** Trail segments at fade 0 and 1; geometric in between, as zartigl. */
+const SEGMENTS_MIN = 8;
+const SEGMENTS_MAX = 31;
+
+/** Drawn particle count, trail segments and speed for a device-pixel canvas. */
+export function particleBudget(
+  settings: ParticleSettings,
+  widthPx: number,
+  heightPx: number,
+): { count: number; segments: number; speed: number } {
+  const fade = Math.max(0, Math.min(1, settings.fade));
+  return {
+    count: Math.max(
+      1,
+      Math.min(
+        MAX_PARTICLES,
+        Math.round(widthPx * heightPx * settings.density),
+      ),
+    ),
+    segments: Math.round(SEGMENTS_MIN * (SEGMENTS_MAX / SEGMENTS_MIN) ** fade),
+    speed: BASE_SPEED * settings.speed,
+  };
+}

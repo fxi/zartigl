@@ -1,3 +1,5 @@
+import type { ParticleSettings } from "./scales";
+
 /**
  * Demo sub-catalog: global vector GeoVideo archives of the zartigl catalog,
  * with the styling this projection demo gives them. Palettes start dark so
@@ -10,6 +12,8 @@ export interface DemoLayer {
   palette: string;
   /** Draw land opaque: off for fields that also cover land. */
   fillLand: boolean;
+  /** Overrides of the catalog entry `defaults.particles` (density, speed, fade). */
+  particles?: Partial<ParticleSettings>;
 }
 
 export const DEMO_LAYERS: DemoLayer[] = [

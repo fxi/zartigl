@@ -13,6 +13,10 @@ export interface ParticleStyle {
   opacity: number;
   /** Per-frame respawn probability. */
   drop: number;
+  /** Particles drawn, the first ones by index. */
+  count: number;
+  /** Trail segments drawn per particle, at most slots - 1. */
+  segments: number;
 }
 
 /**
@@ -110,11 +114,14 @@ export class SphereParticles {
 
   draw(frame: ViewFrame, style: ParticleStyle): void {
     const gl = this.gl;
+    const count = Math.min(style.count, this.size * this.size);
+    const segments = Math.max(1, Math.min(style.segments, this.slots - 1));
     const p = this.trail.use();
     p.projection(frame);
     p.texture("u_history", 0, this.history, gl.TEXTURE_2D_ARRAY);
     p.int("u_head", this.head);
     p.int("u_slots", this.slots);
+    p.int("u_segments", segments);
     p.int("u_size", this.size);
     p.mat3("u_rot", frame.rot);
     p.float("u_max_jump", Math.max(24, style.speed * 12));
@@ -123,7 +130,7 @@ export class SphereParticles {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     gl.bindVertexArray(this.vao);
-    gl.drawArrays(gl.LINES, 0, this.size * this.size * (this.slots - 1) * 2);
+    gl.drawArrays(gl.LINES, 0, count * segments * 2);
     gl.bindVertexArray(null);
     gl.disable(gl.BLEND);
   }
