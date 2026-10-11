@@ -27,9 +27,9 @@ export const DEMO_LAYERS: DemoLayer[] = [
   {
     entryId: "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
     label: "Surface Wind",
-    palette: "plasma",
+    palette: "viridis",
     fillLand: false,
-    particles: { density: 0.04, speed: 1, fade: 0.2 },
+    particles: { density: 0.5, speed: 3, fade: 1 },
   },
   {
     entryId: "88f00432-ffad-4ebd-85ac-9f8de1ee5213",
