@@ -3,7 +3,6 @@ import {
   dayTicks,
   formatUnit,
   particleSpeedFactor,
-  stepDay,
   legendTicks,
   MAX_PARTICLES,
   particleCount,
@@ -59,21 +58,6 @@ describe("particleSpeedFactor", () => {
   it("rises evenly on a log scale in between", () => {
     expect(particleSpeedFactor(1)).toBeCloseTo(0.325, 3);
     expect(particleSpeedFactor(2)).toBeCloseTo(0.527, 3);
-  });
-});
-
-describe("stepDay", () => {
-  const midnight = Date.UTC(2026, 9, 7);
-  const hour = 3_600_000;
-
-  it("moves to the adjacent UTC midnight", () => {
-    expect(stepDay(midnight + 20 * hour, 1)).toBe(Date.UTC(2026, 9, 8));
-    expect(stepDay(midnight + 20 * hour, -1)).toBe(midnight);
-  });
-
-  it("always moves, also from a midnight", () => {
-    expect(stepDay(midnight, 1)).toBe(Date.UTC(2026, 9, 8));
-    expect(stepDay(midnight, -1)).toBe(Date.UTC(2026, 9, 6));
   });
 });
 

@@ -78,13 +78,6 @@ export function dayTicks(
   return ticks;
 }
 
-/** The next (1) or previous (-1) UTC midnight, strictly after or before `ms`. */
-export function stepDay(ms: number, direction: 1 | -1): number {
-  return direction > 0
-    ? Math.floor(ms / DAY_MS) * DAY_MS + DAY_MS
-    : Math.ceil(ms / DAY_MS) * DAY_MS - DAY_MS;
-}
-
 /** "m s-1" → "m/s". */
 export function formatUnit(unit: string | undefined): string {
   return (unit ?? "").replace(/ s-1$/, "/s").replace(/ s-2$/, "/s²");

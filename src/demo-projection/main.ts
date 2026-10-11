@@ -38,7 +38,6 @@ import {
 } from "./versor";
 import {
   dayTicks,
-  stepDay,
   formatUnit,
   legendTicks,
   particleCount,
@@ -55,8 +54,13 @@ import { viewFrame, type View, type ViewFrame } from "./view";
 const STEPS_PER_SECOND = 0.4;
 const SPEEDS = [0.5, 1, 2, 5];
 const TRANSITION_MS = 2200;
-/** Easing back to north up from the compass. */
-const NORTH_MS = 600;
+/** Easing of compass, zoom and rotate buttons. */
+const VIEW_MS = 450;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 8;
+/** Zoom button factor and rotate button step (degrees of longitude). */
+const ZOOM_STEP = 1.5;
+const ROTATE_STEP = 15;
 /** Shared bearings below this (degrees) open locked north up. */
 const NORTH_EPSILON = 0.5;
 /** Fraction of a month after which the next one is decoded. */
@@ -161,8 +165,10 @@ function refs(root: HTMLElement) {
     date: get<HTMLElement>("date"),
     hour: get<HTMLElement>("hour"),
     time: get<HTMLInputElement>("time"),
-    prev: get<HTMLButtonElement>("prev"),
-    next: get<HTMLButtonElement>("next"),
+    zoomIn: get<HTMLButtonElement>("zoomIn"),
+    zoomOut: get<HTMLButtonElement>("zoomOut"),
+    rotateLeft: get<HTMLButtonElement>("rotateLeft"),
+    rotateRight: get<HTMLButtonElement>("rotateRight"),
     days: get<HTMLElement>("days"),
     compass: get<HTMLButtonElement>("compass"),
     needle: get<SVGElement>("needle"),
@@ -553,16 +559,49 @@ class ProjectionDemo {
       return;
     }
     this.setNorthLocked(true);
-    if (this.transition) {
-      // Preset transitions already end north up.
+    // A projection morph already ends north up.
+    const [lambda, phi] = this.target().rotate;
+    this.animateView([lambda, phi, 0], this.target().zoom);
+  }
+
+  private zoomBy(factor: number): void {
+    const { rotate, zoom } = this.target();
+    this.animateView(rotate, clampZoom(zoom * factor));
+  }
+
+  /** Spin the globe around its axis; positive moves the map content right. */
+  private rotateBy(deg: number): void {
+    const { rotate, zoom } = this.target();
+    this.animateView([rotate[0] + deg, rotate[1], rotate[2]], zoom);
+  }
+
+  /** Where the running view easing ends, else the current view. */
+  private target(): { rotate: [number, number, number]; zoom: number } {
+    const transition = this.transition;
+    return transition
+      ? { rotate: transition.rotate(1), zoom: transition.zoom[1] }
+      : { rotate: this.view.rotate, zoom: this.view.zoom };
+  }
+
+  /**
+   * Ease rotation and zoom from the current view; repeated presses chain
+   * from the previous target. Waits out a projection morph.
+   */
+  private animateView(rotate: [number, number, number], zoom: number): void {
+    const { blend } = this.view;
+    if (this.transition && blend.a !== blend.b) {
       return;
     }
-    const [lambda, phi, gamma] = this.view.rotate;
+    const from = this.view.rotate;
     this.transition = {
       start: performance.now(),
-      duration: NORTH_MS,
-      rotate: (t) => [lambda, phi, gamma * (1 - t)],
-      zoom: [this.view.zoom, this.view.zoom],
+      duration: VIEW_MS,
+      rotate: (t) => [
+        from[0] + (rotate[0] - from[0]) * t,
+        from[1] + (rotate[1] - from[1]) * t,
+        from[2] + (rotate[2] - from[2]) * t,
+      ],
+      zoom: [this.view.zoom, zoom],
     };
   }
 
@@ -591,15 +630,28 @@ class ProjectionDemo {
 
   private bindInteraction(): void {
     const stage = this.ui.front;
+    // Active pointers in client px; two of them pinch-zoom.
+    const pointers = new Map<number, [number, number]>();
+    let pinch: { spread: number; zoom: number } | null = null;
+    const spread = () => {
+      const [a, b] = [...pointers.values()];
+      return Math.hypot(a[0] - b[0], a[1] - b[1]);
+    };
     stage.addEventListener("pointerdown", (event) => {
       if (this.transition) {
+        return;
+      }
+      stage.setPointerCapture(event.pointerId);
+      pointers.set(event.pointerId, [event.clientX, event.clientY]);
+      if (pointers.size > 1) {
+        this.drag = null;
+        pinch = { spread: Math.max(1, spread()), zoom: this.view.zoom };
         return;
       }
       const at = this.invert(event, this.view.rotate);
       if (!at) {
         return;
       }
-      stage.setPointerCapture(event.pointerId);
       this.ui.stage.classList.add("dragging");
       this.drag = {
         v0: cartesian(...at),
@@ -608,6 +660,15 @@ class ProjectionDemo {
       };
     });
     stage.addEventListener("pointermove", (event) => {
+      if (pointers.has(event.pointerId)) {
+        pointers.set(event.pointerId, [event.clientX, event.clientY]);
+      }
+      if (pinch) {
+        if (pointers.size > 1) {
+          this.view.zoom = clampZoom((pinch.zoom * spread()) / pinch.spread);
+        }
+        return;
+      }
       const drag = this.drag;
       if (!drag) {
         return;
@@ -623,7 +684,11 @@ class ProjectionDemo {
       const rotate = versorRotation(q1);
       this.view.rotate = this.northLocked ? withBearing(rotate, 0) : rotate;
     });
-    const end = () => {
+    const end = (event: PointerEvent) => {
+      pointers.delete(event.pointerId);
+      if (pointers.size < 2) {
+        pinch = null;
+      }
       this.drag = null;
       this.ui.stage.classList.remove("dragging");
     };
@@ -637,7 +702,7 @@ class ProjectionDemo {
           return;
         }
         const zoom = this.view.zoom * Math.exp(-event.deltaY * 0.0015);
-        this.view.zoom = Math.max(0.5, Math.min(8, zoom));
+        this.view.zoom = clampZoom(zoom);
       },
       { passive: false },
     );
@@ -646,8 +711,14 @@ class ProjectionDemo {
       this.setPlaying(!this.playing),
     );
     this.ui.share.addEventListener("click", () => this.share());
-    this.ui.prev.addEventListener("click", () => this.stepDay(-1));
-    this.ui.next.addEventListener("click", () => this.stepDay(1));
+    this.ui.zoomIn.addEventListener("click", () => this.zoomBy(ZOOM_STEP));
+    this.ui.zoomOut.addEventListener("click", () => this.zoomBy(1 / ZOOM_STEP));
+    this.ui.rotateLeft.addEventListener("click", () =>
+      this.rotateBy(-ROTATE_STEP),
+    );
+    this.ui.rotateRight.addEventListener("click", () =>
+      this.rotateBy(ROTATE_STEP),
+    );
 
     // The thumb drives the playhead like a jog wheel: playback holds while
     // it is held (pointer or key) and resumes on release.
@@ -919,32 +990,6 @@ class ProjectionDemo {
     this.ui.time.style.setProperty("--p", String(value));
   }
 
-  /**
-   * Jump to the previous or next UTC midnight, opening the adjacent month
-   * when the jump leaves the open one.
-   */
-  private stepDay(direction: 1 | -1): void {
-    const field = this.field;
-    if (!field || field.times.length < 2) {
-      return;
-    }
-    const { times } = field;
-    const target = stepDay(this.ms, direction);
-    if (target >= times[0] && target <= times[times.length - 1]) {
-      this.ms = target;
-      field.focus(target);
-      this.syncTimeline();
-      this.settle = this.settleFrames();
-      return;
-    }
-    const chunk = this.chunks.find((c) => holds(c, target));
-    if (chunk) {
-      this.openChunk(chunk, undefined, target).catch((error: unknown) =>
-        this.fail(error),
-      );
-    }
-  }
-
   private buildLegend(field: CurrentField): void {
     this.ui.unit.textContent = formatUnit(field.manifest.style.unit);
     this.ui.ticks.replaceChildren(
@@ -973,6 +1018,10 @@ class ProjectionDemo {
       }),
     );
   }
+}
+
+function clampZoom(zoom: number): number {
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
 }
 
 function providerLabel(provider: string | undefined): string {
