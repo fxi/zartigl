@@ -84,14 +84,15 @@ export function formatUnit(unit: string | undefined): string {
 export interface ParticleSettings {
   /** Particles per device pixel. */
   density: number;
-  /** Multiplier of the demo base speed. */
+  /** Css px per frame at the top of the speed range. */
   speed: number;
-  /** Trail length, 0–1. */
+  /** Trail length, 0–1 (20 to 600 frames). */
   fade: number;
 }
 
+/** zartigl VectorLayer defaults. */
 const DEFAULT_PARTICLES: ParticleSettings = {
-  density: 0.033,
+  density: 0.05,
   speed: 1,
   fade: 0.7,
 };
@@ -104,29 +105,17 @@ export function particleSettings(
   return { ...DEFAULT_PARTICLES, ...catalog, ...override };
 }
 
-/** Css px per frame at the top of the speed range, at speed = 1. */
-const BASE_SPEED = 1.6;
-const MAX_PARTICLES = 256 * 256;
-/** Trail segments at fade 0 and 1; geometric in between, as zartigl. */
-const SEGMENTS_MIN = 8;
-const SEGMENTS_MAX = 31;
+/** zartigl's MAX_PARTICLES (512² state texture). */
+export const MAX_PARTICLES = 512 * 512;
 
-/** Drawn particle count, trail segments and speed for a device-pixel canvas. */
-export function particleBudget(
+/** Drawn particle count for a device-pixel canvas, as zartigl. */
+export function particleCount(
   settings: ParticleSettings,
   widthPx: number,
   heightPx: number,
-): { count: number; segments: number; speed: number } {
-  const fade = Math.max(0, Math.min(1, settings.fade));
-  return {
-    count: Math.max(
-      1,
-      Math.min(
-        MAX_PARTICLES,
-        Math.round(widthPx * heightPx * settings.density),
-      ),
-    ),
-    segments: Math.round(SEGMENTS_MIN * (SEGMENTS_MAX / SEGMENTS_MIN) ** fade),
-    speed: BASE_SPEED * settings.speed,
-  };
+): number {
+  return Math.max(
+    1,
+    Math.min(MAX_PARTICLES, Math.round(widthPx * heightPx * settings.density)),
+  );
 }

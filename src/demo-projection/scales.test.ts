@@ -3,7 +3,8 @@ import {
   dayTicks,
   formatUnit,
   legendTicks,
-  particleBudget,
+  MAX_PARTICLES,
+  particleCount,
   particleSettings,
   rampGradient,
   rampPosition,
@@ -52,9 +53,9 @@ describe("formatUnit", () => {
 });
 
 describe("particleSettings", () => {
-  it("layers demo defaults, catalog defaults, then the local override", () => {
+  it("layers zartigl defaults, catalog defaults, then the local override", () => {
     expect(particleSettings(undefined, undefined)).toEqual({
-      density: 0.033,
+      density: 0.05,
       speed: 1,
       fade: 0.7,
     });
@@ -64,28 +65,12 @@ describe("particleSettings", () => {
   });
 });
 
-describe("particleBudget", () => {
+describe("particleCount", () => {
   it("counts particles per device pixel, capped by the state texture", () => {
-    const wind = particleBudget(
-      { density: 0.004, speed: 1, fade: 0.7 },
-      2500,
-      1680,
-    );
-    expect(wind.count).toBe(16800);
-    const currents = particleBudget(
-      { density: 0.033, speed: 1, fade: 0.7 },
-      2500,
-      1680,
-    );
-    expect(currents.count).toBe(65536);
-  });
-
-  it("maps fade geometrically to trail segments and scales speed", () => {
-    const at = (fade: number) =>
-      particleBudget({ density: 0.01, speed: 2, fade }, 100, 100);
-    expect([at(0).segments, at(0.7).segments, at(1).segments]).toEqual([
-      8, 21, 31,
-    ]);
-    expect(at(0.7).speed).toBeCloseTo(3.2, 9);
+    const at = (density: number) =>
+      particleCount({ density, speed: 1, fade: 0.7 }, 2500, 1680);
+    expect(at(0.004)).toBe(16800);
+    expect(at(0.2)).toBe(MAX_PARTICLES);
+    expect(at(0)).toBe(1);
   });
 });

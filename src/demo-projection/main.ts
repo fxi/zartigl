@@ -12,17 +12,21 @@ import {
   loadGeoVideoIndex,
 } from "../lib/geovideo-index";
 import { createColorRampTexture } from "../lib/gl-util";
+import { TrailFade, fadeToFrames, fadeToOpacity } from "../lib/trail-fade";
 import { CurrentField } from "./CurrentField";
 import { DEMO_LAYERS, type DemoLayer } from "./layers";
 import { Overlay } from "./Overlay";
-import { ProjectedRaster } from "./ProjectedRaster";
 import {
   PROJECTIONS,
   cartesian,
   fitScale,
   type ProjectionId,
 } from "./projections";
-import { SphereParticles, type ParticleStyle } from "./SphereParticles";
+import {
+  SphereParticles,
+  visibleCap,
+  type ParticleStyle,
+} from "./SphereParticles";
 import {
   interpolateRotation,
   versor,
@@ -34,21 +38,34 @@ import {
   dayTicks,
   formatUnit,
   legendTicks,
-  particleBudget,
+  particleCount,
   particleSettings,
   rampGradient,
   rampPosition,
   type ParticleSettings,
 } from "./scales";
 import { decodeShare, encodeShare, type ShareState } from "./share";
-import { viewFrame, type View } from "./view";
+import { viewFrame, type View, type ViewFrame } from "./view";
 
-const STEPS_PER_SECOND = 1.5;
+const STEPS_PER_SECOND = 0.5;
 const TRANSITION_MS = 2200;
 /** Fraction of a month after which the next one is decoded. */
 const PREFETCH_AT = 0.6;
 /** How long the Share button confirms the copy. */
 const COPIED_MS = 1500;
+/** zartigl particle respawn: per frame, plus per m/s of local speed. */
+const DROP_RATE = 0.003;
+const DROP_RATE_BUMP = 0.01;
+/**
+ * zartigl's REDISTRIB_*: a transient drop-rate boost after a view change, so
+ * particles spread over the new view instead of lingering in the old one.
+ */
+const REDISTRIB_DECAY = 0.92;
+const REDISTRIB_MAX_DROP = 0.1;
+/** The camera counts as moving until its view rests this long. */
+const MOVE_SETTLE_MS = 100;
+/** Frames still animated while paused, to rebuild trails after a change. */
+const SETTLE_FRAMES_MAX = 120;
 
 interface Upcoming {
   index: number;
@@ -154,8 +171,14 @@ const landFeature = (topology: unknown) => {
 class ProjectionDemo {
   private readonly ui: ReturnType<typeof refs>;
   private readonly gl: WebGL2RenderingContext;
-  private readonly raster: ProjectedRaster;
   private readonly particles: SphereParticles;
+  private readonly trailFade = new TrailFade(fadeToOpacity(0.7));
+  /** Drop-rate boost after a view change, and the view it was measured on. */
+  private redistribution = 0;
+  private lastScale = 0;
+  private lastCenter: [number, number, number] = [1, 0, 0];
+  /** Frames left to animate while paused. */
+  private settle = 0;
   private readonly overlay: Overlay;
   private ramp: WebGLTexture | null = null;
   private field: CurrentField | null = null;
@@ -177,8 +200,8 @@ class ProjectionDemo {
   private playing = true;
   /** Timeline thumb held: playback waits for its release. */
   private scrubbing = false;
-  /** Particles must be rebuilt at the playhead once its frames are ready. */
-  private pendingWarm = false;
+  /** Particles must respawn in the view once the playhead frames are ready. */
+  private pendingRespawn = false;
   /** View and playhead from the url hash, applied on load. */
   private readonly shared: Partial<ShareState>;
   private copiedTimer = 0;
@@ -208,8 +231,7 @@ class ProjectionDemo {
       throw new Error("WebGL2 is required");
     }
     this.gl = gl;
-    this.raster = new ProjectedRaster(gl);
-    this.particles = new SphereParticles(gl, 256, 32);
+    this.particles = new SphereParticles(gl);
     this.overlay = new Overlay(this.ui.back, this.ui.front, {
       land: landFeature(land110),
       landDetail: landFeature(land50),
@@ -281,6 +303,7 @@ class ProjectionDemo {
       entry.defaults?.particles,
       layer.particles,
     );
+    this.trailFade.setBase(fadeToOpacity(this.particleSettings.fade));
     this.ramp = createColorRampTexture(
       this.gl as unknown as WebGLRenderingContext,
       layer.palette,
@@ -304,7 +327,7 @@ class ProjectionDemo {
     }
     this.adopt(field, this.chunks.indexOf(chunk), at);
     this.buildLegend(field);
-    this.pendingWarm = true;
+    this.pendingRespawn = true;
   }
 
   /** Manifest and first decoded frame (at `at`, else the start) of a month. */
@@ -465,6 +488,7 @@ class ProjectionDemo {
     blend.ka = fitScale(blend.a, width, height);
     blend.kb = fitScale(blend.b, width, height);
     this.overlayKey = "";
+    this.particles.resize(this.ui.gl.width, this.ui.gl.height);
   }
 
   // ---- interaction -------------------------------------------------------
@@ -552,7 +576,7 @@ class ProjectionDemo {
       this.ms =
         times[0] + Number(time.value) * (times[times.length - 1] - times[0]);
       field.focus(this.ms);
-      this.pendingWarm = true;
+      this.settle = this.settleFrames();
     });
     window.addEventListener("keydown", (event) => {
       if (event.code === "Space" && event.target === document.body) {
@@ -622,42 +646,98 @@ class ProjectionDemo {
     this.advanceTime(dt);
 
     const frame = viewFrame(this.view);
+    this.drawOverlay(frame, now);
+    this.drawParticles(frame, now);
+    requestAnimationFrame((t) => this.tick(t));
+  }
+
+  /** Trail length in frames, capped: how long a paused view keeps animating. */
+  private settleFrames(): number {
+    return Math.min(
+      SETTLE_FRAMES_MAX,
+      Math.round(fadeToFrames(this.particleSettings.fade)),
+    );
+  }
+
+  /**
+   * zartigl's particle pipeline: advect, fade the trails, draw the new
+   * segments, composite. While paused, particles only animate for a while
+   * after a change, to rebuild trails, then the image holds.
+   */
+  private drawParticles(frame: ViewFrame, now: number): void {
     const gl = this.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
     const field = this.field;
-    if (field && this.ramp) {
-      const style: ParticleStyle = {
-        ramp: this.ramp,
-        maxSpeed: field.maxSpeed,
-        ...particleBudget(
-          this.particleSettings,
-          gl.drawingBufferWidth,
-          gl.drawingBufferHeight,
-        ),
-        opacity: 0.28,
-        drop: 0.003,
-      };
-      this.raster.draw(frame, field, this.ms, {
-        ramp: this.ramp,
-        maxSpeed: field.maxSpeed,
-        brightness: 0.5,
-      });
-      if (this.pendingWarm) {
-        if (field.ready(this.ms)) {
-          this.particles.warm(frame, field, this.ms, style);
-          this.pendingWarm = false;
-        }
-      } else if (this.advancing) {
-        this.particles.step(frame, field, this.ms, style);
-      }
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-      this.particles.draw(frame, style);
+    if (!field || !this.ramp) {
+      return;
     }
+    const moving = now - this.lastMove < MOVE_SETTLE_MS;
+    if (moving) {
+      this.settle = this.settleFrames();
+    }
+    this.trailFade.setMoving(moving, now);
+    this.redistribute(frame);
+    if (this.pendingRespawn) {
+      // step() binds the field, which requests the frames at the playhead.
+      this.pendingRespawn = false;
+      this.particles.clear();
+      this.particles.respawn();
+      this.settle = this.settleFrames();
+    }
+    const style: ParticleStyle = {
+      ramp: this.ramp,
+      maxSpeed: field.maxSpeed,
+      speed: this.particleSettings.speed,
+      count: particleCount(
+        this.particleSettings,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
+      ),
+      drop: Math.min(DROP_RATE + this.redistribution, REDISTRIB_MAX_DROP),
+      dropBump: DROP_RATE_BUMP,
+    };
+    const animate = this.advancing || this.settle > 0;
+    if (animate && this.particles.step(frame, field, this.ms, style)) {
+      const fade = this.trailFade.value(now);
+      this.particles.trace(frame, field, this.ms, style, fade);
+      // Paused: count down only once the playhead frames are decoded, so a
+      // scrub to uncached frames still rebuilds trails on the right field.
+      if (!this.advancing && field.ready(this.ms)) {
+        this.settle--;
+      }
+    }
+    this.particles.present();
+  }
 
+  /** zartigl's drop-rate boost, from the per-frame zoom and center change. */
+  private redistribute(frame: ViewFrame): void {
+    const center: [number, number, number] = [
+      frame.rotInv[0],
+      frame.rotInv[1],
+      frame.rotInv[2],
+    ];
+    if (this.lastScale > 0) {
+      const [x, y, z] = this.lastCenter;
+      const dot = x * center[0] + y * center[1] + z * center[2];
+      const delta = Math.min(
+        1,
+        Math.abs(Math.log(frame.pxPerRadian / this.lastScale)) +
+          Math.acos(Math.min(1, Math.max(-1, dot))) / visibleCap(frame),
+      );
+      this.redistribution = Math.max(
+        this.redistribution * REDISTRIB_DECAY,
+        delta,
+      );
+    }
+    this.lastScale = frame.pxPerRadian;
+    this.lastCenter = center;
+  }
+
+  /** Coastlines and graticule: coarse while the view moves, then detailed. */
+  private drawOverlay(frame: ViewFrame, now: number): void {
     const key = JSON.stringify([
       frame.rotate,
       frame.zoom,
@@ -674,14 +754,8 @@ class ProjectionDemo {
       this.overlay.draw(frame, this.dpr, false);
     } else if (!this.detailed && now - this.lastMove > 180) {
       this.detailed = true;
-      if (!this.advancing) {
-        // Frozen particles only cover the previous view: rebuild them for
-        // the settled one.
-        this.pendingWarm = true;
-      }
       this.overlay.draw(frame, this.dpr, true);
     }
-    requestAnimationFrame((t) => this.tick(t));
   }
 
   private advanceTime(dt: number): void {

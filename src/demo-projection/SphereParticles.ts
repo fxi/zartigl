@@ -1,111 +1,112 @@
 import type { CurrentField } from "./CurrentField";
 import advectFrag from "./shaders/advect.frag.glsl";
+import drawFrag from "./shaders/draw.frag.glsl";
+import drawVert from "./shaders/draw.vert.glsl";
+import fadeFrag from "./shaders/fade.frag.glsl";
 import quadVert from "./shaders/quad.vert.glsl";
-import trailFrag from "./shaders/trail.frag.glsl";
-import trailVert from "./shaders/trail.vert.glsl";
 import { Program, type ViewFrame } from "./view";
-
-/** Advections until a respawned trail is fully opaque (trail.vert.glsl). */
-const FADE_IN_STEPS = 8;
 
 export interface ParticleStyle {
   ramp: WebGLTexture;
   maxSpeed: number;
   /** Css px per frame at maxSpeed. */
   speed: number;
-  opacity: number;
-  /** Per-frame respawn probability. */
-  drop: number;
   /** Particles drawn, the first ones by index. */
   count: number;
-  /** Trail segments drawn per particle, at most slots - 1. */
-  segments: number;
+  /** Per-frame respawn probability. */
+  drop: number;
+  /** Respawn probability added per m/s. */
+  dropBump: number;
 }
 
 /**
- * Particles advected on the unit sphere. Each step writes the new state and
- * a ring-buffer history layer in one MRT pass; trails are drawn from the
- * history, so they reproject with the view instead of smearing on screen.
+ * zartigl's particle renderer on the unit sphere: particles are advected on
+ * the sphere, so any projection and the poles work, and each frame draws one
+ * segment per particle into a screen texture that fades a little every
+ * frame, which builds the trails.
  */
 export class SphereParticles {
   private readonly advect: Program;
-  private readonly trail: Program;
+  private readonly draw: Program;
+  private readonly fade: Program;
   private readonly states: WebGLTexture[];
-  private readonly history: WebGLTexture;
   private readonly framebuffer: WebGLFramebuffer;
   private readonly vao: WebGLVertexArrayObject;
+  private screens: WebGLTexture[] = [];
+  private width = 0;
+  private height = 0;
   private current = 0;
-  private head = 0;
   private reset = true;
 
   constructor(
     private readonly gl: WebGL2RenderingContext,
-    readonly size = 256,
-    readonly slots = 16,
+    readonly size = 512,
   ) {
     if (!gl.getExtension("EXT_color_buffer_float")) {
       throw new Error("Float render targets are not supported");
     }
     this.advect = new Program(gl, quadVert, advectFrag);
-    this.trail = new Program(gl, trailVert, trailFrag);
-    this.states = [this.stateTexture(), this.stateTexture()];
-    this.history = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.history);
-    gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.RGBA32F, size, size, slots);
-    this.nearest(gl.TEXTURE_2D_ARRAY);
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+    this.draw = new Program(gl, drawVert, drawFrag);
+    this.fade = new Program(gl, quadVert, fadeFrag);
+    this.states = [
+      this.texture(gl.RGBA32F, size, size),
+      this.texture(gl.RGBA32F, size, size),
+    ];
     this.framebuffer = gl.createFramebuffer();
     // Attribute-less draws still want a bound vertex array.
     this.vao = gl.createVertexArray();
   }
 
-  /**
-   * Respawn every particle and advect it long enough for full, faded-in
-   * trails. Seeds are fixed, so the same view and time give the same image.
-   */
-  warm(
-    frame: ViewFrame,
-    field: CurrentField,
-    ms: number,
-    style: ParticleStyle,
-  ): void {
-    this.reset = true;
-    const steps = Math.min(style.segments, this.slots - 1) + FADE_IN_STEPS;
-    for (let i = 0; i < steps; i++) {
-      this.step(frame, field, ms, style, i + 1);
+  /** Screen textures follow the drawing buffer; trails restart. */
+  resize(width: number, height: number): void {
+    if (width === this.width && height === this.height) {
+      return;
     }
+    const gl = this.gl;
+    for (const texture of this.screens) {
+      gl.deleteTexture(texture);
+    }
+    this.width = width;
+    this.height = height;
+    this.screens = [
+      this.texture(gl.RGBA8, width, height),
+      this.texture(gl.RGBA8, width, height),
+    ];
+    this.clear();
   }
 
+  /** Erase the trails. */
+  clear(): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.clearColor(0, 0, 0, 0);
+    for (const texture of this.screens) {
+      this.target(texture);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  /** Respawn every particle inside the visible cap on the next step. */
+  respawn(): void {
+    this.reset = true;
+  }
+
+  /** Advect the particles one frame; false until the field has a frame. */
   step(
     frame: ViewFrame,
     field: CurrentField,
     ms: number,
     style: ParticleStyle,
-    seed = Math.random() * 100,
-  ): void {
+  ): boolean {
     const gl = this.gl;
     const p = this.advect.use();
     if (!field.bind(p, ms)) {
-      return;
+      return false;
     }
     const next = 1 - this.current;
-    const slot = (this.head + 1) % this.slots;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      this.states[next],
-      0,
-    );
-    gl.framebufferTextureLayer(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT1,
-      this.history,
-      0,
-      slot,
-    );
-    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    this.target(this.states[next]);
     gl.viewport(0, 0, this.size, this.size);
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
@@ -116,69 +117,127 @@ export class SphereParticles {
     p.float("u_max_speed", style.maxSpeed);
     p.float("u_keep_cos", Math.cos(visibleCap(frame)));
     p.float("u_drop", style.drop);
-    p.float("u_seed", seed);
+    p.float("u_drop_bump", style.dropBump);
+    p.float("u_seed", Math.random() * 100);
     p.float("u_reset", this.reset ? 1 : 0);
-    gl.bindVertexArray(this.vao);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.bindVertexArray(null);
+    this.quad();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     this.current = next;
-    this.head = slot;
     this.reset = false;
+    return true;
   }
 
-  draw(frame: ViewFrame, style: ParticleStyle): void {
+  /**
+   * Fade the trails by `fadeOpacity` and draw the last step's segments into
+   * them, as zartigl's fade and draw passes.
+   */
+  trace(
+    frame: ViewFrame,
+    field: CurrentField,
+    ms: number,
+    style: ParticleStyle,
+    fadeOpacity: number,
+  ): void {
     const gl = this.gl;
-    const count = Math.min(style.count, this.size * this.size);
-    const segments = Math.max(1, Math.min(style.segments, this.slots - 1));
-    const p = this.trail.use();
-    p.projection(frame);
-    p.texture("u_history", 0, this.history, gl.TEXTURE_2D_ARRAY);
-    p.int("u_head", this.head);
-    p.int("u_slots", this.slots);
-    p.int("u_segments", segments);
-    p.int("u_size", this.size);
-    p.mat3("u_rot", frame.rot);
-    p.float("u_max_jump", Math.max(24, style.speed * 12));
-    p.texture("u_ramp", 1, style.ramp);
-    p.float("u_opacity", style.opacity);
+    const [previous, next] = this.screens;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    this.target(next);
+    gl.viewport(0, 0, this.width, this.height);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);
+    const f = this.fade.use();
+    f.texture("u_screen", 0, previous);
+    f.float("u_opacity", fadeOpacity);
+    this.quad();
+
+    const p = this.draw.use();
+    if (field.bind(p, ms)) {
+      p.projection(frame);
+      p.texture("u_prev", 2, this.states[1 - this.current]);
+      p.texture("u_curr", 3, this.states[this.current]);
+      p.int("u_size", this.size);
+      p.mat3("u_rot", frame.rot);
+      p.float("u_max_jump", Math.max(16, style.speed * 8));
+      p.texture("u_ramp", 4, style.ramp);
+      p.float("u_opacity", 1);
+      gl.enable(gl.BLEND);
+      // Straight color over the trails, alpha accumulated as coverage
+      // (shaders/fade.frag.glsl).
+      gl.blendFuncSeparate(
+        gl.SRC_ALPHA,
+        gl.ONE_MINUS_SRC_ALPHA,
+        gl.ONE,
+        gl.ONE_MINUS_SRC_ALPHA,
+      );
+      gl.bindVertexArray(this.vao);
+      gl.drawArrays(
+        gl.LINES,
+        0,
+        Math.min(style.count, this.size * this.size) * 2,
+      );
+      gl.bindVertexArray(null);
+      gl.disable(gl.BLEND);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    this.screens = [next, previous];
+  }
+
+  /** Composite the trails over the bound canvas framebuffer. */
+  present(): void {
+    const gl = this.gl;
+    gl.viewport(0, 0, this.width, this.height);
+    const f = this.fade.use();
+    f.texture("u_screen", 0, this.screens[0]);
+    f.float("u_opacity", 1);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-    gl.bindVertexArray(this.vao);
-    gl.drawArrays(gl.LINES, 0, count * segments * 2);
-    gl.bindVertexArray(null);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.quad();
     gl.disable(gl.BLEND);
   }
 
   destroy(): void {
     const gl = this.gl;
     this.advect.delete();
-    this.trail.delete();
-    for (const texture of this.states) {
+    this.draw.delete();
+    this.fade.delete();
+    for (const texture of [...this.states, ...this.screens]) {
       gl.deleteTexture(texture);
     }
-    gl.deleteTexture(this.history);
     gl.deleteFramebuffer(this.framebuffer);
     gl.deleteVertexArray(this.vao);
   }
 
-  private stateTexture(): WebGLTexture {
+  private target(texture: WebGLTexture): void {
+    const gl = this.gl;
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      texture,
+      0,
+    );
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+  }
+
+  private quad(): void {
+    const gl = this.gl;
+    gl.bindVertexArray(this.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+  }
+
+  private texture(format: number, width: number, height: number) {
     const gl = this.gl;
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, this.size, this.size);
-    this.nearest(gl.TEXTURE_2D);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, format, width, height);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.bindTexture(gl.TEXTURE_2D, null);
     return texture;
-  }
-
-  private nearest(target: number): void {
-    const gl = this.gl;
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 }
 

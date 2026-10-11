@@ -3,20 +3,21 @@ precision highp float;
 
 #include ./velocity.glsl;
 
-// Particles live on the unit sphere (geographic cartesian frame): advection
-// is a tangent step then a renormalization, with no singularity at the poles.
-uniform sampler2D u_state;  // xyz, w = age + speed fraction
+// Particles live on the unit sphere (geographic cartesian frame). Motion and
+// respawn follow zartigl's update.frag.glsl: linear visual speed, a random
+// drop rate bumped by the local speed, respawn uniform in the visible cap.
+uniform sampler2D u_state;  // xyz, w = speed fraction, -1 on a respawn
 uniform mat3 u_rot_inv;     // rotated frame -> geographic
 uniform float u_step;       // radians per frame at u_max_speed
 uniform float u_max_speed;
 uniform float u_keep_cos;   // particles farther than this cap respawn
 uniform float u_drop;       // per-frame respawn probability
+uniform float u_drop_bump;  // added per m/s
 uniform float u_seed;
 uniform float u_reset;
 
 in vec2 v_uv;
-layout(location = 0) out vec4 o_state;
-layout(location = 1) out vec4 o_history;
+out vec4 o_state;
 
 const float TAU = 6.283185307179586;
 
@@ -33,34 +34,26 @@ vec3 spawn(vec2 seed) {
 }
 
 void main() {
-    vec4 s = texture(u_state, v_uv);
-    vec3 p = s.xyz;
-    float age = floor(s.w);
+    vec3 p = texture(u_state, v_uv).xyz;
     vec2 seed = v_uv * 91.7 + vec2(u_seed, u_seed * 0.37);
-    bool respawn = u_reset > 0.5 || dot(p, p) < 0.5 || rand(seed) < u_drop;
+    // u_rot_inv[0] is the projection center in geographic coordinates.
+    bool respawn = u_reset > 0.5 || dot(p, p) < 0.5 ||
+        dot(u_rot_inv[0], p) < u_keep_cos;
     float speed = 0.0;
-
     if (!respawn) {
         vec3 vel = sampleVelocity(p);
-        // u_rot_inv[0] is the projection center in geographic coordinates.
-        if (vel.z < 0.5 || dot(u_rot_inv[0], p) < u_keep_cos) {
+        float v = length(vel.xy);
+        if (vel.z < 0.5 || rand(seed) < u_drop + v * u_drop_bump) {
             respawn = true;
         } else {
-            float h = length(p.xy);
-            vec3 east = h > 1e-6 ? vec3(-p.y, p.x, 0.0) / h : vec3(0.0, 1.0, 0.0);
-            vec3 north = cross(p, east);
-            // Square-root visual speed keeps slow flow legible next to jets.
-            float s = length(vel.xy) / u_max_speed;
-            vec2 dir = vel.xy / max(length(vel.xy), 1e-9);
-            p = normalize(p + (dir.x * east + dir.y * north) * sqrt(min(s, 1.0)) * u_step);
-            age = mod(age + 1.0, 8192.0);
-            speed = clamp(s, 0.0, 0.999);
+            speed = min(v / u_max_speed, 1.0);
+            p = flowStep(p, vel.xy, speed * u_step);
         }
     }
     if (respawn) {
-        p = spawn(seed + vec2(3.7, 1.9));
-        age = 0.0;
+        // A negative speed hides the jump from the old position.
+        o_state = vec4(spawn(seed + vec2(3.7, 1.9)), -1.0);
+        return;
     }
-    o_state = vec4(p, age + speed);
-    o_history = o_state;
+    o_state = vec4(p, speed);
 }

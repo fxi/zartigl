@@ -22,6 +22,7 @@ import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridFrag from "./shaders/grid.frag.glsl?raw";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
+import { TrailFade } from "./trail-fade";
 
 export type RenderMode = "raster" | "particles" | "raster+particles";
 export type ParticleStateMode = "auto" | "rgba8";
@@ -67,13 +68,6 @@ const RASTER_GRID_LAT_SEGMENTS = 64;
 const REDISTRIB_GAIN = 1.0; // boost per unit per-frame bounds change
 const REDISTRIB_DECAY = 0.92; // per-frame decay (boost outlives the gesture ~0.5–1s)
 const REDISTRIB_MAX_DROP = 0.1; // ceiling on effective drop rate during the transition
-
-// Trail history is screen-space and cannot remain geographically exact while
-// the camera moves. Retain a few frames for visual continuity, but decay them
-// quickly enough that displaced trails do not linger.
-const MOVING_FADE_OPACITY = 0.8;
-const MOVING_FADE_OUT_MS = 120;
-const MOVING_FADE_IN_MS = 300;
 
 // Particle velocity sampling stays bilinear for smooth motion, but the alpha
 // mask marks valid data. Near hard no-data edges, bilinear alpha becomes
@@ -168,14 +162,9 @@ export class ParticleSimulation {
   } | null = null;
   private redistributionBoost = 0;
 
-  // Camera-aware trail retention transition. This is separate from the public
-  // configured fade so interaction never overwrites the user's setting.
-  private cameraMoving = false;
-  private currentFadeOpacity: number;
-  private fadeTransitionStartOpacity: number;
-  private fadeTransitionTargetOpacity: number;
-  private fadeTransitionStartMs = 0;
-  private fadeTransitionDurationMs = 0;
+  // Camera-aware trail retention, separate from the configured fade so
+  // interaction never overwrites the user's setting.
+  private readonly trailFade: TrailFade;
 
   private webglInfo: WebGLRendererInfo | null = null;
   private stateFormat!: StateTextureFormat;
@@ -206,9 +195,7 @@ export class ParticleSimulation {
 
   constructor(params?: Partial<SimulationParams>) {
     this.params = { ...DEFAULTS, ...params };
-    this.currentFadeOpacity = this.params.fadeOpacity;
-    this.fadeTransitionStartOpacity = this.params.fadeOpacity;
-    this.fadeTransitionTargetOpacity = this.params.fadeOpacity;
+    this.trailFade = new TrailFade(this.params.fadeOpacity);
   }
 
   init(gl: WebGLRenderingContext): void {
@@ -946,58 +933,16 @@ export class ParticleSimulation {
 
   setFadeOpacity(v: number): void {
     this.params.fadeOpacity = v;
-    // While moving, retain the aggressive decay target and remember the new
-    // configured value for restoration at moveend.
-    if (!this.cameraMoving) {
-      this.currentFadeOpacity = v;
-      this.fadeTransitionStartOpacity = v;
-      this.fadeTransitionTargetOpacity = v;
-      this.fadeTransitionDurationMs = 0;
-    }
+    this.trailFade.setBase(v);
   }
 
   /** Smoothly switch between normal and camera-motion trail retention. */
   setCameraMoving(moving: boolean): void {
-    if (moving === this.cameraMoving) {
-      return;
-    }
-
-    const now = performance.now();
-    this.updateTrailFadeOpacity(now);
-    this.cameraMoving = moving;
-    this.fadeTransitionStartOpacity = this.currentFadeOpacity;
-    this.fadeTransitionTargetOpacity = moving
-      ? MOVING_FADE_OPACITY
-      : this.params.fadeOpacity;
-    this.fadeTransitionStartMs = now;
-    this.fadeTransitionDurationMs = moving
-      ? MOVING_FADE_OUT_MS
-      : MOVING_FADE_IN_MS;
+    this.trailFade.setMoving(moving, performance.now());
   }
 
   private updateTrailFadeOpacity(now: number): number {
-    if (this.fadeTransitionDurationMs <= 0) {
-      return this.currentFadeOpacity;
-    }
-
-    const progress = Math.min(
-      1,
-      Math.max(
-        0,
-        (now - this.fadeTransitionStartMs) / this.fadeTransitionDurationMs,
-      ),
-    );
-    // Smoothstep avoids visible slope changes at the beginning and end.
-    const eased = progress * progress * (3 - 2 * progress);
-    this.currentFadeOpacity =
-      this.fadeTransitionStartOpacity +
-      (this.fadeTransitionTargetOpacity - this.fadeTransitionStartOpacity) *
-        eased;
-
-    if (progress === 1) {
-      this.fadeTransitionDurationMs = 0;
-    }
-    return this.currentFadeOpacity;
+    return this.trailFade.value(now);
   }
 
   private shouldSuppressRgba8Particles(worldSize: number): boolean {

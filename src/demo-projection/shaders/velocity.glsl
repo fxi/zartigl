@@ -22,3 +22,15 @@ vec3 sampleVelocity(vec3 g) {
     if (uv.y < 0.0 || uv.y > 1.0) return vec3(0.0);
     return mix(texture(u_vel0, uv).xyz, texture(u_vel1, uv).xyz, u_vel_mix);
 }
+
+/**
+ * Move `p` by `h` radians along the direction of `vel` (east, north): a
+ * tangent step then a renormalization, with no singularity at the poles.
+ */
+vec3 flowStep(vec3 p, vec2 vel, float h) {
+    float r = length(p.xy);
+    vec3 east = r > 1e-6 ? vec3(-p.y, p.x, 0.0) / r : vec3(0.0, 1.0, 0.0);
+    vec3 north = cross(p, east);
+    vec2 dir = vel / max(length(vel), 1e-9);
+    return normalize(p + (dir.x * east + dir.y * north) * h);
+}

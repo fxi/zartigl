@@ -16,19 +16,24 @@ npm run build:projection   # dist-projection/, served under /zartigl/projversor/
   (land, graticule, outline) and the WebGL layers project through the same
   maths, so coastlines stay on the data. A transition blends two raw
   projections point by point, which makes the morph smooth.
-- **Raster.** A lon/lat mesh of the rotated frame (`ProjectedRaster.ts`) is
-  projected in the vertex shader. Its border is the cut of every projection,
-  so no triangle crosses a discontinuity.
-- **Particles on the sphere.** Particles live as unit vectors
-  (`SphereParticles.ts`) and are advected in the local east/north tangent
-  plane. There is no singularity at the poles and no Mercator. Each step
-  writes a ring-buffer history layer, and trails are drawn from that history,
-  so they reproject with the view instead of smearing on screen.
+- **zartigl particles on the sphere.** The renderer is zartigl's particle
+  pipeline (`lib/ParticleSimulation`): each frame, particles advance, a few
+  respawn at random, one opaque segment per particle is drawn into a screen
+  texture, and that texture fades a little, which builds the trails. Here the
+  particles live as unit vectors (`SphereParticles.ts`) and move in the local
+  east/north tangent plane, so every projection works and there is no
+  singularity at the poles. Segments are projected with the current view
+  (`shaders/draw.vert.glsl`).
+- **Camera motion.** Screen trails cannot follow a moving view. As in
+  zartigl, they clear quickly while the view moves (`lib/trail-fade`), and a
+  drop-rate boost spreads the particles over the new view.
 - **Versor dragging.** Quaternion rotation (`versor.ts`) keeps the grabbed
   point under the pointer on every projection.
-- **Timeline as a jog wheel.** Scrubbing cancels stale decodes. Particles are
-  rebuilt with fixed seeds at the playhead, so the same time and view always
-  give the same image. Pause freezes them.
+- **Timeline as a jog wheel.** Scrubbing cancels stale decodes, and the
+  particles flow on the field at the playhead as soon as its frames are
+  decoded. Pause holds the image. After a view change, a scrub or a new
+  layer, particles animate for about one trail length to rebuild trails,
+  then hold again.
 - **Share.** A readable url hash (`share.ts`) restores layer, time,
   projection, rotation, zoom and play state.
 
@@ -39,13 +44,15 @@ npm run build:projection   # dist-projection/, served under /zartigl/projversor/
   manifests (`lib/geovideo`).
 - Frame-accurate vector-luma decoding (`lib/GeoVideoVectorSource`).
 - Color ramps (`lib/gl-util`).
+- The particle look: speed, drop rates, trail fade and camera-motion fade
+  (`lib/trail-fade`, shaders adapted from `lib/shaders`).
 
 ## New here
 
 These parts are specific to this demo and independent of Maplibre:
 
 - the blended projections in d3 and GLSL;
-- the sphere-space particle simulation and its trails;
+- the sphere-space particle state, projected with any blended projection;
 - the versor interaction;
 - the timeline behavior;
 - the shareable view.

@@ -33,6 +33,7 @@ import {
   ZartiglFrameUnavailableError,
   type ZartiglStatus,
 } from "./load-status";
+import { fadeToOpacity } from "./trail-fade";
 
 // ── Minimal event emitter ────────────────────────────────────────────
 
@@ -60,20 +61,8 @@ export interface VectorLayerDebugInfo {
   simulation: ParticleSimulationDebugInfo;
 }
 
-// ── Trail fade mapping ───────────────────────────────────────────────
-// Public `fade` is an intuitive 0–1 trail length (higher = longer). It maps to
-// the renderer's raw per-frame fade-opacity. Trail length in frames is
-// interpolated geometrically (perceptually even across the wide range), then
-// converted to the multiplier f via f^N ≈ e^-1.
+/** Public 0–1 trail length; see trail-fade.ts. */
 const DEFAULT_FADE = 0.7;
-const FADE_NMIN = 20; // trail length in frames at fade = 0
-const FADE_NMAX = 600; // trail length in frames at fade = 1
-
-function fadeToOpacity(fade: number): number {
-  const t = Math.max(0, Math.min(1, fade));
-  const n = FADE_NMIN * Math.pow(FADE_NMAX / FADE_NMIN, t);
-  return Math.exp(-1 / n);
-}
 
 export class VectorLayer implements CustomLayerInterface {
   readonly id: string;

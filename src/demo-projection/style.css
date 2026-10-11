@@ -4,8 +4,8 @@
   --ink: #e9ebf2;
   --muted: #8a8fa3;
   --line: rgba(255, 255, 255, 0.14);
-  --ocean: #0a0b1d;
-  --land: #0d0f17;
+  --ocean: #000;
+  --land: #000;
   --coast: var(--muted);
   --outline: var(--line);
   --graticule: rgba(255, 255, 255, 0.1);
