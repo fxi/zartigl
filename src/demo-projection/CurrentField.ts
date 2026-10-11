@@ -1,0 +1,172 @@
+import type { GeoVideoBounds, GeoVideoManifest } from "../lib/geovideo";
+import { geoVideoTimelineValues } from "../lib/geovideo";
+import {
+  GeoVideoVectorSource,
+  type GeoVideoVectorFrame,
+} from "../lib/GeoVideoVectorSource";
+import type { Program } from "./view";
+
+/** Interleaves masked u/v planes into (u, v, validity, 0) texels. */
+export function velocityTexels(frame: GeoVideoVectorFrame): Float32Array {
+  const texels = new Float32Array(frame.u.length * 4);
+  for (let i = 0; i < frame.u.length; i++) {
+    const u = frame.u[i];
+    const v = frame.v[i];
+    if (Number.isNaN(u) || Number.isNaN(v)) {
+      continue;
+    }
+    texels[i * 4] = u;
+    texels[i * 4 + 1] = v;
+    texels[i * 4 + 2] = 1;
+  }
+  return texels;
+}
+
+/** Index of the step at or before `ms` and the fraction toward the next. */
+export function timeBracket(
+  times: readonly number[],
+  ms: number,
+): { index: number; fraction: number } {
+  if (ms <= times[0]) {
+    return { index: 0, fraction: 0 };
+  }
+  const last = times.length - 1;
+  if (ms >= times[last]) {
+    return { index: last, fraction: 0 };
+  }
+  let lo = 0;
+  let hi = last;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (times[mid] <= ms) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return { index: lo, fraction: (ms - times[lo]) / (times[hi] - times[lo]) };
+}
+
+/**
+ * Vector GeoVideo frames as float textures, decoded ahead of the playhead.
+ * Binds the uniforms of shaders/velocity.glsl.
+ */
+export class CurrentField {
+  readonly times: number[];
+  readonly bounds: GeoVideoBounds;
+  private readonly source: GeoVideoVectorSource;
+  private readonly textures = new Map<number, WebGLTexture>();
+  private readonly pending = new Set<number>();
+  private pair: [WebGLTexture, WebGLTexture, number] | null = null;
+  private destroyed = false;
+
+  constructor(
+    private readonly gl: WebGL2RenderingContext,
+    readonly manifest: GeoVideoManifest,
+  ) {
+    this.source = new GeoVideoVectorSource(manifest, { cacheSize: 2 });
+    this.times = geoVideoTimelineValues(manifest);
+    this.bounds = manifest.bounds;
+  }
+
+  /** Top of the color ramp and of the particle speed normalization. */
+  get maxSpeed(): number {
+    const { encoding, style } = this.manifest;
+    return encoding.kind === "vector-luma"
+      ? encoding.valueDomain
+      : style.colorDomain[1];
+  }
+
+  /** Resolves once the step at `ms` is uploaded. */
+  async prime(ms: number): Promise<void> {
+    const { index } = timeBracket(this.times, ms);
+    await this.request(index);
+  }
+
+  /** False until a first frame is available. */
+  bind(program: Program, ms: number, unit = 0): boolean {
+    const { index, fraction } = timeBracket(this.times, ms);
+    const next = Math.min(index + 1, this.times.length - 1);
+    for (const i of [index, next, next + 1]) {
+      if (i < this.times.length) {
+        void this.request(i).catch(() => undefined);
+      }
+    }
+    this.evict(index);
+    const a = this.textures.get(index);
+    const b = this.textures.get(next);
+    if (a) {
+      this.pair = [a, b ?? a, b ? fraction : 0];
+    }
+    if (!this.pair) {
+      return false;
+    }
+    program.texture("u_vel0", unit, this.pair[0]);
+    program.texture("u_vel1", unit + 1, this.pair[1]);
+    program.float("u_vel_mix", this.pair[2]);
+    program.vec4("u_bounds", this.bounds);
+    return true;
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    this.source.cancelAll();
+    this.source.release();
+    for (const texture of this.textures.values()) {
+      this.gl.deleteTexture(texture);
+    }
+    this.textures.clear();
+    this.pair = null;
+  }
+
+  private async request(index: number): Promise<void> {
+    if (this.textures.has(index) || this.pending.has(index)) {
+      return;
+    }
+    this.pending.add(index);
+    try {
+      const frame = await this.source.frame(index);
+      if (this.destroyed) {
+        return;
+      }
+      this.textures.set(index, this.upload(frame));
+    } finally {
+      this.pending.delete(index);
+    }
+  }
+
+  private upload(frame: GeoVideoVectorFrame): WebGLTexture {
+    const gl = this.gl;
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA16F,
+      this.source.width,
+      this.source.height,
+      0,
+      gl.RGBA,
+      gl.FLOAT,
+      velocityTexels(frame),
+    );
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    return texture;
+  }
+
+  /** Keep a small window around the playhead. */
+  private evict(index: number): void {
+    for (const [i, texture] of this.textures) {
+      const inPair =
+        this.pair && (this.pair[0] === texture || this.pair[1] === texture);
+      if ((i < index - 1 || i > index + 3) && !inPair) {
+        this.gl.deleteTexture(texture);
+        this.textures.delete(i);
+      }
+    }
+  }
+}

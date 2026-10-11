@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zartigl · projections</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <main class="stage" data-ref="stage">
+        <canvas class="layer-back" data-ref="back"></canvas>
+        <canvas class="layer-gl" data-ref="gl"></canvas>
+        <canvas class="layer-front" data-ref="front"></canvas>
+        <p class="credits">
+          Render: zartigl // Data:
+          <span data-ref="provider"></span>
+        </p>
+        <p class="status" data-ref="status" role="status"></p>
+      </main>
+
+      <aside class="rail">
+        <section class="cell clock">
+          <div class="date" data-ref="date"></div>
+          <div class="year" data-ref="year"></div>
+          <div class="hour" data-ref="hour"></div>
+        </section>
+        <section class="cell timeline">
+          <input
+            data-ref="time"
+            type="range"
+            min="0"
+            max="1"
+            step="0.001"
+            value="0"
+            aria-label="Time" />
+          <ol class="days" data-ref="days"></ol>
+        </section>
+        <section class="cell controls">
+          <button type="button" class="play" data-ref="play" aria-label="Pause">
+            ❚❚
+          </button>
+          <select class="picker" data-ref="month" aria-label="Month"></select>
+        </section>
+        <section class="cell legend">
+          <div class="unit" data-ref="unit"></div>
+          <div class="scale">
+            <div class="ramp" data-ref="ramp"></div>
+            <ol class="ticks" data-ref="ticks"></ol>
+          </div>
+        </section>
+      </aside>
+
+      <footer class="bar">
+        <select
+          class="picker"
+          data-ref="projection"
+          aria-label="Projection"></select>
+        <select class="picker" data-ref="layer" aria-label="Layer"></select>
+      </footer>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

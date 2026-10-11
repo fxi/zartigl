@@ -1,0 +1,295 @@
+:root {
+  --bg: #04050b;
+  --panel: #070811;
+  --ink: #e9ebf2;
+  --muted: #8a8fa3;
+  --line: rgba(255, 255, 255, 0.14);
+  --ocean: #0a0b1d;
+  --land: #0d0f17;
+  --coast: var(--muted);
+  --outline: var(--line);
+  --graticule: rgba(255, 255, 255, 0.1);
+  --equator: rgba(255, 196, 92, 0.6);
+  --rail: 148px;
+  --bar: 56px;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%238a8fa3' stroke-width='1.2'%3E%3Cpath d='m1 1.5 5 5 5-5'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  overflow: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr var(--rail);
+  grid-template-rows: 1fr var(--bar);
+  height: 100dvh;
+}
+
+/* ---- map ---------------------------------------------------------------- */
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+.stage.dragging {
+  cursor: grabbing;
+}
+
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.layer-back,
+.layer-gl {
+  pointer-events: none;
+}
+
+.credits,
+.status {
+  position: absolute;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink);
+  text-shadow:
+    0 0 6px var(--bg),
+    0 0 2px var(--bg);
+  pointer-events: none;
+}
+
+.credits {
+  top: 16px;
+  left: 18px;
+  opacity: 0.8;
+}
+
+.status {
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  color: var(--muted);
+}
+
+/* ---- rail --------------------------------------------------------------- */
+
+.rail {
+  grid-row: 1;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.cell {
+  border-bottom: 1px solid var(--line);
+}
+
+.clock {
+  padding: 18px 16px 16px;
+}
+
+.date,
+.year {
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1.1;
+}
+
+.hour {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.timeline {
+  position: relative;
+  flex: 1;
+  min-height: 120px;
+  padding: 18px 16px;
+  display: flex;
+  gap: 14px;
+}
+
+.timeline input {
+  writing-mode: vertical-lr;
+  height: 100%;
+  width: 18px;
+  margin: 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.days,
+.ticks {
+  position: relative;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.days {
+  /* Align with the range thumb travel. */
+  margin: 9px 0;
+}
+
+.days li,
+.ticks li {
+  position: absolute;
+  left: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.days li {
+  transform: translateY(-50%);
+}
+
+.ticks li {
+  transform: translateY(50%);
+  color: var(--ink);
+}
+
+.days li::before,
+.ticks li::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 1px;
+  margin-right: 8px;
+  vertical-align: middle;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+}
+
+.play {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.legend {
+  padding: 16px 16px 20px;
+  border-bottom: 0;
+}
+
+.unit {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.scale {
+  display: flex;
+  gap: 10px;
+  height: 24vh;
+  min-height: 120px;
+}
+
+.ramp {
+  width: 9px;
+  border-radius: 5px;
+}
+
+/* ---- footer ------------------------------------------------------------- */
+
+.bar {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.bar .picker + .picker {
+  border-left: 1px solid var(--line);
+}
+
+/* Native select, styled as plain text with a chevron. */
+.picker {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--chevron) no-repeat right 16px center / 12px 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 40px 0 20px;
+  cursor: pointer;
+}
+
+.controls .picker {
+  font-size: 13px;
+  padding: 10px 28px 10px 12px;
+  background-position: right 10px center;
+}
+
+.picker:focus-visible,
+.play:focus-visible {
+  outline: 1px solid var(--muted);
+  outline-offset: -1px;
+}
+
+.picker option {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --rail: 124px;
+  }
+
+  .date,
+  .year {
+    font-size: 22px;
+  }
+
+  .controls {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .controls .picker {
+    padding: 10px 20px 10px 8px;
+    background-position: right 6px center;
+  }
+}

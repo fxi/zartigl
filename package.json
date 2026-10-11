@@ -27,11 +27,13 @@
     "dev": "vite",
     "dev:story": "vite --config vite.config.story.ts",
     "dev:geovideo-vector": "vite --config vite.config.geovideo-vector.ts",
+    "dev:projection": "vite --config vite.config.projection.ts",
     "dev:prod": "npm run dev",
     "test": "vitest run",
     "test:unit": "vitest run",
     "build": "vite build",
     "build:story": "vite build --config vite.config.story.ts",
+    "build:projection": "vite build --config vite.config.projection.ts",
     "build:prod": "npm run build",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
@@ -85,6 +87,7 @@
     "@tweakpane/core": "^2.0.5",
     "@types/d3": "^7.4.3",
     "@types/pako": "^2.0.4",
+    "@types/topojson-client": "^3.1.5",
     "@typescript-eslint/parser": "8.46.4",
     "d3": "^7.9.0",
     "eslint": "9.39.5",
@@ -92,11 +95,13 @@
     "globals": "16.5.0",
     "maplibre-gl": "^5.17.0",
     "prettier": "3.6.2",
+    "topojson-client": "^3.1.0",
     "tweakpane": "^4.0.5",
     "typescript": "5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",
     "vite-plugin-glsl": "^1.5.5",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "world-atlas": "^2.0.2"
   }
 }
