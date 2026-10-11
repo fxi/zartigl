@@ -103,7 +103,8 @@ export const DEMO_LAYERS: DemoLayer[] = [
     id: "ocean-velocity-temperature",
     entryId: "61a81ddd-6c8e-4020-a59f-06ef13a90419",
     label: "Currents × Temperature",
-    palette: "thermal",
+    // Starts bright: cold, slow water stays visible once dimmed by speed.
+    palette: "thermal-alt",
     fillLand: true,
     tint: { entryId: "3db0120b-17d2-4789-9952-efcc0953ecc4" },
   },
