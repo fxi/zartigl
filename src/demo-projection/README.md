@@ -29,13 +29,17 @@ npm run build:projection   # dist-projection/, served under /zartigl/projversor/
   drop-rate boost spreads the particles over the new view.
 - **Versor dragging.** Quaternion rotation (`versor.ts`) keeps the grabbed
   point under the pointer on every projection.
+- **North up by default.** As d3-geo-zoom's `northUp`, drags keep the roll
+  (gamma) at zero. The compass (`Compass.ts`, `bearing.ts`) shows the
+  bearing; dragging around it or the arrow keys free and set the bearing,
+  and a click eases back to north up and locks it again.
 - **Timeline as a jog wheel.** Scrubbing cancels stale decodes, and the
   particles flow on the field at the playhead as soon as its frames are
   decoded. Pause holds the image. After a view change, a scrub or a new
   layer, particles animate for about one trail length to rebuild trails,
   then hold again.
 - **Share.** A readable url hash (`share.ts`) restores layer, time,
-  projection, rotation, zoom and play state.
+  projection, rotation, zoom, play state, speed and palette.
 
 ## Reused from zartigl
 

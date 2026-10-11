@@ -1,3 +1,4 @@
+import { getPalettes, type PaletteMeta } from "../lib/gl-util";
 import type { ParticleSettings } from "./scales";
 
 /**
@@ -49,3 +50,14 @@ export const DEMO_LAYERS: DemoLayer[] = [
     fillLand: true,
   },
 ];
+
+/**
+ * Palettes offered for the particles: diverging and cyclic ramps carry no
+ * meaning for a speed, and black trails vanish on the black background.
+ */
+export const DEMO_PALETTES: PaletteMeta[] = getPalettes().filter(
+  (p) =>
+    p.id !== "mono-black" &&
+    !p.tags.includes("diverging") &&
+    !p.tags.includes("cyclic"),
+);

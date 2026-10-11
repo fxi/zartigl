@@ -13,8 +13,10 @@ import {
 } from "../lib/geovideo-index";
 import { createColorRampTexture } from "../lib/gl-util";
 import { TrailFade, fadeToFrames, fadeToOpacity } from "../lib/trail-fade";
+import { rotationBearing, withBearing } from "./bearing";
+import { Compass } from "./Compass";
 import { CurrentField } from "./CurrentField";
-import { DEMO_LAYERS, type DemoLayer } from "./layers";
+import { DEMO_LAYERS, DEMO_PALETTES, type DemoLayer } from "./layers";
 import { Overlay } from "./Overlay";
 import {
   PROJECTIONS,
@@ -47,8 +49,14 @@ import {
 import { decodeShare, encodeShare, type ShareState } from "./share";
 import { viewFrame, type View, type ViewFrame } from "./view";
 
+/** Field time steps played per second at 1×. */
 const STEPS_PER_SECOND = 0.4;
+const SPEEDS = [0.5, 1, 2, 5];
 const TRANSITION_MS = 2200;
+/** Easing back to north up from the compass. */
+const NORTH_MS = 600;
+/** Shared bearings below this (degrees) open locked north up. */
+const NORTH_EPSILON = 0.5;
 /** Fraction of a month after which the next one is decoded. */
 const PREFETCH_AT = 0.6;
 /** How long the Share button confirms the copy. */
@@ -133,7 +141,7 @@ const PRESETS: Preset[] = [
 ];
 
 function refs(root: HTMLElement) {
-  const get = <T extends HTMLElement>(name: string): T => {
+  const get = <T extends Element>(name: string): T => {
     const el = root.querySelector<T>(`[data-ref="${name}"]`);
     if (!el) {
       throw new Error(`Missing element: ${name}`);
@@ -152,8 +160,12 @@ function refs(root: HTMLElement) {
     hour: get<HTMLElement>("hour"),
     time: get<HTMLInputElement>("time"),
     days: get<HTMLElement>("days"),
+    compass: get<HTMLButtonElement>("compass"),
+    needle: get<SVGElement>("needle"),
     play: get<HTMLButtonElement>("play"),
     month: get<HTMLSelectElement>("month"),
+    speed: get<HTMLSelectElement>("speed"),
+    palette: get<HTMLSelectElement>("palette"),
     unit: get<HTMLElement>("unit"),
     ramp: get<HTMLElement>("ramp"),
     ticks: get<HTMLElement>("ticks"),
@@ -180,6 +192,13 @@ class ProjectionDemo {
   /** Frames left to animate while paused. */
   private settle = 0;
   private readonly overlay: Overlay;
+  private readonly compass: Compass;
+  /** Drags keep north up (gamma 0), as d3-geo-zoom's northUp. */
+  private northLocked = true;
+  /** Playback speed multiplier. */
+  private speed = 1;
+  /** Palette of the particles and legend. */
+  private palette = "";
   private ramp: WebGLTexture | null = null;
   private field: CurrentField | null = null;
   /** Month chunks of the open layer's archive. */
@@ -211,6 +230,7 @@ class ProjectionDemo {
   private last = 0;
   private transition: {
     start: number;
+    duration: number;
     rotate: (t: number) => [number, number, number];
     zoom: [number, number];
   } | null = null;
@@ -240,9 +260,22 @@ class ProjectionDemo {
     const preset =
       PRESETS.find((p) => p.id === this.shared.preset) ?? PRESETS[0];
     const def = PROJECTIONS[preset.projection];
+    let rotate = this.shared.rotate ?? preset.rotate;
+    this.northLocked = Math.abs(rotationBearing(rotate)) < NORTH_EPSILON;
+    if (this.northLocked) {
+      rotate = withBearing(rotate, 0);
+    }
+    this.compass = new Compass(this.ui.compass, this.ui.needle, {
+      onBearing: (deg) => this.setBearing(deg),
+      onToggle: () => this.toggleNorth(),
+    });
+    this.compass.locked = this.northLocked;
+    if (SPEEDS.includes(this.shared.speed ?? Number.NaN)) {
+      this.speed = this.shared.speed!;
+    }
     this.view = {
       blend: { a: def, b: def, ka: 1, kb: 1, t: 0 },
-      rotate: this.shared.rotate ?? preset.rotate,
+      rotate,
       zoom: this.shared.zoom ?? preset.zoom,
       width: 1,
       height: 1,
@@ -260,14 +293,22 @@ class ProjectionDemo {
       DEMO_LAYERS.find((l) => l.entryId === this.shared.layer) ??
       DEMO_LAYERS[0];
     this.ui.layer.value = layer.entryId;
-    return this.openLayer(layer, this.shared.time);
+    const palette = DEMO_PALETTES.some((p) => p.id === this.shared.palette)
+      ? this.shared.palette
+      : undefined;
+    return this.openLayer(layer, this.shared.time, palette);
   }
 
   /**
    * Switch layer, opening the month that holds `at`, else the displayed
-   * month when the archive has it, else the latest.
+   * month when the archive has it, else the latest. The palette defaults to
+   * the layer's own.
    */
-  private async openLayer(layer: DemoLayer, at?: number): Promise<void> {
+  private async openLayer(
+    layer: DemoLayer,
+    at?: number,
+    palette = layer.palette,
+  ): Promise<void> {
     const id = ++this.loadId;
     this.dropUpcoming();
     const entry = requireCatalogEntry(layer.entryId);
@@ -296,16 +337,12 @@ class ProjectionDemo {
     this.ui.provider.textContent = providerLabel(source.provenance?.provider);
     this.overlay.fillLand = layer.fillLand;
     this.overlayKey = "";
-    if (this.ramp) {
-      this.gl.deleteTexture(this.ramp);
-    }
     this.particleSettings = particleSettings(
       entry.defaults?.particles,
       layer.particles,
     );
     this.trailFade.setBase(fadeToOpacity(this.particleSettings.fade));
-    this.ramp = createColorRampTexture(this.gl, layer.palette);
-    this.ui.ramp.style.background = rampGradient(layer.palette);
+    this.setPalette(palette);
     await this.openChunk(this.chunks[chunkIndex], id, at);
   }
 
@@ -393,6 +430,18 @@ class ProjectionDemo {
     this.upcoming = null;
   }
 
+  /** Recolor the particles and the legend. */
+  private setPalette(id: string): void {
+    if (this.ramp) {
+      this.gl.deleteTexture(this.ramp);
+    }
+    this.palette = id;
+    this.ui.palette.value = id;
+    this.ramp = createColorRampTexture(this.gl, id);
+    this.ui.ramp.style.background = rampGradient(id);
+    this.settle = this.settleFrames();
+  }
+
   private setStatus(text: string): void {
     if (this.ui.status.textContent !== text) {
       this.ui.status.textContent = text;
@@ -402,7 +451,7 @@ class ProjectionDemo {
   // ---- projection & view -------------------------------------------------
 
   private buildPickers(activePreset: string): void {
-    const { projection, layer, month } = this.ui;
+    const { projection, layer, month, speed, palette } = this.ui;
     projection.replaceChildren(
       ...PRESETS.map((preset) => new Option(preset.label, preset.id)),
     );
@@ -428,6 +477,15 @@ class ProjectionDemo {
         this.openChunk(chunk).catch((error: unknown) => this.fail(error));
       }
     });
+    speed.replaceChildren(...SPEEDS.map((s) => new Option(`${s}×`, String(s))));
+    speed.value = String(this.speed);
+    speed.addEventListener("change", () => {
+      this.speed = Number(speed.value);
+    });
+    palette.replaceChildren(
+      ...DEMO_PALETTES.map((p) => new Option(p.label, p.id)),
+    );
+    palette.addEventListener("change", () => this.setPalette(palette.value));
   }
 
   private fail(error: unknown): void {
@@ -449,6 +507,7 @@ class ProjectionDemo {
     };
     this.transition = {
       start: performance.now(),
+      duration: TRANSITION_MS,
       rotate: interpolateRotation(this.view.rotate, preset.rotate),
       zoom: [this.view.zoom, preset.zoom],
     };
@@ -459,7 +518,7 @@ class ProjectionDemo {
     if (!transition) {
       return;
     }
-    const raw = Math.min(1, (now - transition.start) / TRANSITION_MS);
+    const raw = Math.min(1, (now - transition.start) / transition.duration);
     const e = easeCubicInOut(raw);
     this.view.blend.t = e;
     this.view.rotate = transition.rotate(e);
@@ -470,6 +529,40 @@ class ProjectionDemo {
       this.view.blend = { a: b, b, ka: kb, kb, t: 0 };
       this.transition = null;
     }
+  }
+
+  /** Rotate the map around the view center; frees the bearing. */
+  private setBearing(deg: number): void {
+    if (this.transition) {
+      return;
+    }
+    this.setNorthLocked(false);
+    this.view.rotate = withBearing(this.view.rotate, deg);
+  }
+
+  /** Free the bearing, or ease back to north up and lock it. */
+  private toggleNorth(): void {
+    if (this.northLocked) {
+      this.setNorthLocked(false);
+      return;
+    }
+    this.setNorthLocked(true);
+    if (this.transition) {
+      // Preset transitions already end north up.
+      return;
+    }
+    const [lambda, phi, gamma] = this.view.rotate;
+    this.transition = {
+      start: performance.now(),
+      duration: NORTH_MS,
+      rotate: (t) => [lambda, phi, gamma * (1 - t)],
+      zoom: [this.view.zoom, this.view.zoom],
+    };
+  }
+
+  private setNorthLocked(locked: boolean): void {
+    this.northLocked = locked;
+    this.compass.locked = locked;
   }
 
   private resize(): void {
@@ -521,7 +614,8 @@ class ProjectionDemo {
         drag.q0,
         versorDelta(drag.v0, cartesian(...at)),
       );
-      this.view.rotate = versorRotation(q1);
+      const rotate = versorRotation(q1);
+      this.view.rotate = this.northLocked ? withBearing(rotate, 0) : rotate;
     });
     const end = () => {
       this.drag = null;
@@ -611,6 +705,8 @@ class ProjectionDemo {
       rotate: this.view.rotate,
       zoom: this.view.zoom,
       playing: this.playing,
+      speed: this.speed,
+      palette: this.palette,
     });
     // navigator.clipboard is missing outside secure contexts.
     Promise.resolve()
@@ -630,7 +726,7 @@ class ProjectionDemo {
 
   private setPlaying(playing: boolean): void {
     this.playing = playing;
-    this.ui.play.textContent = playing ? "❚❚" : "▶";
+    this.ui.play.classList.toggle("playing", playing);
     this.ui.play.setAttribute("aria-label", playing ? "Pause" : "Play");
   }
 
@@ -641,6 +737,7 @@ class ProjectionDemo {
     this.last = now;
     this.animate(now);
     this.advanceTime(dt);
+    this.compass.bearing = rotationBearing(this.view.rotate);
 
     const frame = viewFrame(this.view);
     this.drawOverlay(frame, now);
@@ -764,7 +861,7 @@ class ProjectionDemo {
     const lastTime = times[times.length - 1];
     if (this.advancing) {
       const stepMs = (lastTime - first) / (times.length - 1);
-      this.ms += dt * STEPS_PER_SECOND * stepMs;
+      this.ms += dt * STEPS_PER_SECOND * this.speed * stepMs;
       if ((this.ms - first) / (lastTime - first) > PREFETCH_AT) {
         this.prefetchNext();
       }

@@ -93,6 +93,71 @@ body {
   color: var(--muted);
 }
 
+/* Round vector buttons over the map, single color. */
+.map-controls {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.round {
+  appearance: none;
+  display: block;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: rgba(4, 5, 11, 0.6);
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.round:hover {
+  border-color: var(--ink);
+}
+
+.round svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: currentColor;
+}
+
+.compass text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* The knob on the ring is the bearing handle. */
+.compass .knob {
+  cursor: grab;
+}
+
+/* Free bearing: the arrow dims until north is locked again. */
+.compass[aria-pressed="false"] {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.compass[aria-pressed="false"]:hover {
+  color: var(--ink);
+}
+
+.play .icon-pause,
+.play.playing .icon-play {
+  display: none;
+}
+
+.play.playing .icon-pause {
+  display: inline;
+}
+
 /* ---- rail --------------------------------------------------------------- */
 
 .rail {
@@ -188,26 +253,22 @@ body {
   opacity: 0.6;
 }
 
+/* Stacked pickers: month and speed, then the palette under the legend. */
 .controls {
   display: grid;
-  grid-template-columns: 44px 1fr;
 }
 
-.play {
-  appearance: none;
-  border: 0;
-  border-right: 1px solid var(--line);
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
+.controls .picker + .picker {
+  border-top: 1px solid var(--line);
+}
+
+.rail > .cell:last-child {
+  border-bottom: 0;
 }
 
 /* Same paddings, column and gap as the timeline, so ticks line up. */
 .legend {
   padding: 18px 16px;
-  border-bottom: 0;
 }
 
 .unit {
@@ -291,7 +352,7 @@ body {
 }
 
 .picker:focus-visible,
-.play:focus-visible,
+.round:focus-visible,
 .share:focus-visible {
   outline: 1px solid var(--muted);
   outline-offset: -1px;
@@ -312,8 +373,9 @@ body {
     font-size: 22px;
   }
 
-  .controls {
-    grid-template-columns: 36px 1fr;
+  .round {
+    width: 40px;
+    height: 40px;
   }
 
   .controls .picker {

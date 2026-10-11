@@ -18,6 +18,32 @@
           <span data-ref="provider"></span>
         </p>
         <p class="status" data-ref="status" role="status"></p>
+        <div class="map-controls">
+          <button
+            type="button"
+            class="round compass"
+            data-ref="compass"
+            aria-pressed="true"
+            aria-label="North up, locked">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <g data-ref="needle">
+                <text x="24" y="17" text-anchor="middle">N</text>
+                <path d="M24 20 31 35 24 31 17 35Z" />
+                <circle class="knob" cx="24" cy="3.5" r="2.5" />
+              </g>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="round play"
+            data-ref="play"
+            aria-label="Pause">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path class="icon-play" d="M19 14.5 35 24 19 33.5Z" />
+              <path class="icon-pause" d="M17 15h5v18h-5zM26 15h5v18h-5z" />
+            </svg>
+          </button>
+        </div>
       </main>
 
       <aside class="rail">
@@ -38,10 +64,11 @@
           <ol class="days" data-ref="days"></ol>
         </section>
         <section class="cell controls">
-          <button type="button" class="play" data-ref="play" aria-label="Pause">
-            ❚❚
-          </button>
           <select class="picker" data-ref="month" aria-label="Month"></select>
+          <select
+            class="picker"
+            data-ref="speed"
+            aria-label="Playback speed"></select>
         </section>
         <section class="cell legend">
           <div class="scale">
@@ -49,6 +76,12 @@
             <ol class="ticks" data-ref="ticks"></ol>
           </div>
           <div class="unit" data-ref="unit"></div>
+        </section>
+        <section class="cell controls">
+          <select
+            class="picker"
+            data-ref="palette"
+            aria-label="Palette"></select>
         </section>
       </aside>
 

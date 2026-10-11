@@ -9,6 +9,10 @@ export interface ShareState {
   rotate: [number, number, number];
   zoom: number;
   playing: boolean;
+  /** Playback speed multiplier. */
+  speed: number;
+  /** Palette id. */
+  palette: string;
 }
 
 const round = (value: number) => Number(value.toFixed(3));
@@ -22,12 +26,14 @@ export function encodeShare(state: ShareState): string {
     r: state.rotate.map(round).join(","),
     z: String(round(state.zoom)),
     play: state.playing ? "1" : "0",
+    s: String(state.speed),
+    c: state.palette,
   }).toString();
 }
 
 /**
  * Valid fields of a hash written by {@link encodeShare}; the caller checks the
- * layer and preset ids.
+ * layer, preset and palette ids and the speed against its choices.
  */
 export function decodeShare(hash: string): Partial<ShareState> {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
@@ -51,6 +57,14 @@ export function decodeShare(hash: string): Partial<ShareState> {
   const zoom = Number(params.get("z") ?? "");
   if (params.has("z") && Number.isFinite(zoom) && zoom > 0) {
     state.zoom = zoom;
+  }
+  const speed = Number(params.get("s") ?? "");
+  if (params.has("s") && Number.isFinite(speed) && speed > 0) {
+    state.speed = speed;
+  }
+  const palette = params.get("c");
+  if (palette) {
+    state.palette = palette;
   }
   const play = params.get("play");
   if (play === "0" || play === "1") {
