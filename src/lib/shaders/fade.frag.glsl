@@ -6,10 +6,11 @@ varying vec2 v_tex_coord;
 
 void main() {
     vec4 color = texture2D(u_screen, v_tex_coord);
+    // Trails hold straight color: fade alpha only. Scaling rgb too loses one
+    // 8-bit code per channel and frame, so trails drift in hue and turn black
+    // before alpha reaches 0, leaving dark streaks over the map.
     // Floor trick ensures trails actually disappear on 8-bit framebuffers.
-    // Fade alpha too so background stays transparent for map compositing.
-    gl_FragColor = vec4(
-        floor(color.rgb * 255.0 * u_opacity) / 255.0,
-        floor(color.a * 255.0 * u_opacity) / 255.0
-    );
+    float alpha = floor(color.a * 255.0 * u_opacity) / 255.0;
+    // A cleared texel keeps no color for the next particle to blend with.
+    gl_FragColor = vec4(color.rgb * step(1.0 / 255.0, alpha), alpha);
 }

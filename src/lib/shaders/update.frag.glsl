@@ -9,7 +9,7 @@ uniform float u_world_size;   // 512 * 2^zoom — Mercator [0,1] → screen pixe
 uniform float u_rand_seed;
 uniform float u_drop_rate;
 uniform float u_drop_rate_bump;
-uniform vec4 u_bounds; // minX, minY, maxX, maxY in mercator [0,1] or lat/lon [0,1] (globe)
+uniform vec4 u_bounds; // minX, minY, maxX, maxY in mercator [0,1] or lat/lon [0,1] (globe); maxX may exceed 1
 uniform vec4 u_geo_bounds; // west, south, east, north in degrees
 uniform float u_valid_threshold; // rejects bilinear alpha fringe around no-data cells
 uniform float u_is_globe; // 1.0 = globe mode (lat/lon Y), 0.0 = mercator
@@ -186,8 +186,9 @@ void main() {
     float outOfData = 1.0 - step(u_valid_threshold, valid);
 
     // Also drop if out of viewport bounds
-    float outOfBounds = step(newPos.x, u_bounds.x) +
-                         step(u_bounds.z, newPos.x) +
+    // X bounds may cross the date line (maxX > 1): compare wrapped offsets.
+    float outOfBounds = step(u_bounds.z - u_bounds.x,
+                             fract(newPos.x - u_bounds.x)) +
                          step(newPos.y, u_bounds.y) +
                          step(u_bounds.w, newPos.y);
     outOfBounds = clamp(outOfBounds, 0.0, 1.0);
@@ -203,7 +204,7 @@ void main() {
 
     // Random position within viewport bounds
     vec2 randomPos = vec2(
-        mix(u_bounds.x, u_bounds.z, rand(rng_id + 1.3 + u_rand_seed)),
+        fract(mix(u_bounds.x, u_bounds.z, rand(rng_id + 1.3 + u_rand_seed))),
         mix(u_bounds.y, u_bounds.w, rand(rng_id + 2.1 + u_rand_seed))
     );
 

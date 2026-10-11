@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
+import fadeFrag from "./shaders/fade.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
 import gridFrag from "./shaders/grid.frag.glsl?raw";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
@@ -18,6 +19,21 @@ describe("particle shader invalid-state guards", () => {
     expect(geoVideoFrag).toContain("u_color_domain");
     expect(geoVideoFrag).toContain("texture2D(u_color_ramp");
   });
+  it("fades trail alpha only, so fading trails keep their color", () => {
+    expect(fadeFrag).toContain(
+      "float alpha = floor(color.a * 255.0 * u_opacity) / 255.0",
+    );
+    expect(fadeFrag).not.toContain("color.rgb * 255.0 * u_opacity");
+    expect(fadeFrag).toContain("step(1.0 / 255.0, alpha)");
+  });
+
+  it("wraps particle bounds that cross the dateline", () => {
+    expect(updateFrag).toContain("fract(newPos.x - u_bounds.x)");
+    expect(updateFrag).toContain(
+      "fract(mix(u_bounds.x, u_bounds.z, rand(rng_id + 1.3 + u_rand_seed)))",
+    );
+  });
+
   it("respawns invalid particle state in the update shader", () => {
     expect(updateFrag).toContain("invalidNormalizedPosition");
     expect(updateFrag).toContain("invalidWrappedPosition");

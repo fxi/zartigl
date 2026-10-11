@@ -33,8 +33,15 @@ describe("geo utilities", () => {
     expect(result.maxX).toBeCloseTo(2);
   });
 
-  it("uses full-world particle update bounds when the viewport crosses the dateline", () => {
+  it("keeps the viewport span when it crosses the dateline", () => {
     const result = particleUpdateBounds(bounds(170, -20, 190, 20));
+
+    expect(result.minX).toBeCloseTo(350 / 360);
+    expect(result.maxX).toBeCloseTo(370 / 360);
+  });
+
+  it("uses full-world particle update bounds when the viewport spans the world", () => {
+    const result = particleUpdateBounds(bounds(-200, -20, 170, 20));
 
     expect(result.minX).toBe(0);
     expect(result.maxX).toBe(1);

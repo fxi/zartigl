@@ -112,15 +112,13 @@ export function particleUpdateBounds(
   const east = bounds.getEast();
   const rawMinX = lngToMercX(west);
   const rawMaxX = lngToMercX(east);
-  const spansWorld = rawMaxX - rawMinX >= 1;
-  const crossesWrappedWorld = Math.floor(rawMinX) !== Math.floor(rawMaxX);
+  // minX is wrapped into [0, 1) and maxX = minX + span, so a view crossing
+  // the date line keeps its own span (maxX > 1); the update shader wraps it.
+  const minX = rawMinX - Math.floor(rawMinX);
   const xBounds =
-    spansWorld || crossesWrappedWorld
+    rawMaxX - rawMinX >= 1
       ? { minX: 0, maxX: 1 }
-      : {
-          minX: rawMinX - Math.floor(rawMinX),
-          maxX: rawMaxX - Math.floor(rawMaxX),
-        };
+      : { minX, maxX: minX + rawMaxX - rawMinX };
 
   if (isGlobe) {
     // Globe mode: particle Y encodes latitude as (lat+90)/180, covering full ±90°.

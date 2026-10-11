@@ -656,7 +656,14 @@ export class ParticleSimulation {
     if (runParticles) {
       gl.useProgram(this.drawProgram);
       gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      // Straight color over the trails, with alpha accumulated as coverage
+      // (see fade.frag.glsl).
+      gl.blendFuncSeparate(
+        gl.SRC_ALPHA,
+        gl.ONE_MINUS_SRC_ALPHA,
+        gl.ONE,
+        gl.ONE_MINUS_SRC_ALPHA,
+      );
 
       bindTexture(gl, this.particleStateTextures[1], 0);
       gl.uniform1i(this.drawLocs["u_particles"], 0);
