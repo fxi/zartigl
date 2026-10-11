@@ -40,12 +40,15 @@ import {
   rampPosition,
   type ParticleSettings,
 } from "./scales";
+import { decodeShare, encodeShare, type ShareState } from "./share";
 import { viewFrame, type View } from "./view";
 
 const STEPS_PER_SECOND = 1.5;
 const TRANSITION_MS = 2200;
 /** Fraction of a month after which the next one is decoded. */
 const PREFETCH_AT = 0.6;
+/** How long the Share button confirms the copy. */
+const COPIED_MS = 1500;
 
 interface Upcoming {
   index: number;
@@ -139,6 +142,7 @@ function refs(root: HTMLElement) {
     ticks: get<HTMLElement>("ticks"),
     projection: get<HTMLSelectElement>("projection"),
     layer: get<HTMLSelectElement>("layer"),
+    share: get<HTMLButtonElement>("share"),
   };
 }
 
@@ -171,6 +175,13 @@ class ProjectionDemo {
   private dpr = 1;
   private ms = 0;
   private playing = true;
+  /** Timeline thumb held: playback waits for its release. */
+  private scrubbing = false;
+  /** Particles must be rebuilt at the playhead once its frames are ready. */
+  private pendingWarm = false;
+  /** View and playhead from the url hash, applied on load. */
+  private readonly shared: Partial<ShareState>;
+  private copiedTimer = 0;
   private overlayKey = "";
   private lastMove = 0;
   private detailed = false;
@@ -203,28 +214,38 @@ class ProjectionDemo {
       land: landFeature(land110),
       landDetail: landFeature(land50),
     });
-    const preset = PRESETS[0];
+    this.shared = decodeShare(location.hash);
+    const preset =
+      PRESETS.find((p) => p.id === this.shared.preset) ?? PRESETS[0];
     const def = PROJECTIONS[preset.projection];
     this.view = {
       blend: { a: def, b: def, ka: 1, kb: 1, t: 0 },
-      rotate: preset.rotate,
-      zoom: preset.zoom,
+      rotate: this.shared.rotate ?? preset.rotate,
+      zoom: this.shared.zoom ?? preset.zoom,
       width: 1,
       height: 1,
     };
     this.buildPickers(preset.id);
     this.bindInteraction();
+    this.setPlaying(this.shared.playing ?? true);
     new ResizeObserver(() => this.resize()).observe(this.ui.stage);
     this.resize();
     requestAnimationFrame((now) => this.tick(now));
   }
 
   load(): Promise<void> {
-    return this.openLayer(DEMO_LAYERS[0]);
+    const layer =
+      DEMO_LAYERS.find((l) => l.entryId === this.shared.layer) ??
+      DEMO_LAYERS[0];
+    this.ui.layer.value = layer.entryId;
+    return this.openLayer(layer, this.shared.time);
   }
 
-  /** Switch layer, keeping the displayed month when the archive has it. */
-  private async openLayer(layer: DemoLayer): Promise<void> {
+  /**
+   * Switch layer, opening the month that holds `at`, else the displayed
+   * month when the archive has it, else the latest.
+   */
+  private async openLayer(layer: DemoLayer, at?: number): Promise<void> {
     const id = ++this.loadId;
     this.dropUpcoming();
     const entry = requireCatalogEntry(layer.entryId);
@@ -244,8 +265,11 @@ class ProjectionDemo {
         (chunk, i) => new Option(monthLabel(chunk), String(i)),
       ),
     );
+    const holding =
+      at === undefined ? -1 : this.chunks.findIndex((c) => holds(c, at));
     const same = this.chunks.findIndex((c) => c.temporal?.start === month);
-    const chunkIndex = same >= 0 ? same : this.chunks.length - 1;
+    const chunkIndex =
+      holding >= 0 ? holding : same >= 0 ? same : this.chunks.length - 1;
     this.ui.month.value = String(chunkIndex);
     this.ui.provider.textContent = providerLabel(source.provenance?.provider);
     this.overlay.fillLand = layer.fillLand;
@@ -262,31 +286,36 @@ class ProjectionDemo {
       layer.palette,
     );
     this.ui.ramp.style.background = rampGradient(layer.palette);
-    await this.openChunk(this.chunks[chunkIndex], id);
+    await this.openChunk(this.chunks[chunkIndex], id, at);
   }
 
+  /** Open a month at `at`, or at its start. */
   private async openChunk(
     chunk: CatalogGeoVideoSource,
     id = ++this.loadId,
+    at?: number,
   ): Promise<void> {
     this.dropUpcoming();
     this.setStatus("Decoding…");
-    const field = await this.loadField(chunk);
+    const field = await this.loadField(chunk, at);
     if (id !== this.loadId) {
       field.destroy();
       return;
     }
-    this.adopt(field, this.chunks.indexOf(chunk));
+    this.adopt(field, this.chunks.indexOf(chunk), at);
     this.buildLegend(field);
-    this.particles.respawn();
+    this.pendingWarm = true;
   }
 
-  /** Manifest and first decoded frame of a month chunk. */
-  private async loadField(chunk: CatalogGeoVideoSource): Promise<CurrentField> {
+  /** Manifest and first decoded frame (at `at`, else the start) of a month. */
+  private async loadField(
+    chunk: CatalogGeoVideoSource,
+    at?: number,
+  ): Promise<CurrentField> {
     const manifest = await loadGeoVideoManifest(chunk.manifestUrl);
     const field = new CurrentField(this.gl, manifest);
     try {
-      await field.prime(field.times[0]);
+      await field.prime(at ?? field.times[0]);
     } catch (error) {
       field.destroy();
       throw error;
@@ -294,13 +323,18 @@ class ProjectionDemo {
     return field;
   }
 
-  private adopt(field: CurrentField, chunkIndex: number): void {
+  private adopt(field: CurrentField, chunkIndex: number, at?: number): void {
     this.field?.destroy();
     this.field = field;
     this.chunkIndex = chunkIndex;
     this.ui.month.value = String(chunkIndex);
-    this.ms = field.times[0];
-    this.buildDays(field.times);
+    const { times } = field;
+    this.ms = Math.min(
+      Math.max(at ?? times[0], times[0]),
+      times[times.length - 1],
+    );
+    this.syncTimeline();
+    this.buildDays(times);
     this.setStatus("");
   }
 
@@ -490,15 +524,35 @@ class ProjectionDemo {
     this.ui.play.addEventListener("click", () =>
       this.setPlaying(!this.playing),
     );
-    this.ui.time.addEventListener("input", () => {
-      this.setPlaying(false);
-      const times = this.field?.times;
-      if (!times) {
+    this.ui.share.addEventListener("click", () => this.share());
+
+    // The thumb drives the playhead like a jog wheel: playback holds while
+    // it is held (pointer or key) and resumes on release.
+    const time = this.ui.time;
+    const hold = () => {
+      this.scrubbing = true;
+    };
+    const release = () => {
+      this.scrubbing = false;
+    };
+    time.addEventListener("pointerdown", (event) => {
+      time.setPointerCapture(event.pointerId);
+      hold();
+    });
+    time.addEventListener("keydown", hold);
+    for (const type of ["pointerup", "pointercancel", "keyup", "blur"]) {
+      time.addEventListener(type, release);
+    }
+    time.addEventListener("input", () => {
+      const field = this.field;
+      if (!field || field.times.length < 2) {
         return;
       }
+      const { times } = field;
       this.ms =
-        times[0] +
-        Number(this.ui.time.value) * (times[times.length - 1] - times[0]);
+        times[0] + Number(time.value) * (times[times.length - 1] - times[0]);
+      field.focus(this.ms);
+      this.pendingWarm = true;
     });
     window.addEventListener("keydown", (event) => {
       if (event.code === "Space" && event.target === document.body) {
@@ -519,6 +573,38 @@ class ProjectionDemo {
     return at && Number.isFinite(at[0]) && Number.isFinite(at[1])
       ? [at[0], at[1]]
       : null;
+  }
+
+  /** Playing and not held by the timeline thumb. */
+  private get advancing(): boolean {
+    return this.playing && !this.scrubbing;
+  }
+
+  /** Copy a link to the displayed view. */
+  private share(): void {
+    const url = new URL(location.href);
+    url.hash = encodeShare({
+      layer: this.ui.layer.value,
+      time: this.ms,
+      preset: this.ui.projection.value,
+      rotate: this.view.rotate,
+      zoom: this.view.zoom,
+      playing: this.playing,
+    });
+    // navigator.clipboard is missing outside secure contexts.
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(url.href))
+      .then(
+        () => {
+          const button = this.ui.share;
+          button.textContent = "Copied";
+          clearTimeout(this.copiedTimer);
+          this.copiedTimer = window.setTimeout(() => {
+            button.textContent = "Share";
+          }, COPIED_MS);
+        },
+        () => this.setStatus(url.href),
+      );
   }
 
   private setPlaying(playing: boolean): void {
@@ -560,7 +646,14 @@ class ProjectionDemo {
         maxSpeed: field.maxSpeed,
         brightness: 0.5,
       });
-      this.particles.step(frame, field, this.ms, style);
+      if (this.pendingWarm) {
+        if (field.ready(this.ms)) {
+          this.particles.warm(frame, field, this.ms, style);
+          this.pendingWarm = false;
+        }
+      } else if (this.advancing) {
+        this.particles.step(frame, field, this.ms, style);
+      }
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       this.particles.draw(frame, style);
     }
@@ -581,6 +674,11 @@ class ProjectionDemo {
       this.overlay.draw(frame, this.dpr, false);
     } else if (!this.detailed && now - this.lastMove > 180) {
       this.detailed = true;
+      if (!this.advancing) {
+        // Frozen particles only cover the previous view: rebuild them for
+        // the settled one.
+        this.pendingWarm = true;
+      }
       this.overlay.draw(frame, this.dpr, true);
     }
     requestAnimationFrame((t) => this.tick(t));
@@ -593,7 +691,7 @@ class ProjectionDemo {
     }
     const first = times[0];
     const lastTime = times[times.length - 1];
-    if (this.playing) {
+    if (this.advancing) {
       const stepMs = (lastTime - first) / (times.length - 1);
       this.ms += dt * STEPS_PER_SECOND * stepMs;
       if ((this.ms - first) / (lastTime - first) > PREFETCH_AT) {
@@ -612,7 +710,7 @@ class ProjectionDemo {
           this.setStatus("Buffering…");
         }
       }
-      this.ui.time.value = String((this.ms - first) / (lastTime - first));
+      this.syncTimeline();
     }
     const date = new Date(this.ms);
     const day = date.toLocaleDateString("en-GB", {
@@ -623,6 +721,17 @@ class ProjectionDemo {
     this.ui.date.textContent = day.toUpperCase();
     this.ui.year.textContent = String(date.getUTCFullYear());
     this.ui.hour.textContent = `${String(date.getUTCHours()).padStart(2, "0")}:00 UTC`;
+  }
+
+  /** Move the timeline thumb to the playhead. */
+  private syncTimeline(): void {
+    const times = this.field?.times;
+    if (!times || times.length < 2) {
+      return;
+    }
+    const first = times[0];
+    const span = times[times.length - 1] - first;
+    this.ui.time.value = String((this.ms - first) / span);
   }
 
   private buildLegend(field: CurrentField): void {
@@ -653,6 +762,13 @@ class ProjectionDemo {
 
 function providerLabel(provider: string | undefined): string {
   return provider === "copernicus-marine" ? "Copernicus" : (provider ?? "");
+}
+
+/** Whether a month chunk covers `ms`. */
+function holds(chunk: CatalogGeoVideoSource, ms: number): boolean {
+  const start = Date.parse(chunk.temporal?.start ?? "");
+  const end = Date.parse(chunk.temporal?.end ?? "");
+  return start <= ms && ms <= end;
 }
 
 function monthLabel(chunk: CatalogGeoVideoSource): string {

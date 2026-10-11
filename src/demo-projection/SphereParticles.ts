@@ -5,6 +5,9 @@ import trailFrag from "./shaders/trail.frag.glsl";
 import trailVert from "./shaders/trail.vert.glsl";
 import { Program, type ViewFrame } from "./view";
 
+/** Advections until a respawned trail is fully opaque (trail.vert.glsl). */
+const FADE_IN_STEPS = 8;
+
 export interface ParticleStyle {
   ramp: WebGLTexture;
   maxSpeed: number;
@@ -56,9 +59,21 @@ export class SphereParticles {
     this.vao = gl.createVertexArray();
   }
 
-  /** Respawn every particle inside the visible cap on the next step. */
-  respawn(): void {
+  /**
+   * Respawn every particle and advect it long enough for full, faded-in
+   * trails. Seeds are fixed, so the same view and time give the same image.
+   */
+  warm(
+    frame: ViewFrame,
+    field: CurrentField,
+    ms: number,
+    style: ParticleStyle,
+  ): void {
     this.reset = true;
+    const steps = Math.min(style.segments, this.slots - 1) + FADE_IN_STEPS;
+    for (let i = 0; i < steps; i++) {
+      this.step(frame, field, ms, style, i + 1);
+    }
   }
 
   step(
@@ -66,6 +81,7 @@ export class SphereParticles {
     field: CurrentField,
     ms: number,
     style: ParticleStyle,
+    seed = Math.random() * 100,
   ): void {
     const gl = this.gl;
     const p = this.advect.use();
@@ -100,7 +116,7 @@ export class SphereParticles {
     p.float("u_max_speed", style.maxSpeed);
     p.float("u_keep_cos", Math.cos(visibleCap(frame)));
     p.float("u_drop", style.drop);
-    p.float("u_seed", Math.random() * 100);
+    p.float("u_seed", seed);
     p.float("u_reset", this.reset ? 1 : 0);
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

@@ -233,13 +233,27 @@ body {
   grid-row: 2;
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr auto;
   border-top: 1px solid var(--line);
   background: var(--panel);
 }
 
-.bar .picker + .picker {
+.bar .picker + .picker,
+.bar .share {
   border-left: 1px solid var(--line);
+}
+
+/* Plain text, like the pickers. */
+.share {
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 24px;
+  cursor: pointer;
 }
 
 /* Native select, styled as plain text with a chevron. */
@@ -264,7 +278,8 @@ body {
 }
 
 .picker:focus-visible,
-.play:focus-visible {
+.play:focus-visible,
+.share:focus-visible {
   outline: 1px solid var(--muted);
   outline-offset: -1px;
 }

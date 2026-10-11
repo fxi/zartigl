@@ -56,7 +56,7 @@ export class CurrentField {
   readonly bounds: GeoVideoBounds;
   private readonly source: GeoVideoVectorSource;
   private readonly textures = new Map<number, WebGLTexture>();
-  private readonly pending = new Set<number>();
+  private readonly pending = new Map<number, Promise<void>>();
   private pair: [WebGLTexture, WebGLTexture, number] | null = null;
   private destroyed = false;
 
@@ -81,6 +81,34 @@ export class CurrentField {
   async prime(ms: number): Promise<void> {
     const { index } = timeBracket(this.times, ms);
     await this.request(index);
+  }
+
+  /** True once the frames interpolated at `ms` are uploaded. */
+  ready(ms: number): boolean {
+    const { index, fraction } = timeBracket(this.times, ms);
+    return (
+      this.textures.has(index) &&
+      (fraction === 0 || this.textures.has(index + 1))
+    );
+  }
+
+  /**
+   * Latest wins while scrubbing: drop queued decodes outside the frames at
+   * `ms`, then request those first.
+   */
+  focus(ms: number): void {
+    const { index } = timeBracket(this.times, ms);
+    const next = Math.min(index + 1, this.times.length - 1);
+    const stale = [...this.pending.keys()].some(
+      (i) => i !== index && i !== next,
+    );
+    if (stale) {
+      this.source.cancelAll();
+      this.pending.clear();
+    }
+    for (const i of [index, next]) {
+      void this.request(i).catch(() => undefined);
+    }
   }
 
   /** False until a first frame is available. */
@@ -119,20 +147,29 @@ export class CurrentField {
     this.pair = null;
   }
 
-  private async request(index: number): Promise<void> {
-    if (this.textures.has(index) || this.pending.has(index)) {
-      return;
+  private request(index: number): Promise<void> {
+    if (this.textures.has(index)) {
+      return Promise.resolve();
     }
-    this.pending.add(index);
-    try {
-      const frame = await this.source.frame(index);
-      if (this.destroyed) {
-        return;
-      }
-      this.textures.set(index, this.upload(frame));
-    } finally {
-      this.pending.delete(index);
+    const pending = this.pending.get(index);
+    if (pending) {
+      return pending;
     }
+    const job = this.source
+      .frame(index)
+      .then((frame) => {
+        if (!this.destroyed && !this.textures.has(index)) {
+          this.textures.set(index, this.upload(frame));
+        }
+      })
+      .finally(() => {
+        // A cancelled request can settle after the one that replaced it.
+        if (this.pending.get(index) === job) {
+          this.pending.delete(index);
+        }
+      });
+    this.pending.set(index, job);
+    return job;
   }
 
   private upload(frame: GeoVideoVectorFrame): WebGLTexture {
