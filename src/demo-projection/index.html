@@ -14,7 +14,8 @@
         <canvas class="layer-gl" data-ref="gl"></canvas>
         <canvas class="layer-front" data-ref="front"></canvas>
         <p class="credits">
-          Render: zartigl // Data:
+          <span data-ref="projectionName"></span>
+          // Render: zartigl // Data:
           <span data-ref="provider"></span>
         </p>
         <p class="status" data-ref="status" role="status"></p>
@@ -106,7 +107,7 @@
       </aside>
 
       <footer class="bar">
-        <label class="field">
+        <label class="field icon-only" title="Projection">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9" />
             <path d="M3 12h18M12 3c-5 5.5-5 12.5 0 18M12 3c5 5.5 5 12.5 0 18" />
@@ -123,11 +124,18 @@
           </svg>
           <select class="picker" data-ref="layer" aria-label="Layer"></select>
         </label>
-        <button type="button" class="field share" data-ref="share">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <button
+          type="button"
+          class="field icon-only share"
+          data-ref="share"
+          title="Copy a link to this view"
+          aria-label="Share">
+          <svg class="icon icon-share" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 11v9h14v-9" />
           </svg>
-          <span data-ref="shareLabel">Share</span>
+          <svg class="icon icon-copied" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12.5 4.5 4.5L19 7.5" />
+          </svg>
         </button>
       </footer>
     </div>

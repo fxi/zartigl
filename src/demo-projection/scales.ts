@@ -129,3 +129,19 @@ export function particleCount(
     Math.min(MAX_PARTICLES, Math.round(widthPx * heightPx * settings.density)),
   );
 }
+
+/** Playback speeds and the particle speed factor at each end. */
+const PLAYBACK_RANGE: [number, number] = [0.5, 5];
+const PARTICLE_RANGE: [number, number] = [0.2, 1];
+
+/**
+ * Particle speed factor for a playback speed: log-log interpolation from
+ * 0.5× → 0.2 to 5× → 1, so the fastest playback moves particles at their
+ * natural speed and slower playback slows them gently.
+ */
+export function particleSpeedFactor(playback: number): number {
+  const [p0, p1] = PLAYBACK_RANGE;
+  const [f0, f1] = PARTICLE_RANGE;
+  const t = Math.log(playback / p0) / Math.log(p1 / p0);
+  return f0 * (f1 / f0) ** t;
+}

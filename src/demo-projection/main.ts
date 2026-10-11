@@ -43,6 +43,7 @@ import {
   legendTicks,
   particleCount,
   particleSettings,
+  particleSpeedFactor,
   rampGradient,
   rampPosition,
   type ParticleSettings,
@@ -155,6 +156,7 @@ function refs(root: HTMLElement) {
     gl: get<HTMLCanvasElement>("gl"),
     front: get<HTMLCanvasElement>("front"),
     provider: get<HTMLElement>("provider"),
+    projectionName: get<HTMLElement>("projectionName"),
     status: get<HTMLElement>("status"),
     date: get<HTMLElement>("date"),
     hour: get<HTMLElement>("hour"),
@@ -174,7 +176,6 @@ function refs(root: HTMLElement) {
     projection: get<HTMLSelectElement>("projection"),
     layer: get<HTMLSelectElement>("layer"),
     share: get<HTMLButtonElement>("share"),
-    shareLabel: get<HTMLElement>("shareLabel"),
   };
 }
 
@@ -459,9 +460,11 @@ class ProjectionDemo {
       ...PRESETS.map((preset) => new Option(preset.label, preset.id)),
     );
     projection.value = activePreset;
+    this.ui.projectionName.textContent = projection.selectedOptions[0].text;
     projection.addEventListener("change", () => {
       const preset = PRESETS.find((p) => p.id === projection.value);
       if (preset) {
+        this.ui.projectionName.textContent = preset.label;
         this.transitionTo(preset);
       }
     });
@@ -719,11 +722,13 @@ class ProjectionDemo {
       .then(() => navigator.clipboard.writeText(url.href))
       .then(
         () => {
-          const label = this.ui.shareLabel;
-          label.textContent = "Copied";
+          const button = this.ui.share;
+          button.classList.add("copied");
+          button.setAttribute("aria-label", "Link copied");
           clearTimeout(this.copiedTimer);
           this.copiedTimer = window.setTimeout(() => {
-            label.textContent = "Share";
+            button.classList.remove("copied");
+            button.setAttribute("aria-label", "Share");
           }, COPIED_MS);
         },
         () => this.setStatus(url.href),
@@ -790,7 +795,8 @@ class ProjectionDemo {
     const style: ParticleStyle = {
       ramp: this.ramp,
       maxSpeed: field.maxSpeed,
-      speed: this.particleSettings.speed,
+      // Playback speed drives the particles as well as the video.
+      speed: this.particleSettings.speed * particleSpeedFactor(this.speed),
       count: particleCount(
         this.particleSettings,
         gl.drawingBufferWidth,

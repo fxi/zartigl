@@ -390,7 +390,7 @@ body {
 
 /* ---- footer ------------------------------------------------------------- */
 
-/* Floating pill over the map and the rail foot. */
+/* Floating bar over the map and the rail foot, square like the rail. */
 .bar {
   position: absolute;
   z-index: 1;
@@ -399,9 +399,7 @@ body {
   bottom: var(--gap);
   height: var(--bar);
   display: flex;
-  padding: 0 6px;
   border: 1px solid var(--line);
-  border-radius: calc(var(--bar) / 2);
   background: rgba(7, 8, 17, 0.85);
   backdrop-filter: blur(10px);
 }
@@ -442,6 +440,34 @@ body {
   stroke-linejoin: round;
 }
 
+/* Icon only: square cell; a select stays clickable, transparent, on top. */
+.field.icon-only {
+  flex: none;
+  justify-content: center;
+  width: var(--bar);
+  padding: 0;
+}
+
+.icon-only .picker {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.icon-only:has(.picker:focus-visible) {
+  outline: 1px solid var(--muted);
+  outline-offset: -1px;
+}
+
+.share .icon-copied,
+.share.copied .icon-share {
+  display: none;
+}
+
+.share.copied .icon-copied {
+  display: block;
+}
+
 .field .picker {
   flex: 1;
   height: 100%;
@@ -453,11 +479,8 @@ body {
 
 .share {
   appearance: none;
-  flex: none;
   border: 0;
   background: none;
-  font: inherit;
-  font-size: 14px;
   cursor: pointer;
 }
 
@@ -534,8 +557,7 @@ body {
     height: 18px;
   }
 
-  .field .picker,
-  .share {
+  .field .picker {
     font-size: 13px;
   }
 }

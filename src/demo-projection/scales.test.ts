@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dayTicks,
   formatUnit,
+  particleSpeedFactor,
   stepDay,
   legendTicks,
   MAX_PARTICLES,
@@ -46,6 +47,18 @@ describe("dayTicks", () => {
       { label: "10", position: 0.9, major: true },
     ]);
     expect(ticks[1]).toEqual({ label: "02", position: 0.1, major: false });
+  });
+});
+
+describe("particleSpeedFactor", () => {
+  it("maps 0.5× to 0.2 and 5× to the natural particle speed", () => {
+    expect(particleSpeedFactor(0.5)).toBeCloseTo(0.2, 9);
+    expect(particleSpeedFactor(5)).toBeCloseTo(1, 9);
+  });
+
+  it("rises evenly on a log scale in between", () => {
+    expect(particleSpeedFactor(1)).toBeCloseTo(0.325, 3);
+    expect(particleSpeedFactor(2)).toBeCloseTo(0.527, 3);
   });
 });
 
