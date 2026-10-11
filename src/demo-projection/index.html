@@ -46,22 +46,42 @@
         </div>
       </main>
 
+      <header class="clock">
+        <div class="date" data-ref="date"></div>
+        <div class="hour" data-ref="hour"></div>
+      </header>
+
       <aside class="rail">
-        <section class="cell clock">
-          <div class="date" data-ref="date"></div>
-          <div class="year" data-ref="year"></div>
-          <div class="hour" data-ref="hour"></div>
-        </section>
         <section class="cell timeline">
-          <input
-            data-ref="time"
-            type="range"
-            min="0"
-            max="1"
-            step="0.001"
-            value="0"
-            aria-label="Time" />
-          <ol class="days" data-ref="days"></ol>
+          <button
+            type="button"
+            class="step"
+            data-ref="prev"
+            aria-label="Previous day">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 15 6-6 6 6" />
+            </svg>
+          </button>
+          <div class="track">
+            <input
+              data-ref="time"
+              type="range"
+              min="0"
+              max="1"
+              step="0.001"
+              value="0"
+              aria-label="Time" />
+            <ol class="days" data-ref="days"></ol>
+          </div>
+          <button
+            type="button"
+            class="step"
+            data-ref="next"
+            aria-label="Next day">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
         </section>
         <section class="cell controls">
           <select class="picker" data-ref="month" aria-label="Month"></select>
@@ -86,12 +106,29 @@
       </aside>
 
       <footer class="bar">
-        <select
-          class="picker"
-          data-ref="projection"
-          aria-label="Projection"></select>
-        <select class="picker" data-ref="layer" aria-label="Layer"></select>
-        <button type="button" class="share" data-ref="share">Share</button>
+        <label class="field">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3c-5 5.5-5 12.5 0 18M12 3c5 5.5 5 12.5 0 18" />
+          </svg>
+          <select
+            class="picker"
+            data-ref="projection"
+            aria-label="Projection"></select>
+        </label>
+        <label class="field">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M3 8c3-2.5 6 2.5 9 0s6-2.5 9 0M3 13c3-2.5 6 2.5 9 0s6-2.5 9 0M3 18c3-2.5 6 2.5 9 0s6-2.5 9 0" />
+          </svg>
+          <select class="picker" data-ref="layer" aria-label="Layer"></select>
+        </label>
+        <button type="button" class="field share" data-ref="share">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 11v9h14v-9" />
+          </svg>
+          <span data-ref="shareLabel">Share</span>
+        </button>
       </footer>
     </div>
     <script type="module" src="./main.ts"></script>

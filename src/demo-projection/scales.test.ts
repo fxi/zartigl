@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dayTicks,
   formatUnit,
+  stepDay,
   legendTicks,
   MAX_PARTICLES,
   particleCount,
@@ -34,14 +35,32 @@ describe("legendTicks", () => {
 });
 
 describe("dayTicks", () => {
-  it("marks the 1st and every 5th UTC day", () => {
+  it("marks every UTC day, the 1st and every 5th as major", () => {
     const first = Date.UTC(2026, 9, 1);
     const last = Date.UTC(2026, 9, 11);
-    expect(dayTicks(first, last)).toEqual([
-      { label: "01", position: 0 },
-      { label: "05", position: 0.4 },
-      { label: "10", position: 0.9 },
+    const ticks = dayTicks(first, last);
+    expect(ticks).toHaveLength(11);
+    expect(ticks.filter((t) => t.major)).toEqual([
+      { label: "01", position: 0, major: true },
+      { label: "05", position: 0.4, major: true },
+      { label: "10", position: 0.9, major: true },
     ]);
+    expect(ticks[1]).toEqual({ label: "02", position: 0.1, major: false });
+  });
+});
+
+describe("stepDay", () => {
+  const midnight = Date.UTC(2026, 9, 7);
+  const hour = 3_600_000;
+
+  it("moves to the adjacent UTC midnight", () => {
+    expect(stepDay(midnight + 20 * hour, 1)).toBe(Date.UTC(2026, 9, 8));
+    expect(stepDay(midnight + 20 * hour, -1)).toBe(midnight);
+  });
+
+  it("always moves, also from a midnight", () => {
+    expect(stepDay(midnight, 1)).toBe(Date.UTC(2026, 9, 8));
+    expect(stepDay(midnight, -1)).toBe(Date.UTC(2026, 9, 6));
   });
 });
 

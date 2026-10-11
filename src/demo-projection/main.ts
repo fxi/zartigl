@@ -38,6 +38,7 @@ import {
 } from "./versor";
 import {
   dayTicks,
+  stepDay,
   formatUnit,
   legendTicks,
   particleCount,
@@ -156,9 +157,10 @@ function refs(root: HTMLElement) {
     provider: get<HTMLElement>("provider"),
     status: get<HTMLElement>("status"),
     date: get<HTMLElement>("date"),
-    year: get<HTMLElement>("year"),
     hour: get<HTMLElement>("hour"),
     time: get<HTMLInputElement>("time"),
+    prev: get<HTMLButtonElement>("prev"),
+    next: get<HTMLButtonElement>("next"),
     days: get<HTMLElement>("days"),
     compass: get<HTMLButtonElement>("compass"),
     needle: get<SVGElement>("needle"),
@@ -172,6 +174,7 @@ function refs(root: HTMLElement) {
     projection: get<HTMLSelectElement>("projection"),
     layer: get<HTMLSelectElement>("layer"),
     share: get<HTMLButtonElement>("share"),
+    shareLabel: get<HTMLElement>("shareLabel"),
   };
 }
 
@@ -640,6 +643,8 @@ class ProjectionDemo {
       this.setPlaying(!this.playing),
     );
     this.ui.share.addEventListener("click", () => this.share());
+    this.ui.prev.addEventListener("click", () => this.stepDay(-1));
+    this.ui.next.addEventListener("click", () => this.stepDay(1));
 
     // The thumb drives the playhead like a jog wheel: playback holds while
     // it is held (pointer or key) and resumes on release.
@@ -667,6 +672,7 @@ class ProjectionDemo {
       this.ms =
         times[0] + Number(time.value) * (times[times.length - 1] - times[0]);
       field.focus(this.ms);
+      time.style.setProperty("--p", time.value);
       this.settle = this.settleFrames();
     });
     window.addEventListener("keydown", (event) => {
@@ -713,11 +719,11 @@ class ProjectionDemo {
       .then(() => navigator.clipboard.writeText(url.href))
       .then(
         () => {
-          const button = this.ui.share;
-          button.textContent = "Copied";
+          const label = this.ui.shareLabel;
+          label.textContent = "Copied";
           clearTimeout(this.copiedTimer);
           this.copiedTimer = window.setTimeout(() => {
-            button.textContent = "Share";
+            label.textContent = "Share";
           }, COPIED_MS);
         },
         () => this.setStatus(url.href),
@@ -886,8 +892,7 @@ class ProjectionDemo {
       month: "short",
       timeZone: "UTC",
     });
-    this.ui.date.textContent = day.toUpperCase();
-    this.ui.year.textContent = String(date.getUTCFullYear());
+    this.ui.date.textContent = `${day} ${date.getUTCFullYear()}`.toUpperCase();
     this.ui.hour.textContent = `${String(date.getUTCHours()).padStart(2, "0")}:00 UTC`;
   }
 
@@ -899,7 +904,39 @@ class ProjectionDemo {
     }
     const first = times[0];
     const span = times[times.length - 1] - first;
-    this.ui.time.value = String((this.ms - first) / span);
+    this.setTimeline((this.ms - first) / span);
+  }
+
+  /** Thumb position and the played part of the track, 0–1. */
+  private setTimeline(value: number): void {
+    this.ui.time.value = String(value);
+    this.ui.time.style.setProperty("--p", String(value));
+  }
+
+  /**
+   * Jump to the previous or next UTC midnight, opening the adjacent month
+   * when the jump leaves the open one.
+   */
+  private stepDay(direction: 1 | -1): void {
+    const field = this.field;
+    if (!field || field.times.length < 2) {
+      return;
+    }
+    const { times } = field;
+    const target = stepDay(this.ms, direction);
+    if (target >= times[0] && target <= times[times.length - 1]) {
+      this.ms = target;
+      field.focus(target);
+      this.syncTimeline();
+      this.settle = this.settleFrames();
+      return;
+    }
+    const chunk = this.chunks.find((c) => holds(c, target));
+    if (chunk) {
+      this.openChunk(chunk, undefined, target).catch((error: unknown) =>
+        this.fail(error),
+      );
+    }
   }
 
   private buildLegend(field: CurrentField): void {
@@ -918,9 +955,13 @@ class ProjectionDemo {
     const ticks =
       times.length > 1 ? dayTicks(times[0], times[times.length - 1]) : [];
     this.ui.days.replaceChildren(
-      ...ticks.map(({ label, position }) => {
+      ...ticks.map(({ label, position, major }) => {
         const li = document.createElement("li");
-        li.textContent = label;
+        if (major) {
+          li.textContent = label;
+        } else {
+          li.className = "minor";
+        }
         li.style.top = `${position * 100}%`;
         return li;
       }),

@@ -56,23 +56,33 @@ function roundNice(value: number): number {
   return Number(best.toPrecision(2));
 }
 
-/** UTC day marks (1st and every 5th) as positions along [first, last]. */
+const DAY_MS = 86_400_000;
+
+/**
+ * UTC day marks as positions along [first, last]; the 1st and every 5th
+ * are major (labelled).
+ */
 export function dayTicks(
   first: number,
   last: number,
-): { label: string; position: number }[] {
-  const day = 86_400_000;
-  const ticks: { label: string; position: number }[] = [];
-  for (let t = Math.ceil(first / day) * day; t <= last; t += day) {
+): { label: string; position: number; major: boolean }[] {
+  const ticks: { label: string; position: number; major: boolean }[] = [];
+  for (let t = Math.ceil(first / DAY_MS) * DAY_MS; t <= last; t += DAY_MS) {
     const date = new Date(t).getUTCDate();
-    if (date === 1 || date % 5 === 0) {
-      ticks.push({
-        label: String(date).padStart(2, "0"),
-        position: (t - first) / (last - first),
-      });
-    }
+    ticks.push({
+      label: String(date).padStart(2, "0"),
+      position: (t - first) / (last - first),
+      major: date === 1 || date % 5 === 0,
+    });
   }
   return ticks;
+}
+
+/** The next (1) or previous (-1) UTC midnight, strictly after or before `ms`. */
+export function stepDay(ms: number, direction: 1 | -1): number {
+  return direction > 0
+    ? Math.floor(ms / DAY_MS) * DAY_MS + DAY_MS
+    : Math.ceil(ms / DAY_MS) * DAY_MS - DAY_MS;
 }
 
 /** "m s-1" → "m/s". */

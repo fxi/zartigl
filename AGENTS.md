@@ -53,3 +53,9 @@ intended to cover polar views.
 
 Do not propose non-cloud-native services, GRIB/netCDF/HDF-only products, bespoke
 APIs, or sources that require ingestion or conversion as catalog-ready entries.
+
+
+Commits
+- single line
+- conventional commit 
+- no co-author
