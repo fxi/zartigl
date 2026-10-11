@@ -41,6 +41,13 @@ import { viewFrame, type View } from "./view";
 
 const STEPS_PER_SECOND = 1.5;
 const TRANSITION_MS = 2200;
+/** Fraction of a month after which the next one is decoded. */
+const PREFETCH_AT = 0.6;
+
+interface Upcoming {
+  index: number;
+  field: CurrentField | null;
+}
 
 interface Preset {
   id: string;
@@ -57,6 +64,13 @@ const PRESETS: Preset[] = [
     projection: "azimuthalEquidistant",
     rotate: [0, 90, 0],
     zoom: 2.2,
+  },
+  {
+    id: "north",
+    label: "North Pole",
+    projection: "azimuthalEqualArea",
+    rotate: [0, -90, 0],
+    zoom: 2.3,
   },
   {
     id: "globe",
@@ -140,6 +154,9 @@ class ProjectionDemo {
   private field: CurrentField | null = null;
   /** Month chunks of the open layer's archive. */
   private chunks: CatalogGeoVideoSource[] = [];
+  private chunkIndex = 0;
+  /** Next month, decoded ahead of the playhead. */
+  private upcoming: Upcoming | null = null;
   /** Bumped on every layer or month switch; stale loads drop out. */
   private loadId = 0;
   private view: View;
@@ -201,6 +218,7 @@ class ProjectionDemo {
   /** Switch layer, keeping the displayed month when the archive has it. */
   private async openLayer(layer: DemoLayer): Promise<void> {
     const id = ++this.loadId;
+    this.dropUpcoming();
     const entry = requireCatalogEntry(layer.entryId);
     const source = entry.sources.find(isGeoVideoArchiveSource);
     if (!source) {
@@ -239,28 +257,80 @@ class ProjectionDemo {
     chunk: CatalogGeoVideoSource,
     id = ++this.loadId,
   ): Promise<void> {
+    this.dropUpcoming();
     this.setStatus("Decoding…");
-    const manifest = await loadGeoVideoManifest(chunk.manifestUrl);
-    if (id !== this.loadId) {
-      return;
-    }
-    const field = new CurrentField(this.gl, manifest);
-    await field.prime(field.times[0]);
+    const field = await this.loadField(chunk);
     if (id !== this.loadId) {
       field.destroy();
       return;
     }
+    this.adopt(field, this.chunks.indexOf(chunk));
+    this.buildLegend(field);
+    this.particles.respawn();
+  }
+
+  /** Manifest and first decoded frame of a month chunk. */
+  private async loadField(chunk: CatalogGeoVideoSource): Promise<CurrentField> {
+    const manifest = await loadGeoVideoManifest(chunk.manifestUrl);
+    const field = new CurrentField(this.gl, manifest);
+    try {
+      await field.prime(field.times[0]);
+    } catch (error) {
+      field.destroy();
+      throw error;
+    }
+    return field;
+  }
+
+  private adopt(field: CurrentField, chunkIndex: number): void {
     this.field?.destroy();
     this.field = field;
+    this.chunkIndex = chunkIndex;
+    this.ui.month.value = String(chunkIndex);
     this.ms = field.times[0];
-    this.buildLegend(field);
     this.buildDays(field.times);
-    this.particles.respawn();
     this.setStatus("");
   }
 
+  /**
+   * Decode the next month in the background so playback runs through the
+   * whole archive like a film, wrapping to the first month after the last.
+   */
+  private prefetchNext(): void {
+    if (this.upcoming || this.chunks.length < 2) {
+      return;
+    }
+    const id = this.loadId;
+    const index = (this.chunkIndex + 1) % this.chunks.length;
+    const upcoming: Upcoming = { index, field: null };
+    this.upcoming = upcoming;
+    this.loadField(this.chunks[index])
+      .then((field) => {
+        if (this.upcoming === upcoming && id === this.loadId) {
+          upcoming.field = field;
+        } else {
+          field.destroy();
+        }
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        if (this.upcoming === upcoming) {
+          // Skip the unreadable month on the next attempt.
+          this.chunkIndex = index;
+          this.upcoming = null;
+        }
+      });
+  }
+
+  private dropUpcoming(): void {
+    this.upcoming?.field?.destroy();
+    this.upcoming = null;
+  }
+
   private setStatus(text: string): void {
-    this.ui.status.textContent = text;
+    if (this.ui.status.textContent !== text) {
+      this.ui.status.textContent = text;
+    }
   }
 
   // ---- projection & view -------------------------------------------------
@@ -510,8 +580,21 @@ class ProjectionDemo {
     if (this.playing) {
       const stepMs = (lastTime - first) / (times.length - 1);
       this.ms += dt * STEPS_PER_SECOND * stepMs;
+      if ((this.ms - first) / (lastTime - first) > PREFETCH_AT) {
+        this.prefetchNext();
+      }
       if (this.ms > lastTime) {
-        this.ms = first;
+        const upcoming = this.upcoming;
+        if (this.chunks.length < 2) {
+          this.ms = first;
+        } else if (upcoming?.field) {
+          this.upcoming = null;
+          this.adopt(upcoming.field, upcoming.index);
+          return this.advanceTime(0);
+        } else {
+          this.ms = lastTime;
+          this.setStatus("Buffering…");
+        }
       }
       this.ui.time.value = String((this.ms - first) / (lastTime - first));
     }

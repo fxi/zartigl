@@ -22,7 +22,7 @@ export const DEMO_LAYERS: DemoLayer[] = [
   {
     entryId: "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
     label: "Surface Wind",
-    palette: "solar",
+    palette: "plasma",
     fillLand: false,
   },
   {
