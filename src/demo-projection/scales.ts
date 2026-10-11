@@ -78,9 +78,35 @@ export function dayTicks(
   return ticks;
 }
 
-/** "m s-1" → "m/s". */
+/** "m s-1" → "m/s", "degrees_C" → "°C". */
 export function formatUnit(unit: string | undefined): string {
+  if (unit === "degrees_C" || unit === "degC") {
+    return "°C";
+  }
   return (unit ?? "").replace(/ s-1$/, "/s").replace(/ s-2$/, "/s²");
+}
+
+/**
+ * Round values (1, 2, 2.5 or 5 × 10ⁿ apart, about five intervals) within
+ * [min, max], with their linear position on the ramp.
+ */
+export function linearTicks(
+  min: number,
+  max: number,
+): { value: number; position: number }[] {
+  const raw = (max - min) / 5;
+  const decade = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10]
+    .map((n) => n * decade)
+    .reduce((best, s) =>
+      Math.abs(Math.log(s / raw)) < Math.abs(Math.log(best / raw)) ? s : best,
+    );
+  const ticks: { value: number; position: number }[] = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) {
+    const value = Number(v.toPrecision(6));
+    ticks.push({ value, position: (value - min) / (max - min) });
+  }
+  return ticks;
 }
 
 /** zartigl particle settings, as in catalog `defaults.particles`. */

@@ -1,10 +1,49 @@
 import type { GeoVideoBounds, GeoVideoManifest } from "../lib/geovideo";
 import { geoVideoTimelineValues } from "../lib/geovideo";
+import type { GeoVideoFrameSource } from "../lib/GeoVideoFrameSource";
+import { GeoVideoScalarSource } from "../lib/GeoVideoScalarSource";
 import {
   GeoVideoVectorSource,
   type GeoVideoVectorFrame,
 } from "../lib/GeoVideoVectorSource";
 import type { Program } from "./view";
+
+/** Shader uniforms a field binds: two time steps, their mix, the bounds. */
+export interface FieldUniforms {
+  a: string;
+  b: string;
+  mix: string;
+  bounds: string;
+}
+
+/** shaders/velocity.glsl */
+export const VELOCITY_UNIFORMS: FieldUniforms = {
+  a: "u_vel0",
+  b: "u_vel1",
+  mix: "u_vel_mix",
+  bounds: "u_bounds",
+};
+
+/** shaders/tint.glsl */
+export const TINT_UNIFORMS: FieldUniforms = {
+  a: "u_tint0",
+  b: "u_tint1",
+  mix: "u_tint_mix",
+  bounds: "u_tint_bounds",
+};
+
+/** Masked scalar values as (value, validity) texels. */
+export function scalarTexels(values: Float32Array): Float32Array {
+  const texels = new Float32Array(values.length * 2);
+  for (let i = 0; i < values.length; i++) {
+    const value = values[i];
+    if (!Number.isNaN(value)) {
+      texels[i * 2] = value;
+      texels[i * 2 + 1] = 1;
+    }
+  }
+  return texels;
+}
 
 /** Interleaves masked u/v planes into (u, v, validity, 0) texels. */
 export function velocityTexels(frame: GeoVideoVectorFrame): Float32Array {
@@ -48,13 +87,17 @@ export function timeBracket(
 }
 
 /**
- * Vector GeoVideo frames as float textures, decoded ahead of the playhead.
- * Binds the uniforms of shaders/velocity.glsl.
+ * GeoVideo frames as float textures, decoded ahead of the playhead: vector
+ * frames as (u, v, validity, 0), scalar frames as (value, validity). Binds
+ * two consecutive time steps and their mix under `uniforms`.
  */
-export class CurrentField {
+export class GeoVideoField {
   readonly times: number[];
   readonly bounds: GeoVideoBounds;
-  private readonly source: GeoVideoVectorSource;
+  private readonly source: GeoVideoFrameSource<unknown>;
+  private readonly texels: (frame: unknown) => Float32Array;
+  /** 4 for vector texels, 2 for scalar ones. */
+  private readonly channels: number;
   private readonly textures = new Map<number, WebGLTexture>();
   private readonly pending = new Map<number, Promise<void>>();
   private pair: [WebGLTexture, WebGLTexture, number] | null = null;
@@ -63,10 +106,24 @@ export class CurrentField {
   constructor(
     private readonly gl: WebGL2RenderingContext,
     readonly manifest: GeoVideoManifest,
+    private readonly uniforms: FieldUniforms = VELOCITY_UNIFORMS,
   ) {
-    this.source = new GeoVideoVectorSource(manifest, { cacheSize: 2 });
+    if (manifest.encoding.kind === "vector-luma") {
+      this.source = new GeoVideoVectorSource(manifest, { cacheSize: 2 });
+      this.texels = (frame) => velocityTexels(frame as GeoVideoVectorFrame);
+      this.channels = 4;
+    } else {
+      this.source = new GeoVideoScalarSource(manifest, { cacheSize: 2 });
+      this.texels = (frame) => scalarTexels(frame as Float32Array);
+      this.channels = 2;
+    }
     this.times = geoVideoTimelineValues(manifest);
     this.bounds = manifest.bounds;
+  }
+
+  /** Fixed catalog color domain of a scalar field. */
+  get domain(): [number, number] {
+    return this.manifest.style.colorDomain;
   }
 
   /** Top of the color ramp and of the particle speed normalization. */
@@ -129,10 +186,11 @@ export class CurrentField {
     if (!this.pair) {
       return false;
     }
-    program.texture("u_vel0", unit, this.pair[0]);
-    program.texture("u_vel1", unit + 1, this.pair[1]);
-    program.float("u_vel_mix", this.pair[2]);
-    program.vec4("u_bounds", this.bounds);
+    const names = this.uniforms;
+    program.texture(names.a, unit, this.pair[0]);
+    program.texture(names.b, unit + 1, this.pair[1]);
+    program.float(names.mix, this.pair[2]);
+    program.vec4(names.bounds, this.bounds);
     return true;
   }
 
@@ -172,7 +230,7 @@ export class CurrentField {
     return job;
   }
 
-  private upload(frame: GeoVideoVectorFrame): WebGLTexture {
+  private upload(frame: unknown): WebGLTexture {
     const gl = this.gl;
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -180,16 +238,17 @@ export class CurrentField {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    const vector = this.channels === 4;
     gl.texImage2D(
       gl.TEXTURE_2D,
       0,
-      gl.RGBA16F,
+      vector ? gl.RGBA16F : gl.RG16F,
       this.source.width,
       this.source.height,
       0,
-      gl.RGBA,
+      vector ? gl.RGBA : gl.RG,
       gl.FLOAT,
-      velocityTexels(frame),
+      this.texels(frame),
     );
     gl.bindTexture(gl.TEXTURE_2D, null);
     return texture;

@@ -12,6 +12,19 @@
       "#e8fa5b"
     ]
   },
+  "thermal-alt": {
+    "label": "Thermal Alt",
+    "tags": ["sequential", "temperature"],
+    "colors": [
+      "#176b9c",
+      "#79cbd1",
+      "#f3e7b3",
+      "#f39b3d",
+      "#d43d2f",
+      "#5b1028",
+      "#09060f"
+    ]
+  },
   "haline": {
     "label": "Haline",
     "tags": ["sequential", "salinity"],
@@ -263,26 +276,17 @@
   "mono-black": {
     "label": "Black",
     "tags": ["monochrome", "particles"],
-    "colors": [
-      "#000000",
-      "#000000"
-    ]
+    "colors": ["#000000", "#000000"]
   },
   "mono-white": {
     "label": "White",
     "tags": ["monochrome", "particles"],
-    "colors": [
-      "#ffffff",
-      "#ffffff"
-    ]
+    "colors": ["#ffffff", "#ffffff"]
   },
   "mono-pink": {
     "label": "Pink",
     "tags": ["monochrome", "particles"],
-    "colors": [
-      "#ff2aa1",
-      "#ff2aa1"
-    ]
+    "colors": ["#ff2aa1", "#ff2aa1"]
   },
   "gray": {
     "label": "Gray",

@@ -1,4 +1,4 @@
-import type { CurrentField } from "./CurrentField";
+import type { GeoVideoField } from "./GeoVideoField";
 import advectFrag from "./shaders/advect.frag.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import drawVert from "./shaders/draw.vert.glsl";
@@ -17,6 +17,11 @@ export interface ParticleStyle {
   drop: number;
   /** Respawn probability added per m/s. */
   dropBump: number;
+  /**
+   * Scalar field (TINT_UNIFORMS) coloring the particles over its domain,
+   * speed then sets their brightness; null colors by speed.
+   */
+  tint: GeoVideoField | null;
 }
 
 /**
@@ -97,7 +102,7 @@ export class SphereParticles {
   /** Advect the particles one frame; false until the field has a frame. */
   step(
     frame: ViewFrame,
-    field: CurrentField,
+    field: GeoVideoField,
     ms: number,
     style: ParticleStyle,
   ): boolean {
@@ -137,7 +142,7 @@ export class SphereParticles {
    */
   trace(
     frame: ViewFrame,
-    field: CurrentField,
+    field: GeoVideoField,
     ms: number,
     style: ParticleStyle,
     fadeOpacity: number,
@@ -164,6 +169,15 @@ export class SphereParticles {
       p.float("u_max_jump", Math.max(16, style.speed * 8));
       p.texture("u_ramp", 4, style.ramp);
       p.float("u_opacity", 1);
+      const tinted = style.tint?.bind(p, ms, 5) ?? false;
+      p.int("u_tinted", tinted ? 1 : 0);
+      if (tinted) {
+        p.vec2("u_tint_domain", ...style.tint!.domain);
+      } else {
+        // Unused, but kept off the units of other sampler types.
+        p.int("u_tint0", 0);
+        p.int("u_tint1", 1);
+      }
       gl.enable(gl.BLEND);
       // Straight color over the trails, alpha accumulated as coverage
       // (shaders/fade.frag.glsl).

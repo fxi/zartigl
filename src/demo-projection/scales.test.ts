@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dayTicks,
   formatUnit,
+  linearTicks,
   particleSpeedFactor,
   legendTicks,
   MAX_PARTICLES,
@@ -61,9 +62,25 @@ describe("particleSpeedFactor", () => {
   });
 });
 
+describe("linearTicks", () => {
+  it("places round values linearly within the domain", () => {
+    const ticks = linearTicks(-1.74, 30.04);
+    expect(ticks.map((t) => t.value)).toEqual([0, 5, 10, 15, 20, 25, 30]);
+    expect(ticks[0].position).toBeCloseTo(1.74 / 31.78, 9);
+    expect(ticks[ticks.length - 1].position).toBeLessThanOrEqual(1);
+  });
+
+  it("includes both ends when they are round", () => {
+    expect(linearTicks(0, 1).map((t) => t.value)).toEqual([
+      0, 0.2, 0.4, 0.6, 0.8, 1,
+    ]);
+  });
+});
+
 describe("formatUnit", () => {
   it("writes per-second units with a slash", () => {
     expect(formatUnit("m s-1")).toBe("m/s");
+    expect(formatUnit("degrees_C")).toBe("°C");
     expect(formatUnit("m")).toBe("m");
   });
 });

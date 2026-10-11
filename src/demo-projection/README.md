@@ -29,6 +29,12 @@ npm run build:projection   # dist-projection/, served under /zartigl/projversor/
   drop-rate boost spreads the particles over the new view.
 - **Versor dragging.** Quaternion rotation (`versor.ts`) keeps the grabbed
   point under the pointer on every projection.
+- **Two-variable layers.** A layer may name a scalar `tint` entry
+  (`layers.ts`): its GeoVideo archive is decoded frame by frame
+  (`lib/GeoVideoScalarSource`) next to the vector one, months paired by
+  start date, and particles take their color from it (`shaders/tint.glsl`)
+  while speed sets their brightness. "Currents × Temperature" pairs ocean
+  currents with sea water temperature from the same Copernicus model.
 - **North up by default.** As d3-geo-zoom's `northUp`, drags keep the roll
   (gamma) at zero. The compass (`Compass.ts`, `bearing.ts`) shows the
   bearing; dragging around it or the arrow keys free and set the bearing,

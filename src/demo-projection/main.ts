@@ -15,8 +15,19 @@ import { createColorRampTexture } from "../lib/gl-util";
 import { TrailFade, fadeToFrames, fadeToOpacity } from "../lib/trail-fade";
 import { rotationBearing, withBearing } from "./bearing";
 import { Compass } from "./Compass";
-import { CurrentField } from "./CurrentField";
-import { DEMO_LAYERS, DEMO_PALETTES, type DemoLayer } from "./layers";
+import {
+  GeoVideoField,
+  TINT_UNIFORMS,
+  type FieldUniforms,
+} from "./GeoVideoField";
+import {
+  DEMO_LAYERS,
+  DEMO_PALETTES,
+  layerKey,
+  loadTintChunks,
+  pairChunk,
+  type DemoLayer,
+} from "./layers";
 import { Overlay } from "./Overlay";
 import {
   PROJECTIONS,
@@ -39,6 +50,7 @@ import {
 import {
   dayTicks,
   formatUnit,
+  linearTicks,
   legendTicks,
   particleCount,
   particleSettings,
@@ -81,9 +93,20 @@ const MOVE_SETTLE_MS = 100;
 /** Frames still animated while paused, to rebuild trails after a change. */
 const SETTLE_FRAMES_MAX = 120;
 
+/** The fields of one month: the vector field and its optional tint. */
+interface Month {
+  field: GeoVideoField;
+  tint: GeoVideoField | null;
+}
+
+function destroyMonth(month: Month): void {
+  month.field.destroy();
+  month.tint?.destroy();
+}
+
 interface Upcoming {
   index: number;
-  field: CurrentField | null;
+  month: Month | null;
 }
 
 interface Preset {
@@ -177,6 +200,8 @@ function refs(root: HTMLElement) {
     speed: get<HTMLSelectElement>("speed"),
     palette: get<HTMLSelectElement>("palette"),
     unit: get<HTMLElement>("unit"),
+    speedKey: get<HTMLElement>("speedKey"),
+    speedMax: get<HTMLElement>("speedMax"),
     ramp: get<HTMLElement>("ramp"),
     ticks: get<HTMLElement>("ticks"),
     projection: get<HTMLSelectElement>("projection"),
@@ -210,7 +235,11 @@ class ProjectionDemo {
   /** Palette of the particles and legend. */
   private palette = "";
   private ramp: WebGLTexture | null = null;
-  private field: CurrentField | null = null;
+  private field: GeoVideoField | null = null;
+  /** Scalar field coloring the particles, when the layer has a tint. */
+  private tint: GeoVideoField | null = null;
+  /** Month chunks of the tint archive, paired by start date. */
+  private tintChunks: CatalogGeoVideoSource[] = [];
   /** Month chunks of the open layer's archive. */
   private chunks: CatalogGeoVideoSource[] = [];
   private chunkIndex = 0;
@@ -300,9 +329,9 @@ class ProjectionDemo {
 
   load(): Promise<void> {
     const layer =
-      DEMO_LAYERS.find((l) => l.entryId === this.shared.layer) ??
+      DEMO_LAYERS.find((l) => layerKey(l) === this.shared.layer) ??
       DEMO_LAYERS[0];
-    this.ui.layer.value = layer.entryId;
+    this.ui.layer.value = layerKey(layer);
     const palette = DEMO_PALETTES.some((p) => p.id === this.shared.palette)
       ? this.shared.palette
       : undefined;
@@ -327,10 +356,15 @@ class ProjectionDemo {
       throw new Error(`No GeoVideo archive for ${layer.label}`);
     }
     this.setStatus(`Loading ${layer.label}…`);
-    const index = await loadGeoVideoIndex(source.indexUrl);
+    // An unreadable tint index leaves no tint chunks, not a failed layer.
+    const [index, tintChunks] = await Promise.all([
+      loadGeoVideoIndex(source.indexUrl),
+      loadTintChunks(layer),
+    ]);
     if (id !== this.loadId) {
       return;
     }
+    this.tintChunks = tintChunks;
     const month = this.chunks[Number(this.ui.month.value)]?.temporal?.start;
     this.chunks = geoVideoChunkSources(source, index, entry);
     this.ui.month.replaceChildren(
@@ -364,23 +398,51 @@ class ProjectionDemo {
   ): Promise<void> {
     this.dropUpcoming();
     this.setStatus("Decoding…");
-    const field = await this.loadField(chunk, at);
+    const month = await this.loadMonth(chunk, at);
     if (id !== this.loadId) {
-      field.destroy();
+      destroyMonth(month);
       return;
     }
-    this.adopt(field, this.chunks.indexOf(chunk), at);
-    this.buildLegend(field);
+    this.adopt(month, this.chunks.indexOf(chunk), at);
     this.pendingRespawn = true;
+  }
+
+  /**
+   * Vector field of a month and, when the layer has one, its tint for the
+   * same month. A missing or unreadable tint falls back to speed colors.
+   */
+  private async loadMonth(
+    chunk: CatalogGeoVideoSource,
+    at?: number,
+  ): Promise<Month> {
+    const tintChunk = pairChunk(chunk, this.tintChunks);
+    const [field, tint] = await Promise.allSettled([
+      this.loadField(chunk, at),
+      tintChunk ? this.loadField(tintChunk, at, TINT_UNIFORMS) : null,
+    ]);
+    if (field.status === "rejected") {
+      if (tint.status === "fulfilled") {
+        tint.value?.destroy();
+      }
+      throw field.reason;
+    }
+    if (tint.status === "rejected") {
+      console.error(tint.reason);
+    }
+    return {
+      field: field.value,
+      tint: tint.status === "fulfilled" ? tint.value : null,
+    };
   }
 
   /** Manifest and first decoded frame (at `at`, else the start) of a month. */
   private async loadField(
     chunk: CatalogGeoVideoSource,
     at?: number,
-  ): Promise<CurrentField> {
+    uniforms?: FieldUniforms,
+  ): Promise<GeoVideoField> {
     const manifest = await loadGeoVideoManifest(chunk.manifestUrl);
-    const field = new CurrentField(this.gl, manifest);
+    const field = new GeoVideoField(this.gl, manifest, uniforms);
     try {
       await field.prime(at ?? field.times[0]);
     } catch (error) {
@@ -390,9 +452,12 @@ class ProjectionDemo {
     return field;
   }
 
-  private adopt(field: CurrentField, chunkIndex: number, at?: number): void {
+  private adopt(month: Month, chunkIndex: number, at?: number): void {
     this.field?.destroy();
+    this.tint?.destroy();
+    const { field } = month;
     this.field = field;
+    this.tint = month.tint;
     this.chunkIndex = chunkIndex;
     this.ui.month.value = String(chunkIndex);
     const { times } = field;
@@ -402,6 +467,8 @@ class ProjectionDemo {
     );
     this.syncTimeline();
     this.buildDays(times);
+    // Also on automatic month changes: a month may gain or lose its tint.
+    this.buildLegend(month);
     this.setStatus("");
   }
 
@@ -415,14 +482,14 @@ class ProjectionDemo {
     }
     const id = this.loadId;
     const index = (this.chunkIndex + 1) % this.chunks.length;
-    const upcoming: Upcoming = { index, field: null };
+    const upcoming: Upcoming = { index, month: null };
     this.upcoming = upcoming;
-    this.loadField(this.chunks[index])
-      .then((field) => {
+    this.loadMonth(this.chunks[index])
+      .then((month) => {
         if (this.upcoming === upcoming && id === this.loadId) {
-          upcoming.field = field;
+          upcoming.month = month;
         } else {
-          field.destroy();
+          destroyMonth(month);
         }
       })
       .catch((error: unknown) => {
@@ -436,7 +503,9 @@ class ProjectionDemo {
   }
 
   private dropUpcoming(): void {
-    this.upcoming?.field?.destroy();
+    if (this.upcoming?.month) {
+      destroyMonth(this.upcoming.month);
+    }
     this.upcoming = null;
   }
 
@@ -475,10 +544,10 @@ class ProjectionDemo {
       }
     });
     layer.replaceChildren(
-      ...DEMO_LAYERS.map((l) => new Option(l.label, l.entryId)),
+      ...DEMO_LAYERS.map((l) => new Option(l.label, layerKey(l))),
     );
     layer.addEventListener("change", () => {
-      const next = DEMO_LAYERS.find((l) => l.entryId === layer.value);
+      const next = DEMO_LAYERS.find((l) => layerKey(l) === layer.value);
       if (next) {
         this.openLayer(next).catch((error: unknown) => this.fail(error));
       }
@@ -746,6 +815,7 @@ class ProjectionDemo {
       this.ms =
         times[0] + Number(time.value) * (times[times.length - 1] - times[0]);
       field.focus(this.ms);
+      this.tint?.focus(this.ms);
       time.style.setProperty("--p", time.value);
       this.settle = this.settleFrames();
     });
@@ -875,6 +945,7 @@ class ProjectionDemo {
       ),
       drop: Math.min(DROP_RATE + this.redistribution, REDISTRIB_MAX_DROP),
       dropBump: DROP_RATE_BUMP,
+      tint: this.tint,
     };
     const animate = this.advancing || this.settle > 0;
     if (animate && this.particles.step(frame, field, this.ms, style)) {
@@ -882,7 +953,8 @@ class ProjectionDemo {
       this.particles.trace(frame, field, this.ms, style, fade);
       // Paused: count down only once the playhead frames are decoded, so a
       // scrub to uncached frames still rebuilds trails on the right field.
-      if (!this.advancing && field.ready(this.ms)) {
+      const ready = field.ready(this.ms) && (this.tint?.ready(this.ms) ?? true);
+      if (!this.advancing && ready) {
         this.settle--;
       }
     }
@@ -952,9 +1024,9 @@ class ProjectionDemo {
         const upcoming = this.upcoming;
         if (this.chunks.length < 2) {
           this.ms = first;
-        } else if (upcoming?.field) {
+        } else if (upcoming?.month) {
           this.upcoming = null;
-          this.adopt(upcoming.field, upcoming.index);
+          this.adopt(upcoming.month, upcoming.index);
           return this.advanceTime(0);
         } else {
           this.ms = lastTime;
@@ -990,15 +1062,33 @@ class ProjectionDemo {
     this.ui.time.style.setProperty("--p", String(value));
   }
 
-  private buildLegend(field: CurrentField): void {
-    this.ui.unit.textContent = formatUnit(field.manifest.style.unit);
+  /**
+   * Ramp ticks and unit: the tint over its domain (linear) with a speed
+   * brightness key, else the speed (square-root ramp).
+   */
+  private buildLegend({ field, tint }: Month): void {
+    const speedUnit = formatUnit(field.manifest.style.unit);
+    const tick = (value: number, position: number) => {
+      const li = document.createElement("li");
+      li.textContent = String(value);
+      li.style.bottom = `${position * 100}%`;
+      return li;
+    };
+    this.ui.speedKey.hidden = !tint;
+    if (tint) {
+      const [min, max] = tint.domain;
+      this.ui.unit.textContent = formatUnit(tint.manifest.style.unit);
+      this.ui.ticks.replaceChildren(
+        ...linearTicks(min, max).map((t) => tick(t.value, t.position)),
+      );
+      this.ui.speedMax.textContent = `${field.maxSpeed} ${speedUnit}`;
+      return;
+    }
+    this.ui.unit.textContent = speedUnit;
     this.ui.ticks.replaceChildren(
-      ...legendTicks(field.maxSpeed).map((value) => {
-        const li = document.createElement("li");
-        li.textContent = String(value);
-        li.style.bottom = `${rampPosition(value, field.maxSpeed) * 100}%`;
-        return li;
-      }),
+      ...legendTicks(field.maxSpeed).map((value) =>
+        tick(value, rampPosition(value, field.maxSpeed)),
+      ),
     );
   }
 

@@ -1,4 +1,11 @@
+import { requireCatalogEntry } from "../catalog";
+import type { CatalogGeoVideoSource } from "../catalog/types";
 import { getPalettes, type PaletteMeta } from "../lib/gl-util";
+import {
+  geoVideoChunkSources,
+  isGeoVideoArchiveSource,
+  loadGeoVideoIndex,
+} from "../lib/geovideo-index";
 import type { ParticleSettings } from "./scales";
 
 /**
@@ -7,7 +14,9 @@ import type { ParticleSettings } from "./scales";
  * the bright trails read against the black background.
  */
 export interface DemoLayer {
-  /** zartigl catalog entry id. */
+  /** Picker and share key; defaults to the entry id. */
+  id?: string;
+  /** zartigl catalog entry id of the vector field. */
   entryId: string;
   label: string;
   palette: string;
@@ -15,6 +24,72 @@ export interface DemoLayer {
   fillLand: boolean;
   /** Overrides of the catalog entry `defaults.particles` (density, speed, fade). */
   particles?: Partial<ParticleSettings>;
+  /**
+   * Scalar catalog entry whose GeoVideo archive colors the particles (over
+   * its catalog color domain); speed then sets their brightness. Its monthly
+   * chunks pair with the vector ones by start date.
+   */
+  tint?: { entryId: string };
+}
+
+/**
+ * Month chunks of a layer's tint archive; empty without a tint or when its
+ * index cannot be read, so the layer still opens, colored by speed.
+ */
+export async function loadTintChunks(
+  layer: DemoLayer,
+  loadIndex = loadGeoVideoIndex,
+): Promise<CatalogGeoVideoSource[]> {
+  if (!layer.tint) {
+    return [];
+  }
+  try {
+    const entry = requireCatalogEntry(layer.tint.entryId);
+    const source = entry.sources.find(isGeoVideoArchiveSource);
+    if (!source) {
+      throw new Error(`No GeoVideo archive for tint ${entry.id}`);
+    }
+    return geoVideoChunkSources(
+      source,
+      await loadIndex(source.indexUrl),
+      entry,
+    );
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+/**
+ * The candidate whose sample range overlaps `chunk` the most: archives
+ * sampled at different hours (six-hourly from 00:00, daily at 12:00) still
+ * pair by calendar period. Null when none overlaps.
+ */
+export function pairChunk(
+  chunk: CatalogGeoVideoSource,
+  candidates: readonly CatalogGeoVideoSource[],
+): CatalogGeoVideoSource | null {
+  const span = (c: CatalogGeoVideoSource) => [
+    Date.parse(c.temporal?.start ?? ""),
+    Date.parse(c.temporal?.end ?? ""),
+  ];
+  const [start, end] = span(chunk);
+  let best: CatalogGeoVideoSource | null = null;
+  let bestOverlap = -Infinity;
+  for (const candidate of candidates) {
+    const [s, e] = span(candidate);
+    const overlap = Math.min(end, e) - Math.max(start, s);
+    if (Number.isFinite(overlap) && overlap >= 0 && overlap > bestOverlap) {
+      best = candidate;
+      bestOverlap = overlap;
+    }
+  }
+  return best;
+}
+
+/** Picker and share key of a layer. */
+export function layerKey(layer: DemoLayer): string {
+  return layer.id ?? layer.entryId;
 }
 
 export const DEMO_LAYERS: DemoLayer[] = [
@@ -23,6 +98,14 @@ export const DEMO_LAYERS: DemoLayer[] = [
     label: "Ocean Velocity",
     palette: "plasma",
     fillLand: true,
+  },
+  {
+    id: "ocean-velocity-temperature",
+    entryId: "61a81ddd-6c8e-4020-a59f-06ef13a90419",
+    label: "Currents × Temperature",
+    palette: "thermal",
+    fillLand: true,
+    tint: { entryId: "3db0120b-17d2-4789-9952-efcc0953ecc4" },
   },
   {
     entryId: "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",

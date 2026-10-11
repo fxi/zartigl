@@ -356,6 +356,27 @@ body {
   color: var(--muted);
 }
 
+/* Tinted layers: particle brightness grows with speed. */
+.speed-key {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.speed-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, rgba(233, 235, 242, 0.3), var(--ink));
+}
+
+.speed-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Same column and gap as the timeline, so ticks line up. */
 .scale {
   display: flex;

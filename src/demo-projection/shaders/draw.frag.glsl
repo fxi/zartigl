@@ -4,10 +4,10 @@ precision highp float;
 uniform sampler2D u_ramp;
 uniform float u_opacity;
 
-in float v_speed;
+in float v_color;
+in float v_bright;
 out vec4 o_color;
 
 void main() {
-    // Square-root ramp position, as the legend (scales.ts rampPosition).
-    o_color = vec4(texture(u_ramp, vec2(sqrt(v_speed), 0.5)).rgb, u_opacity);
+    o_color = vec4(texture(u_ramp, vec2(v_color, 0.5)).rgb * v_bright, u_opacity);
 }
