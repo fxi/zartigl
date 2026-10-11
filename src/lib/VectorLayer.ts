@@ -9,7 +9,7 @@ import type {
   FieldMeta,
   VelocityData,
 } from "./types";
-import { saveGLState, restoreGLState } from "./gl-util";
+import { requireWebGL2, saveGLState, restoreGLState } from "./gl-util";
 import type { ColorRampInput } from "./gl-util";
 import {
   coversViewportLatitude,
@@ -70,7 +70,7 @@ export class VectorLayer implements CustomLayerInterface {
   readonly renderingMode = "3d" as const;
 
   private map: MaplibreMap | null = null;
-  private gl: WebGLRenderingContext | null = null;
+  private gl: WebGL2RenderingContext | null = null;
 
   private simulation: ParticleSimulation;
   private velocityField: VelocityField;
@@ -128,7 +128,11 @@ export class VectorLayer implements CustomLayerInterface {
     this.setRenderMode(options.renderMode ?? "particles");
   }
 
-  async onAdd(map: MaplibreMap, gl: WebGLRenderingContext): Promise<void> {
+  async onAdd(
+    map: MaplibreMap,
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+  ): Promise<void> {
+    const gl = requireWebGL2(context);
     this.map = map;
     this.gl = gl;
 
@@ -463,7 +467,11 @@ export class VectorLayer implements CustomLayerInterface {
     }
   }
 
-  render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
+  render(
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+    options: CustomRenderMethodInput,
+  ): void {
+    const gl = requireWebGL2(context);
     const matrix = options.modelViewProjectionMatrix;
     if (
       this.suspended ||

@@ -62,7 +62,7 @@ export function getPalettes(): PaletteMeta[] {
 }
 
 export function createShader(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   type: number,
   source: string,
 ): WebGLShader {
@@ -81,7 +81,7 @@ export function createShader(
 }
 
 export function createProgram(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   vertSource: string,
   fragSource: string,
 ): WebGLProgram {
@@ -105,7 +105,7 @@ export function createProgram(
 }
 
 export function createTexture(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   filter: number,
   data: ArrayBufferView | null,
   width: number,
@@ -147,7 +147,7 @@ export interface StateTextureFormat {
 }
 
 function isFramebufferCompleteForTextureFormat(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   internalFormat: number,
   type: number,
 ): boolean {
@@ -212,7 +212,7 @@ function isFramebufferCompleteForTextureFormat(
 }
 
 export function rgba8StateTextureFormat(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
 ): StateTextureFormat {
   return {
     kind: "rgba8-packed",
@@ -221,100 +221,55 @@ export function rgba8StateTextureFormat(
   };
 }
 
+/** zartigl renders with WebGL2 only; MapLibre may still fall back to WebGL1. */
+export function requireWebGL2(
+  gl: WebGLRenderingContext | WebGL2RenderingContext,
+): WebGL2RenderingContext {
+  if (
+    typeof WebGL2RenderingContext === "undefined" ||
+    !(gl instanceof WebGL2RenderingContext)
+  ) {
+    throw new Error("zartigl requires WebGL2");
+  }
+  return gl;
+}
+
 /**
  * Detect float-render support and return the texture format to use for
  * particle state. Enables the extensions needed to render into the format.
  */
 export function detectStateTextureFormat(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
 ): StateTextureFormat {
-  const isWebGL2 =
-    typeof WebGL2RenderingContext !== "undefined" &&
-    gl instanceof WebGL2RenderingContext;
-
-  if (isWebGL2) {
-    const gl2 = gl as unknown as WebGL2RenderingContext;
-    if (gl.getExtension("EXT_color_buffer_float")) {
-      const candidate = {
-        kind: "float32" as const,
-        internalFormat: gl2.RGBA32F,
-        type: gl.FLOAT,
-      };
-      if (
-        isFramebufferCompleteForTextureFormat(
-          gl,
-          candidate.internalFormat,
-          candidate.type,
-        )
-      ) {
-        return candidate;
-      }
-    }
-    const halfFloatRender =
-      gl.getExtension("EXT_color_buffer_float") ||
-      gl.getExtension("EXT_color_buffer_half_float");
-    if (halfFloatRender) {
-      const candidate = {
-        kind: "float16" as const,
-        internalFormat: gl2.RGBA16F,
-        type: gl2.HALF_FLOAT,
-      };
-      if (
-        isFramebufferCompleteForTextureFormat(
-          gl,
-          candidate.internalFormat,
-          candidate.type,
-        )
-      ) {
-        return candidate;
-      }
-    }
-  } else {
-    const hasFloatTex = gl.getExtension("OES_texture_float");
-    const hasFloatRender = gl.getExtension("WEBGL_color_buffer_float");
-    if (hasFloatTex && hasFloatRender) {
-      const candidate = {
-        kind: "float32" as const,
-        internalFormat: gl.RGBA,
-        type: gl.FLOAT,
-      };
-      if (
-        isFramebufferCompleteForTextureFormat(
-          gl,
-          candidate.internalFormat,
-          candidate.type,
-        )
-      ) {
-        return candidate;
-      }
-    }
-    const halfFloat = gl.getExtension("OES_texture_half_float") as {
-      HALF_FLOAT_OES: number;
-    } | null;
-    const halfFloatRender = gl.getExtension("EXT_color_buffer_half_float");
-    if (halfFloat && halfFloatRender) {
-      const candidate = {
-        kind: "float16" as const,
-        internalFormat: gl.RGBA,
-        type: halfFloat.HALF_FLOAT_OES,
-      };
-      if (
-        isFramebufferCompleteForTextureFormat(
-          gl,
-          candidate.internalFormat,
-          candidate.type,
-        )
-      ) {
-        return candidate;
-      }
+  const candidates: StateTextureFormat[] = [];
+  if (gl.getExtension("EXT_color_buffer_float")) {
+    candidates.push(
+      { kind: "float32", internalFormat: gl.RGBA32F, type: gl.FLOAT },
+      { kind: "float16", internalFormat: gl.RGBA16F, type: gl.HALF_FLOAT },
+    );
+  } else if (gl.getExtension("EXT_color_buffer_half_float")) {
+    candidates.push({
+      kind: "float16",
+      internalFormat: gl.RGBA16F,
+      type: gl.HALF_FLOAT,
+    });
+  }
+  for (const candidate of candidates) {
+    if (
+      isFramebufferCompleteForTextureFormat(
+        gl,
+        candidate.internalFormat,
+        candidate.type,
+      )
+    ) {
+      return candidate;
     }
   }
-
   return rgba8StateTextureFormat(gl);
 }
 
 export function createTextureFormat(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   filter: number,
   data: ArrayBufferView | null,
   width: number,
@@ -347,7 +302,7 @@ export function createTextureFormat(
 }
 
 export function bindTexture(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   texture: WebGLTexture,
   unit: number,
 ): void {
@@ -356,7 +311,7 @@ export function bindTexture(
 }
 
 export function createFramebuffer(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   texture: WebGLTexture,
 ): WebGLFramebuffer {
   const fb = gl.createFramebuffer();
@@ -375,7 +330,7 @@ export function createFramebuffer(
   return fb;
 }
 
-export function createQuadBuffer(gl: WebGLRenderingContext): WebGLBuffer {
+export function createQuadBuffer(gl: WebGL2RenderingContext): WebGLBuffer {
   const buffer = gl.createBuffer();
   if (!buffer) {
     throw new Error("Failed to create buffer");
@@ -401,7 +356,7 @@ const DEFAULT_COLOR_RAMP: Record<number, string> = {
 };
 
 export function createColorRampTexture(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   ramp?: ColorRampInput,
 ): WebGLTexture {
   const colors = ramp != null ? resolveColorRamp(ramp) : DEFAULT_COLOR_RAMP;
@@ -439,7 +394,7 @@ export interface WebGLRendererInfo {
 }
 
 export function getWebGLRendererInfo(
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
 ): WebGLRendererInfo {
   const info = gl.getExtension("WEBGL_debug_renderer_info") as {
     UNMASKED_VENDOR_WEBGL: number;
@@ -475,7 +430,7 @@ export interface GLState {
   blendFunc: [number, number];
 }
 
-export function saveGLState(gl: WebGLRenderingContext): GLState {
+export function saveGLState(gl: WebGL2RenderingContext): GLState {
   return {
     program: gl.getParameter(gl.CURRENT_PROGRAM),
     activeTexture: gl.getParameter(gl.ACTIVE_TEXTURE),
@@ -493,7 +448,7 @@ export function saveGLState(gl: WebGLRenderingContext): GLState {
   };
 }
 
-export function restoreGLState(gl: WebGLRenderingContext, s: GLState): void {
+export function restoreGLState(gl: WebGL2RenderingContext, s: GLState): void {
   gl.useProgram(s.program);
   gl.activeTexture(s.activeTexture);
   gl.bindBuffer(gl.ARRAY_BUFFER, s.arrayBuffer);

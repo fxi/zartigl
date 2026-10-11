@@ -7,7 +7,7 @@ import type { ScalarColorDomain } from "./scalar-color-domain";
  * in geographic space [0,1]x[0,1], with R=u, G=v normalized to [0,1].
  */
 export class VelocityField {
-  private gl: WebGLRenderingContext | null = null;
+  private gl: WebGL2RenderingContext | null = null;
   private texture: WebGLTexture | null = null;
   private width = 0;
   private height = 0;
@@ -19,7 +19,7 @@ export class VelocityField {
   public scalarMode = false;
   private linearFilter = true;
 
-  init(gl: WebGLRenderingContext): void {
+  init(gl: WebGL2RenderingContext): void {
     this.gl = gl;
   }
 

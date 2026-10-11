@@ -81,7 +81,7 @@ export function decodeVectorFrame(
 
 /** RGBA pixels of an image or video frame through WebGL, without color management. */
 class PixelReader {
-  private gl: WebGLRenderingContext | null = null;
+  private gl: WebGL2RenderingContext | null = null;
   private texture: WebGLTexture | null = null;
   private framebuffer: WebGLFramebuffer | null = null;
 
@@ -117,7 +117,7 @@ class PixelReader {
     this.framebuffer = null;
   }
 
-  private context(): WebGLRenderingContext {
+  private context(): WebGL2RenderingContext {
     if (this.gl) {
       return this.gl;
     }
@@ -126,11 +126,9 @@ class PixelReader {
       premultipliedAlpha: false,
       antialias: false,
     };
-    const gl: WebGLRenderingContext | null =
-      canvas.getContext("webgl2", attributes) ??
-      canvas.getContext("webgl", attributes);
+    const gl = canvas.getContext("webgl2", attributes);
     if (!gl) {
-      throw new Error("WebGL is required to decode GeoVideo frames");
+      throw new Error("WebGL2 is required to decode GeoVideo frames");
     }
     this.gl = gl;
     this.texture = gl.createTexture();

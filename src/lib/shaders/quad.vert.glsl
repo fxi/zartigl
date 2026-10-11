@@ -1,7 +1,8 @@
+#version 300 es
 precision highp float;
 
-attribute vec2 a_position;
-varying vec2 v_tex_coord;
+in vec2 a_position;
+out vec2 v_tex_coord;
 
 void main() {
     v_tex_coord = a_position * 0.5 + 0.5;

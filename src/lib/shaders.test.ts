@@ -30,8 +30,18 @@ describe("particle shader invalid-state guards", () => {
   it("wraps particle bounds that cross the dateline", () => {
     expect(updateFrag).toContain("fract(newPos.x - u_bounds.x)");
     expect(updateFrag).toContain(
-      "fract(mix(u_bounds.x, u_bounds.z, rand(rng_id + 1.3 + u_rand_seed)))",
+      "fract(mix(u_bounds.x, u_bounds.z, draw(RESPAWN_X)))",
     );
+  });
+
+  it("draws drops, respawns and sub-pixel steps from the integer hash", () => {
+    expect(updateFrag).toContain("#version 300 es");
+    expect(updateFrag).toContain("float random(uvec3 v)");
+    expect(updateFrag).toContain("uniform uint u_frame");
+    expect(updateFrag).not.toContain("sin(dot(");
+    for (const stream of ["DROP", "RESPAWN_Y", "STEP_X", "STEP_Y"]) {
+      expect(updateFrag).toContain(`draw(${stream})`);
+    }
   });
 
   it("respawns invalid particle state in the update shader", () => {
@@ -44,7 +54,7 @@ describe("particle shader invalid-state guards", () => {
     expect(updateFrag).toContain("USE_FLOAT_STATE");
     expect(drawVert).toContain("USE_FLOAT_STATE");
     expect(updateFrag).toContain("vec2 pos = encoded.rg");
-    expect(updateFrag).toContain("gl_FragColor = vec4(newPos, 0.0, 1.0)");
+    expect(updateFrag).toContain("o_state = vec4(newPos, 0.0, 1.0)");
     expect(updateFrag).toContain("const float MIN_STEP = 1.0 / 65025.0");
     expect(updateFrag).toContain("floor(newPos.x * 255.0) / 255.0");
     expect(drawVert).toContain("encoded.r + encoded.g / 255.0");

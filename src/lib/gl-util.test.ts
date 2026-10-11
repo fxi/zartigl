@@ -22,7 +22,9 @@ function makeFakeGl(options: FakeGlOptions = {}) {
     RGBA: 0x1908,
     UNSIGNED_BYTE: 0x1401,
     FLOAT: 0x1406,
-    HALF_FLOAT_OES: 0x8d61,
+    HALF_FLOAT: 0x140b,
+    RGBA32F: 0x8814,
+    RGBA16F: 0x881a,
     NEAREST: 0x2600,
     TEXTURE_2D: 0x0de1,
     TEXTURE_WRAP_S: 0x2802,
@@ -52,9 +54,6 @@ function makeFakeGl(options: FakeGlOptions = {}) {
       if (name === "WEBGL_debug_renderer_info") {
         return debugInfo;
       }
-      if (name === "OES_texture_half_float" && extensions.has(name)) {
-        return { HALF_FLOAT_OES: 0x8d61 };
-      }
       return extensions.has(name) ? {} : null;
     }),
     getParameter: vi.fn((key: number) => {
@@ -65,7 +64,7 @@ function makeFakeGl(options: FakeGlOptions = {}) {
         return "WebKit WebGL";
       }
       if (key === 0x1f02) {
-        return "WebGL 1.0";
+        return "WebGL 2.0";
       }
       if (key === debugInfo.UNMASKED_VENDOR_WEBGL) {
         return "Google Inc. (Intel)";
@@ -84,7 +83,7 @@ describe("WebGL utility helpers", () => {
     const data = new Uint8Array(16);
 
     createTexture(
-      gl as unknown as WebGLRenderingContext,
+      gl as unknown as WebGL2RenderingContext,
       gl.NEAREST,
       data,
       2,
@@ -108,13 +107,13 @@ describe("WebGL utility helpers", () => {
     const gl = makeFakeGl();
 
     expect(
-      getWebGLRendererInfo(gl as unknown as WebGLRenderingContext),
+      getWebGLRendererInfo(gl as unknown as WebGL2RenderingContext),
     ).toEqual({
       vendor: "Google Inc.",
       renderer: "WebKit WebGL",
       unmaskedVendor: "Google Inc. (Intel)",
       unmaskedRenderer: "ANGLE (Intel, D3D11)",
-      version: "WebGL 1.0",
+      version: "WebGL 2.0",
     });
   });
 
@@ -122,7 +121,7 @@ describe("WebGL utility helpers", () => {
     const gl = makeFakeGl();
 
     expect(
-      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+      detectStateTextureFormat(gl as unknown as WebGL2RenderingContext),
     ).toEqual({
       kind: "rgba8-packed",
       internalFormat: gl.RGBA,
@@ -131,44 +130,40 @@ describe("WebGL utility helpers", () => {
     expect(gl.checkFramebufferStatus).not.toHaveBeenCalled();
   });
 
-  it("uses float state when WebGL1 float texture rendering is framebuffer-complete", () => {
-    const gl = makeFakeGl({
-      extensions: ["OES_texture_float", "WEBGL_color_buffer_float"],
-    });
+  it("uses float32 state when float rendering is framebuffer-complete", () => {
+    const gl = makeFakeGl({ extensions: ["EXT_color_buffer_float"] });
 
     expect(
-      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+      detectStateTextureFormat(gl as unknown as WebGL2RenderingContext),
     ).toEqual({
       kind: "float32",
-      internalFormat: gl.RGBA,
+      internalFormat: gl.RGBA32F,
       type: gl.FLOAT,
     });
     expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
   });
 
-  it("uses half-float state when float32 is unavailable but half-float rendering is complete", () => {
-    const gl = makeFakeGl({
-      extensions: ["OES_texture_half_float", "EXT_color_buffer_half_float"],
-    });
+  it("uses half-float state when only half-float rendering is available", () => {
+    const gl = makeFakeGl({ extensions: ["EXT_color_buffer_half_float"] });
 
     expect(
-      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+      detectStateTextureFormat(gl as unknown as WebGL2RenderingContext),
     ).toEqual({
       kind: "float16",
-      internalFormat: gl.RGBA,
-      type: gl.HALF_FLOAT_OES,
+      internalFormat: gl.RGBA16F,
+      type: gl.HALF_FLOAT,
     });
     expect(gl.checkFramebufferStatus).toHaveBeenCalledWith(gl.FRAMEBUFFER);
   });
 
   it("falls back to RGBA8 when advertised float rendering is framebuffer-incomplete", () => {
     const gl = makeFakeGl({
-      extensions: ["OES_texture_float", "WEBGL_color_buffer_float"],
+      extensions: ["EXT_color_buffer_float"],
       framebufferStatus: 0x8cd6,
     });
 
     expect(
-      detectStateTextureFormat(gl as unknown as WebGLRenderingContext),
+      detectStateTextureFormat(gl as unknown as WebGL2RenderingContext),
     ).toEqual({
       kind: "rgba8-packed",
       internalFormat: gl.RGBA,

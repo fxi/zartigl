@@ -1,4 +1,7 @@
+#version 300 es
 precision highp float;
+
+#include ./random.glsl;
 
 uniform sampler2D u_particles;
 uniform sampler2D u_velocity;
@@ -6,7 +9,7 @@ uniform vec2 u_velocity_min;
 uniform vec2 u_velocity_max;
 uniform float u_speed;        // max pixels/frame for the fastest current (zoom-independent)
 uniform float u_world_size;   // 512 * 2^zoom — Mercator [0,1] → screen pixels
-uniform float u_rand_seed;
+uniform uint u_frame;         // advection counter, seeds the random streams
 uniform float u_drop_rate;
 uniform float u_drop_rate_bump;
 uniform vec4 u_bounds; // minX, minY, maxX, maxY in mercator [0,1] or lat/lon [0,1] (globe); maxX may exceed 1
@@ -14,13 +17,21 @@ uniform vec4 u_geo_bounds; // west, south, east, north in degrees
 uniform float u_valid_threshold; // rejects bilinear alpha fringe around no-data cells
 uniform float u_is_globe; // 1.0 = globe mode (lat/lon Y), 0.0 = mercator
 
-varying vec2 v_tex_coord;
+in vec2 v_tex_coord;
+out vec4 o_state;
 
 const float PI = 3.141592653589793;
 
-// PRNG
-float rand(vec2 co) {
-    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+// Independent random streams per particle and frame.
+const uint DROP = 0u;
+const uint RESPAWN_X = 1u;
+const uint RESPAWN_Y = 2u;
+const uint STEP_X = 3u;
+const uint STEP_Y = 4u;
+
+float draw(uint stream) {
+    uvec2 texel = uvec2(gl_FragCoord.xy);
+    return random(uvec3(texel.x, texel.y, u_frame * 8u + stream));
 }
 
 // Mercator [0,1] -> geographic longitude [-180,180]
@@ -73,7 +84,7 @@ float geoInData(vec2 geoUV) {
 }
 
 void main() {
-    vec4 encoded = texture2D(u_particles, v_tex_coord);
+    vec4 encoded = texture(u_particles, v_tex_coord);
 
 #ifdef USE_FLOAT_STATE
     // Float state texture: position stored directly at full precision.
@@ -102,7 +113,7 @@ void main() {
     float inData = geoInData(geoUV);
 
     // Sample velocity and decode from normalized [0,1] back to physical
-    vec2 velNorm = texture2D(u_velocity, geoUV).rg;
+    vec2 velNorm = texture(u_velocity, geoUV).rg;
     vec2 velocity = mix(u_velocity_min, u_velocity_max, velNorm);
     float speed = length(velocity);
 
@@ -142,11 +153,6 @@ void main() {
         offset = vec2(0.0);
     }
 
-    // Random respawn logic
-    // Use v_tex_coord (unique per particle) to prevent merged particles
-    // from getting identical random values and staying permanently fused.
-    vec2 rng_id = pos + v_tex_coord;
-
 #ifdef USE_FLOAT_STATE
     // Float state has no quantization floor — integrate the exact offset.
     vec2 newPos = pos + offset;
@@ -157,8 +163,8 @@ void main() {
     // average speed is preserved and slow particles still move visibly.
     const float MIN_STEP = 1.0 / 65025.0;
     vec2 prob = clamp(abs(offset) / MIN_STEP, 0.0, 1.0);
-    float rx = rand(rng_id + vec2(u_rand_seed * 1.7 + 4.3, 2.1));
-    float ry = rand(rng_id + vec2(2.1, u_rand_seed * 1.7 + 4.3));
+    float rx = draw(STEP_X);
+    float ry = draw(STEP_Y);
     vec2 stochStep = sign(offset) * MIN_STEP * vec2(
         step(1.0 - prob.x, rx),
         step(1.0 - prob.y, ry)
@@ -179,10 +185,10 @@ void main() {
     }
 
     float dropRate = u_drop_rate + speed * u_drop_rate_bump;
-    float drop = step(1.0 - dropRate, rand(rng_id + u_rand_seed));
+    float drop = step(1.0 - dropRate, draw(DROP));
 
     // Drop if on land / no data (alpha channel = validity mask)
-    float valid = texture2D(u_velocity, geoUV).a * inData;
+    float valid = texture(u_velocity, geoUV).a * inData;
     float outOfData = 1.0 - step(u_valid_threshold, valid);
 
     // Also drop if out of viewport bounds
@@ -204,8 +210,8 @@ void main() {
 
     // Random position within viewport bounds
     vec2 randomPos = vec2(
-        fract(mix(u_bounds.x, u_bounds.z, rand(rng_id + 1.3 + u_rand_seed))),
-        mix(u_bounds.y, u_bounds.w, rand(rng_id + 2.1 + u_rand_seed))
+        fract(mix(u_bounds.x, u_bounds.z, draw(RESPAWN_X))),
+        mix(u_bounds.y, u_bounds.w, draw(RESPAWN_Y))
     );
 
     if (forceRespawn) {
@@ -216,10 +222,10 @@ void main() {
 
 #ifdef USE_FLOAT_STATE
     // Store position directly at full precision (B/A unused).
-    gl_FragColor = vec4(newPos, 0.0, 1.0);
+    o_state = vec4(newPos, 0.0, 1.0);
 #else
     // Encode back to RGBA: R=hi_x, G=lo_x, B=hi_y, A=lo_y
-    gl_FragColor = vec4(
+    o_state = vec4(
         floor(newPos.x * 255.0) / 255.0,
         fract(newPos.x * 255.0),
         floor(newPos.y * 255.0) / 255.0,

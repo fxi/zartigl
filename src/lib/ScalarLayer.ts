@@ -5,7 +5,7 @@ import type {
 } from "maplibre-gl";
 import type { ColorRampInput } from "./gl-util";
 import { visibleWorldCopyOffsets } from "./geo-util";
-import { restoreGLState, saveGLState } from "./gl-util";
+import { requireWebGL2, restoreGLState, saveGLState } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { ParticleSimulationDebugInfo } from "./ParticleSimulation";
 import type { FieldMeta, ScalarLayerOptions, VelocityData } from "./types";
@@ -47,7 +47,7 @@ export class ScalarLayer implements CustomLayerInterface {
   readonly renderingMode = "3d" as const;
 
   private map: MaplibreMap | null = null;
-  private gl: WebGLRenderingContext | null = null;
+  private gl: WebGL2RenderingContext | null = null;
   private zarrSource: ZarrSource;
   private simulation: ParticleSimulation;
   private activeField: VelocityField;
@@ -91,7 +91,11 @@ export class ScalarLayer implements CustomLayerInterface {
     this.simulation.setRenderMode("raster");
   }
 
-  async onAdd(map: MaplibreMap, gl: WebGLRenderingContext): Promise<void> {
+  async onAdd(
+    map: MaplibreMap,
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+  ): Promise<void> {
+    const gl = requireWebGL2(context);
     this.map = map;
     this.gl = gl;
     this.simulation.init(gl);
@@ -129,7 +133,11 @@ export class ScalarLayer implements CustomLayerInterface {
     }
   }
 
-  render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
+  render(
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+    options: CustomRenderMethodInput,
+  ): void {
+    const gl = requireWebGL2(context);
     if (
       this.suspended ||
       !this.map ||

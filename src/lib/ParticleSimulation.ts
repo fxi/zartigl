@@ -134,7 +134,7 @@ const DEFAULTS: SimulationParams = {
 };
 
 export class ParticleSimulation {
-  private gl!: WebGLRenderingContext;
+  private gl!: WebGL2RenderingContext;
   private params: SimulationParams;
 
   // Programs
@@ -161,6 +161,8 @@ export class ParticleSimulation {
     maxY: number;
   } | null = null;
   private redistributionBoost = 0;
+  /** Advection counter seeding the update shader random streams. */
+  private frame = Math.floor(Math.random() * 2 ** 30);
 
   // Camera-aware trail retention, separate from the configured fade so
   // interaction never overwrites the user's setting.
@@ -198,7 +200,7 @@ export class ParticleSimulation {
     this.trailFade = new TrailFade(this.params.fadeOpacity);
   }
 
-  init(gl: WebGLRenderingContext): void {
+  init(gl: WebGL2RenderingContext): void {
     this.gl = gl;
     this.webglInfo = getWebGLRendererInfo(gl);
     this.stateFormat =
@@ -211,7 +213,12 @@ export class ParticleSimulation {
         : "";
 
     // Compile programs
-    this.updateProgram = createProgram(gl, quadVert, stateDefine + updateFrag);
+    // GLSL 300 es: defines go after the #version line.
+    this.updateProgram = createProgram(
+      gl,
+      quadVert,
+      updateFrag.replace(/^(#version[^\n]*\n)/, `$1${stateDefine}`),
+    );
     this.drawProgram = createProgram(gl, stateDefine + drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
     this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
@@ -225,7 +232,7 @@ export class ParticleSimulation {
       "u_velocity_max",
       "u_speed",
       "u_world_size",
-      "u_rand_seed",
+      "u_frame",
       "u_drop_rate",
       "u_drop_rate_bump",
       "u_bounds",
@@ -534,7 +541,8 @@ export class ParticleSimulation {
       );
       gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
       gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
-      gl.uniform1f(this.updateLocs["u_rand_seed"], Math.random());
+      gl.uniform1ui(this.updateLocs["u_frame"], this.frame);
+      this.frame = (this.frame + 1) >>> 0;
 
       // Transient drop-rate boost: when the viewport changes (zoom/pan), accelerate
       // the existing uniform respawn so the old cluster disperses smoothly. Decays

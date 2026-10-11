@@ -44,7 +44,7 @@ function encodedRedValues(
   };
   const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
   const field = new VelocityField();
-  field.init(gl as unknown as WebGLRenderingContext);
+  field.init(gl as unknown as WebGL2RenderingContext);
   try {
     field.update(data, colorDomain);
   } finally {

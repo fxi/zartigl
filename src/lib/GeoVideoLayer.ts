@@ -6,6 +6,7 @@ import type {
 import {
   createColorRampTexture,
   createProgram,
+  requireWebGL2,
   resolveColorRamp,
   restoreGLState,
   saveGLState,
@@ -186,7 +187,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
   private logScale: boolean;
   private vibrance: number;
   private map: MaplibreMap | null = null;
-  private gl: WebGLRenderingContext | null = null;
+  private gl: WebGL2RenderingContext | null = null;
   private manifest: GeoVideoManifest | null = null;
   private video: VideoWithFrameCallback | null = null;
   /** Manifest of `video`, which still differs from `manifest` mid-swap. */
@@ -254,7 +255,11 @@ export class GeoVideoLayer implements CustomLayerInterface {
     this.vibrance = options.vibrance ?? 0;
   }
 
-  async onAdd(map: MaplibreMap, gl: WebGLRenderingContext): Promise<void> {
+  async onAdd(
+    map: MaplibreMap,
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+  ): Promise<void> {
+    const gl = requireWebGL2(context);
     this.map = map;
     this.gl = gl;
     this.abortController = new AbortController();
@@ -304,7 +309,11 @@ export class GeoVideoLayer implements CustomLayerInterface {
     }
   }
 
-  render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
+  render(
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+    options: CustomRenderMethodInput,
+  ): void {
+    const gl = requireWebGL2(context);
     // Decode the texture with the manifest of the media it was uploaded from.
     const manifest = this.videoManifest;
     const video = this.video;
@@ -1000,7 +1009,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     return this;
   }
 
-  private initGl(gl: WebGLRenderingContext): void {
+  private initGl(gl: WebGL2RenderingContext): void {
     this.mercatorProgram = createProgram(gl, gridMercatorVert, geoVideoFrag);
     this.globeProgram = createProgram(gl, gridGlobeVert, geoVideoFrag);
     this.colorTexture = this.createVideoTexture(gl, gl.LINEAR);
@@ -1396,7 +1405,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   private createVideoTexture(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     filter: number,
   ): WebGLTexture {
     const texture = gl.createTexture();
@@ -1412,7 +1421,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
   }
 
   private uploadTextureSource(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     source: HTMLCanvasElement | HTMLVideoElement,
     initialized: boolean,
   ): void {
@@ -1483,7 +1492,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     return elapsed > 0 ? ((recent.length - 1) * 1000) / elapsed : 0;
   }
 
-  private bindGrid(gl: WebGLRenderingContext, program: WebGLProgram): void {
+  private bindGrid(gl: WebGL2RenderingContext, program: WebGLProgram): void {
     const location = gl.getAttribLocation(program, "a_grid_uv");
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(location);
@@ -1491,7 +1500,7 @@ export class GeoVideoLayer implements CustomLayerInterface {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
   }
 
-  private unbindGrid(gl: WebGLRenderingContext, program: WebGLProgram): void {
+  private unbindGrid(gl: WebGL2RenderingContext, program: WebGLProgram): void {
     gl.disableVertexAttribArray(gl.getAttribLocation(program, "a_grid_uv"));
   }
 

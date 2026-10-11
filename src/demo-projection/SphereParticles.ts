@@ -36,6 +36,8 @@ export class SphereParticles {
   private width = 0;
   private height = 0;
   private current = 0;
+  /** Advection counter seeding the shader random streams. */
+  private frame = Math.floor(Math.random() * 2 ** 30);
   private reset = true;
 
   constructor(
@@ -118,12 +120,13 @@ export class SphereParticles {
     p.float("u_keep_cos", Math.cos(visibleCap(frame)));
     p.float("u_drop", style.drop);
     p.float("u_drop_bump", style.dropBump);
-    p.float("u_seed", Math.random() * 100);
+    p.uint("u_frame", this.frame);
     p.float("u_reset", this.reset ? 1 : 0);
     this.quad();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     this.current = next;
+    this.frame = (this.frame + 1) >>> 0;
     this.reset = false;
     return true;
   }

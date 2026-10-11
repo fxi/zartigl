@@ -47,7 +47,7 @@ import {
 import { decodeShare, encodeShare, type ShareState } from "./share";
 import { viewFrame, type View, type ViewFrame } from "./view";
 
-const STEPS_PER_SECOND = 0.5;
+const STEPS_PER_SECOND = 0.4;
 const TRANSITION_MS = 2200;
 /** Fraction of a month after which the next one is decoded. */
 const PREFETCH_AT = 0.6;
@@ -304,10 +304,7 @@ class ProjectionDemo {
       layer.particles,
     );
     this.trailFade.setBase(fadeToOpacity(this.particleSettings.fade));
-    this.ramp = createColorRampTexture(
-      this.gl as unknown as WebGLRenderingContext,
-      layer.palette,
-    );
+    this.ramp = createColorRampTexture(this.gl, layer.palette);
     this.ui.ramp.style.background = rampGradient(layer.palette);
     await this.openChunk(this.chunks[chunkIndex], id, at);
   }

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GeoVideoLayer } from "./GeoVideoLayer";
 import type { GeoVideoLayerOptions } from "./GeoVideoLayer";
 import { geoVideoSecondsForTime } from "./geovideo";
+import { fakeWebGL2 } from "./test-webgl2";
 import type { GeoVideoManifest } from "./geovideo";
 
 const manifest: GeoVideoManifest = {
@@ -301,7 +302,7 @@ describe("GeoVideoLayer playback scheduling", () => {
     const upload = (
       layer as unknown as {
         uploadTextureSource: (
-          context: WebGLRenderingContext,
+          context: WebGL2RenderingContext,
           source: HTMLVideoElement,
           initialized: boolean,
         ) => void;
@@ -309,12 +310,12 @@ describe("GeoVideoLayer playback scheduling", () => {
     ).uploadTextureSource.bind(layer);
 
     upload(
-      gl as unknown as WebGLRenderingContext,
+      gl as unknown as WebGL2RenderingContext,
       video as unknown as HTMLVideoElement,
       false,
     );
     upload(
-      gl as unknown as WebGLRenderingContext,
+      gl as unknown as WebGL2RenderingContext,
       video as unknown as HTMLVideoElement,
       true,
     );
@@ -591,10 +592,12 @@ function fakeGl() {
   };
   return {
     calls,
-    gl: new Proxy(calls, {
-      get: (target, prop) =>
-        prop in target ? target[prop as keyof typeof target] : () => null,
-    }) as unknown as WebGLRenderingContext,
+    gl: fakeWebGL2(
+      new Proxy(calls, {
+        get: (target, prop) =>
+          prop in target ? target[prop as keyof typeof target] : () => null,
+      }),
+    ),
   };
 }
 

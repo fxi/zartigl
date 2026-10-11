@@ -329,7 +329,10 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     };
   }
 
-  onAdd(map: MaplibreMap, gl: WebGLRenderingContext): void | Promise<void> {
+  onAdd(
+    map: MaplibreMap,
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
+  ): void | Promise<void> {
     this.map = map;
     if (this.delegate) {
       return this.delegate.onAdd(map, gl);
@@ -338,7 +341,10 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     this.emitLoaded();
   }
 
-  render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
+  render(
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
+    options: CustomRenderMethodInput,
+  ): void {
     if (!this.suspended) {
       this.delegate?.render(gl, options);
     }

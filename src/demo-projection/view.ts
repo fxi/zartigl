@@ -51,11 +51,7 @@ export class Program {
     vert: string,
     frag: string,
   ) {
-    this.program = createProgram(
-      gl as unknown as WebGLRenderingContext,
-      vert,
-      frag,
-    );
+    this.program = createProgram(gl, vert, frag);
   }
 
   use(): this {
@@ -72,6 +68,10 @@ export class Program {
 
   int(name: string, v: number): void {
     this.gl.uniform1i(this.loc(name), v);
+  }
+
+  uint(name: string, v: number): void {
+    this.gl.uniform1ui(this.loc(name), v);
   }
 
   float(name: string, v: number): void {

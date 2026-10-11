@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeWebGL2 } from "./test-webgl2";
 import { VectorLayer } from "./VectorLayer";
 import { stitchVelocityChunks } from "./VelocityField";
 import type { VectorFieldSource, VelocityData } from "./types";
@@ -183,7 +184,7 @@ describe("VectorLayer camera particle state", () => {
     const map = new FakeMap();
     const layer = createLayer();
 
-    await layer.onAdd(map as never, {} as never);
+    await layer.onAdd(map as never, fakeWebGL2({}));
 
     const simulation = mocks.simulationInstances[0];
     map.emit("movestart");
@@ -198,7 +199,7 @@ describe("VectorLayer camera particle state", () => {
   it("forwards globe projection and clipping data to the simulation", async () => {
     const map = new FakeMap();
     const layer = createLayer("raster");
-    await layer.onAdd(map as never, {} as never);
+    await layer.onAdd(map as never, fakeWebGL2({}));
     (layer as unknown as { initialized: boolean }).initialized = true;
 
     const gl = {
@@ -233,13 +234,10 @@ describe("VectorLayer camera particle state", () => {
     const clippingPlane: [number, number, number, number] = [0, 0, 1, 0];
     const matrix = new Float32Array(16);
 
-    layer.render(
-      gl as never,
-      {
-        modelViewProjectionMatrix: matrix,
-        defaultProjectionData: { clippingPlane },
-      } as never,
-    );
+    layer.render(fakeWebGL2(gl), {
+      modelViewProjectionMatrix: matrix,
+      defaultProjectionData: { clippingPlane },
+    } as never);
 
     expect(mocks.simulationInstances[0].render).toHaveBeenCalledWith(
       1,
@@ -263,7 +261,7 @@ describe("VectorLayer camera particle state", () => {
     const map = new FakeMap();
     const layer = createLayer();
 
-    await layer.onAdd(map as never, {} as never);
+    await layer.onAdd(map as never, fakeWebGL2({}));
 
     const simulation = mocks.simulationInstances[0];
     map.emit("moveend");
@@ -278,7 +276,7 @@ describe("VectorLayer camera particle state", () => {
     const map = new FakeMap();
     const layer = createLayer();
 
-    await layer.onAdd(map as never, {} as never);
+    await layer.onAdd(map as never, fakeWebGL2({}));
     layer.onRemove();
 
     expect(map.listenerCount("movestart")).toBe(0);
