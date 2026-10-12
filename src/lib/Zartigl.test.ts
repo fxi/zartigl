@@ -941,6 +941,32 @@ describe("Zartigl facade", () => {
       expect(septemberRequests()).toBe(1);
     });
 
+    it("keeps a time requested while a chunk handoff resolves", async () => {
+      const map = new FakeMap();
+      const z = await createZartigl(
+        {
+          map: map as never,
+          catalog: archiveCatalog("scalar"),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      const play = vi.spyOn(z, "play").mockResolvedValue();
+      const requested = Date.parse(
+        chunks.september[chunks.september.length - 1],
+      );
+
+      const handoff = (
+        z as unknown as { continueArchivePlayback: () => Promise<void> }
+      ).continueArchivePlayback();
+      z.pause();
+      await z.update({ time: requested });
+      await handoff;
+
+      expect(z.getTimeMeta().current).toBe(requested);
+      expect(play).not.toHaveBeenCalled();
+    });
+
     it("pauses a layer waiting at the end when no chunk follows", async () => {
       const map = new FakeMap();
       const z = await createZartigl(

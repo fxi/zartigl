@@ -542,6 +542,8 @@ export class Zartigl {
   private layer: CatalogRenderLayer | null = null;
   private time: number = 0;
   private pendingTime: number | null = null;
+  /** Bumped by caller pauses and time requests, which cancel a chunk handoff. */
+  private playbackIntent = 0;
   private depth: number = 0;
   private settings: Partial<ZartiglSettings>;
   private colorDomainOverridden: boolean;
@@ -658,6 +660,9 @@ export class Zartigl {
       parseTime(change.time, "time");
     }
     validateGeoVideoSpeed(change.geoVideo);
+    if (change.time != null) {
+      this.playbackIntent += 1;
+    }
     if (change.settings?.colorDomain !== undefined) {
       validateScalarColorDomain(change.settings.colorDomain);
     }
@@ -1184,6 +1189,7 @@ export class Zartigl {
 
   pause(): void {
     this.assertAlive();
+    this.playbackIntent += 1;
     this.layer?.pause();
   }
 
@@ -1974,9 +1980,11 @@ export class Zartigl {
     if (!this.catalogSource || !this.isArchiveChunk(this.catalogSource)) {
       return;
     }
+    // A pause or time request made meanwhile owns playback and time.
+    let intent = this.playbackIntent;
     try {
       const next = await this.nextArchiveChunk();
-      if (this.destroyed) {
+      if (this.destroyed || intent !== this.playbackIntent) {
         return;
       }
       if (!next) {
@@ -1984,8 +1992,10 @@ export class Zartigl {
         this.layer?.pause();
         return;
       }
-      await this.update({ time: next.time });
-      if (!this.destroyed) {
+      const seek = this.update({ time: next.time });
+      intent = this.playbackIntent;
+      await seek;
+      if (!this.destroyed && intent === this.playbackIntent) {
         await this.play();
       }
     } catch (error) {

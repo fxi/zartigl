@@ -361,19 +361,12 @@ export function geoVideoTimeForSeconds(
   }
   if (manifest.timeline.kind === "sample-sequence") {
     const values = geoVideoTimelineValues(manifest);
-    const progress =
-      manifest.media.durationSeconds > 0
-        ? Math.max(
-            0,
-            Math.min(
-              1 - Number.EPSILON,
-              seconds / manifest.media.durationSeconds,
-            ),
-          )
-        : 0;
-    return values[
-      Math.min(values.length - 1, Math.floor(progress * values.length))
-    ];
+    const segment = manifest.media.durationSeconds / values.length;
+    // Frame callbacks report frame starts, which float and microsecond
+    // rounding can put just before a sample boundary; a quarter frame of
+    // tolerance stays below the half-frame offset seeks target.
+    const index = Math.floor((seconds + 0.25 / manifest.media.fps) / segment);
+    return values[Math.max(0, Math.min(values.length - 1, index))];
   }
   const start = new Date(manifest.timeline.dateStart).getTime();
   const end = new Date(manifest.timeline.dateEnd).getTime();

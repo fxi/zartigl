@@ -457,6 +457,93 @@ describe("GeoVideoLayer playback scheduling", () => {
     );
   });
 
+  describe("on a daily sample sequence", () => {
+    const values = Array.from(
+      { length: 31 },
+      (_, day) => `2023-10-${String(day + 1).padStart(2, "0")}T00:00:00Z`,
+    );
+    const daily: GeoVideoManifest = {
+      ...manifest,
+      media: { ...manifest.media, durationSeconds: 31 / 24 },
+      timeline: { kind: "sample-sequence", values },
+    };
+
+    it("reports the sample of a played frame starting on its boundary", async () => {
+      const { layer, video } = setup(true, daily);
+      const times: number[] = [];
+      layer.on("timeChange", (time) => times.push(time));
+      await layer.play();
+
+      video.frameCallback!(10, { mediaTime: 13 / 24, presentedFrames: 1 });
+
+      expect(times).toEqual([Date.parse("2023-10-14T00:00:00Z")]);
+    });
+
+    it("keeps the requested time when a paused seek presents a frame", () => {
+      const { layer, video, triggerRepaint } = setup(true, daily);
+      const times: number[] = [];
+      layer.on("timeChange", (time) => times.push(time));
+      layer.setTime(Date.parse("2023-10-15T00:00:00Z"));
+      triggerRepaint.mockClear();
+
+      // A late frame of an earlier seek.
+      video.frameCallback!(10, { mediaTime: 13 / 24, presentedFrames: 1 });
+
+      expect(times).toEqual([]);
+      expect(triggerRepaint).toHaveBeenCalled();
+      expect(video.frameCallback).not.toBeNull();
+    });
+
+    it("buffers a paused seek presented before the seek completes", () => {
+      const { layer, video, triggerRepaint } = setup(true, daily);
+      layer.setTime(Date.parse("2023-10-10T00:00:00Z"));
+      const before = layer.getDebugInfo().bufferedFrames;
+      // Chrome: the frame callback fires while the seek still lowers readyState.
+      video.seeking = true;
+      video.readyState = 1;
+      video.frameCallback!(10, { mediaTime: 9 / 24, presentedFrames: 1 });
+      expect(layer.getDebugInfo().bufferedFrames).toBe(before);
+      triggerRepaint.mockClear();
+
+      video.seeking = false;
+      video.readyState = 4;
+      video.dispatchEvent(new Event("seeked"));
+
+      expect(layer.getDebugInfo().bufferedFrames).toBe(before + 1);
+      expect(triggerRepaint).toHaveBeenCalled();
+    });
+
+    it("reports the last frame of media that ended", () => {
+      const { layer, video } = setup(false, daily);
+      const times: number[] = [];
+      layer.on("timeChange", (time) => times.push(time));
+      video.currentTime = 30 / 24;
+      video.ended = true;
+
+      video.dispatchEvent(new Event("timeupdate"));
+
+      expect(times[times.length - 1]).toBe(Date.parse("2023-10-31T00:00:00Z"));
+    });
+
+    it("reports the first sample of stepped playback", async () => {
+      vi.useFakeTimers();
+      try {
+        const { layer, video } = setup(true, daily, { playbackRate: 0.01 });
+        const times: number[] = [];
+        layer.on("timeChange", (time) => times.push(time));
+        const start = Date.parse("2023-10-05T00:00:00Z");
+        video.currentTime = geoVideoSecondsForTime(daily, start);
+
+        await layer.play();
+        layer.pause();
+
+        expect(times).toEqual([start]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("keeps the requested speed after the media load resets the rate", () => {
     const { video } = setup(true, manifest, { playbackRate: 0.25 });
     expect(video.defaultPlaybackRate).toBe(0.25);

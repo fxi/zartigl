@@ -250,6 +250,35 @@ describe("GeoVideo manifest", () => {
     ).toBeCloseTo(1 + 1 / 48);
   });
 
+  it("maps presented frame starts to their own sample", () => {
+    for (const length of [30, 31]) {
+      const samples: GeoVideoManifest = {
+        ...manifest,
+        media: { ...manifest.media, durationSeconds: length / 24 },
+        timeline: {
+          kind: "sample-sequence",
+          values: Array.from({ length }, (_, day) =>
+            new Date(Date.UTC(2023, 9, day + 1)).toISOString(),
+          ),
+        },
+      };
+      const values = geoVideoTimelineValues(samples);
+      values.forEach((value, index) => {
+        const frameStart = index / 24;
+        // Browsers report mediaTime in whole microseconds.
+        const reported = Math.floor(frameStart * 1e6) / 1e6;
+        expect(geoVideoTimeForSeconds(samples, frameStart)).toBe(value);
+        expect(geoVideoTimeForSeconds(samples, reported)).toBe(value);
+        expect(
+          geoVideoTimeForSeconds(
+            samples,
+            geoVideoSecondsForTime(samples, value),
+          ),
+        ).toBe(value);
+      });
+    }
+  });
+
   it("rejects empty or unordered sample sequences", () => {
     expect(() =>
       validateGeoVideoManifest({

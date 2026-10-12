@@ -842,6 +842,11 @@ export class GeoVideoLayer implements CustomLayerInterface {
     }
     this.stopStepping(false);
     this.video.pause();
+    // Paused frames do not report time: announce the first stepped sample.
+    this.emit(
+      "timeChange",
+      geoVideoTimeForSeconds(manifest, this.video.currentTime),
+    );
     const stepSeconds =
       manifest.timeline.kind === "sample-sequence"
         ? manifest.media.durationSeconds / manifest.timeline.values.length
@@ -1113,6 +1118,15 @@ export class GeoVideoLayer implements CustomLayerInterface {
       },
       { once: true },
     );
+    // Chrome can present a seeked frame before the seek completes, while
+    // readyState is still low, so its frame callback buffers nothing.
+    video.addEventListener("seeked", () => {
+      if (!isCurrent()) {
+        return;
+      }
+      this.bufferFrame(video.currentTime);
+      this.map?.triggerRepaint();
+    });
     video.addEventListener("error", () => {
       // A failed preload is retried, and reported, by the swap itself.
       if (video === this.standby?.video) {
@@ -1191,6 +1205,14 @@ export class GeoVideoLayer implements CustomLayerInterface {
       }
       const mediaTime = metadata?.mediaTime ?? video.currentTime;
       this.bufferFrame(mediaTime);
+      // Paused frames answer a seek: the caller owns that time, and a late
+      // frame of an earlier seek must not report it back.
+      if (video.paused && !video.ended) {
+        this.map?.triggerRepaint();
+        this.frameCallback =
+          video.requestVideoFrameCallback?.(markFrame) ?? null;
+        return;
+      }
       const time = geoVideoTimeForSeconds(manifest, mediaTime);
       if (manifest.timeline.kind === "snapshot-loop") {
         this.emit("timeChange", time);
