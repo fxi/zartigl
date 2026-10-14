@@ -2,7 +2,7 @@ import type { GeoVideoBounds } from "../engine";
 import type { GeoVideoField } from "./GeoVideoField";
 import rasterFrag from "./shaders/raster.frag.glsl";
 import rasterVert from "./shaders/raster.vert.glsl";
-import { Program, type ViewFrame } from "./view";
+import { Program, isGlobalGrid, type ViewFrame } from "./view";
 
 export interface RasterStyle {
   ramp: WebGLTexture;
@@ -32,6 +32,16 @@ export function gridCells(bounds: GeoVideoBounds): [number, number] {
 }
 
 /**
+ * Area the mesh covers: a global grid whose east edge stops short of
+ * 180° (cell centers) is closed to a full turn, its texture repeating
+ * across the seam; a regional grid covers its own bounds.
+ */
+export function meshBounds(bounds: GeoVideoBounds): GeoVideoBounds {
+  const [west, south, , north] = bounds;
+  return isGlobalGrid(bounds) ? [west, south, west + 360, north] : bounds;
+}
+
+/**
  * A scalar GeoVideo field (TINT_UNIFORMS) drawn as a raster on the sphere: a
  * lon/lat mesh over its bounds, projected with the current view, so it
  * morphs with the projections like the particles and the coastlines.
@@ -58,10 +68,11 @@ export class SphereScalar {
     if (!field.bind(p, ms)) {
       return false;
     }
-    const [cols, rows] = gridCells(field.bounds);
+    const mesh = meshBounds(field.bounds);
+    const [cols, rows] = gridCells(mesh);
     p.projection(frame);
     p.mat3("u_rot", frame.rot);
-    p.vec4("u_grid", field.bounds);
+    p.vec4("u_grid", mesh);
     p.int("u_cols", cols);
     p.int("u_rows", rows);
     p.float("u_max_jump", MAX_JUMP * frame.pxPerRadian);
