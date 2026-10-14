@@ -7,7 +7,7 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build:projection -- --base /
 
-FROM nginxinc/nginx-unprivileged:alpine
+FROM nginxinc/nginx-unprivileged:alpine-slim
 LABEL org.opencontainers.image.title="zartigl-projversor" \
       org.opencontainers.image.description="Projversor: GeoVideo particles on a reprojectable sphere" \
       org.opencontainers.image.source="https://github.com/fxi/zartigl" \
