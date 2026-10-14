@@ -8,14 +8,7 @@ uniform float u_vibrance;
 varying float v_speed;
 varying float v_valid;
 
-vec3 applyVibrance(vec3 c, float v) {
-    float mx = max(c.r, max(c.g, c.b));
-    float mn = min(c.r, min(c.g, c.b));
-    float sat = mx - mn;
-    float boost = v * (1.0 - sat);
-    float luma = dot(c, vec3(0.299, 0.587, 0.114));
-    return mix(vec3(luma), c, 1.0 + boost);
-}
+#include ./vibrance.glsl;
 
 float relativeLuminance(vec3 color) {
     vec3 c = clamp(color, 0.0, 1.0);

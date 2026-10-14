@@ -15,13 +15,7 @@ uniform vec2 u_texel_size;
 
 varying vec2 v_geo_uv;
 
-vec3 applyVibrance(vec3 c, float v) {
-    float mx = max(c.r, max(c.g, c.b));
-    float mn = min(c.r, min(c.g, c.b));
-    float boost = v * (1.0 - (mx - mn));
-    float luma = dot(c, vec3(0.299, 0.587, 0.114));
-    return mix(vec3(luma), c, 1.0 + boost);
-}
+#include ./vibrance.glsl;
 
 void main() {
     vec2 sourceUv = vec2(v_geo_uv.x, 1.0 - v_geo_uv.y);

@@ -15,14 +15,7 @@ uniform float u_scalar_mode;      // 0.0 = vector (speed magnitude), 1.0 = scala
 
 varying vec2 v_geo_uv;            // field texture UV [0,1]
 
-vec3 applyVibrance(vec3 c, float v) {
-    float mx = max(c.r, max(c.g, c.b));
-    float mn = min(c.r, min(c.g, c.b));
-    float sat = mx - mn;
-    float boost = v * (1.0 - sat);
-    float luma = dot(c, vec3(0.299, 0.587, 0.114));
-    return mix(vec3(luma), c, 1.0 + boost);
-}
+#include ./vibrance.glsl;
 
 void main() {
     if (v_geo_uv.x < 0.0 || v_geo_uv.x > 1.0 || v_geo_uv.y < 0.0 || v_geo_uv.y > 1.0) {

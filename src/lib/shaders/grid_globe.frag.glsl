@@ -15,14 +15,7 @@ uniform float u_scalar_mode;
 
 varying vec2 v_geo_uv;
 
-vec3 applyVibrance(vec3 c, float v) {
-    float mx = max(c.r, max(c.g, c.b));
-    float mn = min(c.r, min(c.g, c.b));
-    float sat = mx - mn;
-    float boost = v * (1.0 - sat);
-    float luma = dot(c, vec3(0.299, 0.587, 0.114));
-    return mix(vec3(luma), c, 1.0 + boost);
-}
+#include ./vibrance.glsl;
 
 void main() {
     vec4 sample = texture2D(u_field, v_geo_uv);
