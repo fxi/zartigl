@@ -60,33 +60,6 @@ export async function loadTintChunks(
   }
 }
 
-/**
- * The candidate whose sample range overlaps `chunk` the most: archives
- * sampled at different hours (six-hourly from 00:00, daily at 12:00) still
- * pair by calendar period. Null when none overlaps.
- */
-export function pairChunk(
-  chunk: CatalogGeoVideoSource,
-  candidates: readonly CatalogGeoVideoSource[],
-): CatalogGeoVideoSource | null {
-  const span = (c: CatalogGeoVideoSource) => [
-    Date.parse(c.temporal?.start ?? ""),
-    Date.parse(c.temporal?.end ?? ""),
-  ];
-  const [start, end] = span(chunk);
-  let best: CatalogGeoVideoSource | null = null;
-  let bestOverlap = -Infinity;
-  for (const candidate of candidates) {
-    const [s, e] = span(candidate);
-    const overlap = Math.min(end, e) - Math.max(start, s);
-    if (Number.isFinite(overlap) && overlap >= 0 && overlap > bestOverlap) {
-      best = candidate;
-      bestOverlap = overlap;
-    }
-  }
-  return best;
-}
-
 /** Picker and share key of a layer. */
 export function layerKey(layer: DemoLayer): string {
   return layer.id ?? layer.entryId;

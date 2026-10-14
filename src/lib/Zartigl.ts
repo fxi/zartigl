@@ -26,6 +26,7 @@ import type {
 } from "./types";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
+import { nextChunk } from "./archive-timeline";
 import {
   ZartiglFrameUnavailableError,
   type ZartiglStatus,
@@ -2239,33 +2240,10 @@ export class Zartigl {
     if (!entry || !current || !this.isArchiveChunk(current)) {
       return null;
     }
-    const chunks = (await this.resolveArchives(entry)).sources
-      .filter(
-        (source) => source.id === current.id && source.temporal?.start != null,
-      )
-      .map((source) => ({
-        source,
-        start: Date.parse(source.temporal!.start!),
-        end: Date.parse(source.temporal!.end ?? source.temporal!.start!),
-      }))
-      .sort((a, b) => a.start - b.start);
-    const [rangeStart, rangeEnd] = this.resolvedTimeRange ?? [
-      -Infinity,
-      Infinity,
-    ];
-    const currentEnd = Date.parse(current.temporal?.end ?? "");
-    const next =
-      chunks.find(
-        (chunk) => chunk.start > currentEnd && chunk.start <= rangeEnd,
-      ) ??
-      (this.loop
-        ? chunks.find(
-            (chunk) => chunk.end >= rangeStart && chunk.start <= rangeEnd,
-          )
-        : undefined);
-    return next
-      ? { source: next.source, time: Math.max(next.start, rangeStart) }
-      : null;
+    return nextChunk((await this.resolveArchives(entry)).sources, current, {
+      range: this.resolvedTimeRange,
+      loop: this.loop,
+    });
   }
 
   /** A chunk manifest, reusing the one requested ahead for the next chunk. */

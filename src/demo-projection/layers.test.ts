@@ -1,39 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CatalogGeoVideoSource } from "../catalog";
 import type { GeoVideoIndex } from "../engine";
-import { DEMO_LAYERS, layerKey, loadTintChunks, pairChunk } from "./layers";
-
-const chunk = (start: string, end: string): CatalogGeoVideoSource => ({
-  id: "source",
-  type: "geovideo",
-  title: { en: "Chunk" },
-  temporal: { mode: "fixed", start, end },
-  manifestUrl: `https://example.test/${start}/manifest.json`,
-});
+import { DEMO_LAYERS, layerKey, loadTintChunks } from "./layers";
 
 const tinted = DEMO_LAYERS.find((l) => l.tint)!;
-
-describe("pairChunk", () => {
-  it("pairs months sampled at different hours", () => {
-    // Six-hourly currents from 00:00, daily temperature at 12:00.
-    const currents = chunk("2026-09-01T00:00:00Z", "2026-09-30T18:00:00Z");
-    const august = chunk("2026-08-01T12:00:00Z", "2026-08-31T12:00:00Z");
-    const september = chunk("2026-09-01T12:00:00Z", "2026-09-30T12:00:00Z");
-    expect(pairChunk(currents, [august, september])).toBe(september);
-  });
-
-  it("pairs a single-sample month contained in the other range", () => {
-    const one = chunk("2026-10-01T00:00:00Z", "2026-10-01T00:00:00Z");
-    const october = chunk("2026-10-01T00:00:00Z", "2026-10-11T00:00:00Z");
-    expect(pairChunk(one, [october])).toBe(october);
-  });
-
-  it("returns null when no month overlaps", () => {
-    const currents = chunk("2026-09-01T00:00:00Z", "2026-09-30T18:00:00Z");
-    const august = chunk("2026-08-01T12:00:00Z", "2026-08-31T12:00:00Z");
-    expect(pairChunk(currents, [august])).toBeNull();
-  });
-});
 
 describe("loadTintChunks", () => {
   afterEach(() => vi.restoreAllMocks());

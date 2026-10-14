@@ -3,7 +3,11 @@ import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import land110 from "world-atlas/land-110m.json";
 import land50 from "world-atlas/land-50m.json";
-import { requireCatalogEntry, type CatalogGeoVideoSource } from "../catalog";
+import {
+  requireCatalogEntry,
+  sourceCoversTime,
+  type CatalogGeoVideoSource,
+} from "../catalog";
 import {
   TrailFade,
   createColorRampTexture,
@@ -13,6 +17,7 @@ import {
   isGeoVideoArchiveSource,
   loadGeoVideoIndex,
   loadGeoVideoManifest,
+  pairChunk,
 } from "../engine";
 import { rotationBearing, withBearing } from "./bearing";
 import { Compass } from "./Compass";
@@ -26,7 +31,6 @@ import {
   DEMO_PALETTES,
   layerKey,
   loadTintChunks,
-  pairChunk,
   type DemoLayer,
 } from "./layers";
 import { Overlay } from "./Overlay";
@@ -374,7 +378,9 @@ class ProjectionDemo {
       ),
     );
     const holding =
-      at === undefined ? -1 : this.chunks.findIndex((c) => holds(c, at));
+      at === undefined
+        ? -1
+        : this.chunks.findIndex((c) => sourceCoversTime(c, { time: at }));
     const same = this.chunks.findIndex((c) => c.temporal?.start === month);
     const chunkIndex =
       holding >= 0 ? holding : same >= 0 ? same : this.chunks.length - 1;
@@ -1117,13 +1123,6 @@ function clampZoom(zoom: number): number {
 
 function providerLabel(provider: string | undefined): string {
   return provider === "copernicus-marine" ? "Copernicus" : (provider ?? "");
-}
-
-/** Whether a month chunk covers `ms`. */
-function holds(chunk: CatalogGeoVideoSource, ms: number): boolean {
-  const start = Date.parse(chunk.temporal?.start ?? "");
-  const end = Date.parse(chunk.temporal?.end ?? "");
-  return start <= ms && ms <= end;
 }
 
 function monthLabel(chunk: CatalogGeoVideoSource): string {
