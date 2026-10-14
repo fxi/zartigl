@@ -21,6 +21,11 @@ describe("projversor grids", () => {
     expect(rasterFrag).toContain("if (!onGrid(uv, u_tint_bounds))");
   });
 
+  it("applies the catalog vibrance like zartigl's scalar shaders", () => {
+    expect(rasterFrag).toContain("vec3 applyVibrance(vec3 c, float v)");
+    expect(rasterFrag).toContain("applyVibrance(texture(u_ramp");
+  });
+
   it("drops raster triangles across a projection cut", () => {
     expect(rasterVert).toContain("longest < u_max_jump");
   });

@@ -241,8 +241,9 @@ class ProjectionDemo {
   private ramp: WebGLTexture | null = null;
   /** The open layer: particles for a vector one, a raster for a scalar one. */
   private layer: DemoLayer = DEMO_LAYERS[0];
-  /** Catalog opacity of a scalar layer's raster. */
+  /** Catalog opacity and vibrance of a scalar layer's raster. */
   private rasterOpacity = 1;
+  private rasterVibrance = 0;
   private field: GeoVideoField | null = null;
   /** Scalar field coloring the particles, when a tint is chosen. */
   private tint: GeoVideoField | null = null;
@@ -418,6 +419,7 @@ class ProjectionDemo {
       layer.particles,
     );
     this.rasterOpacity = entry.defaults.raster?.opacity ?? 1;
+    this.rasterVibrance = entry.defaults.raster?.vibrance ?? 0;
     this.trailFade.setBase(fadeToOpacity(this.particleSettings.fade));
     this.setPalette(palette);
     await this.openChunk(this.chunks[chunkIndex], id, at);
@@ -984,6 +986,7 @@ class ProjectionDemo {
         ramp: this.ramp,
         domain: field.domain,
         opacity: this.rasterOpacity,
+        vibrance: this.rasterVibrance,
       });
     }
   }

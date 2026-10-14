@@ -9,6 +9,8 @@ export interface RasterStyle {
   /** Values mapped linearly onto the ramp. */
   domain: [number, number];
   opacity: number;
+  /** Catalog vibrance, as zartigl's scalar shaders. */
+  vibrance: number;
 }
 
 /** Mesh cell size bounds, in degrees: fine on regional grids, coarse on global ones. */
@@ -66,6 +68,7 @@ export class SphereScalar {
     p.texture("u_ramp", 2, style.ramp);
     p.vec2("u_domain", ...style.domain);
     p.float("u_opacity", style.opacity);
+    p.float("u_vibrance", style.vibrance);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
