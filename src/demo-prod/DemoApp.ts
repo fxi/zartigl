@@ -19,16 +19,12 @@ import type {
   ZartiglStatus,
   TimeGranularity,
 } from "../lib";
-import {
-  formatTime,
-  formatVertical,
-  pickPreferredSource,
-  resolveLocalizedText,
-} from "../catalog";
+import { formatTime, formatVertical, resolveLocalizedText } from "../catalog";
 import type {
   CatalogEntry,
   Catalog,
   CatalogSource,
+  CatalogSourcePreference,
   CatalogZarrSource,
 } from "../catalog";
 import { addCatalogPickerBlade } from "./CatalogPicker";
@@ -70,9 +66,6 @@ interface DemoParams {
   colorDomainMax: number;
 }
 
-/** Playback speeds in time steps per second, the same on every artifact. */
-const GEOVIDEO_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32];
-
 interface HashState {
   d: string;
   t: number;
@@ -102,6 +95,33 @@ interface HashState {
 }
 
 type PopupMode = "time" | "depth";
+
+const SOURCE_LABELS: Record<CatalogSource["type"], string> = {
+  zarr: "Zarr",
+  wmts: "WMTS",
+  geovideo: "GeoVideo",
+};
+
+/** Whether a source preference applies to a catalog entry. */
+function appliesTo(
+  entry: CatalogEntry,
+  preference: CatalogSourcePreference,
+): boolean {
+  return (
+    preference === "auto" ||
+    entry.sources.some(
+      (source) => source.type === preference || source.id === preference,
+    )
+  );
+}
+
+/** Period of a fixed source, else its id. */
+function sourcePeriod(source: CatalogSource): string {
+  const { start, end } = source.temporal ?? {};
+  return start
+    ? `${start.slice(0, 10)} – ${(end ?? start).slice(0, 10)}`
+    : source.id;
+}
 
 interface ChartDatum {
   axis: number;
@@ -409,7 +429,10 @@ export class DemoApp {
   private params: DemoParams;
   private currentLayer: CatalogEntry;
   private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
+  /** Active source, which "auto" or a type preference may move. */
   private currentSourceId = "";
+  /** Requested source: "auto", a source type, or a source id. */
+  private sourcePreference: CatalogSourcePreference = "auto";
   private readonly locale = navigator.language || "en";
   private currentProjection: "mercator" | "globe" = "globe";
   private activePopup: maplibregl.Popup | null = null;
@@ -418,11 +441,16 @@ export class DemoApp {
 
   // Folder refs
   private timeFolder!: FolderApi;
-  private dataFolder!: FolderApi;
+  private layerFolder!: FolderApi;
   private vectorFolder!: FolderApi;
   private dataBindings: { dispose(): void }[] = [];
-  /** Native GeoVideo playback controls, shown while that backend is active. */
+  /** Step and playback controls; playback is enabled on GeoVideo only. */
   private playbackBindings: { dispose(): void }[] = [];
+  private playButton: HTMLButtonElement | null = null;
+  private stepButtons: {
+    previous: HTMLButtonElement;
+    next: HTMLButtonElement;
+  } | null = null;
   private dataStatusBlade!: BladeApi;
   private timeSliderBinding: BindingApi | null = null;
   private timeLabelBinding: BindingApi | null = null;
@@ -460,7 +488,6 @@ export class DemoApp {
     const hash = this.loadHashState();
     this.currentLayer =
       cat.layers.find((entry) => entry.id === hash?.d) ?? cat.layers[0];
-    this.currentSourceId = pickPreferredSource(this.currentLayer).id;
     this.params = this.makeDefaultParams();
 
     this.pane = new Pane({ title: "zartigl", expanded: true });
@@ -488,12 +515,12 @@ export class DemoApp {
     this.activePopup?.remove();
     this.activePopup = null;
 
-    const requestedSource =
-      layer.sources.find((source) => source.id === hashState?.s) ??
-      layer.sources.find((source) => source.id === this.currentSourceId) ??
-      pickPreferredSource(layer);
-    this.currentSourceId = requestedSource.id;
-    this.currentBackend = requestedSource.type;
+    // A shared link, else the current preference when the layer offers it.
+    this.sourcePreference =
+      [hashState?.s, this.sourcePreference].find(
+        (preference): preference is CatalogSourcePreference =>
+          preference != null && appliesTo(layer, preference),
+      ) ?? "auto";
 
     const sharedTimeRange = normalizeSharedTimeRange(hashState?.tr);
 
@@ -511,7 +538,7 @@ export class DemoApp {
       map: this.map,
       catalog: this.cat,
       layer: layer.id,
-      source: this.currentSourceId,
+      source: this.sourcePreference,
       timeRange: sharedTimeRange,
       time: hashState?.t,
       depth: hashState?.v,
@@ -536,8 +563,17 @@ export class DemoApp {
       if (layer.kind === "scalar") {
         this.frameColorDomain = [meta.min, meta.max];
       }
-      this.syncActiveSource();
       this.syncLegend();
+    });
+    activeZartigl.on("sourceChange", () => {
+      if (this.z === activeZartigl && seq === this.switchSeq) {
+        this.syncActiveSource();
+      }
+    });
+    activeZartigl.on("playbackChange", () => {
+      if (this.z === activeZartigl && seq === this.switchSeq) {
+        this.syncPlaybackControls();
+      }
     });
     activeZartigl.on("status", (status) => {
       if (this.z === activeZartigl && seq === this.switchSeq) {
@@ -568,6 +604,7 @@ export class DemoApp {
       } finally {
         this.syncingVideoTimeControls = false;
       }
+      this.syncStepButtons();
     });
 
     await activeZartigl.init();
@@ -626,13 +663,19 @@ export class DemoApp {
     setTimeout(() => this.syncLegend(), 400);
   }
 
-  private async switchSource(source: CatalogSource): Promise<void> {
-    if (!this.z || source.id === this.currentSourceId) {
+  private async switchSource(
+    preference: CatalogSourcePreference,
+  ): Promise<void> {
+    if (!this.z || preference === this.sourcePreference) {
       return;
     }
-    await this.z.update({ source: source.id });
-    this.currentSourceId = source.id;
-    this.currentBackend = source.type;
+    this.sourcePreference = preference;
+    await this.z.update({ source: preference });
+    const active = this.z.getSource();
+    if (active) {
+      this.currentSourceId = active.id;
+      this.currentBackend = active.type;
+    }
     const timeMeta = this.z.getTimeMeta();
     this.params.allowedStart = timeMeta.min;
     this.params.allowedEnd = timeMeta.max;
@@ -673,10 +716,7 @@ export class DemoApp {
         if (this.syncingVideoTimeControls) {
           return;
         }
-        const ms = times[ev.value];
-        this.params.timeLabel = formatTime(ms);
-        this.timeLabelBinding?.refresh();
-        void this.z?.update({ time: ms });
+        this.requestTime(times[ev.value]);
       }) as BindingApi;
 
     this.timeLabelBinding = this.timeFolder.addBinding(
@@ -699,7 +739,7 @@ export class DemoApp {
     const depthMeta = this.z!.getDepthMeta();
     let depthBinding: BindingApi | null = null;
     if (depthMeta.values.length > 0) {
-      depthBinding = this.dataFolder
+      depthBinding = this.layerFolder
         .addBinding(this.params, "depth", {
           options: depthMeta.values.map((v) => ({
             text: formatVertical(v, depthMeta.label, depthMeta.units),
@@ -707,85 +747,163 @@ export class DemoApp {
           })),
           label: depthMeta.label,
         })
-        .on(
-          "change",
-          (ev) => void this.z?.update({ depth: ev.value }),
-        ) as BindingApi;
+        .on("change", (ev) => {
+          void this.z?.update({ depth: ev.value });
+          this.syncPlaybackControls();
+        }) as BindingApi;
     }
 
     this.dataBindings.push(this.timeSliderBinding, this.timeLabelBinding);
     if (depthBinding) {
       this.dataBindings.push(depthBinding);
     }
+    // The status stays last in Layer, below the depth rebuilt per layer.
+    this.layerFolder.add(this.dataStatusBlade);
     this.rebuildPlaybackControls();
   }
 
   /**
-   * Follow the source the facade shows, which a time change can move between
-   * Zarr and GeoVideo, so playback controls, time sync and shared links match.
+   * Follow the source the facade shows, which a time or depth change can move
+   * between Zarr and GeoVideo, so playback controls and shared links match.
    */
   private syncActiveSource(): void {
     const source = this.z?.getSource();
     if (!source || source.id === this.currentSourceId) {
       return;
     }
-    const nativePlayback = this.usesNativeGeoVideoPlayback();
     this.currentSourceId = source.id;
     this.currentBackend = source.type;
-    if (this.sourceSelectEl) {
-      this.sourceSelectEl.value = source.id;
-    }
-    if (nativePlayback !== this.usesNativeGeoVideoPlayback()) {
-      // Leaves the time slider alone, which may be mid-drag.
-      this.rebuildPlaybackControls();
-    }
+    // The menu keeps the preference; "auto" names the source it shows.
+    this.renderSourceSelect();
+    // Leaves the time slider alone, which may be mid-drag; zartigl keeps the
+    // selected depth across sources.
+    this.rebuildPlaybackControls();
     this.syncColorDomainVisibility();
   }
 
+  /** Show a time step: zartigl stops playback for any date change. */
+  private requestTime(ms: number): void {
+    this.params.timeLabel = formatTime(ms);
+    this.timeLabelBinding?.refresh();
+    void this.z?.update({ time: ms });
+    this.syncPlaybackControls();
+  }
+
+  private step(offset: -1 | 1): void {
+    const ms = this.z?.getSteppedTime(offset);
+    if (ms === undefined) {
+      return;
+    }
+    const values = this.z!.getTimeMeta().values;
+    this.params.timeIndex = nearestTimeIndex(values, ms);
+    this.syncingVideoTimeControls = true;
+    try {
+      this.timeSliderBinding?.refresh();
+    } finally {
+      this.syncingVideoTimeControls = false;
+    }
+    this.requestTime(ms);
+  }
+
+  /**
+   * Step buttons on every source; play, loop and speed stay visible and are
+   * disabled where zartigl cannot play.
+   */
   private rebuildPlaybackControls(): void {
     for (const binding of this.playbackBindings) {
       binding.dispose();
     }
     this.playbackBindings = [];
-    if (this.usesNativeGeoVideoPlayback()) {
-      const autoplay = this.dataFolder
-        .addBinding(this.params, "geoVideoAutoplay", {
-          label: "autoplay",
-        })
-        .on("change", (event) => {
-          if (event.value) {
-            void this.z?.play();
-          } else {
-            this.z?.pause();
-          }
-        });
-      const loop = this.dataFolder
-        .addBinding(this.params, "geoVideoLoop", {
-          label: "loop",
-        })
-        .on(
-          "change",
-          (event) => void this.z?.update({ geoVideo: { loop: event.value } }),
-        );
-      const rate = this.dataFolder
-        .addBinding(this.params, "geoVideoStepsPerSecond", {
-          label: "speed",
-          options: GEOVIDEO_SPEEDS.map((value) => ({
-            text: `${value} steps/s`,
-            value,
-          })),
-        })
-        .on(
-          "change",
-          (event) =>
-            void this.z?.update({ geoVideo: { stepsPerSecond: event.value } }),
-        );
-      this.playbackBindings.push(autoplay, loop, rate);
+    const state = this.z?.getPlaybackState();
+    if (state) {
+      this.params.geoVideoStepsPerSecond = state.stepsPerSecond;
     }
 
-    // Status is static, but moving its blade to the end keeps it below controls
-    // that are rebuilt for each layer/source/range change.
-    this.dataFolder.add(this.dataStatusBlade);
+    const row = document.createElement("div");
+    row.className = "playback-row";
+    const button = (text: string, title: string, onClick: () => void) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.textContent = text;
+      el.title = title;
+      el.addEventListener("click", onClick);
+      row.appendChild(el);
+      return el;
+    };
+    const previous = button("⏮", "Previous step", () => this.step(-1));
+    this.playButton = button("▶", "Play", () => {
+      if (this.z?.getPlaybackState().playing) {
+        this.z.pause();
+      } else {
+        void this.z?.play();
+      }
+    });
+    const next = button("⏭", "Next step", () => this.step(1));
+    this.stepButtons = { previous, next };
+
+    const loop = this.timeFolder
+      .addBinding(this.params, "geoVideoLoop", { label: "loop" })
+      .on(
+        "change",
+        (event) => void this.z?.update({ geoVideo: { loop: event.value } }),
+      );
+    const rate = this.timeFolder
+      .addBinding(this.params, "geoVideoStepsPerSecond", {
+        label: "speed",
+        options: (state?.speeds ?? []).map((value) => ({
+          text: `${value} steps/s`,
+          value,
+        })),
+      })
+      .on(
+        "change",
+        (event) =>
+          void this.z?.update({ geoVideo: { stepsPerSecond: event.value } }),
+      );
+    // Written into shared links and snippets; it never starts playback here.
+    const autoplay = this.timeFolder.addBinding(
+      this.params,
+      "geoVideoAutoplay",
+      { label: "autoplay in code" },
+    );
+    this.playbackBindings.push(
+      addDomBlade(this.timeFolder, row),
+      loop,
+      rate,
+      autoplay,
+    );
+    // Right below the date, whether the time controls were rebuilt too or
+    // only the playback controls, after a source change.
+    const at =
+      this.timeFolder.children.indexOf(this.timeLabelBinding as BladeApi) + 1;
+    this.playbackBindings.forEach((binding, index) =>
+      this.timeFolder.add(binding as BladeApi, at + index),
+    );
+    this.syncPlaybackControls();
+  }
+
+  private syncPlaybackControls(): void {
+    const state = this.z?.getPlaybackState();
+    const disabled = !state?.available;
+    if (this.playButton) {
+      this.playButton.disabled = disabled;
+      this.playButton.textContent = state?.playing ? "⏸" : "▶";
+      this.playButton.title = state?.playing ? "Pause" : "Play";
+    }
+    this.syncStepButtons();
+    // Loop, speed and autoplay follow the play button.
+    for (const binding of this.playbackBindings.slice(1)) {
+      (binding as BindingApi).disabled = disabled;
+    }
+  }
+
+  /** Disable a step past the first or last time step. */
+  private syncStepButtons(): void {
+    if (this.stepButtons) {
+      this.stepButtons.previous.disabled =
+        this.z?.getSteppedTime(-1) === undefined;
+      this.stepButtons.next.disabled = this.z?.getSteppedTime(1) === undefined;
+    }
   }
 
   private buildLimitRangeControls(): BladeApi {
@@ -909,13 +1027,12 @@ export class DemoApp {
 
   private buildStaticUI(): void {
     this.buildLayerFolder();
-    this.timeFolder = this.pane.addFolder({ title: "Time", expanded: true });
-    this.dataFolder = this.pane.addFolder({ title: "Data", expanded: true });
     this.dataStatusEl = document.createElement("div");
     this.dataStatusEl.className = "data-status";
     this.dataStatusEl.dataset.phase = "idle";
     this.dataStatusEl.textContent = "Idle";
-    this.dataStatusBlade = addDomBlade(this.dataFolder, this.dataStatusEl);
+    this.dataStatusBlade = addDomBlade(this.layerFolder, this.dataStatusEl);
+    this.timeFolder = this.pane.addFolder({ title: "Time", expanded: true });
     this.buildDisplayFolder();
     this.buildVectorFolder();
     this.buildExportFolder();
@@ -976,6 +1093,7 @@ export class DemoApp {
 
   private buildLayerFolder(): void {
     const folder = this.pane.addFolder({ title: "Layer", expanded: true });
+    this.layerFolder = folder;
     this.layerPicker = addCatalogPickerBlade(folder, {
       catalog: this.cat,
       locale: this.locale,
@@ -995,12 +1113,7 @@ export class DemoApp {
     this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
     this.renderSourceSelect();
     this.sourceSelectEl.addEventListener("change", () => {
-      const source = this.currentLayer.sources.find(
-        (candidate) => candidate.id === this.sourceSelectEl.value,
-      );
-      if (source) {
-        void this.switchSource(source);
-      }
+      void this.switchSource(this.sourceSelectEl.value);
     });
   }
 
@@ -1540,6 +1653,7 @@ export class DemoApp {
           this.cat.defaultLocale,
         ),
         sourceId: this.currentSourceId,
+        sourcePreference: this.sourcePreference,
         timeRange: this.currentTimeRange(),
         geoVideo: this.currentGeoVideoOptions(),
         center: [center.lng, center.lat],
@@ -1614,11 +1728,11 @@ export class DemoApp {
     return {
       layerId: layer.id,
       layerKind: layer.kind,
-      source: this.currentSourceId,
+      source: this.sourcePreference,
       sourceType: this.currentBackend,
       time: exportedSnippetTime(timeMs, this.params.pinTime),
       timeRange: this.currentTimeRange(),
-      geoVideo: this.usesNativeGeoVideoPlayback()
+      geoVideo: this.z?.getCapabilities().playback
         ? this.currentGeoVideoOptions()
         : undefined,
       depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
@@ -1641,7 +1755,7 @@ export class DemoApp {
       t: timeMs,
       v: this.params.depth,
       p: this.params.palette,
-      s: this.currentSourceId,
+      s: this.sourcePreference,
       pr: this.currentProjection,
       c: [Number(center.lng.toFixed(6)), Number(center.lat.toFixed(6))],
       z: Number(this.map.getZoom().toFixed(3)),
@@ -1672,13 +1786,6 @@ export class DemoApp {
     this.layerPicker.setSelected(this.currentLayer);
   }
 
-  /** Scalar GeoVideo plays natively; vector GeoVideo is decoded frame by frame. */
-  private usesNativeGeoVideoPlayback(): boolean {
-    return (
-      this.currentBackend === "geovideo" && this.currentLayer.kind !== "vector"
-    );
-  }
-
   private updateSourceVisibility(): void {
     if (this.sourceBlade) {
       this.sourceBlade.hidden = this.currentLayer.sources.length <= 1;
@@ -1690,19 +1797,38 @@ export class DemoApp {
     if (!this.sourceSelectEl) {
       return;
     }
-    this.sourceSelectEl.replaceChildren();
-    for (const source of this.currentLayer.sources) {
-      const label =
-        source.type === "zarr"
-          ? "Zarr"
-          : source.type === "wmts"
-            ? "WMTS"
-            : "GeoVideo";
-      const option = new Option(label, source.id);
-      option.title = source.id;
-      this.sourceSelectEl.appendChild(option);
+    const sources = this.currentLayer.sources;
+    const types = [...new Set(sources.map((source) => source.type))];
+    const options = [
+      new Option(`auto (${SOURCE_LABELS[this.currentBackend]})`, "auto"),
+      ...types.flatMap((type) => {
+        const ofType = sources.filter((source) => source.type === type);
+        // Several sources of one type (artifacts): each can be pinned too.
+        const pinned =
+          ofType.length > 1
+            ? ofType.map((source) => {
+                const option = new Option(
+                  `${SOURCE_LABELS[type]} · ${sourcePeriod(source)}`,
+                  source.id,
+                );
+                option.title = source.id;
+                return option;
+              })
+            : [];
+        return [new Option(SOURCE_LABELS[type], type), ...pinned];
+      }),
+    ];
+    // An id from an older link, pinned to a type with a single source.
+    if (!options.some((option) => option.value === this.sourcePreference)) {
+      const source = sources.find((item) => item.id === this.sourcePreference);
+      if (source) {
+        options.push(
+          new Option(`${SOURCE_LABELS[source.type]} · id`, source.id),
+        );
+      }
     }
-    this.sourceSelectEl.value = this.currentSourceId;
+    this.sourceSelectEl.replaceChildren(...options);
+    this.sourceSelectEl.value = this.sourcePreference;
   }
 
   private applyHashCamera(hash: HashState | null): void {

@@ -100,15 +100,17 @@ body {
   width: 100%;
 }
 
-/* Projection buttons (inside Display) */
-.projection-buttons {
+/* Projection buttons (inside Display) and playback buttons (inside Data) */
+.projection-buttons,
+.playback-row {
   display: flex;
   gap: 4px;
   padding: 6px 8px;
   flex-wrap: wrap;
 }
 
-.projection-button {
+.projection-button,
+.playback-row button {
   flex: 1;
   padding: 4px 6px;
   background: rgba(255, 255, 255, 0.06);
@@ -123,7 +125,8 @@ body {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.projection-button:hover {
+.projection-button:hover,
+.playback-row button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
   color: #ccc;
 }
@@ -134,7 +137,8 @@ body {
   color: #6a6;
 }
 
-.projection-button:disabled {
+.projection-button:disabled,
+.playback-row button:disabled {
   opacity: 0.25;
   cursor: not-allowed;
 }
