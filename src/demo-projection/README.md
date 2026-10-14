@@ -9,6 +9,17 @@ npm run dev:projection     # vite dev server
 npm run build:projection   # dist-projection/, served under /zartigl/projversor/
 ```
 
+## Container
+
+The repository `Dockerfile` builds this demo and serves it at `/` with nginx
+on port 8080. Images are published to `ghcr.io/fxi/zartigl-projversor`
+(`latest` from `main`, semver tags from releases).
+
+```bash
+docker compose up -d --build   # build locally, open http://localhost:8080
+docker compose pull && docker compose up -d   # use the published image
+```
+
 ## Technique
 
 - **Twin projections.** Each projection exists twice, as a d3 raw formula

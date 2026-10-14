@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+.playwright-mcp
+.env
+.env.*
+.DS_Store
+node_modules
+dist
+dist-*
+artifacts
+paper
+scripts/.venv
+**/__pycache__
+Dockerfile
+docker-compose.yml
