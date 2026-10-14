@@ -618,7 +618,8 @@ export class VectorLayer implements CustomLayerInterface {
   /**
    * Pre-fetch velocity data for a future time step without swapping the active
    * field. Fires `frameBuffered(ms)` when ready so playback can advance
-   * immediately without a loading gap.
+   * immediately without a loading gap. Rejects when the frame cannot be
+   * loaded, so playback can stop instead of waiting for it.
    */
   async prefetchTime(ms: number): Promise<void> {
     if (this.suspended || !this.map || !this.initialized) {
@@ -639,7 +640,7 @@ export class VectorLayer implements CustomLayerInterface {
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
-        console.warn("[zartigl] Prefetch failed for ms=" + ms, err);
+        throw err;
       }
     } finally {
       this.inflight.delete(ms);

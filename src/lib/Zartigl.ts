@@ -26,8 +26,12 @@ import type {
 } from "./types";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
-import type { ZartiglStatus } from "./load-status";
 import {
+  ZartiglFrameUnavailableError,
+  type ZartiglStatus,
+} from "./load-status";
+import {
+  geoVideoNativeStepsPerSecond,
   geoVideoPlaybackRate,
   geoVideoTimelineValues,
   loadGeoVideoManifest,
@@ -87,6 +91,14 @@ export interface ZartiglUpdate {
 interface SourceTarget {
   time?: Date | string | number;
   depth?: number;
+}
+
+interface LoadContext {
+  timeRange?: TimeRange;
+  settings: Partial<ZartiglSettings>;
+  colorDomainOverridden: boolean;
+  paletteOverridden: boolean;
+  target?: SourceTarget;
 }
 
 export interface GeoVideoOptions {
@@ -200,7 +212,30 @@ type ZartiglEventMap = {
   cacheInvalidated: () => void;
   timeChange: (time: number) => void;
   playbackChange: (playing: boolean) => void;
+  /** The active source changed, including an automatic fallback. */
+  sourceChange: (source: { id: string; type: CatalogSource["type"] }) => void;
 };
+
+/** GeoVideo playback speeds, in time steps per second. */
+export const GEOVIDEO_SPEEDS: readonly number[] = [
+  0.25, 0.5, 1, 2, 4, 8, 16, 32,
+];
+/**
+ * Vector GeoVideo speeds: each step re-seeds the particles, so trails need
+ * time to settle (the projection demo plays 0.2 to 2 steps per second).
+ */
+export const VECTOR_GEOVIDEO_SPEEDS: readonly number[] = [0.25, 0.5, 1, 2];
+
+export interface PlaybackState {
+  /** Whether the active source plays automatically: GeoVideo only. */
+  available: boolean;
+  playing: boolean;
+  loop: boolean;
+  /** Speed applied by the active source; vector stays within `speeds`. */
+  stepsPerSecond: number;
+  /** Speeds offered for the active layer kind. */
+  speeds: readonly number[];
+}
 
 function latestTimeAtOrBefore(values: readonly number[], now: number): number {
   if (values.length === 0) {
@@ -444,6 +479,22 @@ function sortedDepthValues(values: readonly number[]): number[] {
   });
 }
 
+/**
+ * Depth shown on a vertical axis: the level nearest the requested one, or the
+ * surface. Without an axis, the request is kept for the next source.
+ */
+function resolveDepth(
+  axis: ZarrVerticalDimension | null | undefined,
+  requested: number | undefined,
+): number {
+  if (!axis?.values.length) {
+    return requested ?? 0;
+  }
+  return requested == null
+    ? sortedDepthValues(axis.values)[0]
+    : nearestValue(axis.values, requested);
+}
+
 function nearestValue(values: readonly number[], target: number): number {
   if (values.length === 0) {
     return target;
@@ -531,6 +582,9 @@ export class Zartigl {
   private timeRange?: TimeRange;
   private fullTimeMeta: ZarrTimeDimension | null = null;
   private autoplay: boolean;
+  /** Autoplay applies to the first layer only: later sources start paused. */
+  private autoplayPending = true;
+  private playing = false;
   private loop: boolean;
   private playbackRate: number;
   private stepsPerSecond: number | null;
@@ -542,9 +596,19 @@ export class Zartigl {
   private layer: CatalogRenderLayer | null = null;
   private time: number = 0;
   private pendingTime: number | null = null;
+  /** Latest time the caller asked for, ahead of the queued update applying it. */
+  private requestedTime: number | null = null;
   /** Bumped by caller pauses and time requests, which cancel a chunk handoff. */
   private playbackIntent = 0;
+  /** Order of caller requests: updates and play() calls. */
+  private requestSeq = 0;
+  /** Request that started the current playback; 0 once paused. */
+  private playSeq = 0;
   private depth: number = 0;
+  /** Depth the caller selected, kept across sources; null shows the surface. */
+  private depthRequest: number | null = null;
+  /** GeoVideo manifests that failed to load; "auto" falls back to Zarr. */
+  private failedGeoVideo = new Set<string>();
   private settings: Partial<ZartiglSettings>;
   private colorDomainOverridden: boolean;
   private paletteOverridden: boolean;
@@ -598,6 +662,7 @@ export class Zartigl {
     this.initialLayer = options.layer;
     this.initialTime = options.time;
     this.initialDepth = options.depth;
+    this.depthRequest = options.depth ?? null;
     this.sourcePreference = options.source ?? "auto";
     this.timeRange = options.timeRange ? { ...options.timeRange } : undefined;
     this.autoplay = options.geoVideo?.autoplay ?? true;
@@ -660,11 +725,35 @@ export class Zartigl {
       parseTime(change.time, "time");
     }
     validateGeoVideoSpeed(change.geoVideo);
-    if (change.time != null) {
-      this.playbackIntent += 1;
-    }
     if (change.settings?.colorDomain !== undefined) {
       validateScalarColorDomain(change.settings.colorDomain);
+    }
+    // Choosing a date or a depth is navigation: it stops playback now, and
+    // again once applied if an earlier queued request started it meanwhile.
+    if (change.time != null || change.depth != null) {
+      this.pause();
+    }
+    return this.enqueue(change, ++this.requestSeq);
+  }
+
+  /**
+   * Queue a change after earlier ones. Internal seeks, such as an archive
+   * chunk handoff, come here directly and keep playback going.
+   */
+  private enqueue(change: ZartiglUpdate, seq?: number): Promise<void> {
+    // Another layer starts from its own default time and surface depth.
+    const otherLayer =
+      change.layer != null && change.layer !== this.catalogLayer?.id;
+    if (change.time != null) {
+      this.playbackIntent += 1;
+      this.requestedTime = parseTime(change.time, "time");
+    } else if (otherLayer) {
+      this.requestedTime = null;
+    }
+    if (change.depth != null) {
+      this.depthRequest = change.depth;
+    } else if (otherLayer) {
+      this.depthRequest = null;
     }
 
     // Reserve the generation when the request is made, rather than when it
@@ -674,8 +763,8 @@ export class Zartigl {
       change.layer != null ? ++this.switchGeneration : undefined;
     const operation =
       change.layer != null
-        ? this.applyUpdate(change, generation)
-        : this.updateQueue.then(() => this.applyUpdate(change));
+        ? this.applyUpdate(change, generation, seq)
+        : this.updateQueue.then(() => this.applyUpdate(change, undefined, seq));
     this.updateQueue = operation.catch(() => undefined);
     return operation;
   }
@@ -683,8 +772,19 @@ export class Zartigl {
   private async applyUpdate(
     change: ZartiglUpdate,
     generation?: number,
+    seq?: number,
   ): Promise<void> {
     this.assertAlive();
+    // A play() made after this request keeps playing; one started by an
+    // earlier queued request, such as autoplay, yields to the navigation.
+    if (
+      seq != null &&
+      (change.time != null || change.depth != null) &&
+      this.playSeq !== 0 &&
+      this.playSeq < seq
+    ) {
+      this.pause();
+    }
 
     const changesLayer =
       change.layer != null && change.layer !== this.catalogLayer?.id;
@@ -717,7 +817,7 @@ export class Zartigl {
         : this.timeRange;
       if (changesSource) {
         await this.changeSource(change.source!, range, target);
-      } else if (await this.needsSourceFallback(range, target, hasTimeRange)) {
+      } else if (await this.needsSourceSwitch(range, target, hasTimeRange)) {
         await this.changeSource(this.sourcePreference, range, target);
       } else if (hasTimeRange) {
         this.applyTimeRange(change.timeRange ?? null);
@@ -733,7 +833,7 @@ export class Zartigl {
         this.autoplay = change.geoVideo.autoplay;
         if (this.catalogSource?.type === "geovideo") {
           if (this.autoplay) {
-            await this.play();
+            await this.startPlayback(seq ?? ++this.requestSeq);
           } else {
             this.pause();
           }
@@ -744,7 +844,7 @@ export class Zartigl {
       }
       if (change.geoVideo.stepsPerSecond != null) {
         this.stepsPerSecond = change.geoVideo.stepsPerSecond;
-        this.layer?.setPlaybackRate(this.effectivePlaybackRate());
+        this.applyPlaybackSpeed();
       } else if (change.geoVideo.playbackRate != null) {
         this.applyPlaybackRate(change.geoVideo.playbackRate);
       }
@@ -760,6 +860,13 @@ export class Zartigl {
         this.applyDepth(change.depth);
       }
     }
+    // Applied: steps start from the time shown, unless a newer one is queued.
+    if (
+      change.time != null &&
+      this.requestedTime === parseTime(change.time, "time")
+    ) {
+      this.requestedTime = null;
+    }
     if (change.visible != null) {
       this.applyVisible(change.visible);
     }
@@ -768,13 +875,24 @@ export class Zartigl {
   private async loadLayer(
     id: string,
     preference: CatalogSourcePreference = this.sourcePreference,
-    context?: {
-      timeRange?: TimeRange;
-      settings: Partial<ZartiglSettings>;
-      colorDomainOverridden: boolean;
-      paletteOverridden: boolean;
-      target?: SourceTarget;
-    },
+    context?: LoadContext,
+    requestedGeneration?: number,
+  ): Promise<void> {
+    const previous = this.getSource();
+    await this.loadSource(id, preference, context, requestedGeneration);
+    const current = this.getSource();
+    if (
+      current &&
+      (current.id !== previous?.id || current.type !== previous?.type)
+    ) {
+      this.emit("sourceChange", current);
+    }
+  }
+
+  private async loadSource(
+    id: string,
+    preference: CatalogSourcePreference,
+    context?: LoadContext,
     requestedGeneration?: number,
   ): Promise<void> {
     this.assertAlive();
@@ -789,11 +907,16 @@ export class Zartigl {
     // Reserve the generation before awaiting source selection so a later
     // layer request still supersedes this one.
     const generation = requestedGeneration ?? ++this.switchGeneration;
+    // The selected depth steers source selection, as an explicit one does.
+    const target: SourceTarget = {
+      ...context?.target,
+      depth: context?.target?.depth ?? this.depthRequest ?? undefined,
+    };
     const requestedSource = await this.selectSource(
       catalogLayer,
       preference,
       requestedTimeRange,
-      context?.target,
+      target,
     );
     const requestedSettings = context?.settings ?? this.settings;
     const requestedColorDomainOverride =
@@ -887,10 +1010,8 @@ export class Zartigl {
             ? shownValues[0]
             : nearestValue(shownValues, this.pendingTime);
         this.pendingTime = null;
-        // GeoVideo renders the surface level.
-        this.depth = zarrAxes.vertical
-          ? sortedDepthValues(zarrAxes.vertical.values)[0]
-          : 0;
+        // In "auto", GeoVideo was selected for a surface depth.
+        this.depth = resolveDepth(zarrAxes.vertical, target.depth);
         const overriddenColorDomain = requestedSettings.colorDomain;
         this.settings = { ...layerDefaults, ...requestedSettings };
         this.colorDomainOverridden = requestedColorDomainOverride;
@@ -912,6 +1033,18 @@ export class Zartigl {
         return;
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
+        const url = requestedSource.manifestUrl;
+        if (
+          err.name !== "AbortError" &&
+          preference === "auto" &&
+          url &&
+          !this.failedGeoVideo.has(url)
+        ) {
+          // "auto" leaves an unreadable GeoVideo for another source.
+          console.warn("[zartigl] GeoVideo unavailable, falling back:", err);
+          this.failedGeoVideo.add(url);
+          return this.loadSource(id, preference, context, generation);
+        }
         if (err.name !== "AbortError") {
           this.emit("status", { phase: "error", error: err });
           this.emit("error", err);
@@ -962,8 +1095,7 @@ export class Zartigl {
             ? latestTimeAtOrBefore(timeMeta.values, Date.now())
             : nearestValue(timeMeta.values, this.pendingTime);
         this.pendingTime = null;
-        this.depth =
-          sortedDepthValues(metadata.vertical?.values ?? [0])[0] ?? 0;
+        this.depth = resolveDepth(metadata.vertical, target.depth);
         this.settings = { ...layerDefaults, ...requestedSettings };
         this.colorDomainOverridden = requestedColorDomainOverride;
         this.paletteOverridden = requestedPaletteOverride;
@@ -1041,7 +1173,7 @@ export class Zartigl {
         ? latestTimeAtOrBefore(this.timeMeta.values, Date.now())
         : nearestValue(this.timeMeta.values, this.pendingTime);
     this.pendingTime = null;
-    this.depth = sortedDepthValues(verticalMeta?.values ?? [0])[0] ?? 0;
+    this.depth = resolveDepth(verticalMeta, target.depth);
     const overriddenColorDomain = requestedSettings.colorDomain;
     this.settings = { ...layerDefaults, ...requestedSettings };
     this.colorDomainOverridden = requestedColorDomainOverride;
@@ -1075,11 +1207,13 @@ export class Zartigl {
   }
 
   /**
-   * One-way fallback after init: leave the current GeoVideo only when it
-   * cannot show the requested time, window, or depth and another source can.
-   * Never switches back, so scrubbing a Zarr timeline does not flip sources.
+   * Source switch after init: leave the current GeoVideo when it cannot show
+   * the requested time, window, or depth and another source can. A time
+   * change alone never switches back, so scrubbing a Zarr timeline does not
+   * flip sources; in "auto", selecting the surface depth, alone or with a
+   * date GeoVideo covers, returns to GeoVideo.
    */
-  private async needsSourceFallback(
+  private async needsSourceSwitch(
     range: TimeRange | undefined,
     target: SourceTarget,
     timeRangeChanged: boolean,
@@ -1088,6 +1222,21 @@ export class Zartigl {
     const current = this.catalogSource;
     if (!entry || !current) {
       return false;
+    }
+    if (
+      current.type !== "geovideo" &&
+      this.sourcePreference === "auto" &&
+      target.depth != null &&
+      !timeRangeChanged
+    ) {
+      if (!(await this.geoVideoServesDepth(entry, target.depth))) {
+        return false;
+      }
+      const next = await this.selectSource(entry, "auto", range, {
+        time: target.time ?? this.time,
+        depth: target.depth,
+      });
+      return next.type === "geovideo";
     }
     // A pinned archive moves between its chunks and Zarr in both directions.
     const pinnedArchive = isPinnedArchive(entry, this.sourcePreference);
@@ -1182,15 +1331,61 @@ export class Zartigl {
     this.layer?.setTime(this.time);
   }
 
+  /** Start GeoVideo playback; does nothing where playback is unavailable. */
   async play(): Promise<void> {
     this.assertAlive();
+    await this.startPlayback(++this.requestSeq);
+  }
+
+  private async startPlayback(seq: number): Promise<void> {
+    if (!this.hasPlayback()) {
+      return;
+    }
+    this.playSeq = seq;
     await this.layer?.play();
+  }
+
+  /**
+   * Show the previous or next time step, stopping playback. Stays at the
+   * first and last steps: resolves false when there is no step to move to.
+   */
+  async stepTime(offset: -1 | 1): Promise<boolean> {
+    this.assertAlive();
+    if (!this.initialized) {
+      throw new Error("Call init() before stepTime()");
+    }
+    const time = this.getSteppedTime(offset);
+    this.pause();
+    if (time === undefined) {
+      return false;
+    }
+    await this.update({ time });
+    return true;
+  }
+
+  /**
+   * Time step before or after the latest requested time, so quick successive
+   * steps add up; undefined past the first or last step.
+   */
+  getSteppedTime(offset: -1 | 1): number | undefined {
+    const values = this.timeMeta?.values ?? [];
+    if (!values.length) {
+      return undefined;
+    }
+    const current = nearestValue(values, this.requestedTime ?? this.time);
+    return values[values.indexOf(current) + offset];
   }
 
   pause(): void {
     this.assertAlive();
     this.playbackIntent += 1;
+    this.playSeq = 0;
     this.layer?.pause();
+    // Media report their pause asynchronously: the state follows the request.
+    if (this.playing) {
+      this.playing = false;
+      this.emit("playbackChange", false);
+    }
   }
 
   private applyLoop(loop: boolean): void {
@@ -1208,13 +1403,44 @@ export class Zartigl {
     }
     this.playbackRate = rate;
     this.stepsPerSecond = null;
-    this.layer?.setPlaybackRate(rate);
+    this.applyPlaybackSpeed();
+  }
+
+  private applyPlaybackSpeed(): void {
+    this.layer?.setPlaybackRate(this.effectivePlaybackRate());
+    this.layer?.setStepsPerSecond(this.appliedStepsPerSecond());
   }
 
   /** Media rate for the loaded artifact: steps per second when set, else the raw multiplier. */
   private effectivePlaybackRate(): number {
     return this.stepsPerSecond != null && this.geoVideoManifest
       ? geoVideoPlaybackRate(this.geoVideoManifest, this.stepsPerSecond)
+      : this.playbackRate;
+  }
+
+  private playbackSpeeds(): readonly number[] {
+    return this.catalogLayer?.kind === "vector"
+      ? VECTOR_GEOVIDEO_SPEEDS
+      : GEOVIDEO_SPEEDS;
+  }
+
+  /**
+   * Steps per second the active source shows. Vector GeoVideo stays inside
+   * its speeds; scalar media follows the request, or the raw multiplier.
+   */
+  private appliedStepsPerSecond(): number {
+    if (this.catalogLayer?.kind === "vector") {
+      const speeds = VECTOR_GEOVIDEO_SPEEDS;
+      return Math.min(
+        speeds[speeds.length - 1],
+        Math.max(speeds[0], this.stepsPerSecond ?? 1),
+      );
+    }
+    if (this.stepsPerSecond != null) {
+      return this.stepsPerSecond;
+    }
+    return this.geoVideoManifest
+      ? this.playbackRate * geoVideoNativeStepsPerSecond(this.geoVideoManifest)
       : this.playbackRate;
   }
 
@@ -1385,6 +1611,8 @@ export class Zartigl {
     render: true;
     time: boolean;
     depth: boolean;
+    /** Automatic playback (play, stop, loop, speed): GeoVideo only. */
+    playback: boolean;
     pointQuery: boolean;
     sourceTypes: CatalogSource["type"][];
   } {
@@ -1394,11 +1622,39 @@ export class Zartigl {
       render: true,
       time: !!this.timeMeta?.values.length,
       depth: !!this.verticalMeta?.values.length,
+      playback: this.hasPlayback(),
       pointQuery: !!querySource,
       sourceTypes: entry
         ? [...new Set(entry.sources.map((source) => source.type))]
         : [],
     };
+  }
+
+  getPlaybackState(): PlaybackState {
+    return {
+      available: this.hasPlayback(),
+      playing: this.playing,
+      loop: this.loop,
+      stepsPerSecond: this.appliedStepsPerSecond(),
+      speeds: this.playbackSpeeds(),
+    };
+  }
+
+  /** GeoVideo with more than one step, or a scalar looping snapshot, plays. */
+  private hasPlayback(): boolean {
+    const manifest = this.geoVideoManifest;
+    if (this.catalogSource?.type !== "geovideo" || !manifest) {
+      return false;
+    }
+    if (manifest.timeline.kind === "snapshot-loop") {
+      return this.catalogLayer?.kind !== "vector";
+    }
+    // Artifact steps inside the active time range, as playback uses them.
+    const meta = this.timeMeta;
+    const steps = geoVideoTimelineValues(manifest).filter(
+      (value) => !meta || (value >= meta.min && value <= meta.max),
+    );
+    return steps.length > 1;
   }
 
   /** Whether palette/domain styling is applied to values in the active renderer. */
@@ -1610,7 +1866,8 @@ export class Zartigl {
       vibrance: this.settings.vibrance,
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
-      geoVideoAutoplay: this.autoplay,
+      geoVideoAutoplay: this.autoplay && this.autoplayPending,
+      geoVideoStepsPerSecond: this.appliedStepsPerSecond(),
       ...this.geoVideoPlayback(),
       particleState: this.settings.particleState,
       rgba8MaxParticleZoom: this.settings.rgba8MaxParticleZoom,
@@ -1622,23 +1879,40 @@ export class Zartigl {
       before: this.before,
     });
     this.pendingTime = null;
+    this.autoplayPending = false;
     layer.on("loading", () => this.emit("loading"));
     layer.on("loaded", (meta) => {
       this.lastMeta = meta;
       this.emit("loaded", meta);
     });
-    layer.on("error", (err) => this.emit("error", err));
+    layer.on("error", (err) => {
+      this.emit("error", err);
+      this.fallBackFromGeoVideo(layer, err);
+    });
     layer.on("status", (status) => this.emit("status", status));
     layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
     layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
     layer.on("timeChange", (time) => {
+      if (layer !== this.layer) {
+        return;
+      }
       this.time = nearestValue(this.timeMeta?.values ?? [], time);
+      // Playback moves the time on from the last requested one.
+      if (this.playing) {
+        this.requestedTime = null;
+      }
       this.emit("timeChange", this.time);
     });
     layer.on("playbackChange", (playing) => {
-      this.emit("playbackChange", playing);
+      if (layer !== this.layer) {
+        return;
+      }
       if (playing) {
         void this.preloadNextArchiveChunk(layer);
+      }
+      if (playing !== this.playing) {
+        this.playing = playing;
+        this.emit("playbackChange", playing);
       }
     });
     layer.on("playbackEnd", () => void this.continueArchivePlayback());
@@ -1719,6 +1993,43 @@ export class Zartigl {
       this.map.removeSource(wmtsSourceId);
     }
     this.layer = null;
+    // A removed layer stops its media and timers without reporting it.
+    if (this.playing) {
+      this.playing = false;
+      this.emit("playbackChange", false);
+    }
+  }
+
+  /**
+   * In "auto", a GeoVideo that fails while it renders (media, mask) yields
+   * to another source, paused, keeping the date and depth.
+   */
+  private fallBackFromGeoVideo(layer: CatalogRenderLayer, error: Error): void {
+    const source = this.catalogSource;
+    if (
+      this.destroyed ||
+      layer !== this.layer ||
+      this.sourcePreference !== "auto" ||
+      source?.type !== "geovideo" ||
+      !source.manifestUrl ||
+      this.failedGeoVideo.has(source.manifestUrl) ||
+      error instanceof ZartiglFrameUnavailableError
+    ) {
+      return;
+    }
+    console.warn("[zartigl] GeoVideo failed, falling back:", error);
+    this.failedGeoVideo.add(source.manifestUrl);
+    this.pause();
+    const operation = this.updateQueue.then(() => {
+      if (!this.destroyed && this.catalogSource === source) {
+        return this.changeSource("auto");
+      }
+    });
+    this.updateQueue = operation.catch((err) => {
+      if (err?.name !== "AbortError") {
+        console.warn("[zartigl] GeoVideo fallback failed:", err);
+      }
+    });
   }
 
   private applyMutableSettings(
@@ -1837,6 +2148,20 @@ export class Zartigl {
         preference = "auto";
       }
     }
+    if (
+      preference === "auto" &&
+      this.isFailedGeoVideo(this.resolveSource(entry, preference, request))
+    ) {
+      // A GeoVideo that failed yields to Zarr, as a deep level does.
+      return (
+        pickSourceByPriority(entry, ["zarr"], request) ??
+        this.resolveSource(
+          this.withoutFailedGeoVideo(entry),
+          preference,
+          request,
+        )
+      );
+    }
     const selected = this.resolveSource(entry, preference, request);
     if (
       selected.type !== "geovideo" ||
@@ -1847,6 +2172,22 @@ export class Zartigl {
       return selected;
     }
     return pickSourceByPriority(entry, ["zarr"], request) ?? selected;
+  }
+
+  private isFailedGeoVideo(source: CatalogSource): boolean {
+    return (
+      source.type === "geovideo" &&
+      !!source.manifestUrl &&
+      this.failedGeoVideo.has(source.manifestUrl)
+    );
+  }
+
+  /** The entry without GeoVideo artifacts that failed to load. */
+  private withoutFailedGeoVideo(entry: CatalogEntry): CatalogEntry {
+    return {
+      ...entry,
+      sources: entry.sources.filter((source) => !this.isFailedGeoVideo(source)),
+    };
   }
 
   /** Whether `depth` resolves to the surface level that GeoVideo renders. */
@@ -1992,7 +2333,7 @@ export class Zartigl {
         this.layer?.pause();
         return;
       }
-      const seek = this.update({ time: next.time });
+      const seek = this.enqueue({ time: next.time });
       intent = this.playbackIntent;
       await seek;
       if (!this.destroyed && intent === this.playbackIntent) {

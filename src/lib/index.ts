@@ -1,4 +1,4 @@
-export { Zartigl } from "./Zartigl";
+export { Zartigl, GEOVIDEO_SPEEDS, VECTOR_GEOVIDEO_SPEEDS } from "./Zartigl";
 export { resolveTimeInputSelection } from "./time-selection";
 export { ScalarLayer } from "./ScalarLayer";
 export { GeoVideoLayer } from "./GeoVideoLayer";
@@ -70,6 +70,7 @@ export type {
   GeoVideoOptions,
   ZartiglDebugInfo,
   Legend,
+  PlaybackState,
   QueryDepthProfileOptions,
   QueryPointOptions,
   TimeMeta,

@@ -89,6 +89,8 @@ export interface CatalogRenderLayerOptions
   geoVideoAutoplay?: boolean;
   geoVideoLoop?: boolean;
   geoVideoPlaybackRate?: number;
+  /** Time steps per second for vector GeoVideo, which plays frame by frame. */
+  geoVideoStepsPerSecond?: number;
   geoVideoTimeRange?: [number, number];
   verticalLabel?: string;
   metadata?: Record<string, unknown>;

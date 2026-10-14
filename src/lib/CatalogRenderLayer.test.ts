@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   CatalogRenderLayer,
   buildWmtsLegendUrl,
@@ -14,6 +14,8 @@ import type {
   CatalogZarrSource,
 } from "../catalog/types";
 import type { CatalogRenderLayerOptions } from "./types";
+import type { GeoVideoManifest } from "./geovideo";
+import { VectorLayer } from "./VectorLayer";
 
 const zarr: CatalogZarrSource = {
   id: "zarr",
@@ -157,5 +159,110 @@ describe("source dispatch", () => {
     expect(
       (sources.get("layer-wmts-source") as { tiles: string[] }).tiles[0],
     ).toContain(encodeURIComponent(new Date(2_000).toISOString()));
+  });
+});
+
+describe("vector GeoVideo playback", () => {
+  const times = [
+    "2026-08-01T00:00:00Z",
+    "2026-08-01T01:00:00Z",
+    "2026-08-01T02:00:00Z",
+  ];
+  const manifest = {
+    id: "video",
+    bounds: [-180, -80, 180, 90],
+    media: { url: "video.mp4", width: 16, height: 16, fps: 3 },
+    encoding: { kind: "vector-luma", codeMin: 16, codeMax: 235 },
+    mask: { threshold: 0.5 },
+    timeline: { kind: "sample-sequence", values: times },
+  } as unknown as GeoVideoManifest;
+  const vectorEntry: CatalogEntry = {
+    ...entry,
+    kind: "vector",
+    sources: [video],
+  };
+
+  it("steps through the artifact at the requested cadence and emits playback events", () => {
+    vi.useFakeTimers();
+    const cached = vi
+      .spyOn(VectorLayer.prototype, "isFrameCached")
+      .mockReturnValue(true);
+    const prefetch = vi
+      .spyOn(VectorLayer.prototype, "prefetchTime")
+      .mockResolvedValue();
+    const setTime = vi
+      .spyOn(VectorLayer.prototype, "setTime")
+      .mockImplementation(() => {});
+    const layer = new CatalogRenderLayer({
+      ...options(video),
+      entry: vectorEntry,
+      time: Date.parse(times[0]),
+      geoVideoManifest: manifest,
+      geoVideoLoop: false,
+      geoVideoStepsPerSecond: 2,
+    });
+    const events: Array<[string, unknown]> = [];
+    layer.on("timeChange", (time) => events.push(["time", time]));
+    layer.on("playbackChange", (playing) => events.push(["playing", playing]));
+    layer.on("playbackEnd", () => events.push(["end", null]));
+
+    void layer.play();
+    vi.advanceTimersByTime(1_500);
+
+    expect(events).toEqual([
+      ["playing", true],
+      ["time", Date.parse(times[1])],
+      ["time", Date.parse(times[2])],
+      ["playing", false],
+      ["end", null],
+    ]);
+    expect(setTime).toHaveBeenLastCalledWith(Date.parse(times[2]));
+
+    void layer.play();
+    expect(vi.getTimerCount()).toBe(1);
+    const remove = vi
+      .spyOn(VectorLayer.prototype, "onRemove")
+      .mockImplementation(() => {});
+    layer.onRemove();
+    expect(vi.getTimerCount()).toBe(0);
+    remove.mockRestore();
+    cached.mockRestore();
+    prefetch.mockRestore();
+    setTime.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("stops playback and reports an error when the next frame cannot load", async () => {
+    vi.useFakeTimers();
+    const failure = new Error("decode failed");
+    const cached = vi
+      .spyOn(VectorLayer.prototype, "isFrameCached")
+      .mockReturnValue(false);
+    const prefetch = vi
+      .spyOn(VectorLayer.prototype, "prefetchTime")
+      .mockRejectedValue(failure);
+    const layer = new CatalogRenderLayer({
+      ...options(video),
+      entry: vectorEntry,
+      time: Date.parse(times[0]),
+      geoVideoManifest: manifest,
+      geoVideoStepsPerSecond: 2,
+    });
+    const events: Array<[string, unknown]> = [];
+    layer.on("playbackChange", (playing) => events.push(["playing", playing]));
+    layer.on("error", (error) => events.push(["error", error]));
+
+    void layer.play();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(events).toEqual([
+      ["playing", true],
+      ["playing", false],
+      ["error", failure],
+    ]);
+    expect(vi.getTimerCount()).toBe(0);
+    cached.mockRestore();
+    prefetch.mockRestore();
+    vi.useRealTimers();
   });
 });

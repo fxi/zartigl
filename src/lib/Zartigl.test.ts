@@ -629,6 +629,354 @@ describe("Zartigl facade", () => {
       expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
       expect(z.getTimeMeta().current).toBe(Date.parse("2026-08-01T00:00:00Z"));
     });
+
+    /** Zarr time axis that also spans the current artifact, hourly. */
+    function zarrCoversPeriod() {
+      const values = [0, 1, 2, 3].map(
+        (hour) => Date.parse(period[GEO_VIDEO_ID][0]) + hour * 3_600_000,
+      );
+      vi.mocked(ZarrSource.prototype.getTimeDimension).mockReturnValue({
+        min: values[0],
+        max: values[3],
+        step: 3_600_000,
+        size: values.length,
+        units: "milliseconds since 1970-01-01T00:00:00Z",
+        values,
+      });
+    }
+
+    function watch(z: Zartigl) {
+      const playback: boolean[] = [];
+      const sources: string[] = [];
+      z.on("playbackChange", (playing) => playback.push(playing));
+      z.on("sourceChange", (source) => sources.push(source.type));
+      return { playback, sources };
+    }
+
+    it("plays GeoVideo only, and stops on a depth change that leaves it", async () => {
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
+        GEO_ENTRY_ID,
+      );
+      const events = watch(z);
+      expect(z.getCapabilities().playback).toBe(true);
+
+      await z.play();
+      expect(z.getPlaybackState().playing).toBe(true);
+
+      await z.update({ depth: 18 });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(events.playback).toEqual([true, false]);
+      expect(events.sources).toEqual(["zarr"]);
+      expect(z.getCapabilities()).toMatchObject({
+        playback: false,
+        depth: true,
+      });
+
+      // Inactive on Zarr, even when called directly.
+      await z.play();
+      expect(z.getPlaybackState()).toMatchObject({
+        available: false,
+        playing: false,
+      });
+      expect(events.playback).toEqual([true, false]);
+    });
+
+    it("returns to GeoVideo, paused, when the surface depth is selected again", async () => {
+      zarrCoversPeriod();
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          time: inPeriod,
+          geoVideo: { autoplay: true },
+        },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ depth: 20 });
+      expect(z.getSource()?.type).toBe("zarr");
+      const events = watch(z);
+
+      await z.update({ depth: 0 });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getTimeMeta().current).toBe(inPeriod);
+      expect(z.getDepthMeta().current).toBe(0);
+      expect(events.sources).toEqual(["geovideo"]);
+      expect(z.getPlaybackState().playing).toBe(false);
+      const layer = (z as unknown as { layer: { options: object } }).layer;
+      expect(layer.options).toMatchObject({ geoVideoAutoplay: false });
+    });
+
+    it("returns to GeoVideo, paused, for a date it covers with the surface depth", async () => {
+      zarrCoversPeriod();
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), depth: 20 },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.type).toBe("zarr");
+
+      // Outside the artifact period, the surface stays on Zarr.
+      const before = Date.parse(period[GEO_VIDEO_ID][0]) - 3_600_000;
+      await z.update({ time: before, depth: 0 });
+      expect(z.getSource()?.type).toBe("zarr");
+
+      await z.update({ time: inPeriod, depth: 0 });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getTimeMeta().current).toBe(inPeriod);
+      expect(z.getDepthMeta().current).toBe(0);
+      expect(z.getPlaybackState().playing).toBe(false);
+    });
+
+    it("does not return to GeoVideo for a surface depth outside its period", async () => {
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ time: 3_000 });
+      await z.update({ depth: 20 });
+      await z.update({ depth: 0 });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getDepthMeta().current).toBe(0);
+    });
+
+    it("stops playback on a date change or a step", async () => {
+      zarrCoversPeriod();
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
+        GEO_ENTRY_ID,
+      );
+      const events = watch(z);
+
+      await z.play();
+      await z.update({ time: Date.parse("2026-08-01T01:00:00Z") });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(events.playback).toEqual([true, false]);
+
+      await z.play();
+      await z.stepTime(1);
+      expect(events.playback).toEqual([true, false, true, false]);
+      expect(z.getTimeMeta().current).toBe(Date.parse("2026-08-01T02:00:00Z"));
+    });
+
+    it("stops playback started by an earlier queued request once navigation applies", async () => {
+      zarrCoversPeriod();
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
+        GEO_ENTRY_ID,
+      );
+      const start = Date.parse(period[GEO_VIDEO_ID][0]);
+
+      await Promise.all([
+        z.update({ geoVideo: { autoplay: true } }),
+        z.update({ time: start }),
+      ]);
+      expect(z.getPlaybackState().playing).toBe(false);
+
+      // A play() made after a queued step keeps playing.
+      const step = z.update({ time: inPeriod });
+      await z.play();
+      await step;
+      expect(z.getPlaybackState().playing).toBe(true);
+    });
+
+    it("offers no playback for a time range holding one artifact step", async () => {
+      zarrCoversPeriod();
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          timeRange: { start: inPeriod, end: inPeriod },
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getCapabilities().playback).toBe(false);
+
+      await z.play();
+      expect(z.getPlaybackState().playing).toBe(false);
+
+      await z.update({ timeRange: null });
+      expect(z.getCapabilities().playback).toBe(true);
+    });
+
+    it("keeps the selected depth across a source change", async () => {
+      const z = await createZartigl(
+        { map: new FakeMap() as never, catalog: geoCatalog(), depth: 20 },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.type).toBe("zarr");
+
+      await z.update({ source: GEO_ZARR_ID });
+      expect(z.getDepthMeta().current).toBe(20);
+      await z.update({ time: 2_000 });
+      expect(z.getDepthMeta().current).toBe(20);
+    });
+
+    it("starts another layer at its surface instead of the previous depth", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          source: "zarr",
+          depth: 20,
+        },
+        "scalar",
+      );
+      expect(z.getDepthMeta().current).toBe(20);
+
+      await z.update({ layer: GEO_ENTRY_ID, source: "auto", time: inPeriod });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getDepthMeta().current).toBe(0);
+    });
+
+    it("keeps vector GeoVideo speeds within the stepped range", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          time: inPeriod,
+          geoVideo: { stepsPerSecond: 16 },
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getPlaybackState()).toMatchObject({
+        speeds: [0.25, 0.5, 1, 2],
+        stepsPerSecond: 2,
+      });
+      const steps = vi.spyOn(CatalogRenderLayer.prototype, "setStepsPerSecond");
+      await z.update({ geoVideo: { stepsPerSecond: 0.5 } });
+      expect(steps).toHaveBeenLastCalledWith(0.5);
+      steps.mockRestore();
+    });
+
+    it("falls back to Zarr, paused, when an auto GeoVideo cannot load", async () => {
+      zarrCoversPeriod();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) })),
+      );
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: geoCatalog(),
+          time: inPeriod,
+          geoVideo: { autoplay: true },
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getTimeMeta().current).toBe(inPeriod);
+      expect(z.getPlaybackState()).toMatchObject({
+        available: false,
+        playing: false,
+      });
+
+      // A pinned GeoVideo reports the failure instead.
+      await expect(
+        createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: geoCatalog(),
+            source: GEO_VIDEO_ID,
+          },
+          GEO_ENTRY_ID,
+        ),
+      ).rejects.toThrow();
+      warn.mockRestore();
+    });
+
+    it("falls back to Zarr when an auto GeoVideo fails while rendering", async () => {
+      zarrCoversPeriod();
+      const map = new FakeMap();
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const z = await createZartigl(
+        { map: map as never, catalog: geoCatalog(), time: inPeriod },
+        GEO_ENTRY_ID,
+      );
+      z.on("error", () => {});
+      const events = watch(z);
+      await z.play();
+      const layer = map.getLayer(z.getDebugInfo().id) as unknown as {
+        emit: (event: "error", error: Error) => void;
+      };
+
+      const shown = z.getTimeMeta().current;
+      layer.emit("error", new Error("media decode"));
+      await vi.waitFor(() => expect(z.getSource()?.type).toBe("zarr"));
+      expect(events.playback).toEqual([true, false]);
+      expect(z.getTimeMeta().current).toBe(shown);
+
+      // The failed artifact is not selected again.
+      await z.update({ depth: 0 });
+      expect(z.getSource()?.type).toBe("zarr");
+      warn.mockRestore();
+    });
+  });
+
+  it("falls back to Zarr rather than WMTS when a scalar GeoVideo fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) })),
+    );
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => warn.mockRestore());
+    const layer = scalarLayer({
+      derived: {
+        geoVideos: [{ manifestUrl: "https://example.test/video.json" }],
+      },
+    });
+
+    const z = await createZartigl(
+      { map: new FakeMap() as never, catalog: catalog(layer) },
+      "scalar",
+    );
+
+    expect(z.getSource()?.type).toBe("zarr");
+  });
+
+  it("steps through Zarr time steps and stops at the bounds", async () => {
+    const z = await createZartigl(
+      { map: new FakeMap() as never, catalog: catalog(), source: "zarr" },
+      "scalar",
+    );
+    expect(z.getTimeMeta().current).toBe(9_000);
+    expect(z.getCapabilities().playback).toBe(false);
+
+    expect(await z.stepTime(1)).toBe(false);
+    expect(z.getTimeMeta().current).toBe(9_000);
+    expect(await z.stepTime(-1)).toBe(true);
+    expect(z.getTimeMeta().current).toBe(8_000);
+
+    await z.update({ time: 0 });
+    expect(await z.stepTime(-1)).toBe(false);
+    expect(z.getTimeMeta().current).toBe(0);
+
+    // Quick successive steps add up before their updates apply.
+    const first = z.stepTime(1);
+    const second = z.stepTime(1);
+    expect(z.getSteppedTime(1)).toBe(3_000);
+    await Promise.all([first, second]);
+    expect(z.getTimeMeta().current).toBe(2_000);
+    expect(z.getSteppedTime(-1)).toBe(1_000);
+  });
+
+  it("steps from the time of another layer after a layer change", async () => {
+    const layers = catalog();
+    layers.layers.push(scalarLayer({ id: "other" }));
+    const z = await createZartigl(
+      { map: new FakeMap() as never, catalog: layers, source: "zarr" },
+      "scalar",
+    );
+    await z.update({ time: 2_000 });
+
+    await z.update({ layer: "other", source: "zarr" });
+    expect(z.getTimeMeta().current).toBe(9_000);
+    expect(z.getSteppedTime(-1)).toBe(8_000);
+    expect(z.getSteppedTime(1)).toBeUndefined();
   });
 
   describe("GeoVideo archive", () => {
