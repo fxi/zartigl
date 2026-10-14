@@ -58,24 +58,113 @@ function roundNice(value: number): number {
 
 const DAY_MS = 86_400_000;
 
+/** Longest span marked by day, then by month; longer ones are marked by year. */
+const DAY_TICKS_MAX = 62 * DAY_MS;
+const MONTH_TICKS_MAX = 915 * DAY_MS;
+/** Steps from which the playhead drops its hour, then its day. */
+const MONTHLY_STEP = 27 * DAY_MS;
+
+export interface TimeTick {
+  label: string;
+  position: number;
+  major: boolean;
+}
+
+const monthName = (ms: number) =>
+  new Date(ms).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
+
 /**
- * UTC day marks as positions along [first, last]; the 1st and every 5th
- * are major (labelled).
+ * UTC marks as positions along [first, last], at a unit fitting the span:
+ * days (the 1st and every 5th major) up to two months, months (quarters
+ * major, January labelled with its year) up to two and a half years, else
+ * years (every one major, every 5th past twelve years).
  */
-export function dayTicks(
-  first: number,
-  last: number,
-): { label: string; position: number; major: boolean }[] {
-  const ticks: { label: string; position: number; major: boolean }[] = [];
-  for (let t = Math.ceil(first / DAY_MS) * DAY_MS; t <= last; t += DAY_MS) {
-    const date = new Date(t).getUTCDate();
-    ticks.push({
-      label: String(date).padStart(2, "0"),
-      position: (t - first) / (last - first),
-      major: date === 1 || date % 5 === 0,
-    });
+export function timeTicks(first: number, last: number): TimeTick[] {
+  const ticks: TimeTick[] = [];
+  const at = (t: number, label: string, major: boolean) =>
+    ticks.push({ label, position: (t - first) / (last - first), major });
+  const span = last - first;
+  if (span <= DAY_TICKS_MAX) {
+    for (let t = Math.ceil(first / DAY_MS) * DAY_MS; t <= last; t += DAY_MS) {
+      const date = new Date(t).getUTCDate();
+      at(t, String(date).padStart(2, "0"), date === 1 || date % 5 === 0);
+    }
+    return ticks;
+  }
+  const start = new Date(first);
+  let year = start.getUTCFullYear();
+  if (span <= MONTH_TICKS_MAX) {
+    let month = start.getUTCMonth();
+    for (
+      let t = Date.UTC(year, month);
+      t <= last;
+      t = Date.UTC(year, ++month)
+    ) {
+      if (t >= first) {
+        const m = new Date(t).getUTCMonth();
+        at(
+          t,
+          m === 0 ? String(new Date(t).getUTCFullYear()) : monthName(t),
+          m % 3 === 0,
+        );
+      }
+    }
+    return ticks;
+  }
+  const every = span > 12 * 365 * DAY_MS ? 5 : 1;
+  for (let t = Date.UTC(year); t <= last; t = Date.UTC(++year)) {
+    if (t >= first) {
+      at(t, String(year), year % every === 0);
+    }
   }
   return ticks;
+}
+
+/**
+ * Chunk picker label, as short as a month one: "Sep ’26" for a chunk of a
+ * month at most, else the years its samples cover, "’20–’26".
+ */
+export function chunkLabel(start?: string, end?: string): string {
+  if (!start) {
+    return "—";
+  }
+  const s = Date.parse(start);
+  const e = Date.parse(end ?? start);
+  const year = (ms: number) =>
+    `’${String(new Date(ms).getUTCFullYear()).slice(2)}`;
+  if (!(e - s > 31 * DAY_MS)) {
+    return `${monthName(s)} ${year(s)}`;
+  }
+  const first = new Date(s).getUTCFullYear();
+  const last = new Date(e).getUTCFullYear();
+  return last === first ? String(first) : `${year(s)}–${year(e)}`;
+}
+
+/**
+ * Playhead date and hour on a timeline stepping `stepMs`: the hour only
+ * below daily steps (else ""), the day only below monthly ones.
+ */
+export function playheadLabel(
+  ms: number,
+  stepMs: number,
+): { date: string; hour: string } {
+  const date = new Date(ms);
+  const year = date.getUTCFullYear();
+  const day =
+    stepMs >= MONTHLY_STEP
+      ? monthName(ms)
+      : date.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          timeZone: "UTC",
+        });
+  return {
+    date: `${day} ${year}`.toUpperCase(),
+    hour:
+      stepMs >= DAY_MS
+        ? ""
+        : `${String(date.getUTCHours()).padStart(2, "0")}:00 UTC`,
+  };
 }
 
 /** "m s-1" → "m/s", "degrees_C" → "°C". */

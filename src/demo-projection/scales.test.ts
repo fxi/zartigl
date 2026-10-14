@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  dayTicks,
+  chunkLabel,
+  playheadLabel,
+  timeTicks,
   formatUnit,
   linearTicks,
   particleSpeedFactor,
@@ -35,11 +37,11 @@ describe("legendTicks", () => {
   });
 });
 
-describe("dayTicks", () => {
+describe("timeTicks", () => {
   it("marks every UTC day, the 1st and every 5th as major", () => {
     const first = Date.UTC(2026, 9, 1);
     const last = Date.UTC(2026, 9, 11);
-    const ticks = dayTicks(first, last);
+    const ticks = timeTicks(first, last);
     expect(ticks).toHaveLength(11);
     expect(ticks.filter((t) => t.major)).toEqual([
       { label: "01", position: 0, major: true },
@@ -47,6 +49,87 @@ describe("dayTicks", () => {
       { label: "10", position: 0.9, major: true },
     ]);
     expect(ticks[1]).toEqual({ label: "02", position: 0.1, major: false });
+  });
+
+  it("marks months over a year, quarters major, January as the year", () => {
+    const ticks = timeTicks(Date.UTC(2025, 10, 15), Date.UTC(2026, 10, 15));
+    expect(ticks).toHaveLength(12);
+    expect(ticks.slice(0, 3).map((t) => t.label)).toEqual([
+      "Dec",
+      "2026",
+      "Feb",
+    ]);
+    expect(ticks.filter((t) => t.major).map((t) => t.label)).toEqual([
+      "2026",
+      "Apr",
+      "Jul",
+      "Oct",
+    ]);
+  });
+
+  it("marks years over a decade chunk of monthly samples", () => {
+    const ticks = timeTicks(Date.UTC(2020, 0, 1), Date.UTC(2026, 8, 1));
+    expect(ticks.map((t) => t.label)).toEqual([
+      "2020",
+      "2021",
+      "2022",
+      "2023",
+      "2024",
+      "2025",
+      "2026",
+    ]);
+    expect(ticks[0].position).toBe(0);
+    expect(ticks.every((t) => t.major)).toBe(true);
+  });
+
+  it("keeps every 5th year major past twelve years", () => {
+    const ticks = timeTicks(Date.UTC(1987, 0, 1), Date.UTC(2006, 0, 1));
+    expect(ticks.filter((t) => t.major).map((t) => t.label)).toEqual([
+      "1990",
+      "1995",
+      "2000",
+      "2005",
+    ]);
+  });
+});
+
+describe("chunkLabel", () => {
+  it("names a month chunk by its month", () => {
+    expect(chunkLabel("2026-09-01T00:00:00Z", "2026-09-30T00:00:00Z")).toMatch(
+      /^Sep.* ’26$/,
+    );
+  });
+
+  it("names a longer chunk by the years it covers", () => {
+    expect(chunkLabel("2020-01-01T00:00:00Z", "2026-09-01T00:00:00Z")).toBe(
+      "’20–’26",
+    );
+    expect(chunkLabel("2026-01-01T00:00:00Z", "2026-09-01T00:00:00Z")).toBe(
+      "2026",
+    );
+    expect(chunkLabel(undefined)).toBe("—");
+  });
+});
+
+describe("playheadLabel", () => {
+  const ms = Date.UTC(2025, 2, 14, 7);
+
+  it("shows the hour below daily steps", () => {
+    expect(playheadLabel(ms, 6 * 3_600_000)).toEqual({
+      date: "14 MAR 2025",
+      hour: "07:00 UTC",
+    });
+  });
+
+  it("drops the hour for daily steps, the day for monthly ones", () => {
+    expect(playheadLabel(ms, 86_400_000)).toEqual({
+      date: "14 MAR 2025",
+      hour: "",
+    });
+    expect(playheadLabel(ms, 30 * 86_400_000)).toEqual({
+      date: "MAR 2025",
+      hour: "",
+    });
   });
 });
 

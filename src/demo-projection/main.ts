@@ -49,15 +49,17 @@ import {
   versorRotation,
 } from "./versor";
 import {
-  dayTicks,
+  chunkLabel,
   formatUnit,
   linearTicks,
   legendTicks,
   particleCount,
   particleSettings,
   particleSpeedFactor,
+  playheadLabel,
   rampGradient,
   rampPosition,
+  timeTicks,
   type ParticleSettings,
 } from "./scales";
 import { decodeShare, encodeShare, type ShareState } from "./share";
@@ -65,7 +67,18 @@ import { regionView, viewFrame, type View, type ViewFrame } from "./view";
 
 /** Field time steps played per second at 1×. */
 const STEPS_PER_SECOND = 0.4;
-const SPEEDS = [0.5, 1, 2, 5];
+/**
+ * Playback speeds and defaults per layer kind: particles need slow steps to
+ * keep stable trails, while a raster only shows change when played faster.
+ */
+const SPEEDS: Record<DemoLayer["kind"], number[]> = {
+  vector: [0.5, 1, 2, 5],
+  scalar: [1, 2, 5, 10, 20],
+};
+const DEFAULT_SPEEDS: Record<DemoLayer["kind"], number> = {
+  vector: 1,
+  scalar: 5,
+};
 const TRANSITION_MS = 2200;
 /** Easing of compass, zoom and rotate buttons. */
 const VIEW_MS = 450;
@@ -234,8 +247,8 @@ class ProjectionDemo {
   private readonly compass: Compass;
   /** Drags keep north up (gamma 0), as d3-geo-zoom's northUp. */
   private northLocked = true;
-  /** Playback speed multiplier. */
-  private speed = 1;
+  /** Playback speed multiplier of each layer kind. */
+  private readonly speeds = { ...DEFAULT_SPEEDS };
   /** Palette of the particles and legend. */
   private palette = "";
   private ramp: WebGLTexture | null = null;
@@ -321,9 +334,6 @@ class ProjectionDemo {
       onToggle: () => this.toggleNorth(),
     });
     this.compass.locked = this.northLocked;
-    if (SPEEDS.includes(this.shared.speed ?? Number.NaN)) {
-      this.speed = this.shared.speed!;
-    }
     this.view = {
       blend: { a: def, b: def, ka: 1, kb: 1, t: 0 },
       rotate,
@@ -341,6 +351,10 @@ class ProjectionDemo {
 
   load(): Promise<void> {
     const layer = findLayer(this.shared.layer) ?? DEMO_LAYERS[0];
+    // A shared speed belongs to the shared layer's kind.
+    if (SPEEDS[layer.kind].includes(this.shared.speed ?? Number.NaN)) {
+      this.speeds[layer.kind] = this.shared.speed!;
+    }
     const palette = layerPalettes(layer).some(
       (p) => p.id === this.shared.palette,
     )
@@ -398,7 +412,11 @@ class ProjectionDemo {
     this.chunks = chunks;
     this.ui.month.replaceChildren(
       ...this.chunks.map(
-        (chunk, i) => new Option(monthLabel(chunk), String(i)),
+        (chunk, i) =>
+          new Option(
+            chunkLabel(chunk.temporal?.start, chunk.temporal?.end),
+            String(i),
+          ),
       ),
     );
     const holding =
@@ -432,12 +450,16 @@ class ProjectionDemo {
     }
   }
 
-  /** Layer, tint and palette pickers for the open layer. */
+  /** Layer, tint, speed and palette pickers for the open layer. */
   private syncLayerPickers(): void {
-    const { layer, tint, tintField, palette } = this.ui;
+    const { layer, tint, tintField, speed, palette } = this.ui;
     layer.value = this.layer.id;
     tintField.hidden = this.layer.kind !== "vector";
     tint.value = this.tintId ?? "";
+    speed.replaceChildren(
+      ...SPEEDS[this.layer.kind].map((s) => new Option(`${s}×`, String(s))),
+    );
+    speed.value = String(this.speed);
     palette.replaceChildren(
       ...layerPalettes(this.layer).map((p) => new Option(p.label, p.id)),
     );
@@ -623,10 +645,8 @@ class ProjectionDemo {
         this.openChunk(chunk).catch((error: unknown) => this.fail(error));
       }
     });
-    speed.replaceChildren(...SPEEDS.map((s) => new Option(`${s}×`, String(s))));
-    speed.value = String(this.speed);
     speed.addEventListener("change", () => {
-      this.speed = Number(speed.value);
+      this.speeds[this.layer.kind] = Number(speed.value);
     });
     palette.addEventListener("change", () => this.setPalette(palette.value));
   }
@@ -902,6 +922,11 @@ class ProjectionDemo {
       : null;
   }
 
+  /** Playback speed multiplier of the open layer. */
+  private get speed(): number {
+    return this.speeds[this.layer.kind];
+  }
+
   /** Playing and not held by the timeline thumb. */
   private get advancing(): boolean {
     return this.playing && !this.scrubbing;
@@ -1097,8 +1122,8 @@ class ProjectionDemo {
     }
     const first = times[0];
     const lastTime = times[times.length - 1];
+    const stepMs = (lastTime - first) / (times.length - 1);
     if (this.advancing) {
-      const stepMs = (lastTime - first) / (times.length - 1);
       this.ms += dt * STEPS_PER_SECOND * this.speed * stepMs;
       if ((this.ms - first) / (lastTime - first) > PREFETCH_AT) {
         this.prefetchNext();
@@ -1118,14 +1143,10 @@ class ProjectionDemo {
       }
       this.syncTimeline();
     }
-    const date = new Date(this.ms);
-    const day = date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
-    });
-    this.ui.date.textContent = `${day} ${date.getUTCFullYear()}`.toUpperCase();
-    this.ui.hour.textContent = `${String(date.getUTCHours()).padStart(2, "0")}:00 UTC`;
+    const { date, hour } = playheadLabel(this.ms, stepMs);
+    this.ui.date.textContent = date;
+    this.ui.hour.textContent = hour;
+    this.ui.hour.hidden = !hour;
   }
 
   /** Move the timeline thumb to the playhead. */
@@ -1180,7 +1201,7 @@ class ProjectionDemo {
 
   private buildDays(times: number[]): void {
     const ticks =
-      times.length > 1 ? dayTicks(times[0], times[times.length - 1]) : [];
+      times.length > 1 ? timeTicks(times[0], times[times.length - 1]) : [];
     this.ui.days.replaceChildren(
       ...ticks.map(({ label, position, major }) => {
         const li = document.createElement("li");
@@ -1222,19 +1243,6 @@ function isTintEntry(id: string | undefined): id is string {
 
 function providerLabel(provider: string | undefined): string {
   return provider === "copernicus-marine" ? "Copernicus" : (provider ?? "");
-}
-
-function monthLabel(chunk: CatalogGeoVideoSource): string {
-  const start = chunk.temporal?.start;
-  if (!start) {
-    return "—";
-  }
-  const date = new Date(start);
-  const month = date.toLocaleDateString("en-GB", {
-    month: "short",
-    timeZone: "UTC",
-  });
-  return `${month} ’${String(date.getUTCFullYear()).slice(2)}`;
 }
 
 const root = document.getElementById("app");
