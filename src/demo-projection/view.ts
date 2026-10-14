@@ -1,4 +1,4 @@
-import { createProgram } from "../lib/gl-util";
+import { createProgram } from "../engine";
 import {
   blendClipAngle,
   rotationMatrix,

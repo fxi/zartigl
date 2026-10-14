@@ -3,16 +3,17 @@ import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import land110 from "world-atlas/land-110m.json";
 import land50 from "world-atlas/land-50m.json";
-import { requireCatalogEntry } from "../catalog";
-import type { CatalogGeoVideoSource } from "../catalog/types";
-import { loadGeoVideoManifest } from "../lib/geovideo";
+import { requireCatalogEntry, type CatalogGeoVideoSource } from "../catalog";
 import {
+  TrailFade,
+  createColorRampTexture,
+  fadeToFrames,
+  fadeToOpacity,
   geoVideoChunkSources,
   isGeoVideoArchiveSource,
   loadGeoVideoIndex,
-} from "../lib/geovideo-index";
-import { createColorRampTexture } from "../lib/gl-util";
-import { TrailFade, fadeToFrames, fadeToOpacity } from "../lib/trail-fade";
+  loadGeoVideoManifest,
+} from "../engine";
 import { rotationBearing, withBearing } from "./bearing";
 import { Compass } from "./Compass";
 import {

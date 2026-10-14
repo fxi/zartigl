@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CatalogGeoVideoSource } from "../catalog/types";
-import type { GeoVideoIndex } from "../lib/geovideo-index";
+import type { CatalogGeoVideoSource } from "../catalog";
+import type { GeoVideoIndex } from "../engine";
 import { DEMO_LAYERS, layerKey, loadTintChunks, pairChunk } from "./layers";
 
 const chunk = (start: string, end: string): CatalogGeoVideoSource => ({

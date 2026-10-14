@@ -1,4 +1,4 @@
-import { resolveColorRamp } from "../lib/gl-util";
+import { resolveColorRamp } from "../engine";
 
 /**
  * Css gradient of a palette, bottom to top. Stops are sorted numerically:

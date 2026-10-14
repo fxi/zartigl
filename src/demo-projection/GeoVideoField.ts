@@ -1,11 +1,12 @@
-import type { GeoVideoBounds, GeoVideoManifest } from "../lib/geovideo";
-import { geoVideoTimelineValues } from "../lib/geovideo";
-import type { GeoVideoFrameSource } from "../lib/GeoVideoFrameSource";
-import { GeoVideoScalarSource } from "../lib/GeoVideoScalarSource";
 import {
+  GeoVideoScalarSource,
   GeoVideoVectorSource,
+  geoVideoTimelineValues,
+  type GeoVideoBounds,
+  type GeoVideoFrameSource,
+  type GeoVideoManifest,
   type GeoVideoVectorFrame,
-} from "../lib/GeoVideoVectorSource";
+} from "../engine";
 import type { Program } from "./view";
 
 /** Shader uniforms a field binds: two time steps, their mix, the bounds. */

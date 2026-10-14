@@ -18,6 +18,10 @@
     "./catalog": {
       "import": "./dist/catalog.js",
       "types": "./dist/catalog.d.ts"
+    },
+    "./engine": {
+      "import": "./dist/engine.js",
+      "types": "./dist/engine.d.ts"
     }
   },
   "files": [

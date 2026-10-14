@@ -1,11 +1,11 @@
-import { requireCatalogEntry } from "../catalog";
-import type { CatalogGeoVideoSource } from "../catalog/types";
-import { getPalettes, type PaletteMeta } from "../lib/gl-util";
+import { requireCatalogEntry, type CatalogGeoVideoSource } from "../catalog";
 import {
   geoVideoChunkSources,
+  getPalettes,
   isGeoVideoArchiveSource,
   loadGeoVideoIndex,
-} from "../lib/geovideo-index";
+  type PaletteMeta,
+} from "../engine";
 import type { ParticleSettings } from "./scales";
 
 /**

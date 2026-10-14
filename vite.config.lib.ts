@@ -10,6 +10,7 @@ export default defineConfig({
       entry: {
         zartigl: "src/index.ts",
         catalog: "src/catalog/index.ts",
+        engine: "src/engine.ts",
       },
       name: "zartigl",
       formats: ["es"],
