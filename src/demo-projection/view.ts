@@ -41,6 +41,17 @@ export function viewFrame(view: View): ViewFrame {
   };
 }
 
+/**
+ * Whether a west, south, east, north grid spans every longitude, so it
+ * repeats across the antimeridian (shaders/grid.glsl onGrid uses the same
+ * threshold).
+ */
+export function isGlobalGrid(
+  bounds: readonly [number, number, number, number],
+): boolean {
+  return bounds[2] - bounds[0] >= 359;
+}
+
 /** Share of the smaller viewport side a framed region spans. */
 const REGION_FILL = 0.85;
 
@@ -53,7 +64,7 @@ export function regionView(
   view: View,
 ): { rotate: [number, number, number]; zoom: number } | null {
   const [west, south, east, north] = bounds;
-  if (east - west >= 359) {
+  if (isGlobalGrid(bounds)) {
     return null;
   }
   const lon = (west + east) / 2;

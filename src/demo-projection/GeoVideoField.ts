@@ -7,7 +7,7 @@ import {
   type GeoVideoManifest,
   type GeoVideoVectorFrame,
 } from "../engine";
-import type { Program } from "./view";
+import { isGlobalGrid, type Program } from "./view";
 
 /** Shader uniforms a field binds: two time steps, their mix, the bounds. */
 export interface FieldUniforms {
@@ -243,7 +243,12 @@ export class GeoVideoField {
     const gl = this.gl;
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    // A regional grid must not blend its east edge into its west one.
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_WRAP_S,
+      isGlobalGrid(this.bounds) ? gl.REPEAT : gl.CLAMP_TO_EDGE,
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);

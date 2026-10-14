@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PROJECTIONS } from "./projections";
-import { regionView, type View } from "./view";
+import { isGlobalGrid, regionView, type View } from "./view";
 
 const ortho = PROJECTIONS.orthographic;
 const view: View = {
@@ -22,5 +22,13 @@ describe("regionView", () => {
     // 42° of longitude at 38° N is wider than 16° of latitude.
     const span = (42 * Math.cos((38 * Math.PI) / 180) * Math.PI) / 180;
     expect(region.zoom).toBeCloseTo((0.85 * 800) / (span * 400));
+  });
+});
+
+describe("isGlobalGrid", () => {
+  it("repeats global grids only", () => {
+    expect(isGlobalGrid([-180, -80, 180, 90])).toBe(true);
+    expect(isGlobalGrid([-179.92, -80, 180, 90])).toBe(true);
+    expect(isGlobalGrid([-6, 30.19, 36.3, 45.98])).toBe(false);
   });
 });

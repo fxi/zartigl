@@ -14,7 +14,10 @@ vec2 geoUv(vec3 g, vec4 bounds) {
     );
 }
 
-/** Whether `uv` falls on the grid; a global grid repeats in longitude. */
+/**
+ * Whether `uv` falls on the grid; a global grid (view.ts isGlobalGrid)
+ * repeats in longitude.
+ */
 bool onGrid(vec2 uv, vec4 bounds) {
     return uv.y >= 0.0 && uv.y <= 1.0 &&
         (bounds.z - bounds.x >= 359.0 || uv.x <= 1.0);
