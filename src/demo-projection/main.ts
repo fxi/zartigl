@@ -13,23 +13,18 @@ import {
   createColorRampTexture,
   fadeToFrames,
   fadeToOpacity,
-  geoVideoChunkSources,
-  isGeoVideoArchiveSource,
-  loadGeoVideoIndex,
   loadGeoVideoManifest,
   pairChunk,
 } from "../engine";
 import { rotationBearing, withBearing } from "./bearing";
 import { Compass } from "./Compass";
-import {
-  GeoVideoField,
-  TINT_UNIFORMS,
-  type FieldUniforms,
-} from "./GeoVideoField";
+import { GeoVideoField } from "./GeoVideoField";
 import {
   DEMO_LAYERS,
-  DEMO_PALETTES,
-  layerKey,
+  TINT_LAYERS,
+  findLayer,
+  layerPalettes,
+  loadChunks,
   loadTintChunks,
   type DemoLayer,
 } from "./layers";
@@ -45,6 +40,7 @@ import {
   visibleCap,
   type ParticleStyle,
 } from "./SphereParticles";
+import { SphereScalar } from "./SphereScalar";
 import {
   interpolateRotation,
   versor,
@@ -65,7 +61,7 @@ import {
   type ParticleSettings,
 } from "./scales";
 import { decodeShare, encodeShare, type ShareState } from "./share";
-import { viewFrame, type View, type ViewFrame } from "./view";
+import { regionView, viewFrame, type View, type ViewFrame } from "./view";
 
 /** Field time steps played per second at 1×. */
 const STEPS_PER_SECOND = 0.4;
@@ -211,6 +207,8 @@ function refs(root: HTMLElement) {
     ticks: get<HTMLElement>("ticks"),
     projection: get<HTMLSelectElement>("projection"),
     layer: get<HTMLSelectElement>("layer"),
+    tintField: get<HTMLElement>("tintField"),
+    tint: get<HTMLSelectElement>("tint"),
     share: get<HTMLButtonElement>("share"),
   };
 }
@@ -224,6 +222,7 @@ class ProjectionDemo {
   private readonly ui: ReturnType<typeof refs>;
   private readonly gl: WebGL2RenderingContext;
   private readonly particles: SphereParticles;
+  private readonly raster: SphereScalar;
   private readonly trailFade = new TrailFade(fadeToOpacity(0.7));
   /** Drop-rate boost after a view change, and the view it was measured on. */
   private redistribution = 0;
@@ -240,10 +239,16 @@ class ProjectionDemo {
   /** Palette of the particles and legend. */
   private palette = "";
   private ramp: WebGLTexture | null = null;
+  /** The open layer: particles for a vector one, a raster for a scalar one. */
+  private layer: DemoLayer = DEMO_LAYERS[0];
+  /** Catalog opacity of a scalar layer's raster. */
+  private rasterOpacity = 1;
   private field: GeoVideoField | null = null;
-  /** Scalar field coloring the particles, when the layer has a tint. */
+  /** Scalar field coloring the particles, when a tint is chosen. */
   private tint: GeoVideoField | null = null;
-  /** Month chunks of the tint archive, paired by start date. */
+  /** Scalar entry id of the chosen tint. */
+  private tintId: string | null = null;
+  /** Month chunks of the tint archive, paired by calendar period. */
   private tintChunks: CatalogGeoVideoSource[] = [];
   /** Month chunks of the open layer's archive. */
   private chunks: CatalogGeoVideoSource[] = [];
@@ -296,6 +301,7 @@ class ProjectionDemo {
     }
     this.gl = gl;
     this.particles = new SphereParticles(gl);
+    this.raster = new SphereScalar(gl);
     this.overlay = new Overlay(this.ui.back, this.ui.front, {
       land: landFeature(land110),
       landDetail: landFeature(land50),
@@ -333,45 +339,62 @@ class ProjectionDemo {
   }
 
   load(): Promise<void> {
-    const layer =
-      DEMO_LAYERS.find((l) => layerKey(l) === this.shared.layer) ??
-      DEMO_LAYERS[0];
-    this.ui.layer.value = layerKey(layer);
-    const palette = DEMO_PALETTES.some((p) => p.id === this.shared.palette)
+    const layer = findLayer(this.shared.layer) ?? DEMO_LAYERS[0];
+    const palette = layerPalettes(layer).some(
+      (p) => p.id === this.shared.palette,
+    )
       ? this.shared.palette
       : undefined;
-    return this.openLayer(layer, this.shared.time, palette);
+    // "" is a shared "no tint"; unknown ids fall back to the layer's own.
+    const { tint } = this.shared;
+    return this.openLayer(layer, {
+      at: this.shared.time,
+      palette,
+      tint: tint === "" ? null : isTintEntry(tint) ? tint : undefined,
+      // A shared view keeps its own framing.
+      frame: this.shared.rotate === undefined && this.shared.zoom === undefined,
+    });
   }
 
   /**
    * Switch layer, opening the month that holds `at`, else the displayed
-   * month when the archive has it, else the latest. The palette defaults to
-   * the layer's own.
+   * month when the archive has it, else the latest. Palette and tint default
+   * to the layer's own; `frame` centers the view on a regional layer.
    */
   private async openLayer(
     layer: DemoLayer,
-    at?: number,
-    palette = layer.palette,
+    options: {
+      at?: number;
+      palette?: string;
+      tint?: string | null;
+      frame?: boolean;
+    } = {},
   ): Promise<void> {
+    const { at, palette = layer.palette, frame = true } = options;
+    const tintId =
+      layer.kind === "vector"
+        ? options.tint === undefined
+          ? (layer.tint ?? null)
+          : options.tint
+        : null;
     const id = ++this.loadId;
     this.dropUpcoming();
     const entry = requireCatalogEntry(layer.entryId);
-    const source = entry.sources.find(isGeoVideoArchiveSource);
-    if (!source) {
-      throw new Error(`No GeoVideo archive for ${layer.label}`);
-    }
     this.setStatus(`Loading ${layer.label}…`);
     // An unreadable tint index leaves no tint chunks, not a failed layer.
-    const [index, tintChunks] = await Promise.all([
-      loadGeoVideoIndex(source.indexUrl),
-      loadTintChunks(layer),
+    const [chunks, tintChunks] = await Promise.all([
+      loadChunks(layer.entryId),
+      loadTintChunks(tintId),
     ]);
     if (id !== this.loadId) {
       return;
     }
+    this.layer = layer;
+    this.tintId = tintId;
     this.tintChunks = tintChunks;
+    this.syncLayerPickers();
     const month = this.chunks[Number(this.ui.month.value)]?.temporal?.start;
-    this.chunks = geoVideoChunkSources(source, index, entry);
+    this.chunks = chunks;
     this.ui.month.replaceChildren(
       ...this.chunks.map(
         (chunk, i) => new Option(monthLabel(chunk), String(i)),
@@ -385,16 +408,37 @@ class ProjectionDemo {
     const chunkIndex =
       holding >= 0 ? holding : same >= 0 ? same : this.chunks.length - 1;
     this.ui.month.value = String(chunkIndex);
-    this.ui.provider.textContent = providerLabel(source.provenance?.provider);
+    this.ui.provider.textContent = providerLabel(
+      chunks[0]?.provenance?.provider,
+    );
     this.overlay.fillLand = layer.fillLand;
     this.overlayKey = "";
     this.particleSettings = particleSettings(
       entry.defaults?.particles,
       layer.particles,
     );
+    this.rasterOpacity = entry.defaults.raster?.opacity ?? 1;
     this.trailFade.setBase(fadeToOpacity(this.particleSettings.fade));
     this.setPalette(palette);
     await this.openChunk(this.chunks[chunkIndex], id, at);
+    const region =
+      frame && this.field && id === this.loadId
+        ? regionView(this.field.bounds, this.view)
+        : null;
+    if (region) {
+      this.animateView(region.rotate, clampZoom(region.zoom));
+    }
+  }
+
+  /** Layer, tint and palette pickers for the open layer. */
+  private syncLayerPickers(): void {
+    const { layer, tint, tintField, palette } = this.ui;
+    layer.value = this.layer.id;
+    tintField.hidden = this.layer.kind !== "vector";
+    tint.value = this.tintId ?? "";
+    palette.replaceChildren(
+      ...layerPalettes(this.layer).map((p) => new Option(p.label, p.id)),
+    );
   }
 
   /** Open a month at `at`, or at its start. */
@@ -415,8 +459,8 @@ class ProjectionDemo {
   }
 
   /**
-   * Vector field of a month and, when the layer has one, its tint for the
-   * same month. A missing or unreadable tint falls back to speed colors.
+   * Field of a month and, when a tint is chosen, the tint for the same
+   * month. A missing or unreadable tint falls back to speed colors.
    */
   private async loadMonth(
     chunk: CatalogGeoVideoSource,
@@ -425,7 +469,7 @@ class ProjectionDemo {
     const tintChunk = pairChunk(chunk, this.tintChunks);
     const [field, tint] = await Promise.allSettled([
       this.loadField(chunk, at),
-      tintChunk ? this.loadField(tintChunk, at, TINT_UNIFORMS) : null,
+      tintChunk ? this.loadField(tintChunk, at) : null,
     ]);
     if (field.status === "rejected") {
       if (tint.status === "fulfilled") {
@@ -446,10 +490,9 @@ class ProjectionDemo {
   private async loadField(
     chunk: CatalogGeoVideoSource,
     at?: number,
-    uniforms?: FieldUniforms,
   ): Promise<GeoVideoField> {
     const manifest = await loadGeoVideoManifest(chunk.manifestUrl);
-    const field = new GeoVideoField(this.gl, manifest, uniforms);
+    const field = new GeoVideoField(this.gl, manifest);
     try {
       await field.prime(at ?? field.times[0]);
     } catch (error) {
@@ -537,7 +580,7 @@ class ProjectionDemo {
   // ---- projection & view -------------------------------------------------
 
   private buildPickers(activePreset: string): void {
-    const { projection, layer, month, speed, palette } = this.ui;
+    const { projection, layer, tint, month, speed, palette } = this.ui;
     projection.replaceChildren(
       ...PRESETS.map((preset) => new Option(preset.label, preset.id)),
     );
@@ -551,13 +594,26 @@ class ProjectionDemo {
       }
     });
     layer.replaceChildren(
-      ...DEMO_LAYERS.map((l) => new Option(l.label, layerKey(l))),
+      optionGroup("Flows", DEMO_LAYERS, "vector"),
+      optionGroup("Fields", DEMO_LAYERS, "scalar"),
     );
     layer.addEventListener("change", () => {
-      const next = DEMO_LAYERS.find((l) => layerKey(l) === layer.value);
+      const next = findLayer(layer.value);
       if (next) {
         this.openLayer(next).catch((error: unknown) => this.fail(error));
       }
+    });
+    tint.replaceChildren(
+      new Option("Speed", ""),
+      ...TINT_LAYERS.map((l) => new Option(l.label, l.entryId)),
+    );
+    tint.addEventListener("change", () => {
+      this.openLayer(this.layer, {
+        at: this.ms,
+        palette: this.palette,
+        tint: tint.value || null,
+        frame: false,
+      }).catch((error: unknown) => this.fail(error));
     });
     month.addEventListener("change", () => {
       const chunk = this.chunks[Number(month.value)];
@@ -570,9 +626,6 @@ class ProjectionDemo {
     speed.addEventListener("change", () => {
       this.speed = Number(speed.value);
     });
-    palette.replaceChildren(
-      ...DEMO_PALETTES.map((p) => new Option(p.label, p.id)),
-    );
     palette.addEventListener("change", () => this.setPalette(palette.value));
   }
 
@@ -856,7 +909,7 @@ class ProjectionDemo {
   private share(): void {
     const url = new URL(location.href);
     url.hash = encodeShare({
-      layer: this.ui.layer.value,
+      layer: this.layer.id,
       time: this.ms,
       preset: this.ui.projection.value,
       rotate: this.view.rotate,
@@ -864,6 +917,7 @@ class ProjectionDemo {
       playing: this.playing,
       speed: this.speed,
       palette: this.palette,
+      tint: this.tintId ?? "",
     });
     // navigator.clipboard is missing outside secure contexts.
     Promise.resolve()
@@ -900,7 +954,7 @@ class ProjectionDemo {
 
     const frame = viewFrame(this.view);
     this.drawOverlay(frame, now);
-    this.drawParticles(frame, now);
+    this.drawField(frame, now);
     requestAnimationFrame((t) => this.tick(t));
   }
 
@@ -912,12 +966,8 @@ class ProjectionDemo {
     );
   }
 
-  /**
-   * zartigl's particle pipeline: advect, fade the trails, draw the new
-   * segments, composite. While paused, particles only animate for a while
-   * after a change, to rebuild trails, then the image holds.
-   */
-  private drawParticles(frame: ViewFrame, now: number): void {
+  /** Clear the GL canvas, then draw the open field as particles or a raster. */
+  private drawField(frame: ViewFrame, now: number): void {
     const gl = this.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -927,6 +977,29 @@ class ProjectionDemo {
     if (!field || !this.ramp) {
       return;
     }
+    if (field.vector) {
+      this.drawParticles(frame, field, this.ramp, now);
+    } else {
+      this.raster.draw(frame, field, this.ms, {
+        ramp: this.ramp,
+        domain: field.domain,
+        opacity: this.rasterOpacity,
+      });
+    }
+  }
+
+  /**
+   * zartigl's particle pipeline: advect, fade the trails, draw the new
+   * segments, composite. While paused, particles only animate for a while
+   * after a change, to rebuild trails, then the image holds.
+   */
+  private drawParticles(
+    frame: ViewFrame,
+    field: GeoVideoField,
+    ramp: WebGLTexture,
+    now: number,
+  ): void {
+    const gl = this.gl;
     const moving = now - this.lastMove < MOVE_SETTLE_MS;
     if (moving) {
       this.settle = this.settleFrames();
@@ -941,7 +1014,7 @@ class ProjectionDemo {
       this.settle = this.settleFrames();
     }
     const style: ParticleStyle = {
-      ramp: this.ramp,
+      ramp,
       maxSpeed: field.maxSpeed,
       // Playback speed drives the particles as well as the video.
       speed: this.particleSettings.speed * particleSpeedFactor(this.speed),
@@ -1070,8 +1143,9 @@ class ProjectionDemo {
   }
 
   /**
-   * Ramp ticks and unit: the tint over its domain (linear) with a speed
-   * brightness key, else the speed (square-root ramp).
+   * Ramp ticks and unit: a scalar raster or the tint over its domain
+   * (linear), the tint with a speed brightness key, else the speed
+   * (square-root ramp).
    */
   private buildLegend({ field, tint }: Month): void {
     const speedUnit = formatUnit(field.manifest.style.unit);
@@ -1082,9 +1156,11 @@ class ProjectionDemo {
       return li;
     };
     this.ui.speedKey.hidden = !tint;
-    if (tint) {
-      const [min, max] = tint.domain;
-      this.ui.unit.textContent = formatUnit(tint.manifest.style.unit);
+    // The raster of a scalar layer, else the tint, colors over its domain.
+    const scalar = field.vector ? tint : field;
+    if (scalar) {
+      const [min, max] = scalar.domain;
+      this.ui.unit.textContent = formatUnit(scalar.manifest.style.unit);
       this.ui.ticks.replaceChildren(
         ...linearTicks(min, max).map((t) => tick(t.value, t.position)),
       );
@@ -1119,6 +1195,26 @@ class ProjectionDemo {
 
 function clampZoom(zoom: number): number {
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
+}
+
+/** Picker group of the layers of one kind. */
+function optionGroup(
+  label: string,
+  layers: readonly DemoLayer[],
+  kind: DemoLayer["kind"],
+): HTMLOptGroupElement {
+  const group = document.createElement("optgroup");
+  group.label = label;
+  group.append(
+    ...layers
+      .filter((l) => l.kind === kind)
+      .map((l) => new Option(l.label, l.id)),
+  );
+  return group;
+}
+
+function isTintEntry(id: string | undefined): id is string {
+  return TINT_LAYERS.some((l) => l.entryId === id);
 }
 
 function providerLabel(provider: string | undefined): string {

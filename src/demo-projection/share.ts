@@ -13,6 +13,8 @@ export interface ShareState {
   speed: number;
   /** Palette id. */
   palette: string;
+  /** Scalar entry id coloring the particles; "" colors them by speed. */
+  tint: string;
 }
 
 const round = (value: number) => Number(value.toFixed(3));
@@ -28,6 +30,7 @@ export function encodeShare(state: ShareState): string {
     play: state.playing ? "1" : "0",
     s: String(state.speed),
     c: state.palette,
+    k: state.tint,
   }).toString();
 }
 
@@ -65,6 +68,10 @@ export function decodeShare(hash: string): Partial<ShareState> {
   const palette = params.get("c");
   if (palette) {
     state.palette = palette;
+  }
+  const tint = params.get("k");
+  if (tint !== null) {
+    state.tint = tint;
   }
   const play = params.get("play");
   if (play === "0" || play === "1") {

@@ -11,6 +11,7 @@ describe("share hash", () => {
     playing: false,
     speed: 0.5,
     palette: "viridis",
+    tint: "",
   };
 
   it("round-trips the view, rounded", () => {
@@ -34,6 +35,11 @@ describe("share hash", () => {
     });
     expect(decodeShare("r=1,x,3&z=0&s=0&c=")).toEqual({});
     expect(decodeShare("s=fast")).toEqual({});
+  });
+
+  it("keeps an explicit speed tint apart from no tint", () => {
+    expect(decodeShare("k=")).toEqual({ tint: "" });
+    expect(decodeShare("k=3db0120b")).toEqual({ tint: "3db0120b" });
   });
 
   it("decodes an empty hash to nothing", () => {

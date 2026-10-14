@@ -90,7 +90,8 @@ export function timeBracket(
 /**
  * GeoVideo frames as float textures, decoded ahead of the playhead: vector
  * frames as (u, v, validity, 0), scalar frames as (value, validity). Binds
- * two consecutive time steps and their mix under `uniforms`.
+ * two consecutive time steps and their mix under VELOCITY_UNIFORMS for a
+ * vector field, TINT_UNIFORMS for a scalar one.
  */
 export class GeoVideoField {
   readonly times: number[];
@@ -99,6 +100,7 @@ export class GeoVideoField {
   private readonly texels: (frame: unknown) => Float32Array;
   /** 4 for vector texels, 2 for scalar ones. */
   private readonly channels: number;
+  private readonly uniforms: FieldUniforms;
   private readonly textures = new Map<number, WebGLTexture>();
   private readonly pending = new Map<number, Promise<void>>();
   private pair: [WebGLTexture, WebGLTexture, number] | null = null;
@@ -107,19 +109,25 @@ export class GeoVideoField {
   constructor(
     private readonly gl: WebGL2RenderingContext,
     readonly manifest: GeoVideoManifest,
-    private readonly uniforms: FieldUniforms = VELOCITY_UNIFORMS,
   ) {
     if (manifest.encoding.kind === "vector-luma") {
       this.source = new GeoVideoVectorSource(manifest, { cacheSize: 2 });
       this.texels = (frame) => velocityTexels(frame as GeoVideoVectorFrame);
       this.channels = 4;
+      this.uniforms = VELOCITY_UNIFORMS;
     } else {
       this.source = new GeoVideoScalarSource(manifest, { cacheSize: 2 });
       this.texels = (frame) => scalarTexels(frame as Float32Array);
       this.channels = 2;
+      this.uniforms = TINT_UNIFORMS;
     }
     this.times = geoVideoTimelineValues(manifest);
     this.bounds = manifest.bounds;
+  }
+
+  /** Vector field (particles); false for a scalar one (raster or tint). */
+  get vector(): boolean {
+    return this.channels === 4;
   }
 
   /** Fixed catalog color domain of a scalar field. */

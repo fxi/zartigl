@@ -41,6 +41,35 @@ export function viewFrame(view: View): ViewFrame {
   };
 }
 
+/** Share of the smaller viewport side a framed region spans. */
+const REGION_FILL = 0.85;
+
+/**
+ * Rotation and zoom that center a regional grid (west, south, east, north)
+ * on the current projection; null for a global one.
+ */
+export function regionView(
+  bounds: readonly [number, number, number, number],
+  view: View,
+): { rotate: [number, number, number]; zoom: number } | null {
+  const [west, south, east, north] = bounds;
+  if (east - west >= 359) {
+    return null;
+  }
+  const lon = (west + east) / 2;
+  const lat = (south + north) / 2;
+  const span =
+    (Math.max((east - west) * Math.cos((lat * Math.PI) / 180), north - south) *
+      Math.PI) /
+    180;
+  const { ka, kb, t } = view.blend;
+  const scale = (1 - t) * ka + t * kb;
+  return {
+    rotate: [-lon, -lat, 0],
+    zoom: (REGION_FILL * Math.min(view.width, view.height)) / (span * scale),
+  };
+}
+
 /** WebGL2 program with cached uniform locations. */
 export class Program {
   readonly program: WebGLProgram;

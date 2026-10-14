@@ -1,8 +1,13 @@
 # projversor
 
-Standalone demo: global GeoVideo vector archives (ocean currents, wind,
-waves, sea ice) played as animated particles on a sphere that morphs between
-world projections.
+Standalone demo: every GeoVideo archive of the zartigl catalog, global or
+regional (Mediterranean), on a sphere that morphs between world projections.
+Vector archives (currents, wind, waves, sea ice) play as animated particles,
+scalar ones (temperature, salinity, biogeochemistry, …) as a raster.
+
+projversor uses zartigl only through its published entry points,
+`@fxi/zartigl/engine` (here `../engine`) and `@fxi/zartigl/catalog` (`../catalog`);
+ESLint rejects deeper imports so the demo can move to its own repository.
 
 ```bash
 npm run dev:projection     # vite dev server
@@ -38,14 +43,24 @@ docker compose pull && docker compose up -d   # use the published image
 - **Camera motion.** Screen trails cannot follow a moving view. As in
   zartigl, they clear quickly while the view moves (`lib/trail-fade`), and a
   drop-rate boost spreads the particles over the new view.
+- **Scalar rasters.** A scalar layer is drawn as a lon/lat mesh over its
+  grid bounds (`SphereScalar.ts`), projected with the current view like the
+  particles (`shaders/raster.vert.glsl`), so it morphs with the projections.
+  A triangle crossing a projection cut is dropped; one past the clip is
+  trimmed per pixel. Colors come from the catalog palette over the manifest
+  color domain.
+- **Regional grids.** Fields sample their grid only inside its bounds
+  (`shaders/grid.glsl`), and opening a regional layer centers the view on it.
 - **Versor dragging.** Quaternion rotation (`versor.ts`) keeps the grabbed
   point under the pointer on every projection.
-- **Two-variable layers.** A layer may name a scalar `tint` entry
-  (`layers.ts`): its GeoVideo archive is decoded frame by frame
+- **Two-variable layers.** Any scalar layer can color the particles of a
+  vector one (the droplet picker; some layers default to one in `layers.ts`):
+  its GeoVideo archive is decoded frame by frame
   (`lib/GeoVideoScalarSource`) next to the vector one, months paired by
-  start date, and particles take their color from it (`shaders/tint.glsl`)
+  calendar period (`lib/archive-timeline`), and particles take their color from it (`shaders/tint.glsl`)
   while speed sets their brightness. "Currents × Temperature" pairs ocean
-  currents with sea water temperature from the same Copernicus model.
+  currents with sea water temperature from the same Copernicus model,
+  globally and in the Mediterranean.
 - **North up by default.** As d3-geo-zoom's `northUp`, drags keep the roll
   (gamma) at zero. The compass (`Compass.ts`, `bearing.ts`) shows the
   bearing; dragging around it or the arrow keys free and set the bearing,
@@ -56,14 +71,17 @@ docker compose pull && docker compose up -d   # use the published image
   layer, particles animate for about one trail length to rebuild trails,
   then hold again.
 - **Share.** A readable url hash (`share.ts`) restores layer, time,
-  projection, rotation, zoom, play state, speed and palette.
+  projection, rotation, zoom, play state, speed, palette and tint.
 
 ## Reused from zartigl
 
-- The catalog: layers, provenance and per-layer particle defaults.
+- The catalog: the layer list (every entry with a GeoVideo archive), titles,
+  palettes, provenance, raster opacity and per-layer particle defaults.
+  `layers.ts` only adds styles and tinted pairings.
 - The GeoVideo archive index and monthly chunks (`lib/geovideo-index`) and
   manifests (`lib/geovideo`).
-- Frame-accurate vector-luma decoding (`lib/GeoVideoVectorSource`).
+- Frame-accurate vector and scalar luma decoding (`lib/GeoVideoVectorSource`,
+  `lib/GeoVideoScalarSource`) and chunk pairing (`lib/archive-timeline`).
 - Color ramps (`lib/gl-util`).
 - The particle look: speed, drop rates, trail fade and camera-motion fade
   (`lib/trail-fade`, shaders adapted from `lib/shaders`).
@@ -73,7 +91,8 @@ docker compose pull && docker compose up -d   # use the published image
 These parts are specific to this demo and independent of Maplibre:
 
 - the blended projections in d3 and GLSL;
-- the sphere-space particle state, projected with any blended projection;
+- the sphere-space particle state and scalar raster mesh, projected with any
+  blended projection;
 - the versor interaction;
 - the timeline behavior;
 - the shareable view.

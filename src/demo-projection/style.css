@@ -419,6 +419,10 @@ body {
   color: var(--muted);
 }
 
+.field[hidden] {
+  display: none;
+}
+
 .field:hover,
 .field:focus-within {
   color: var(--ink);

@@ -1,4 +1,10 @@
-import { requireCatalogEntry, type CatalogGeoVideoSource } from "../catalog";
+import {
+  catalog,
+  requireCatalogEntry,
+  resolveLocalizedText,
+  type CatalogEntry,
+  type CatalogGeoVideoSource,
+} from "../catalog";
 import {
   geoVideoChunkSources,
   getPalettes,
@@ -9,15 +15,15 @@ import {
 import type { ParticleSettings } from "./scales";
 
 /**
- * Demo sub-catalog: global vector GeoVideo archives of the zartigl catalog,
- * with the styling this projection demo gives them. Palettes start dark so
- * the bright trails read against the black background.
+ * A catalog entry with a GeoVideo archive, with the styling this projection
+ * demo gives it: vector entries play as particles, scalar ones as a raster.
  */
 export interface DemoLayer {
-  /** Picker and share key; defaults to the entry id. */
-  id?: string;
-  /** zartigl catalog entry id of the vector field. */
+  /** Picker and share key: the entry's first alias, else its id. */
+  id: string;
+  /** zartigl catalog entry id. */
   entryId: string;
+  kind: CatalogEntry["kind"];
   label: string;
   palette: string;
   /** Draw land opaque: off for fields that also cover land. */
@@ -25,96 +31,153 @@ export interface DemoLayer {
   /** Overrides of the catalog entry `defaults.particles` (density, speed, fade). */
   particles?: Partial<ParticleSettings>;
   /**
-   * Scalar catalog entry whose GeoVideo archive colors the particles (over
+   * Default scalar entry id whose GeoVideo archive colors the particles (over
    * its catalog color domain); speed then sets their brightness. Its monthly
-   * chunks pair with the vector ones by start date.
+   * chunks pair with the vector ones by calendar period.
    */
-  tint?: { entryId: string };
+  tint?: string;
 }
+
+type LayerStyle = Partial<Omit<DemoLayer, "entryId" | "kind">>;
 
 /**
- * Month chunks of a layer's tint archive; empty without a tint or when its
- * index cannot be read, so the layer still opens, colored by speed.
+ * Particle palettes start dark so the bright trails read against the black
+ * background. Keyed by entry alias.
  */
-export async function loadTintChunks(
-  layer: DemoLayer,
-  loadIndex = loadGeoVideoIndex,
-): Promise<CatalogGeoVideoSource[]> {
-  if (!layer.tint) {
-    return [];
-  }
-  try {
-    const entry = requireCatalogEntry(layer.tint.entryId);
-    const source = entry.sources.find(isGeoVideoArchiveSource);
-    if (!source) {
-      throw new Error(`No GeoVideo archive for tint ${entry.id}`);
-    }
-    return geoVideoChunkSources(
-      source,
-      await loadIndex(source.indexUrl),
-      entry,
-    );
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-}
-
-/** Picker and share key of a layer. */
-export function layerKey(layer: DemoLayer): string {
-  return layer.id ?? layer.entryId;
-}
-
-export const DEMO_LAYERS: DemoLayer[] = [
-  {
-    entryId: "61a81ddd-6c8e-4020-a59f-06ef13a90419",
-    label: "Ocean Velocity",
-    palette: "plasma",
-    fillLand: true,
-  },
-  {
-    id: "ocean-velocity-temperature",
-    entryId: "61a81ddd-6c8e-4020-a59f-06ef13a90419",
-    label: "Currents × Temperature",
-    // Starts bright: cold, slow water stays visible once dimmed by speed.
-    palette: "thermal-alt",
-    fillLand: true,
-    tint: { entryId: "3db0120b-17d2-4789-9952-efcc0953ecc4" },
-  },
-  {
-    entryId: "72aa3549-8cdf-4275-b8f7-5b32ca40a3f2",
-    label: "Surface Wind",
+const STYLES: Record<string, LayerStyle> = {
+  "surface-wind": {
     palette: "viridis",
     fillLand: false,
     particles: { density: 0.5, speed: 3, fade: 1 },
   },
-  {
-    entryId: "88f00432-ffad-4ebd-85ac-9f8de1ee5213",
-    label: "Stokes Drift",
-    palette: "viridis",
-    fillLand: true,
-  },
-  {
-    entryId: "bb38fd23-b0b0-4cd0-b59d-0224be3052f9",
-    label: "Primary Swell",
-    palette: "thermal",
-    fillLand: true,
-  },
-  {
-    entryId: "40733539-e493-448e-80b5-2a7874f47b85",
-    label: "Sea Ice Drift",
-    palette: "ice",
-    fillLand: true,
-  },
-];
+  "wave-stokes-drift": { palette: "viridis" },
+  "primary-swell-propagation": { palette: "thermal" },
+  "sea-ice-drift": { palette: "ice" },
+  "med-wave-stokes-drift": { palette: "viridis" },
+  "med-primary-swell-propagation": { palette: "thermal" },
+};
+
+/** Vector layers repeated with a default tint, after their plain layer. */
+const TINTED: Record<string, LayerStyle[]> = {
+  "ocean-current-velocity": [
+    {
+      id: "ocean-velocity-temperature",
+      label: "Currents × Temperature",
+      // Starts bright: cold, slow water stays visible once dimmed by speed.
+      palette: "thermal-alt",
+      tint: "3db0120b-17d2-4789-9952-efcc0953ecc4", // sea-water-temperature
+    },
+  ],
+  "med-ocean-current-velocity": [
+    {
+      id: "med-currents-temperature",
+      label: "Mediterranean Currents × Temperature",
+      palette: "thermal-alt",
+      tint: "f0812aa5-f9b6-4149-ab51-3de9d9d100c3", // med-sea-water-temperature
+    },
+  ],
+};
+
+/** Particle palette of vector entries without a style. */
+const PARTICLE_PALETTE = "plasma";
 
 /**
  * Palettes offered for the particles: diverging and cyclic ramps carry no
  * meaning for a speed, and black trails vanish on the black background.
  */
-export const DEMO_PALETTES: PaletteMeta[] = getPalettes().filter(
+export const PARTICLE_PALETTES: PaletteMeta[] = getPalettes().filter(
   (p) =>
     p.id !== "mono-black" &&
     !p.tags.includes("diverging") &&
     !p.tags.includes("cyclic"),
 );
+
+/** Palettes offered for a scalar raster: any but black. */
+export const RASTER_PALETTES: PaletteMeta[] = getPalettes().filter(
+  (p) => p.id !== "mono-black",
+);
+
+export function layerPalettes(layer: DemoLayer): PaletteMeta[] {
+  return layer.kind === "vector" ? PARTICLE_PALETTES : RASTER_PALETTES;
+}
+
+/** Every catalog entry with a GeoVideo archive, vector layers first. */
+export function catalogLayers(
+  entries: readonly CatalogEntry[] = catalog.layers,
+): DemoLayer[] {
+  const layers: DemoLayer[] = [];
+  for (const entry of entries) {
+    if (!entry.sources.some(isGeoVideoArchiveSource)) {
+      continue;
+    }
+    const id = entry.aliases?.[0] ?? entry.id;
+    const base: DemoLayer = {
+      id,
+      entryId: entry.id,
+      kind: entry.kind,
+      label: resolveLocalizedText(entry.title, "en"),
+      palette:
+        entry.kind === "vector"
+          ? PARTICLE_PALETTE
+          : (entry.defaults.palette ?? "viridis"),
+      fillLand: true,
+      ...STYLES[id],
+    };
+    layers.push(base);
+    for (const tinted of TINTED[id] ?? []) {
+      layers.push({ ...base, ...tinted });
+    }
+  }
+  return layers.sort(
+    (a, b) => Number(a.kind === "scalar") - Number(b.kind === "scalar"),
+  );
+}
+
+export const DEMO_LAYERS: DemoLayer[] = catalogLayers();
+
+/** Scalar layers offered to color the particles. */
+export const TINT_LAYERS: DemoLayer[] = DEMO_LAYERS.filter(
+  (l) => l.kind === "scalar",
+);
+
+/** Layer of a share key: a layer id, or the entry id older links carry. */
+export function findLayer(
+  key: string | undefined,
+  layers: readonly DemoLayer[] = DEMO_LAYERS,
+): DemoLayer | undefined {
+  return (
+    layers.find((l) => l.id === key) ?? layers.find((l) => l.entryId === key)
+  );
+}
+
+/** Month chunks of an entry's GeoVideo archive. */
+export async function loadChunks(
+  entryId: string,
+  loadIndex = loadGeoVideoIndex,
+): Promise<CatalogGeoVideoSource[]> {
+  const entry = requireCatalogEntry(entryId);
+  const source = entry.sources.find(isGeoVideoArchiveSource);
+  if (!source) {
+    throw new Error(`No GeoVideo archive for ${entry.id}`);
+  }
+  return geoVideoChunkSources(source, await loadIndex(source.indexUrl), entry);
+}
+
+/**
+ * Month chunks of a tint archive; empty without a tint or when its index
+ * cannot be read, so the layer still opens, colored by speed.
+ */
+export async function loadTintChunks(
+  entryId: string | null | undefined,
+  loadIndex = loadGeoVideoIndex,
+): Promise<CatalogGeoVideoSource[]> {
+  if (!entryId) {
+    return [];
+  }
+  try {
+    return await loadChunks(entryId, loadIndex);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
