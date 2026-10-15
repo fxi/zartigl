@@ -83,7 +83,7 @@ const TRANSITION_MS = 2200;
 /** Easing of compass, zoom and rotate buttons. */
 const VIEW_MS = 450;
 const ZOOM_MIN = 0.5;
-const ZOOM_MAX = 8;
+const ZOOM_MAX = 20;
 /** Zoom button factor and rotate button step (degrees of longitude). */
 const ZOOM_STEP = 1.5;
 const ROTATE_STEP = 15;
