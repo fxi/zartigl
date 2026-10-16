@@ -19,7 +19,7 @@ import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
-import gridFrag from "./shaders/grid.frag.glsl?raw";
+import gridFrag from "./shaders/grid.frag.glsl";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 import { TrailFade } from "./trail-fade";

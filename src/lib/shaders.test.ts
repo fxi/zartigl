@@ -3,7 +3,7 @@ import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
-import gridFrag from "./shaders/grid.frag.glsl?raw";
+import gridFrag from "./shaders/grid.frag.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 import geoVideoFrag from "./shaders/geovideo.frag.glsl";
 
@@ -124,6 +124,24 @@ describe("particle shader invalid-state guards", () => {
       expect(shader).toContain("t = clamp(sample.r, 0.0, 1.0)");
       expect(shader).not.toContain("float scalarValue");
       expect(shader).not.toContain("float scalarRange");
+    }
+  });
+
+  it("ships runtime shaders with their includes resolved", () => {
+    const shaders = [
+      drawVert,
+      drawFrag,
+      fadeFrag,
+      updateFrag,
+      gridFrag,
+      gridGlobeFrag,
+      geoVideoFrag,
+    ];
+    for (const shader of shaders) {
+      expect(shader).not.toContain("#include");
+    }
+    for (const shader of [drawFrag, gridFrag, gridGlobeFrag, geoVideoFrag]) {
+      expect(shader).toContain("vec3 applyVibrance(vec3 c, float v)");
     }
   });
 });
