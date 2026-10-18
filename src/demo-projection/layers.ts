@@ -45,11 +45,7 @@ type LayerStyle = Partial<Omit<DemoLayer, "entryId" | "kind">>;
  * background. Keyed by entry alias.
  */
 const STYLES: Record<string, LayerStyle> = {
-  "surface-wind": {
-    palette: "viridis",
-    fillLand: false,
-    particles: { density: 0.5, speed: 3, fade: 1 },
-  },
+  "surface-wind": {},
   "wave-stokes-drift": { palette: "viridis" },
   "primary-swell-propagation": { palette: "thermal" },
   "sea-ice-drift": { palette: "ice" },
