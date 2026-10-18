@@ -99,6 +99,22 @@ function once(target: EventTarget, type: string): Promise<void> {
   );
 }
 
+/** Longest wait for a presented frame, when the browser reports none. */
+const PRESENT_TIMEOUT_MS = 250;
+
+/** Next presented video frame, or a timeout; immediate without the API. */
+function presentedFrame(video: HTMLVideoElement): Promise<void> {
+  if (!("requestVideoFrameCallback" in video)) {
+    return Promise.resolve();
+  }
+  return Promise.race([
+    new Promise<void>((resolve) =>
+      video.requestVideoFrameCallback(() => resolve()),
+    ),
+    new Promise<void>((resolve) => setTimeout(resolve, PRESENT_TIMEOUT_MS)),
+  ]);
+}
+
 /**
  * GeoVideo frames read one time step at a time (seek, no playback): video
  * and static mask loading, luma readback, a serial decode queue that
@@ -258,25 +274,23 @@ export abstract class GeoVideoFrameSource<TFrame> {
     seconds: number,
   ): Promise<void> {
     if (
-      !this.presented ||
-      Math.abs(video.currentTime - seconds) > 1e-3 ||
-      video.seeking
+      this.presented &&
+      Math.abs(video.currentTime - seconds) <= 1e-3 &&
+      !video.seeking
     ) {
-      const seeked = once(video, "seeked");
-      video.currentTime = seconds;
-      await seeked;
+      return;
     }
+    // Registered before the seek: the frame can be presented before
+    // `seeked` fires, and a callback added after it would wait for the
+    // timeout.
+    const presented = presentedFrame(video);
+    const seeked = once(video, "seeked");
+    video.currentTime = seconds;
+    await seeked;
     if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
       await Promise.race([once(video, "loadeddata"), once(video, "canplay")]);
     }
-    if ("requestVideoFrameCallback" in video) {
-      await Promise.race([
-        new Promise<void>((resolve) =>
-          video.requestVideoFrameCallback(() => resolve()),
-        ),
-        new Promise<void>((resolve) => setTimeout(resolve, 250)),
-      ]);
-    }
+    await presented;
     this.presented = true;
   }
 

@@ -107,6 +107,43 @@ describe("GeoVideoScalarSource", () => {
     ).toThrow(/scalar-luma/);
   });
 
+  it("catches a frame presented before the seek completes", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("HTMLMediaElement", { HAVE_CURRENT_DATA: 2 });
+    try {
+      // The browser presents the sought frame before it fires `seeked`.
+      const callbacks: (() => void)[] = [];
+      const video = Object.assign(new EventTarget(), {
+        seeking: false,
+        readyState: 4,
+        requestVideoFrameCallback(callback: () => void) {
+          callbacks.push(callback);
+        },
+      });
+      Object.defineProperty(video, "currentTime", {
+        get: () => 0,
+        set() {
+          callbacks.splice(0).forEach((callback) => callback());
+          queueMicrotask(() => video.dispatchEvent(new Event("seeked")));
+        },
+      });
+      const source = new GeoVideoScalarSource(manifest);
+      let done = false;
+      void (
+        source as unknown as {
+          presentFrame(video: unknown, seconds: number): Promise<void>;
+        }
+      )
+        .presentFrame(video, 0.0625)
+        .then(() => (done = true));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(done).toBe(true);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("decodes each frame once and serves it from the cache", async () => {
     const source = new GeoVideoScalarSource(manifest);
     const values = new Float32Array([1, 2, 3, 4]);
