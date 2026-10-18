@@ -346,6 +346,98 @@ body {
   border-top: 1px solid var(--line);
 }
 
+/* Cog under the palette, opening the color settings beside the rail. */
+.grade-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.grade-toggle[hidden] {
+  display: none;
+}
+
+.grade-toggle:hover,
+.grade-toggle[aria-expanded="true"] {
+  color: var(--ink);
+}
+
+.grade-toggle:focus-visible,
+.grade-reset:focus-visible {
+  outline: 1px solid var(--muted);
+  outline-offset: -1px;
+}
+
+.grade {
+  position: absolute;
+  z-index: 2;
+  right: calc(100% + var(--gap));
+  bottom: var(--bar-space);
+  width: 220px;
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: rgba(7, 8, 17, 0.85);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.grade[hidden] {
+  display: none;
+}
+
+.grade label {
+  display: grid;
+  gap: 6px;
+}
+
+.grade .grade-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.grade input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.grade input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.grade input:disabled {
+  opacity: 0.4;
+}
+
+.grade-reset {
+  appearance: none;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.grade-reset:hover {
+  color: var(--ink);
+}
+
 .legend {
   padding: 14px 0;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COLOR_GRADE_OFF, COLOR_GRADE_VIBRANT } from "../engine";
 import { decodeShare, encodeShare, type ShareState } from "./share";
 
 describe("share hash", () => {
@@ -40,6 +41,22 @@ describe("share hash", () => {
   it("keeps an explicit speed tint apart from no tint", () => {
     expect(decodeShare("k=")).toEqual({ tint: "" });
     expect(decodeShare("k=3db0120b")).toEqual({ tint: "3db0120b" });
+  });
+
+  it("shares the color grade only when enabled", () => {
+    const grade = { ...COLOR_GRADE_VIBRANT, exposure: 1.23456 };
+    const hash = encodeShare({ ...state, grade });
+    expect(hash).toContain("g=1.235%2C0.6%2C0.4%2C0.6");
+    expect(decodeShare(hash).grade).toEqual({ ...grade, exposure: 1.235 });
+    expect(encodeShare({ ...state, grade: COLOR_GRADE_OFF })).not.toContain(
+      "g=",
+    );
+  });
+
+  it("clamps a shared grade and drops a malformed one", () => {
+    expect(decodeShare("g=9,0.5,0,0").grade?.exposure).toBe(4);
+    expect(decodeShare("g=1,2,x,4")).toEqual({});
+    expect(decodeShare("g=1,2")).toEqual({});
   });
 
   it("decodes an empty hash to nothing", () => {

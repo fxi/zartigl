@@ -9,16 +9,19 @@ import {
   type CatalogGeoVideoSource,
 } from "../catalog";
 import {
+  COLOR_GRADE_OFF,
   TrailFade,
   createColorRampTexture,
   fadeToFrames,
   fadeToOpacity,
   loadGeoVideoManifest,
   pairChunk,
+  type ColorGrade,
 } from "../engine";
 import { rotationBearing, withBearing } from "./bearing";
 import { Compass } from "./Compass";
 import { GeoVideoField } from "./GeoVideoField";
+import { GradePanel } from "./GradePanel";
 import {
   DEMO_LAYERS,
   TINT_LAYERS,
@@ -213,6 +216,8 @@ function refs(root: HTMLElement) {
     month: get<HTMLSelectElement>("month"),
     speed: get<HTMLSelectElement>("speed"),
     palette: get<HTMLSelectElement>("palette"),
+    gradeToggle: get<HTMLButtonElement>("gradeToggle"),
+    gradePanel: get<HTMLFormElement>("gradePanel"),
     unit: get<HTMLElement>("unit"),
     speedKey: get<HTMLElement>("speedKey"),
     speedMax: get<HTMLElement>("speedMax"),
@@ -252,6 +257,9 @@ class ProjectionDemo {
   /** Palette of the particles and legend. */
   private palette = "";
   private ramp: WebGLTexture | null = null;
+  /** Particle color grade, applied when the trails are composited. */
+  private grade: ColorGrade;
+  private readonly gradePanel: GradePanel;
   /** The open layer: particles for a vector one, a raster for a scalar one. */
   private layer: DemoLayer = DEMO_LAYERS[0];
   /** Catalog opacity and vibrance of a scalar layer's raster. */
@@ -305,8 +313,8 @@ class ProjectionDemo {
 
   constructor(root: HTMLElement) {
     this.ui = refs(root);
+    // Premultiplied canvas, composited with view.ts compositeBlend.
     const gl = this.ui.gl.getContext("webgl2", {
-      premultipliedAlpha: false,
       antialias: true,
       depth: true,
     });
@@ -334,6 +342,13 @@ class ProjectionDemo {
       onToggle: () => this.toggleNorth(),
     });
     this.compass.locked = this.northLocked;
+    this.gradePanel = new GradePanel(
+      this.ui.gradeToggle,
+      this.ui.gradePanel,
+      (grade) => (this.grade = grade),
+    );
+    this.grade = this.shared.grade ?? COLOR_GRADE_OFF;
+    this.gradePanel.value = this.grade;
     this.view = {
       blend: { a: def, b: def, ka: 1, kb: 1, t: 0 },
       rotate,
@@ -455,6 +470,7 @@ class ProjectionDemo {
     const { layer, tint, tintField, speed, palette } = this.ui;
     layer.value = this.layer.id;
     tintField.hidden = this.layer.kind !== "vector";
+    this.gradePanel.available = this.layer.kind === "vector";
     tint.value = this.tintId ?? "";
     speed.replaceChildren(
       ...SPEEDS[this.layer.kind].map((s) => new Option(`${s}×`, String(s))),
@@ -945,6 +961,7 @@ class ProjectionDemo {
       speed: this.speed,
       palette: this.palette,
       tint: this.tintId ?? "",
+      grade: this.grade,
     });
     // navigator.clipboard is missing outside secure contexts.
     Promise.resolve()
@@ -1066,7 +1083,7 @@ class ProjectionDemo {
         this.settle--;
       }
     }
-    this.particles.present();
+    this.particles.present(this.grade);
   }
 
   /** zartigl's drop-rate boost, from the per-frame zoom and center change. */

@@ -138,7 +138,54 @@
             class="picker"
             data-ref="palette"
             aria-label="Palette"></select>
+          <button
+            type="button"
+            class="grade-toggle"
+            data-ref="gradeToggle"
+            aria-controls="grade-panel"
+            aria-expanded="false"
+            title="Color settings"
+            aria-label="Color settings">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+            </svg>
+          </button>
         </section>
+        <form
+          class="grade"
+          id="grade-panel"
+          data-ref="gradePanel"
+          aria-label="Color settings"
+          hidden>
+          <label class="grade-switch">
+            <input type="checkbox" name="enabled" />
+            Enhanced colors
+          </label>
+          <label>
+            Exposure
+            <input name="exposure" type="range" min="0" max="4" step="0.05" />
+          </label>
+          <label>
+            Contrast
+            <input name="contrast" type="range" min="0" max="1" step="0.01" />
+          </label>
+          <label>
+            Saturation
+            <input
+              name="saturation"
+              type="range"
+              min="-1"
+              max="1"
+              step="0.01" />
+          </label>
+          <label>
+            Highlights
+            <input name="highlights" type="range" min="0" max="1" step="0.01" />
+          </label>
+          <button type="reset" class="grade-reset">Reset</button>
+        </form>
       </aside>
 
       <footer class="bar">

@@ -2,7 +2,7 @@ import type { GeoVideoBounds } from "../engine";
 import type { GeoVideoField } from "./GeoVideoField";
 import rasterFrag from "./shaders/raster.frag.glsl";
 import rasterVert from "./shaders/raster.vert.glsl";
-import { Program, isGlobalGrid, type ViewFrame } from "./view";
+import { Program, compositeBlend, isGlobalGrid, type ViewFrame } from "./view";
 
 export interface RasterStyle {
   ramp: WebGLTexture;
@@ -83,7 +83,7 @@ export class SphereScalar {
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    compositeBlend(gl);
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.TRIANGLES, 0, cols * rows * 6);
     gl.bindVertexArray(null);

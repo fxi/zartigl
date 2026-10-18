@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import advectFrag from "./shaders/advect.frag.glsl";
+import compositeFrag from "./shaders/composite.frag.glsl";
 import rasterFrag from "./shaders/raster.frag.glsl";
 import rasterVert from "./shaders/raster.vert.glsl";
 
@@ -24,6 +25,14 @@ describe("projversor grids", () => {
   it("applies the catalog vibrance like zartigl's scalar shaders", () => {
     expect(rasterFrag).toContain("vec3 applyVibrance(vec3 c, float v)");
     expect(rasterFrag).toContain("applyVibrance(texture(u_ramp");
+  });
+
+  it("grades the trail composite with zartigl's shared helper", () => {
+    expect(compositeFrag).not.toContain("#include");
+    expect(compositeFrag).toContain("vec3 gradeColor(vec3 c, vec4 g)");
+    expect(compositeFrag).toContain(
+      "u_grade_on > 0.5 ? gradeColor(color.rgb, u_grade) : color.rgb",
+    );
   });
 
   it("drops raster triangles across a projection cut", () => {

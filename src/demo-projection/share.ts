@@ -1,3 +1,5 @@
+import { colorGradeVec4, resolveColorGrade, type ColorGrade } from "../engine";
+
 /** Everything needed to reproduce the displayed view. */
 export interface ShareState {
   /** zartigl catalog entry id. */
@@ -15,13 +17,15 @@ export interface ShareState {
   palette: string;
   /** Scalar entry id coloring the particles; "" colors them by speed. */
   tint: string;
+  /** Particle color grade; written only when enabled. */
+  grade?: ColorGrade;
 }
 
 const round = (value: number) => Number(value.toFixed(3));
 
 /** Readable url hash, without the leading "#". */
 export function encodeShare(state: ShareState): string {
-  return new URLSearchParams({
+  const params = new URLSearchParams({
     l: state.layer,
     t: new Date(state.time).toISOString(),
     p: state.preset,
@@ -31,7 +35,12 @@ export function encodeShare(state: ShareState): string {
     s: String(state.speed),
     c: state.palette,
     k: state.tint,
-  }).toString();
+  });
+  const { grade } = state;
+  if (grade?.enabled) {
+    params.set("g", colorGradeVec4(grade).map(round).join(","));
+  }
+  return params.toString();
 }
 
 /**
@@ -72,6 +81,16 @@ export function decodeShare(hash: string): Partial<ShareState> {
   const tint = params.get("k");
   if (tint !== null) {
     state.tint = tint;
+  }
+  const grade = (params.get("g") ?? "").split(",").map(Number);
+  if (grade.length === 4 && grade.every(Number.isFinite)) {
+    const [exposure, contrast, saturation, highlights] = grade;
+    state.grade = resolveColorGrade({
+      exposure,
+      contrast,
+      saturation,
+      highlights,
+    });
   }
   const play = params.get("play");
   if (play === "0" || play === "1") {

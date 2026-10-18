@@ -40,6 +40,12 @@ docker compose pull && docker compose up -d   # use the published image
   east/north tangent plane, so every projection works and there is no
   singularity at the poles. Segments are projected with the current view
   (`shaders/draw.vert.glsl`).
+- **Compositing and color grade.** The GL canvas is premultiplied and
+  layers blend with `compositeBlend` (`view.ts`), so faded trails keep their
+  coverage. The cog under the palette opens zartigl's optional particle color
+  grade (`lib/color-grade`: exposure, contrast, saturation, highlights),
+  applied in the existing trail composite pass, so it toggles live at no extra
+  pass cost.
 - **Camera motion.** Screen trails cannot follow a moving view. As in
   zartigl, they clear quickly while the view moves (`lib/trail-fade`), and a
   drop-rate boost spreads the particles over the new view.

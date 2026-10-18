@@ -163,3 +163,17 @@ export class Program {
     this.gl.deleteProgram(this.program);
   }
 }
+
+/**
+ * Straight-alpha color over the premultiplied canvas: rgb·a with alpha as
+ * coverage. Plain SRC_ALPHA blending also squares alpha, and an unpremultiplied
+ * canvas then shows c·a³ instead of c·a, which darkened faded trails.
+ */
+export function compositeBlend(gl: WebGL2RenderingContext): void {
+  gl.blendFuncSeparate(
+    gl.SRC_ALPHA,
+    gl.ONE_MINUS_SRC_ALPHA,
+    gl.ONE,
+    gl.ONE_MINUS_SRC_ALPHA,
+  );
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PROJECTIONS } from "./projections";
-import { isGlobalGrid, regionView, type View } from "./view";
+import { compositeBlend, isGlobalGrid, regionView, type View } from "./view";
 
 const ortho = PROJECTIONS.orthographic;
 const view: View = {
@@ -30,5 +30,20 @@ describe("isGlobalGrid", () => {
     expect(isGlobalGrid([-180, -80, 180, 90])).toBe(true);
     expect(isGlobalGrid([-179.92, -80, 180, 90])).toBe(true);
     expect(isGlobalGrid([-6, 30.19, 36.3, 45.98])).toBe(false);
+  });
+});
+
+describe("compositeBlend", () => {
+  it("keeps alpha as coverage on the premultiplied canvas", () => {
+    const calls: number[][] = [];
+    const gl = {
+      SRC_ALPHA: 1,
+      ONE_MINUS_SRC_ALPHA: 2,
+      ONE: 3,
+      blendFuncSeparate: (...args: number[]) => calls.push(args),
+    };
+    compositeBlend(gl as unknown as WebGL2RenderingContext);
+    // Alpha must not be squared (SRC_ALPHA on alpha darkened faded trails).
+    expect(calls).toEqual([[1, 2, 3, 2]]);
   });
 });

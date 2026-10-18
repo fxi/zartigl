@@ -1,10 +1,12 @@
+import { colorGradeVec4, type ColorGrade } from "../engine";
 import type { GeoVideoField } from "./GeoVideoField";
 import advectFrag from "./shaders/advect.frag.glsl";
+import compositeFrag from "./shaders/composite.frag.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import drawVert from "./shaders/draw.vert.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 import quadVert from "./shaders/quad.vert.glsl";
-import { Program, type ViewFrame } from "./view";
+import { Program, compositeBlend, type ViewFrame } from "./view";
 
 export interface ParticleStyle {
   ramp: WebGLTexture;
@@ -34,6 +36,7 @@ export class SphereParticles {
   private readonly advect: Program;
   private readonly draw: Program;
   private readonly fade: Program;
+  private readonly composite: Program;
   private readonly states: WebGLTexture[];
   private readonly framebuffer: WebGLFramebuffer;
   private readonly vao: WebGLVertexArrayObject;
@@ -55,6 +58,7 @@ export class SphereParticles {
     this.advect = new Program(gl, quadVert, advectFrag);
     this.draw = new Program(gl, drawVert, drawFrag);
     this.fade = new Program(gl, quadVert, fadeFrag);
+    this.composite = new Program(gl, quadVert, compositeFrag);
     this.states = [
       this.texture(gl.RGBA32F, size, size),
       this.texture(gl.RGBA32F, size, size),
@@ -200,15 +204,16 @@ export class SphereParticles {
     this.screens = [next, previous];
   }
 
-  /** Composite the trails over the bound canvas framebuffer. */
-  present(): void {
+  /** Composite the trails, color graded, over the bound canvas framebuffer. */
+  present(grade: ColorGrade): void {
     const gl = this.gl;
     gl.viewport(0, 0, this.width, this.height);
-    const f = this.fade.use();
-    f.texture("u_screen", 0, this.screens[0]);
-    f.float("u_opacity", 1);
+    const c = this.composite.use();
+    c.texture("u_screen", 0, this.screens[0]);
+    c.float("u_grade_on", grade.enabled ? 1 : 0);
+    c.vec4("u_grade", colorGradeVec4(grade));
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    compositeBlend(gl);
     this.quad();
     gl.disable(gl.BLEND);
   }
@@ -218,6 +223,7 @@ export class SphereParticles {
     this.advect.delete();
     this.draw.delete();
     this.fade.delete();
+    this.composite.delete();
     for (const texture of [...this.states, ...this.screens]) {
       gl.deleteTexture(texture);
     }
