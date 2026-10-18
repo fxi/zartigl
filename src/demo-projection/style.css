@@ -14,9 +14,8 @@
   --rail: 96px;
   /* Height of the floating clock, above the rail. */
   --clock: 96px;
+  /* Height of the layer bar and of the rail actions row beside it. */
   --bar: 48px;
-  /* Space kept free under the rail and map controls for the footer pill. */
-  --bar-space: calc(var(--bar) + 2 * var(--gap));
   /* Range thumb length; the timeline ticks follow its travel. */
   --thumb: 28px;
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%238a8fa3' stroke-width='1.2'%3E%3Cpath d='m1 1.5 5 5 5-5'/%3E%3C/svg%3E");
@@ -43,11 +42,12 @@ body {
   overflow: hidden;
 }
 
-/* The map takes the full height; clock and footer float over it. */
+/* Map over the layer bar, the rail beside both; the clock floats on top. */
 .app {
   position: relative;
   display: grid;
   grid-template-columns: 1fr var(--rail);
+  grid-template-rows: 1fr var(--bar);
   height: 100dvh;
 }
 
@@ -65,6 +65,7 @@ body {
 /* ---- map ---------------------------------------------------------------- */
 
 .stage {
+  grid-area: 1 / 1;
   position: relative;
   overflow: hidden;
   touch-action: none;
@@ -101,7 +102,7 @@ body {
 .status {
   position: absolute;
   left: 50%;
-  bottom: var(--bar-space);
+  bottom: var(--gap);
   transform: translateX(-50%);
   font-size: 12px;
   color: var(--muted);
@@ -111,7 +112,7 @@ body {
 .map-controls {
   position: absolute;
   right: var(--gap);
-  bottom: var(--bar-space);
+  bottom: var(--gap);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -208,19 +209,20 @@ body {
 /* ---- rail --------------------------------------------------------------- */
 
 .rail {
+  grid-area: 1 / 2 / 3 / 3;
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: var(--clock) 0 var(--bar-space);
+  padding-top: var(--clock);
 }
 
-/* Divider from under the clock to above the footer pill. */
+/* Divider from under the clock down to the bottom edge. */
 .rail::before {
   content: "";
   position: absolute;
   top: var(--clock);
-  bottom: var(--bar-space);
+  bottom: 0;
   left: 0;
   border-left: 1px solid var(--line);
 }
@@ -346,40 +348,68 @@ body {
   border-top: 1px solid var(--line);
 }
 
-/* Cog under the palette, opening the color settings beside the rail. */
-.grade-toggle {
+/* Icon actions on one row at the rail foot, level with the layer bar. */
+.actions {
+  margin-top: auto;
+  height: var(--bar);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+.action {
   appearance: none;
+  position: relative;
+  flex: none;
   display: flex;
   align-items: center;
-  height: 40px;
+  justify-content: center;
+  width: 28px;
   padding: 0;
   border: 0;
-  border-top: 1px solid var(--line);
   background: none;
   color: var(--muted);
   cursor: pointer;
 }
 
-.grade-toggle[hidden] {
+.action[hidden] {
   display: none;
 }
 
-.grade-toggle:hover,
-.grade-toggle[aria-expanded="true"] {
+.action:hover,
+.action:focus-within,
+.action[aria-expanded="true"] {
   color: var(--ink);
 }
 
-.grade-toggle:focus-visible,
+/* A select stays clickable, transparent, over its icon. */
+.action .picker {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.action:focus-visible,
+.action:has(.picker:focus-visible),
 .grade-reset:focus-visible {
   outline: 1px solid var(--muted);
   outline-offset: -1px;
+}
+
+.share .icon-copied,
+.share.copied .icon-share {
+  display: none;
+}
+
+.share.copied .icon-copied {
+  display: block;
 }
 
 .grade {
   position: absolute;
   z-index: 2;
   right: calc(100% + var(--gap));
-  bottom: var(--bar-space);
+  bottom: var(--bar);
   width: 220px;
   display: grid;
   gap: 12px;
@@ -486,18 +516,13 @@ body {
 
 /* ---- footer ------------------------------------------------------------- */
 
-/* Floating bar over the map and the rail foot, square like the rail. */
+/* Layer bar docked under the map, styled like the rail. */
 .bar {
-  position: absolute;
-  z-index: 1;
-  left: var(--gap);
-  right: var(--gap);
-  bottom: var(--gap);
-  height: var(--bar);
+  grid-area: 2 / 1;
+  min-width: 0;
   display: flex;
-  border: 1px solid var(--line);
-  background: rgba(7, 8, 17, 0.85);
-  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  background: var(--bg);
 }
 
 .field {
@@ -540,48 +565,14 @@ body {
   stroke-linejoin: round;
 }
 
-/* Icon only: square cell; a select stays clickable, transparent, on top. */
-.field.icon-only {
-  flex: none;
-  justify-content: center;
-  width: var(--bar);
-  padding: 0;
-}
-
-.icon-only .picker {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-}
-
-.icon-only:has(.picker:focus-visible) {
-  outline: 1px solid var(--muted);
-  outline-offset: -1px;
-}
-
-.share .icon-copied,
-.share.copied .icon-share {
-  display: none;
-}
-
-.share.copied .icon-copied {
-  display: block;
-}
-
+/* Same text as the rail pickers; the icon is muted until hovered. */
 .field .picker {
   flex: 1;
   height: 100%;
   padding: 0 20px 0 0;
   background-position: right 0 center;
-  color: inherit;
+  font-size: 13px;
   text-overflow: ellipsis;
-}
-
-.share {
-  appearance: none;
-  border: 0;
-  background: none;
-  cursor: pointer;
 }
 
 /* Native select, styled as plain text with a chevron. */
@@ -604,8 +595,7 @@ body {
 }
 
 .picker:focus-visible,
-.round:focus-visible,
-.share:focus-visible {
+.round:focus-visible {
   outline: 1px solid var(--muted);
   outline-offset: -1px;
 }
@@ -657,6 +647,11 @@ body {
   }
 
   .field .picker {
-    font-size: 13px;
+    font-size: 12px;
+  }
+
+  /* Three actions in the 64px between the cell margins. */
+  .action {
+    width: 20px;
   }
 }

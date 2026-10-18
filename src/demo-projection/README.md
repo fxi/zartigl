@@ -42,7 +42,8 @@ docker compose pull && docker compose up -d   # use the published image
   (`shaders/draw.vert.glsl`).
 - **Compositing and color grade.** The GL canvas is premultiplied and
   layers blend with `compositeBlend` (`view.ts`), so faded trails keep their
-  coverage. The cog under the palette opens zartigl's optional particle color
+  coverage. The cog in the actions row at the foot of the rail
+  (with projection and share) opens zartigl's optional particle color
   grade (`lib/color-grade`: exposure, contrast, saturation, highlights),
   applied in the existing trail composite pass, so it toggles live at no extra
   pass cost.
