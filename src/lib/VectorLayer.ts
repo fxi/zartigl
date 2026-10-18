@@ -20,6 +20,7 @@ import {
   viewportGeoBounds,
 } from "./geo-util";
 import { ParticleSimulation } from "./ParticleSimulation";
+import { resolveColorGrade, type ColorGrade } from "./color-grade";
 import type {
   ParticleSimulationDebugInfo,
   RenderMode,
@@ -122,6 +123,7 @@ export class VectorLayer implements CustomLayerInterface {
       opacity: options.opacity ?? 1.0,
       logScale: options.logScale ?? false,
       vibrance: options.vibrance ?? 0.0,
+      colorGrade: resolveColorGrade(options.colorGrade),
       particleState: options.particleState ?? "auto",
       rgba8MaxParticleZoom: options.rgba8MaxParticleZoom ?? 4,
     });
@@ -732,6 +734,10 @@ export class VectorLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.simulation.setVibrance(v);
+  }
+
+  setColorGrade(grade: Partial<ColorGrade>): void {
+    this.simulation.setColorGrade(grade);
   }
 
   getDebugInfo(): VectorLayerDebugInfo {

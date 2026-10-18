@@ -1,6 +1,7 @@
 import type { ZarrSource } from "./ZarrSource";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import type { GeoVideoManifest } from "./geovideo";
+import type { ColorGrade } from "./color-grade";
 
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
@@ -64,6 +65,11 @@ export interface VectorLayerOptions {
   logScale?: boolean;
   /** Vibrance adjustment [-1, 1]. Default 0.0. */
   vibrance?: number;
+  /**
+   * Particle trail color grade. Omitted: off; missing values take the
+   * vibrant preset (see resolveColorGrade).
+   */
+  colorGrade?: Partial<ColorGrade>;
   unit?: string;
 }
 

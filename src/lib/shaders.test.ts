@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
+import compositeFrag from "./shaders/composite.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
 import gridFrag from "./shaders/grid.frag.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
@@ -136,6 +137,7 @@ describe("particle shader invalid-state guards", () => {
       gridFrag,
       gridGlobeFrag,
       geoVideoFrag,
+      compositeFrag,
     ];
     for (const shader of shaders) {
       expect(shader).not.toContain("#include");
@@ -143,5 +145,15 @@ describe("particle shader invalid-state guards", () => {
     for (const shader of [drawFrag, gridFrag, gridGlobeFrag, geoVideoFrag]) {
       expect(shader).toContain("vec3 applyVibrance(vec3 c, float v)");
     }
+  });
+
+  it("grades the trail composite only when enabled", () => {
+    expect(compositeFrag).toContain("vec3 gradeColor(vec3 c, vec4 g)");
+    expect(compositeFrag).toContain("vec3 applyVibrance(vec3 c, float v)");
+    expect(compositeFrag).toContain(
+      "u_grade_on > 0.5 ? gradeColor(color.rgb, u_grade) : color.rgb",
+    );
+    // Same alpha handling as the fade pass at opacity 1.
+    expect(compositeFrag).toContain("step(1.0 / 255.0, alpha)");
   });
 });

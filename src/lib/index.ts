@@ -16,6 +16,12 @@ export { VelocityField, stitchVelocityChunks } from "./VelocityField";
 export { ParticleSimulation } from "./ParticleSimulation";
 export { getPalettes } from "./gl-util";
 export {
+  COLOR_GRADE_OFF,
+  COLOR_GRADE_VIBRANT,
+  resolveColorGrade,
+} from "./color-grade";
+export type { ColorGrade } from "./color-grade";
+export {
   deriveDirectionMagnitudeComponents,
   getVectorDerivationVariables,
 } from "./vector-derivation";

@@ -1644,6 +1644,27 @@ describe("Zartigl facade", () => {
     ).toHaveLength(1);
   });
 
+  it("keeps the particle color grade off by default and updates it in place", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      { source: "zarr", map: map as never, catalog: catalog(vectorLayer()) },
+      "vector",
+    );
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
+    expect(
+      (renderLayer as unknown as { options: { colorGrade: unknown } }).options
+        .colorGrade,
+    ).toMatchObject({ enabled: false });
+    const spy = vi.spyOn(renderLayer, "setColorGrade");
+
+    await z.update({ settings: { colorGrade: { contrast: 0.2 } } });
+
+    expect(spy).toHaveBeenCalledWith({ contrast: 0.2 });
+    expect(
+      map.addLayerCalls.filter((call) => call.id === "zartigl"),
+    ).toHaveLength(1);
+  });
+
   it("passes palette settings to the render layer", async () => {
     const map = new FakeMap();
     const z = await createZartigl(

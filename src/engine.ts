@@ -35,4 +35,11 @@ export type { ColorRampInput, PaletteMeta } from "./lib/gl-util";
 export { validateScalarColorDomain } from "./lib/scalar-color-domain";
 export type { ScalarColorDomain } from "./lib/scalar-color-domain";
 export { TrailFade, fadeToFrames, fadeToOpacity } from "./lib/trail-fade";
+export {
+  COLOR_GRADE_OFF,
+  COLOR_GRADE_VIBRANT,
+  colorGradeVec4,
+  resolveColorGrade,
+} from "./lib/color-grade";
+export type { ColorGrade } from "./lib/color-grade";
 export { nextChunk, pairChunk } from "./lib/archive-timeline";

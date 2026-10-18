@@ -18,11 +18,18 @@ import updateFrag from "./shaders/update.frag.glsl";
 import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
+import compositeFrag from "./shaders/composite.frag.glsl";
 import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridFrag from "./shaders/grid.frag.glsl";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
 import { TrailFade } from "./trail-fade";
+import {
+  COLOR_GRADE_OFF,
+  colorGradeVec4,
+  resolveColorGrade,
+  type ColorGrade,
+} from "./color-grade";
 
 export type RenderMode = "raster" | "particles" | "raster+particles";
 export type ParticleStateMode = "auto" | "rgba8";
@@ -44,6 +51,7 @@ export interface ParticleSimulationDebugInfo {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  colorGrade: ColorGrade;
   scalarMode: boolean;
   devicePixelRatio?: number;
   webgl: WebGLRendererInfo | null;
@@ -114,6 +122,8 @@ export interface SimulationParams {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  /** Grade of the trail composite; off by default. */
+  colorGrade: ColorGrade;
   scalarMode: boolean;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
@@ -128,6 +138,7 @@ const DEFAULTS: SimulationParams = {
   opacity: 1.0,
   logScale: false,
   vibrance: 0.0,
+  colorGrade: COLOR_GRADE_OFF,
   scalarMode: false,
   particleState: "auto",
   rgba8MaxParticleZoom: 4,
@@ -141,6 +152,7 @@ export class ParticleSimulation {
   private updateProgram!: WebGLProgram;
   private drawProgram!: WebGLProgram;
   private fadeProgram!: WebGLProgram;
+  private compositeProgram!: WebGLProgram;
   private gridProgram!: WebGLProgram;
   private gridGlobeProgram!: WebGLProgram;
 
@@ -192,6 +204,7 @@ export class ParticleSimulation {
   private updateLocs!: Record<string, WebGLUniformLocation | null>;
   private drawLocs!: Record<string, WebGLUniformLocation | null>;
   private fadeLocs!: Record<string, WebGLUniformLocation | null>;
+  private compositeLocs!: Record<string, WebGLUniformLocation | null>;
   private gridLocs!: Record<string, WebGLUniformLocation | null>;
   private gridGlobeLocs!: Record<string, WebGLUniformLocation | null>;
 
@@ -221,6 +234,7 @@ export class ParticleSimulation {
     );
     this.drawProgram = createProgram(gl, stateDefine + drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
+    this.compositeProgram = createProgram(gl, quadVert, compositeFrag);
     this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
     this.gridGlobeProgram = createProgram(gl, gridGlobeVert, gridGlobeFrag);
 
@@ -264,6 +278,11 @@ export class ParticleSimulation {
     this.fadeLocs = this.getUniforms(this.fadeProgram, [
       "u_screen",
       "u_opacity",
+    ]);
+    this.compositeLocs = this.getUniforms(this.compositeProgram, [
+      "u_screen",
+      "u_grade_on",
+      "u_grade",
     ]);
     this.gridLocs = this.getUniforms(this.gridProgram, [
       "u_field",
@@ -748,10 +767,12 @@ export class ParticleSimulation {
     // --- 5. Display: blit screen texture to MapLibre's framebuffer ---
     gl.bindFramebuffer(gl.FRAMEBUFFER, mapFramebuffer);
     gl.viewport(0, 0, this.screenWidth, this.screenHeight);
-    gl.useProgram(this.fadeProgram);
+    const grade = this.params.colorGrade;
+    gl.useProgram(this.compositeProgram);
     bindTexture(gl, this.screenTextures[1], 0);
-    gl.uniform1i(this.fadeLocs["u_screen"], 0);
-    gl.uniform1f(this.fadeLocs["u_opacity"], 1.0);
+    gl.uniform1i(this.compositeLocs["u_screen"], 0);
+    gl.uniform1f(this.compositeLocs["u_grade_on"], grade.enabled ? 1 : 0);
+    gl.uniform4f(this.compositeLocs["u_grade"], ...colorGradeVec4(grade));
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     this.drawQuad();
@@ -1004,6 +1025,11 @@ export class ParticleSimulation {
     this.params.vibrance = v;
   }
 
+  /** Partial values take the vibrant preset; see resolveColorGrade. */
+  setColorGrade(grade: Partial<ColorGrade>): void {
+    this.params.colorGrade = resolveColorGrade(grade);
+  }
+
   setScalarMode(v: boolean): void {
     this.params.scalarMode = v;
   }
@@ -1074,6 +1100,7 @@ export class ParticleSimulation {
       opacity: this.params.opacity,
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
+      colorGrade: { ...this.params.colorGrade },
       scalarMode: this.params.scalarMode,
       devicePixelRatio:
         typeof window !== "undefined" ? window.devicePixelRatio : undefined,
@@ -1086,6 +1113,7 @@ export class ParticleSimulation {
     gl.deleteProgram(this.updateProgram);
     gl.deleteProgram(this.drawProgram);
     gl.deleteProgram(this.fadeProgram);
+    gl.deleteProgram(this.compositeProgram);
     gl.deleteProgram(this.gridProgram);
     gl.deleteProgram(this.gridGlobeProgram);
     for (const t of this.particleStateTextures) {

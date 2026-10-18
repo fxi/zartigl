@@ -26,6 +26,7 @@ import type {
 } from "./types";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
+import { COLOR_GRADE_OFF, type ColorGrade } from "./color-grade";
 import { nextChunk } from "./archive-timeline";
 import {
   ZartiglFrameUnavailableError,
@@ -55,6 +56,11 @@ export interface ZartiglSettings {
   opacity: number;
   logScale: boolean;
   vibrance: number;
+  /**
+   * Particle trail color grade; off by default. Missing values take the
+   * vibrant preset (see resolveColorGrade).
+   */
+  colorGrade: Partial<ColorGrade>;
   /** Fixed physical-value domain for scalar colors. Null uses frame extrema. */
   colorDomain: [number, number] | null;
   particleState: ParticleStateMode;
@@ -564,6 +570,7 @@ function defaultSettings(
     opacity: defaults?.raster?.opacity ?? 1,
     logScale: defaults?.raster?.logScale ?? false,
     vibrance: defaults?.raster?.vibrance ?? 0,
+    colorGrade: COLOR_GRADE_OFF,
     colorDomain: validateScalarColorDomain(
       defaults?.raster?.colorDomain ?? null,
     ),
@@ -1865,6 +1872,7 @@ export class Zartigl {
       opacity: this.settings.opacity,
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
+      colorGrade: this.settings.colorGrade,
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
       geoVideoAutoplay: this.autoplay && this.autoplayPending,
@@ -2057,6 +2065,9 @@ export class Zartigl {
     }
     if (settings.vibrance != null) {
       layer.setVibrance(settings.vibrance);
+    }
+    if (settings.colorGrade != null) {
+      layer.setColorGrade(settings.colorGrade);
     }
     if (settings.colorDomain !== undefined) {
       layer.setColorDomain(settings.colorDomain);

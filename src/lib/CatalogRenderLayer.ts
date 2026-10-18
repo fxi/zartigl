@@ -13,6 +13,7 @@ import type {
   FieldMeta,
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
+import type { ColorGrade } from "./color-grade";
 import type {
   CatalogEntry,
   CatalogWmtsSource,
@@ -546,6 +547,13 @@ export class CatalogRenderLayer implements CustomLayerInterface {
 
   setVibrance(v: number): void {
     this.delegate?.setVibrance(v);
+  }
+
+  /** Particle trails only; rasters ignore it. */
+  setColorGrade(grade: Partial<ColorGrade>): void {
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setColorGrade(grade);
+    }
   }
 
   setColorDomain(domain: [number, number] | null): void {
