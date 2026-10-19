@@ -83,9 +83,12 @@ export interface StoryScene {
   name: LocalizedText;
   chapter?: string;
   theme: string;
-  layout: "full" | "split-left" | "split-right" | "overlay";
+  /** A layout id the app renders; see `StoryValidationOptions.layouts`. */
+  layout: string;
   blocks: StoryBlock[];
   playback?: StoryPlayback;
+  /** Auto-advance: time on this scene before the next, when the story plays. */
+  durationMs?: number;
 }
 
 export interface StoryDocument {

@@ -7,6 +7,16 @@ import {
   type Mat3,
 } from "./projections";
 
+/** Margins of the free zone the sphere is centered and fitted in, css px. */
+export interface Inset {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export const NO_INSET: Inset = { top: 0, right: 0, bottom: 0, left: 0 };
+
 /** Everything that places the sphere on screen. */
 export interface View {
   blend: Blend;
@@ -16,6 +26,31 @@ export interface View {
   /** Css px. */
   width: number;
   height: number;
+  /** Free zone; the whole viewport when omitted. */
+  inset?: Inset;
+}
+
+/** The free zone: its center and size in css px, at least 1 px wide. */
+export function viewArea(view: View): {
+  cx: number;
+  cy: number;
+  width: number;
+  height: number;
+} {
+  const { top, right, bottom, left } = view.inset ?? NO_INSET;
+  const width = Math.max(1, view.width - left - right);
+  const height = Math.max(1, view.height - top - bottom);
+  return { cx: left + width / 2, cy: top + height / 2, width, height };
+}
+
+/** Linear blend of two insets, for eased layout changes. */
+export function lerpInset(a: Inset, b: Inset, t: number): Inset {
+  return {
+    top: a.top + (b.top - a.top) * t,
+    right: a.right + (b.right - a.right) * t,
+    bottom: a.bottom + (b.bottom - a.bottom) * t,
+    left: a.left + (b.left - a.left) * t,
+  };
 }
 
 /** Values derived once per frame from a View, shared by every pass. */
@@ -75,9 +110,10 @@ export function regionView(
     180;
   const { ka, kb, t } = view.blend;
   const scale = (1 - t) * ka + t * kb;
+  const area = viewArea(view);
   return {
     rotate: [-lon, -lat, 0],
-    zoom: (REGION_FILL * Math.min(view.width, view.height)) / (span * scale),
+    zoom: (REGION_FILL * Math.min(area.width, area.height)) / (span * scale),
   };
 }
 
@@ -151,7 +187,8 @@ export class Program {
     this.float("u_kb", blend.kb);
     this.float("u_t", blend.t);
     this.float("u_zoom", frame.zoom);
-    this.vec2("u_center", frame.width / 2, frame.height / 2);
+    const { cx, cy } = viewArea(frame);
+    this.vec2("u_center", cx, cy);
     this.vec2("u_viewport", frame.width, frame.height);
     this.float(
       "u_clip",

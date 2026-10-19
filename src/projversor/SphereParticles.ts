@@ -6,7 +6,7 @@ import drawFrag from "./shaders/draw.frag.glsl";
 import drawVert from "./shaders/draw.vert.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 import quadVert from "./shaders/quad.vert.glsl";
-import { Program, compositeBlend, type ViewFrame } from "./view";
+import { Program, compositeBlend, viewArea, type ViewFrame } from "./view";
 
 export interface ParticleStyle {
   ramp: WebGLTexture;
@@ -266,10 +266,15 @@ export class SphereParticles {
 
 /**
  * Angular radius (radians) of the cap worth simulating: the clip, narrowed
- * to the viewport's half diagonal when zoomed in.
+ * to the distance from the projection center to the farthest viewport corner
+ * when zoomed in.
  */
 export function visibleCap(frame: ViewFrame): number {
   const clip = (Math.min(frame.clipAngle, 180) * Math.PI) / 180;
-  const halfDiagonal = Math.hypot(frame.width, frame.height) / 2;
-  return Math.min(clip, (1.15 * halfDiagonal) / frame.pxPerRadian);
+  const { cx, cy } = viewArea(frame);
+  const reach = Math.hypot(
+    Math.max(cx, frame.width - cx),
+    Math.max(cy, frame.height - cy),
+  );
+  return Math.min(clip, (1.15 * reach) / frame.pxPerRadian);
 }

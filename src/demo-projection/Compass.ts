@@ -1,4 +1,4 @@
-import { normalizeBearing, pointerBearing } from "./bearing";
+import { normalizeBearing, pointerBearing } from "../projversor";
 
 /** Keyboard bearing step, in degrees. */
 const KEY_STEP = 5;

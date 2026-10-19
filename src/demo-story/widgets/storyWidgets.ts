@@ -1,6 +1,6 @@
 import { findCatalogEntries } from "../../catalog";
-import type { StoryRegistry, StoryWidgetContext } from "../runtime";
-import { resolveLocalizedText } from "../runtime";
+import type { StoryRegistry, StoryWidgetContext } from "../../story";
+import { resolveLocalizedText } from "../../story";
 import { ARCTIC_POINT, MAYOTTE_POINT } from "../scenes";
 import { mobileMediaQuery } from "../breakpoints";
 import ensoJson from "../data/enso.json";

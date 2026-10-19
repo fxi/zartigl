@@ -215,7 +215,7 @@ const DEFAULT_PARTICLES: ParticleSettings = {
   fade: 0.7,
 };
 
-/** Demo defaults, then the catalog entry defaults, then the demo override. */
+/** Projversor defaults, then the catalog entry defaults, then the layer override. */
 export function particleSettings(
   catalog: Partial<ParticleSettings> | undefined,
   override: Partial<ParticleSettings> | undefined,

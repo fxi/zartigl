@@ -15,10 +15,10 @@ import {
 import type { ParticleSettings } from "./scales";
 
 /**
- * A catalog entry with a GeoVideo archive, with the styling this projection
- * demo gives it: vector entries play as particles, scalar ones as a raster.
+ * A catalog entry with a GeoVideo archive, with the styling this projversor
+ * renderer gives it: vector entries play as particles, scalar ones as a raster.
  */
-export interface DemoLayer {
+export interface ProjversorLayer {
   /** Picker and share key: the entry's first alias, else its id. */
   id: string;
   /** zartigl catalog entry id. */
@@ -38,7 +38,7 @@ export interface DemoLayer {
   tint?: string;
 }
 
-type LayerStyle = Partial<Omit<DemoLayer, "entryId" | "kind">>;
+type LayerStyle = Partial<Omit<ProjversorLayer, "entryId" | "kind">>;
 
 /**
  * Particle palettes start dark so the bright trails read against the black
@@ -93,21 +93,21 @@ export const RASTER_PALETTES: PaletteMeta[] = getPalettes().filter(
   (p) => p.id !== "mono-black",
 );
 
-export function layerPalettes(layer: DemoLayer): PaletteMeta[] {
+export function layerPalettes(layer: ProjversorLayer): PaletteMeta[] {
   return layer.kind === "vector" ? PARTICLE_PALETTES : RASTER_PALETTES;
 }
 
 /** Every catalog entry with a GeoVideo archive, vector layers first. */
 export function catalogLayers(
   entries: readonly CatalogEntry[] = catalog.layers,
-): DemoLayer[] {
-  const layers: DemoLayer[] = [];
+): ProjversorLayer[] {
+  const layers: ProjversorLayer[] = [];
   for (const entry of entries) {
     if (!entry.sources.some(isGeoVideoArchiveSource)) {
       continue;
     }
     const id = entry.aliases?.[0] ?? entry.id;
-    const base: DemoLayer = {
+    const base: ProjversorLayer = {
       id,
       entryId: entry.id,
       kind: entry.kind,
@@ -129,18 +129,18 @@ export function catalogLayers(
   );
 }
 
-export const DEMO_LAYERS: DemoLayer[] = catalogLayers();
+export const PROJVERSOR_LAYERS: ProjversorLayer[] = catalogLayers();
 
 /** Scalar layers offered to color the particles. */
-export const TINT_LAYERS: DemoLayer[] = DEMO_LAYERS.filter(
+export const TINT_LAYERS: ProjversorLayer[] = PROJVERSOR_LAYERS.filter(
   (l) => l.kind === "scalar",
 );
 
 /** Layer of a share key: a layer id, or the entry id older links carry. */
 export function findLayer(
   key: string | undefined,
-  layers: readonly DemoLayer[] = DEMO_LAYERS,
-): DemoLayer | undefined {
+  layers: readonly ProjversorLayer[] = PROJVERSOR_LAYERS,
+): ProjversorLayer | undefined {
   return (
     layers.find((l) => l.id === key) ?? layers.find((l) => l.entryId === key)
   );

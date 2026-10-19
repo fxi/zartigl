@@ -5,7 +5,14 @@
 - `src/lib/` contains the zartigl runtime: Zarr loading, scalar/vector layers,
   shaders, particle simulation, and the `Zartigl` facade.
 - `src/catalog/` contains the built-in catalog JSON and TypeScript exports.
+- `src/projversor/` contains the MapLibre-free projversor renderer (blended
+  projections, sphere particles and rasters), published as
+  `@fxi/zartigl/projversor`.
+- `src/story/` contains the story runtime (documents, registry, pager, scene
+  timer), published as `@fxi/zartigl/story`.
 - `src/demo-prod/` is the full interactive demo app.
+- `src/demo-projection/` and `src/demo-story-projversor/` are the projversor
+  explorer and story; they import zartigl only through its package entries.
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
   helper scripts.

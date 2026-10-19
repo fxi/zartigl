@@ -5,7 +5,7 @@ The demo is driven by two versioned documents:
 - `story.json` owns narrative order, localized copy, themes, layouts, blocks, and playback policy.
 - `views.json` owns reusable visual/data states. A view is an `{ id, type, config }` envelope interpreted by a registered adapter.
 
-The runtime in `runtime/` deliberately has no Zartigl dependency. Applications add view types with `StoryRegistry.registerViewType()` and specialized blocks with `registerWidgetType()`. The current demo registers `zartigl-map` plus the Arctic, ENSO, and Mayotte charts.
+The runtime in `../story/` (published as `@fxi/zartigl/story`) deliberately has no Zartigl dependency. Applications add view types with `StoryRegistry.registerViewType()` and specialized blocks with `registerWidgetType()`. The current demo registers `zartigl-map` plus the Arctic, ENSO, and Mayotte charts.
 
 ## Authoring rules
 
@@ -15,7 +15,7 @@ The runtime in `runtime/` deliberately has no Zartigl dependency. Applications a
 - Copy blocks can opt into `backdrop: "dark-gradient"` when the underlying view does not provide enough text contrast. Omit it (or use `none`) otherwise.
 - Choose playback explicitly: `none`, `autoplay`, or a discrete `sequence`.
 - Navigation is scene-based: buttons, keyboard, and wheel all activate one exact scene. Continuous scroll is intentionally outside the v1 runtime.
-- Validate structural changes against the JSON Schemas in `schemas/`. Adapter-specific configuration is covered by its own schema, such as `zartigl-map.schema.json`.
+- Validate structural changes against the story and views JSON Schemas in `../story/schemas/`. Adapter-specific configuration is covered by its own schema, such as `schemas/zartigl-map.schema.json`.
 
 The MapX export in `story_map_mapx_test.json` remains a design reference; it is not loaded by the runtime.
 

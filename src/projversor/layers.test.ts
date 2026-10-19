@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { catalog, type CatalogEntry } from "../catalog";
 import { isGeoVideoArchiveSource, type GeoVideoIndex } from "../engine";
 import {
-  DEMO_LAYERS,
+  PROJVERSOR_LAYERS,
   PARTICLE_PALETTES,
   TINT_LAYERS,
   catalogLayers,
@@ -11,14 +11,14 @@ import {
   loadTintChunks,
 } from "./layers";
 
-const tinted = DEMO_LAYERS.find((l) => l.tint)!;
+const tinted = PROJVERSOR_LAYERS.find((l) => l.tint)!;
 
 describe("catalogLayers", () => {
   it("lists every catalog entry with a GeoVideo archive", () => {
     const archived = catalog.layers.filter((e) =>
       e.sources.some(isGeoVideoArchiveSource),
     );
-    const entryIds = new Set(DEMO_LAYERS.map((l) => l.entryId));
+    const entryIds = new Set(PROJVERSOR_LAYERS.map((l) => l.entryId));
     expect(entryIds).toEqual(new Set(archived.map((e) => e.id)));
   });
 
@@ -28,29 +28,29 @@ describe("catalogLayers", () => {
   });
 
   it("puts vector layers first, each tinted layer after its plain one", () => {
-    const kinds = DEMO_LAYERS.map((l) => l.kind);
+    const kinds = PROJVERSOR_LAYERS.map((l) => l.kind);
     expect(kinds.indexOf("scalar")).toBe(kinds.lastIndexOf("vector") + 1);
-    const plain = DEMO_LAYERS.findIndex(
+    const plain = PROJVERSOR_LAYERS.findIndex(
       (l) => l.id === "ocean-current-velocity",
     );
-    expect(DEMO_LAYERS[plain + 1].id).toBe("ocean-velocity-temperature");
+    expect(PROJVERSOR_LAYERS[plain + 1].id).toBe("ocean-velocity-temperature");
   });
 
   it("gives every layer a unique key", () => {
-    const keys = DEMO_LAYERS.map((l) => l.id);
+    const keys = PROJVERSOR_LAYERS.map((l) => l.id);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
   it("tints only with scalar layers", () => {
     const scalars = new Set(TINT_LAYERS.map((l) => l.entryId));
-    for (const layer of DEMO_LAYERS.filter((l) => l.tint)) {
+    for (const layer of PROJVERSOR_LAYERS.filter((l) => l.tint)) {
       expect(layer.kind).toBe("vector");
       expect(scalars.has(layer.tint!)).toBe(true);
     }
   });
 
   it("styles particles with speed palettes, rasters with the catalog's", () => {
-    for (const layer of DEMO_LAYERS) {
+    for (const layer of PROJVERSOR_LAYERS) {
       expect(layerPalettes(layer).some((p) => p.id === layer.palette)).toBe(
         true,
       );

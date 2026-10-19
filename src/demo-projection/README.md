@@ -5,9 +5,14 @@ regional (Mediterranean), on a sphere that morphs between world projections.
 Vector archives (currents, wind, waves, sea ice) play as animated particles,
 scalar ones (temperature, salinity, biogeochemistry, …) as a raster.
 
-projversor uses zartigl only through its published entry points,
-`@fxi/zartigl/engine` (here `../engine`) and `@fxi/zartigl/catalog` (`../catalog`);
-ESLint rejects deeper imports so the demo can move to its own repository.
+The renderer lives in `src/projversor/` and is published as
+`@fxi/zartigl/projversor`: the `Projversor` class owns the canvases, the GL
+context, archive loading and the view, and reports changes through events.
+This demo is its controls (rail, pickers, timeline, legend, compass, share);
+`../demo-story-projversor` is a story on the same renderer. Both use zartigl only
+through its package entries (`../engine`, `../catalog`, `../projversor`,
+`../story`); ESLint rejects deeper imports so they can move to their own
+repository.
 
 ```bash
 npm run dev:projection     # vite dev server
@@ -17,7 +22,7 @@ npm run build:projection   # dist-projection/, served under /zartigl/projversor/
 ## Container
 
 The repository `Dockerfile` builds this demo and serves it at `/` with nginx
-on port 8080. Images are published to `ghcr.io/fxi/zartigl-projversor`
+on port 8080, with the projversor story at `/story/`. Images are published to `ghcr.io/fxi/zartigl-projversor`
 (`latest` from `main`, semver tags from releases).
 
 ```bash
@@ -26,6 +31,8 @@ docker compose pull && docker compose up -d   # use the published image
 ```
 
 ## Technique
+
+File names below are in `src/projversor/` unless noted.
 
 - **Twin projections.** Each projection exists twice, as a d3 raw formula
   (`projections.ts`) and in GLSL (`shaders/project.glsl`). The canvas overlay
@@ -69,7 +76,7 @@ docker compose pull && docker compose up -d   # use the published image
   currents with sea water temperature from the same Copernicus model,
   globally and in the Mediterranean.
 - **North up by default.** As d3-geo-zoom's `northUp`, drags keep the roll
-  (gamma) at zero. The compass (`Compass.ts`, `bearing.ts`) shows the
+  (gamma) at zero. The compass (this demo's `Compass.ts`, with `bearing.ts`) shows the
   bearing; dragging around it or the arrow keys free and set the bearing,
   and a click eases back to north up and locks it again.
 - **Timeline as a jog wheel.** Scrubbing cancels stale decodes, and the

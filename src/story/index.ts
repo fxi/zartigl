@@ -8,3 +8,6 @@ export * from "./registry";
 export * from "./TimeInteraction";
 export * from "./WidgetLifecycle";
 export type * from "./types";
+export * from "./pager";
+export * from "./sceneTimer";
+export * from "./hash";

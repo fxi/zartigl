@@ -9,17 +9,80 @@ export default [
     languageOptions: { globals: globals.browser },
   },
   {
-    // projversor will move to its own repository and consume zartigl only
-    // through its published entry points.
-    files: ["src/demo-projection/**/*.ts"],
+    // Modules are published as package entries: projversor reaches zartigl
+    // through the engine and catalog entries only.
+    files: ["src/projversor/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
             {
-              group: ["../lib/*", "../catalog/*", "../demo-*/*", "../mapx/*"],
-              message: "Import zartigl through ../engine or ../catalog only.",
+              group: [
+                "../lib",
+                "../lib/*",
+                "../catalog/*",
+                "../demo-*",
+                "../demo-*/*",
+                "../mapx",
+                "../mapx/*",
+                "../story",
+                "../story/*",
+              ],
+              message: "Import zartigl modules through their entry only.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The story runtime stands alone: no other zartigl module.
+    files: ["src/story/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "!../story", "!../story/*"],
+              message: "The story runtime imports no other zartigl module.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The projversor apps consume zartigl only through package entries, so
+    // they can move to their own repository.
+    files: ["src/demo-projection/**/*.ts", "src/demo-story-projversor/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "../lib",
+                "../lib/*",
+                "../catalog/*",
+                "../projversor/*",
+                "../story/*",
+                "../demo-*",
+                "../demo-*/*",
+                "../mapx",
+                "../mapx/*",
+                "../../lib",
+                "../../lib/*",
+                "../../catalog/*",
+                "../../projversor/*",
+                "../../story/*",
+                "../../demo-*",
+                "../../demo-*/*",
+              ],
+              message:
+                "Import zartigl through ../engine, ../catalog, ../projversor or ../story only.",
             },
           ],
         },

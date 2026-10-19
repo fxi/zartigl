@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
-import storyJson from "../story.json";
-import viewsJson from "../views.json";
+import storyJson from "./story.json";
+import viewsJson from "./views.json";
 import {
   parseStoryDocuments,
   resolveLocalizedText,
+  storyExternalLinkAttributes,
   validateStoryDocument,
-} from "./document";
-import { storyExternalLinkAttributes } from "./externalLinks";
-import type {
-  StoryCopyBlock,
-  StoryDocument,
-  StoryViewsDocument,
-  StoryWidgetBlock,
-} from "./types";
+  type StoryCopyBlock,
+  type StoryDocument,
+  type StoryViewsDocument,
+  type StoryWidgetBlock,
+} from "../story";
 
 function storyFixture(): StoryDocument {
   return {
@@ -104,10 +102,30 @@ describe("story documents", () => {
     expect(() => validateStoryDocument(invalid)).toThrow(/backdrop is invalid/);
   });
 
+  it("accepts the layouts an app names, and only those", () => {
+    const custom = structuredClone(storyFixture());
+    custom.scenes[0].layout = "n-s";
+    expect(() => validateStoryDocument(custom)).toThrow(/layout/);
+    expect(() =>
+      validateStoryDocument(custom, { layouts: ["n-s", "overlay"] }),
+    ).not.toThrow();
+  });
+
   it("rejects duplicate scene ids", () => {
     const invalid = structuredClone(storyFixture());
     invalid.scenes[1].id = invalid.scenes[0].id;
     expect(() => validateStoryDocument(invalid)).toThrow(/duplicated/);
+  });
+
+  it("accepts a positive scene duration and rejects others", () => {
+    const valid = structuredClone(storyFixture());
+    valid.scenes[0].durationMs = 12000;
+    expect(() => validateStoryDocument(valid)).not.toThrow();
+    for (const durationMs of [0, -1, Number.NaN, Infinity]) {
+      const invalid = structuredClone(storyFixture());
+      invalid.scenes[0].durationMs = durationMs;
+      expect(() => validateStoryDocument(invalid)).toThrow(/durationMs/);
+    }
   });
 
   it("rejects a missing view reference", () => {

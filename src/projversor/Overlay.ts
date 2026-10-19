@@ -7,7 +7,7 @@ import {
   type GeoRawProjection,
 } from "d3";
 import { blendRaw, invertBlend, type Blend } from "./projections";
-import type { ViewFrame } from "./view";
+import { viewArea, type ViewFrame } from "./view";
 
 export interface OverlayLayers {
   land: GeoPermissibleObjects;
@@ -81,12 +81,13 @@ export class Overlay {
 
   /** Sync the d3 projection with a frame; cheap enough for every frame. */
   setView(frame: ViewFrame): GeoProjection {
+    const { cx, cy } = viewArea(frame);
     this.blend = { ...frame.blend };
     this.mutate();
     return this.projection
       .rotate(frame.rotate)
       .scale(frame.zoom)
-      .translate([frame.width / 2, frame.height / 2])
+      .translate([cx, cy])
       .clipAngle(
         frame.clipAngle >= 180 ? (null as unknown as number) : frame.clipAngle,
       )

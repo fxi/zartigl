@@ -104,9 +104,24 @@ function validateBlock(
   }
 }
 
+/** Layouts of the original story demo, accepted when an app names none. */
+export const DEFAULT_STORY_LAYOUTS: readonly string[] = [
+  "full",
+  "split-left",
+  "split-right",
+  "overlay",
+];
+
+export interface StoryValidationOptions {
+  /** Scene layout ids the app renders. */
+  layouts?: readonly string[];
+}
+
 export function validateStoryDocument(
   value: unknown,
+  options: StoryValidationOptions = {},
 ): asserts value is StoryDocument {
+  const layouts = options.layouts ?? DEFAULT_STORY_LAYOUTS;
   invariant(isRecord(value), "root must be an object");
   invariant(value.schemaVersion === 1, "schemaVersion must be 1");
   invariant(
@@ -138,9 +153,7 @@ export function validateStoryDocument(
       `${path}.theme is unknown`,
     );
     invariant(
-      ["full", "split-left", "split-right", "overlay"].includes(
-        String(sceneValue.layout),
-      ),
+      layouts.includes(String(sceneValue.layout)),
       `${path}.layout is invalid`,
     );
     validateLocalized(sceneValue.name, `${path}.name`, locale);
@@ -151,6 +164,13 @@ export function validateStoryDocument(
     invariant(
       !("scrollVh" in sceneValue),
       `${path}.scrollVh is not supported by scene navigation`,
+    );
+    invariant(
+      sceneValue.durationMs === undefined ||
+        (typeof sceneValue.durationMs === "number" &&
+          Number.isFinite(sceneValue.durationMs) &&
+          sceneValue.durationMs > 0),
+      `${path}.durationMs must be a positive finite number`,
     );
     if (sceneValue.playback !== undefined) {
       invariant(
@@ -255,8 +275,9 @@ export function resolveLocalizedText(
 export function parseStoryDocuments(
   story: unknown,
   views: unknown,
+  options: StoryValidationOptions = {},
 ): { story: StoryDocument; views: StoryViewsDocument } {
-  validateStoryDocument(story);
+  validateStoryDocument(story, options);
   validateViewsDocument(views);
   validateStoryReferences(story, views);
   return { story, views };
