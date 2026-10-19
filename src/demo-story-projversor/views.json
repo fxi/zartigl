@@ -7,11 +7,7 @@
       "config": {
         "layer": "sea-water-temperature",
         "preset": "mollweide",
-        "rotate": [
-          -137,
-          -38,
-          0
-        ],
+        "rotate": [-137, -38, 0],
         "zoom": 4.6,
         "palette": "cyclic",
         "speed": 20,
@@ -24,11 +20,7 @@
       "config": {
         "layer": "ocean-velocity-temperature",
         "preset": "globe",
-        "rotate": [
-          55,
-          -30,
-          0
-        ],
+        "rotate": [55, -30, 0],
         "zoom": 1.35,
         "transitionMs": 2600,
         "wrap": true,
@@ -41,11 +33,7 @@
       "config": {
         "layer": "primary-swell-propagation",
         "preset": "mollweide",
-        "rotate": [
-          146,
-          47,
-          0
-        ],
+        "rotate": [146, 47, 0],
         "zoom": 1,
         "transitionMs": 2800
       }
@@ -56,11 +44,7 @@
       "config": {
         "layer": "med-currents-temperature",
         "preset": "globe",
-        "rotate": [
-          -17,
-          -38,
-          0
-        ],
+        "rotate": [-17, -38, 0],
         "zoom": 4,
         "transitionMs": 3000
       }
@@ -73,11 +57,7 @@
         "tint": "acf3b528-6915-4c3c-8a31-0d5200fc800b",
         "palette": "thermal",
         "preset": "globe",
-        "rotate": [
-          -14,
-          -42,
-          0
-        ],
+        "rotate": [-14, -42, 0],
         "zoom": 10,
         "transitionMs": 2400
       }
@@ -88,15 +68,12 @@
       "config": {
         "layer": "sea-ice-thickness",
         "preset": "north",
-        "rotate": [
-          0,
-          -90,
-          0
-        ],
+        "rotate": [0, -90, 0],
         "zoom": 2.8,
         "transitionMs": 3200,
-        "palette": "cyclic",
-        "speed": 20
+        "palette": "oxygen",
+        "speed": 20,
+        "time": "2026-06-01"
       }
     },
     {
@@ -106,11 +83,7 @@
         "layer": "ocean-velocity-temperature",
         "palette": "thermal",
         "preset": "south",
-        "rotate": [
-          0,
-          90,
-          0
-        ],
+        "rotate": [0, 90, 0],
         "zoom": 2.2,
         "transitionMs": 3200
       }
@@ -121,11 +94,7 @@
       "config": {
         "layer": "sea-surface-temperature-anomaly",
         "preset": "plate",
-        "rotate": [
-          160,
-          0,
-          0
-        ],
+        "rotate": [160, 0, 0],
         "zoom": 1.6,
         "transitionMs": 3000,
         "time": "2026-06-01",
@@ -140,11 +109,7 @@
         "tint": "3db0120b-17d2-4789-9952-efcc0953ecc4",
         "palette": "viridis",
         "preset": "south",
-        "rotate": [
-          60,
-          25,
-          0
-        ],
+        "rotate": [60, 25, 0],
         "zoom": 2.4,
         "transitionMs": 3600
       }
