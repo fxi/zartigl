@@ -799,6 +799,12 @@ export class Zartigl {
     const changesSource =
       change.source != null &&
       (changesLayer || change.source !== this.sourcePreference);
+    // An explicit auto request re-evaluates the preferred source after a
+    // deliberate fallback, such as returning from a Zarr depth to GeoVideo.
+    const reselectsAuto =
+      !changesLayer &&
+      change.source === "auto" &&
+      this.sourcePreference === "auto";
     const target: SourceTarget = { time: change.time, depth: change.depth };
 
     if (changesLayer) {
@@ -823,7 +829,7 @@ export class Zartigl {
       const range = hasTimeRange
         ? (change.timeRange ?? undefined)
         : this.timeRange;
-      if (changesSource) {
+      if (changesSource || reselectsAuto) {
         await this.changeSource(change.source!, range, target);
       } else if (await this.needsSourceSwitch(range, target, hasTimeRange)) {
         await this.changeSource(this.sourcePreference, range, target);

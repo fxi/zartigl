@@ -588,6 +588,10 @@ describe("Zartigl facade", () => {
       await z.update({ depth: 18 });
       expect(z.getSource()?.type).toBe("zarr");
       expect(z.getDepthMeta().current).toBe(20);
+
+      await z.update({ source: "auto", depth: 2, time: inPeriod });
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getDepthMeta().current).toBe(0);
     });
 
     it("selects Zarr at init for a non-surface depth", async () => {
