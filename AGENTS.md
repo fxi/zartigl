@@ -11,6 +11,8 @@
 - `src/story/` contains the story runtime (documents, registry, pager, scene
   timer), published as `@fxi/zartigl/story`.
 - `src/demo-prod/` is the full interactive demo app.
+- `src/demo-site/` is the home page prototype: a scroll story framed by a
+  header and a footer, driven by runtime content (`public/content/`).
 - `src/demo-projection/` and `src/demo-story-projversor/` are the projversor
   explorer and story; they import zartigl only through its package entries.
 - `src/mapx/` contains MapX snippet generation helpers.

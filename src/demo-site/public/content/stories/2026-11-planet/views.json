@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "views": [
+    {
+      "id": "south-currents",
+      "type": "projversor",
+      "config": {
+        "layer": "ocean-current-velocity",
+        "palette": "plasma",
+        "preset": "south",
+        "rotate": [0, 90, 0],
+        "zoom": 2.2,
+        "transitionMs": 1800
+      }
+    },
+    {
+      "id": "geneva-wind",
+      "type": "projversor",
+      "config": {
+        "layer": "surface-wind",
+        "preset": "globe",
+        "rotate": [-6, -46, 0],
+        "zoom": 1.15,
+        "palette": "mono-white",
+        "transitionMs": 1800
+      }
+    },
+    {
+      "id": "swell",
+      "type": "projversor",
+      "config": {
+        "layer": "primary-swell-propagation",
+        "preset": "mollweide",
+        "rotate": [146, 47, 0],
+        "zoom": 1,
+        "transitionMs": 2800
+      }
+    },
+    {
+      "id": "po-rhone",
+      "type": "projversor",
+      "config": {
+        "layer": "med-ocean-current-velocity",
+        "tint": "acf3b528-6915-4c3c-8a31-0d5200fc800b",
+        "palette": "thermal",
+        "preset": "globe",
+        "rotate": [-9, -42, 0],
+        "zoom": 6,
+        "transitionMs": 3000
+      }
+    },
+    {
+      "id": "green-pulse",
+      "type": "projversor",
+      "config": {
+        "layer": "phytoplankton-chlorophyll",
+        "preset": "lambert",
+        "rotate": [30, -10, 0],
+        "zoom": 0.95,
+        "speed": 20,
+        "transitionMs": 3000
+      }
+    },
+    {
+      "id": "pacific-heat",
+      "type": "projversor",
+      "config": {
+        "layer": "sea-surface-temperature-anomaly",
+        "preset": "mollweide",
+        "rotate": [160, 0, 0],
+        "zoom": 1,
+        "time": "2026-06-01",
+        "speed": 10,
+        "transitionMs": 3000
+      }
+    },
+    {
+      "id": "back-to-geneva",
+      "type": "projversor",
+      "config": {
+        "layer": "ocean-velocity-temperature",
+        "palette": "thermal",
+        "preset": "globe",
+        "rotate": [-6, -46, 0],
+        "zoom": 1,
+        "transitionMs": 3600
+      }
+    }
+  ]
+}

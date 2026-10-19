@@ -47,3 +47,12 @@ export type { LegendScale, TimeTick } from "./scales";
 export { normalizeBearing, pointerBearing, screenNorth } from "./bearing";
 export type { ScreenProjection } from "./bearing";
 export type { GeoVideoField } from "./GeoVideoField";
+export {
+  ProjversorStoryView,
+  parseProjversorView,
+  projversorState,
+} from "./storyView";
+export type {
+  ProjversorViewConfig,
+  ProjversorViewDefinition,
+} from "./storyView";

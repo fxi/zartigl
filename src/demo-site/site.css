@@ -1,0 +1,709 @@
+/*
+ * Scoped to .zs-site: the page can sit inside a CMS theme. Dark throughout,
+ * no panels: a veil on the text side, type and motion carry the story.
+ */
+
+@property --zs-veil-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 180deg;
+}
+
+@property --zs-veil-solid {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 22%;
+}
+
+@property --zs-veil-clear {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 58%;
+}
+
+.zs-site {
+  --zs-bg: #030409;
+  --zs-band: #000;
+  --zs-ink: #f2f1ee;
+  --zs-muted: #8b8f9c;
+  --zs-line: rgba(255, 255, 255, 0.14);
+  --zs-accent: #7fd4ff;
+  --zs-header-h: 56px;
+  --zs-gutter: clamp(16px, 4vw, 56px);
+  --zs-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --zs-sans: "Inter Tight Variable", "Inter Tight", system-ui, sans-serif;
+  /* Read by the projversor overlay: black sea and land, grey lines. */
+  --ocean: #000;
+  --land: #000;
+  --coast: rgba(170, 170, 170, 0.55);
+  --outline: rgba(255, 255, 255, 0.18);
+  --graticule: rgba(255, 255, 255, 0.11);
+  --equator: rgba(255, 196, 92, 0.45);
+  color-scheme: dark;
+  font-family: var(--zs-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  color: var(--zs-ink);
+  background: var(--zs-bg);
+}
+
+.zs-site *,
+.zs-site *::before,
+.zs-site *::after {
+  box-sizing: border-box;
+}
+
+.zs-site a {
+  color: inherit;
+}
+
+.zs-site button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Small caps-like labels shared by header, rail and kicker. */
+.zs-kicker,
+.zs-menu a,
+.zs-search,
+.zs-locale,
+.zs-rail,
+.zs-footer h2 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+/* ---- header: a black band ---------------------------------------------- */
+
+.zs-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: var(--zs-header-h);
+  padding: 0 var(--zs-gutter);
+  background: var(--zs-band);
+  border-bottom: 1px solid var(--zs-line);
+}
+
+.zs-brand {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.zs-menu {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.zs-menu ul {
+  display: flex;
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zs-menu a,
+.zs-search {
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--zs-muted);
+  transition: color 200ms;
+}
+
+.zs-menu a:hover,
+.zs-search:hover {
+  color: var(--zs-ink);
+}
+
+.zs-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.zs-locale {
+  padding: 4px 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--zs-muted);
+}
+
+.zs-locale[aria-pressed="true"] {
+  color: var(--zs-ink);
+  border-bottom-color: var(--zs-accent);
+}
+
+@media (max-width: 640px) {
+  .zs-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding-block: 12px;
+    row-gap: 10px;
+  }
+  .zs-menu {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .zs-menu ul {
+    gap: 20px;
+  }
+}
+
+/* ---- story ------------------------------------------------------------- */
+
+.zs-story {
+  position: relative;
+  background: var(--zs-bg);
+}
+
+.zs-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.zs-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/*
+ * One full-screen gradient from the solid text side to the clear map side.
+ * Its angle and stops are registered properties, so layouts crossfade.
+ */
+.zs-veil {
+  --fade: calc(var(--zs-veil-clear) - var(--zs-veil-solid));
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    var(--zs-veil-angle),
+    var(--zs-bg) var(--zs-veil-solid),
+    color-mix(in srgb, var(--zs-bg) 82%, transparent)
+      calc(var(--zs-veil-solid) + var(--fade) * 0.18),
+    color-mix(in srgb, var(--zs-bg) 50%, transparent)
+      calc(var(--zs-veil-solid) + var(--fade) * 0.45),
+    color-mix(in srgb, var(--zs-bg) 18%, transparent)
+      calc(var(--zs-veil-solid) + var(--fade) * 0.75),
+    transparent var(--zs-veil-clear)
+  );
+  transition:
+    --zs-veil-angle 1100ms var(--zs-ease),
+    --zs-veil-solid 1100ms var(--zs-ease),
+    --zs-veil-clear 1100ms var(--zs-ease);
+}
+
+.zs-story[data-layout="intro"] {
+  --zs-veil-angle: 180deg;
+  --zs-veil-solid: 4%;
+  --zs-veil-clear: 46%;
+}
+
+.zs-story[data-layout="left"] {
+  --zs-veil-angle: 90deg;
+  --zs-veil-solid: 26%;
+  --zs-veil-clear: 56%;
+}
+
+.zs-story[data-layout="right"] {
+  --zs-veil-angle: 270deg;
+  --zs-veil-solid: 26%;
+  --zs-veil-clear: 56%;
+}
+
+.zs-status {
+  position: absolute;
+  left: var(--zs-gutter);
+  bottom: 20px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--zs-muted);
+}
+
+.zs-story.is-loading .zs-status {
+  animation: zs-pulse 1.6s ease-in-out infinite;
+}
+
+/* Chapter rail: numbers always, names on the active one and on hover. */
+.zs-rail {
+  position: absolute;
+  top: 50%;
+  right: var(--zs-gutter);
+  z-index: 2;
+  transform: translateY(-50%);
+}
+
+.zs-rail ol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zs-rail button {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--zs-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.zs-rail-n::after {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  margin-left: 10px;
+  vertical-align: middle;
+  background: currentColor;
+  transition: width 500ms var(--zs-ease);
+}
+
+.zs-rail-name {
+  opacity: 0;
+  transform: translateX(8px);
+  transition:
+    opacity 400ms var(--zs-ease),
+    transform 400ms var(--zs-ease);
+}
+
+.zs-rail li.is-active button {
+  color: var(--zs-ink);
+}
+
+.zs-rail li.is-active .zs-rail-n::after {
+  width: 36px;
+  background: var(--zs-accent);
+}
+
+.zs-rail li.is-active .zs-rail-name,
+.zs-rail button:hover .zs-rail-name,
+.zs-rail button:focus-visible .zs-rail-name {
+  opacity: 1;
+  transform: none;
+}
+
+/* The right-hand text takes the rail's side: the rail moves left. */
+.zs-story[data-layout="right"] .zs-rail {
+  right: auto;
+  left: var(--zs-gutter);
+}
+
+.zs-story[data-layout="right"] .zs-rail ol {
+  align-items: flex-start;
+}
+
+.zs-story[data-layout="right"] .zs-rail button {
+  flex-direction: row;
+}
+
+/* Steps scroll over the sticky stage; only their text takes pointer events. */
+.zs-steps {
+  position: relative;
+  margin-top: -100vh;
+  margin-top: -100svh;
+  pointer-events: none;
+}
+
+.zs-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 115vh;
+  min-height: 115svh;
+  padding: 18vh var(--zs-gutter);
+}
+
+.zs-step[data-layout="left"] {
+  padding-right: 50%;
+}
+
+.zs-step[data-layout="right"] {
+  justify-content: flex-end;
+  padding-left: 50%;
+}
+
+.zs-step[data-layout="intro"] {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  text-align: center;
+}
+
+.zs-text {
+  pointer-events: auto;
+  max-width: 34rem;
+  opacity: 0.18;
+  transition: opacity 700ms var(--zs-ease);
+}
+
+.zs-step.is-active .zs-text {
+  opacity: 1;
+}
+
+.zs-step[data-layout="intro"] .zs-text {
+  max-width: 56rem;
+}
+
+/* Centered text can meet the sphere: a halo of the background keeps it read. */
+.zs-step[data-layout="intro"] :is(.zs-lede, .zs-source) {
+  text-shadow:
+    0 0 2px var(--zs-bg),
+    0 0 10px var(--zs-bg),
+    0 0 22px var(--zs-bg);
+}
+
+.zs-kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 1.2em;
+  color: var(--zs-accent);
+}
+
+.zs-step[data-layout="intro"] .zs-kicker {
+  justify-content: center;
+}
+
+.zs-index {
+  font-variant-numeric: tabular-nums;
+  color: var(--zs-ink);
+}
+
+.zs-rule {
+  flex: none;
+  width: 40px;
+  height: 1px;
+  background: currentColor;
+  transform-origin: left;
+}
+
+.zs-headline {
+  margin: 0 0 0.32em;
+  font-size: clamp(2.4rem, 5.4vw, 5.6rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+h1.zs-headline {
+  font-size: clamp(2.8rem, 6vw, 6.4rem);
+}
+
+/* Words rise through a mask; the clip keeps descenders. */
+.zs-w {
+  display: inline-block;
+  overflow: clip;
+  overflow-clip-margin: 0.12em;
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+  vertical-align: top;
+}
+
+.zs-w > span {
+  display: inline-block;
+}
+
+.zs-lede {
+  max-width: 36ch;
+  margin: 0 0 1.4em;
+  font-size: clamp(15px, 1.1vw + 9px, 19px);
+  line-height: 1.5;
+  text-wrap: pretty;
+  color: color-mix(in srgb, var(--zs-ink) 84%, transparent);
+}
+
+.zs-step[data-layout="intro"] .zs-lede {
+  margin-inline: auto;
+}
+
+.zs-source {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--zs-muted);
+}
+
+.zs-source a {
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--zs-accent) 60%, transparent);
+  transition: color 200ms;
+}
+
+.zs-source a:hover {
+  color: var(--zs-ink);
+}
+
+/* Scroll invitation at the bottom of the first screen: a label over a line
+   that keeps falling. */
+.zs-cue {
+  position: absolute;
+  left: 50%;
+  top: calc(100vh - 200px);
+  top: calc(100svh - 200px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--zs-ink);
+}
+
+.zs-cue-line {
+  position: relative;
+  width: 1px;
+  height: 56px;
+  overflow: hidden;
+  background: var(--zs-line);
+}
+
+.zs-cue-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--zs-accent);
+  animation: zs-fall 2.2s var(--zs-ease) infinite;
+}
+
+@keyframes zs-fall {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes zs-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 899px) {
+  .zs-story[data-layout] {
+    --zs-veil-angle: 0deg;
+    --zs-veil-solid: 18%;
+    --zs-veil-clear: 52%;
+  }
+  .zs-step,
+  .zs-step[data-layout] {
+    justify-content: flex-start;
+    align-items: flex-end;
+    padding: 0 var(--zs-gutter) 10vh;
+    text-align: left;
+  }
+  .zs-step[data-layout="intro"] .zs-kicker {
+    justify-content: flex-start;
+  }
+  .zs-step[data-layout="intro"] .zs-lede {
+    margin-inline: 0;
+  }
+  .zs-rail {
+    display: none;
+  }
+  .zs-cue {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zs-veil,
+  .zs-text,
+  .zs-rail * {
+    transition: none;
+  }
+  .zs-cue-line::after,
+  .zs-story.is-loading .zs-status {
+    animation: none;
+  }
+}
+
+/* ---- static slots ------------------------------------------------------ */
+
+.zs-feature {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 16vh var(--zs-gutter);
+  line-height: 1.6;
+}
+
+.zs-feature h1 {
+  margin: 0 0 0.5em;
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.zs-feature p {
+  max-width: 40ch;
+  font-size: clamp(15px, 1.1vw + 9px, 19px);
+  color: color-mix(in srgb, var(--zs-ink) 84%, transparent);
+}
+
+.zs-feature a {
+  text-decoration: none;
+  border-bottom: 1px solid var(--zs-accent);
+}
+
+.zs-video video {
+  width: 100%;
+  margin-bottom: 32px;
+  background: #000;
+}
+
+/* ---- footer ------------------------------------------------------------ */
+
+.zs-footer {
+  padding: 72px calc(var(--zs-gutter) + 48px) 32px var(--zs-gutter);
+  background: var(--zs-band);
+  border-top: 1px solid var(--zs-line);
+  color: var(--zs-muted);
+}
+
+.zs-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 40px;
+}
+
+.zs-about {
+  grid-column: span 2;
+}
+
+.zs-footer h2 {
+  margin: 0 0 16px;
+  color: var(--zs-ink);
+}
+
+.zs-footer ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zs-footer li {
+  margin-bottom: 10px;
+}
+
+.zs-footer a {
+  text-decoration: none;
+  transition: color 200ms;
+}
+
+.zs-footer a:hover {
+  color: var(--zs-ink);
+}
+
+.zs-about p {
+  max-width: 34rem;
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--zs-ink) 80%, transparent);
+}
+
+.zs-about a {
+  color: var(--zs-ink);
+  border-bottom: 1px solid var(--zs-accent);
+}
+
+.zs-footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--zs-line);
+  font-size: 12px;
+}
+
+.zs-footer-bottom ul {
+  display: flex;
+  gap: 20px;
+}
+
+.zs-footer-bottom li {
+  margin: 0;
+}
+
+.zs-footer-bottom p {
+  margin: 0 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .zs-about {
+    grid-column: auto;
+  }
+  .zs-footer-bottom p {
+    margin-left: 0;
+  }
+}
+
+/* ---- scroll buttons ---------------------------------------------------- */
+
+.zs-scroll-nav {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zs-scroll-nav button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--zs-line);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    border-color 200ms,
+    color 200ms;
+}
+
+.zs-scroll-nav button:hover,
+.zs-scroll-nav button:focus-visible {
+  border-color: var(--zs-accent);
+  color: var(--zs-accent);
+}

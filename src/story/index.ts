@@ -11,3 +11,4 @@ export type * from "./types";
 export * from "./pager";
 export * from "./sceneTimer";
 export * from "./hash";
+export * from "./scroller";

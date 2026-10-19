@@ -79,6 +79,11 @@ export class Overlay {
     this.projection = this.mutate();
   }
 
+  /** Finer land, once loaded: drawn from the next resting frame. */
+  setLandDetail(land: GeoPermissibleObjects): void {
+    this.layers.landDetail = land;
+  }
+
   /** Sync the d3 projection with a frame; cheap enough for every frame. */
   setView(frame: ViewFrame): GeoProjection {
     const { cx, cy } = viewArea(frame);

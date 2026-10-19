@@ -16,6 +16,7 @@ dist-demo-prod/
 dist-story/
 dist-projection/
 dist-story-projversor/
+dist-site/
 
 # Vite
 *.local

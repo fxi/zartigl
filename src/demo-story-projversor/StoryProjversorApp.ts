@@ -1,12 +1,15 @@
 import {
   PROJECTIONS,
   Projversor,
+  ProjversorStoryView,
   legendLabels,
   monthLegend,
+  parseProjversorView,
   playheadLabel,
   rampGradient,
   type Inset,
   type ProjversorMonth,
+  type ProjversorViewConfig,
 } from "../projversor";
 import {
   LoadingIndicator,
@@ -27,11 +30,6 @@ import {
   type StoryScene,
   type StoryViewDefinition,
 } from "../story";
-import {
-  ProjversorStoryView,
-  parseProjversorView,
-  type ProjversorViewConfig,
-} from "./adapters/ProjversorStoryView";
 import { drawLayoutDebug, type LayoutSnapshot } from "./debug";
 import { storyUiLabels, type StoryUiLabels } from "./labels";
 import {

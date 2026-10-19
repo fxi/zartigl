@@ -1,18 +1,17 @@
-import { COLOR_GRADE_OFF, COLOR_GRADE_VIBRANT } from "../../engine";
-import {
-  findLayer,
-  findPreset,
-  isTintEntry,
-  layerPalettes,
-  SPEEDS,
-  type Projversor,
-  type ShareState,
-} from "../../projversor";
-import type {
-  StoryScene,
-  StoryViewAdapter,
-  StoryViewDefinition,
-} from "../../story";
+import { COLOR_GRADE_OFF, COLOR_GRADE_VIBRANT } from "../engine";
+import { findLayer, layerPalettes } from "./layers";
+import { findPreset } from "./presets";
+import { SPEEDS, isTintEntry, type Projversor } from "./Projversor";
+import type { ShareState } from "./share";
+
+/**
+ * A story view, as `@fxi/zartigl/story` defines it. Declared here so this
+ * entry stays independent: the adapter fits the story registry structurally.
+ */
+export interface ProjversorViewDefinition {
+  id: string;
+  config: Record<string, unknown>;
+}
 
 /** `config` of a `projversor` view, validated by {@link parseProjversorView}. */
 export interface ProjversorViewConfig {
@@ -46,7 +45,7 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 /** Validate a view's config against the projversor layers and presets. */
 export function parseProjversorView(
-  view: StoryViewDefinition,
+  view: ProjversorViewDefinition,
 ): ProjversorViewConfig {
   const config = view.config;
   const path = `views.${view.id}.config`;
@@ -126,7 +125,7 @@ export function projversorState(
  * Story view on one persistent projversor: each scene morphs the view from
  * the previous one, and the layer reopens only when it changes.
  */
-export class ProjversorStoryView implements StoryViewAdapter {
+export class ProjversorStoryView {
   /**
    * @param animate Morph between views; off for still frames and reduced
    *   motion, where each view is shown at once.
@@ -138,7 +137,7 @@ export class ProjversorStoryView implements StoryViewAdapter {
     private readonly onError: (error: unknown) => void = console.error,
   ) {}
 
-  async activate(view: StoryViewDefinition, _scene: StoryScene): Promise<void> {
+  async activate(view: ProjversorViewDefinition): Promise<void> {
     const config = parseProjversorView(view);
     await this.projversor.apply(projversorState(config), {
       animate: this.animate,
@@ -147,7 +146,7 @@ export class ProjversorStoryView implements StoryViewAdapter {
   }
 
   /** Warm the cache for a view shown next. */
-  preload(view: StoryViewDefinition): Promise<void> {
+  preload(view: ProjversorViewDefinition): Promise<void> {
     const config = parseProjversorView(view);
     const at = config.time === undefined ? undefined : Date.parse(config.time);
     return this.projversor.preload(config.layer, at);

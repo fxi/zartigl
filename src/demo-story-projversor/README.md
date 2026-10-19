@@ -63,7 +63,7 @@ leaves the map at least 40% of the screen.
   alias or tinted pairing), a projection `preset` with optional `rotate` and
   `zoom`, and optionally `palette`, `tint` (scalar entry id, `""` for speed
   colors), `speed`, `time` (ISO date, else the latest month), `transitionMs`,
-  `vibrant` and `wrap`. `adapters/ProjversorStoryView.ts` validates it.
+  `vibrant` and `wrap`. `parseProjversorView` (`@fxi/zartigl/projversor`) validates it.
 
 ## Tools
 

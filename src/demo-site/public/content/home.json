@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "locales": ["en", "fr"],
+  "title": {
+    "en": "Home | GRID-Geneva",
+    "fr": "Accueil | GRID-Genève"
+  },
+  "header": {
+    "brand": {
+      "en": "UNEP/GRID-Geneva",
+      "fr": "PNUE/GRID-Genève"
+    },
+    "href": "https://unepgrid.ch/{locale}",
+    "menu": [
+      {
+        "label": {
+          "en": "Themes",
+          "fr": "Thèmes"
+        },
+        "href": "https://unepgrid.ch/{locale}/our-themes"
+      },
+      {
+        "label": {
+          "en": "Platforms",
+          "fr": "Plateformes"
+        },
+        "href": "https://unepgrid.ch/{locale}/platforms"
+      },
+      {
+        "label": {
+          "en": "Resources",
+          "fr": "Ressources"
+        },
+        "href": "https://unepgrid.ch/{locale}/our-resources"
+      },
+      {
+        "label": {
+          "en": "Activities",
+          "fr": "Activités"
+        },
+        "href": "https://unepgrid.ch/{locale}/our-activities"
+      }
+    ],
+    "search": {
+      "label": {
+        "en": "Search",
+        "fr": "Rechercher"
+      },
+      "href": "https://unepgrid.ch/{locale}/search"
+    }
+  },
+  "featured": {
+    "type": "story",
+    "id": "2026-11-planet"
+  },
+  "fallback": {
+    "type": "article",
+    "title": {
+      "en": "Data for a living planet",
+      "fr": "Des données pour une planète vivante"
+    },
+    "paragraphs": [
+      {
+        "en": "GRID-Geneva is a data and analytics centre established by the United Nations Environment Programme (UNEP) in 1985.",
+        "fr": "GRID-Genève est un centre de données et d’analyse créé par le Programme des Nations Unies pour l’environnement (PNUE) en 1985."
+      },
+      {
+        "en": "We transform data into actionable information and knowledge to support decision-making on environmental and social issues.",
+        "fr": "Nous transformons les données en informations et en connaissances utiles à la décision sur les enjeux environnementaux et sociaux."
+      }
+    ],
+    "link": {
+      "label": {
+        "en": "About GRID-Geneva",
+        "fr": "À propos de GRID-Genève"
+      },
+      "href": "https://unepgrid.ch/{locale}/about-us/grid"
+    }
+  },
+  "footer": {
+    "about": {
+      "text": {
+        "en": "GRID-Geneva is a data and analytics centre established by UNEP in 1985. We operate open-source platforms and work with UN agencies, governments and environmental conventions.",
+        "fr": "GRID-Genève est un centre de données et d’analyse créé par le PNUE en 1985. Nous exploitons des plateformes open source et travaillons avec des agences de l’ONU, des gouvernements et des conventions environnementales."
+      },
+      "link": {
+        "label": {
+          "en": "Read more",
+          "fr": "En savoir plus"
+        },
+        "href": "https://unepgrid.ch/{locale}/about-us/grid"
+      }
+    },
+    "columns": [
+      {
+        "title": {
+          "en": "Explore",
+          "fr": "Explorer"
+        },
+        "links": [
+          {
+            "label": {
+              "en": "Themes",
+              "fr": "Thèmes"
+            },
+            "href": "https://unepgrid.ch/{locale}/our-themes"
+          },
+          {
+            "label": {
+              "en": "Platforms",
+              "fr": "Plateformes"
+            },
+            "href": "https://unepgrid.ch/{locale}/platforms"
+          },
+          {
+            "label": {
+              "en": "Resources",
+              "fr": "Ressources"
+            },
+            "href": "https://unepgrid.ch/{locale}/our-resources"
+          },
+          {
+            "label": {
+              "en": "Activities",
+              "fr": "Activités"
+            },
+            "href": "https://unepgrid.ch/{locale}/our-activities"
+          }
+        ]
+      },
+      {
+        "title": {
+          "en": "Latest",
+          "fr": "Actualités"
+        },
+        "links": [
+          {
+            "label": {
+              "en": "News and updates",
+              "fr": "Nouvelles"
+            },
+            "href": "https://unepgrid.ch/{locale}/about-us/news-updates"
+          },
+          {
+            "label": {
+              "en": "Contact",
+              "fr": "Contact"
+            },
+            "href": "https://unepgrid.ch/{locale}/about-us/contact"
+          }
+        ]
+      }
+    ],
+    "social": [
+      {
+        "label": {
+          "en": "X (Twitter)",
+          "fr": "X (Twitter)"
+        },
+        "href": "https://twitter.com/gridgva"
+      },
+      {
+        "label": {
+          "en": "LinkedIn",
+          "fr": "LinkedIn"
+        },
+        "href": "https://www.linkedin.com/in/grid-geneva-a5640a145"
+      },
+      {
+        "label": {
+          "en": "YouTube",
+          "fr": "YouTube"
+        },
+        "href": "https://www.youtube.com/user/GRIDGeneva"
+      }
+    ],
+    "legal": [
+      {
+        "label": {
+          "en": "Disclaimer",
+          "fr": "Avertissement"
+        },
+        "href": "https://unepgrid.ch/{locale}/disclaimer"
+      },
+      {
+        "label": {
+          "en": "Terms of use",
+          "fr": "Conditions d’utilisation"
+        },
+        "href": "https://unepgrid.ch/{locale}/terms-use"
+      }
+    ],
+    "copyright": {
+      "en": "© UN Environment Programme/GRID-Geneva",
+      "fr": "© Programme des Nations Unies pour l’environnement/GRID-Genève"
+    }
+  },
+  "labels": {
+    "top": {
+      "en": "Back to top",
+      "fr": "Retour en haut"
+    },
+    "bottom": {
+      "en": "Go to the footer",
+      "fr": "Aller au pied de page"
+    },
+    "loading": {
+      "en": "Loading data…",
+      "fr": "Chargement des données…"
+    },
+    "scroll": {
+      "en": "Scroll to explore",
+      "fr": "Faites défiler"
+    }
+  }
+}

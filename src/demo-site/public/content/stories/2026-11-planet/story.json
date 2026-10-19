@@ -1,0 +1,372 @@
+{
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "fallbackLocales": ["fr"],
+  "title": {
+    "en": "Watching the planet move",
+    "fr": "Regarder la planète bouger"
+  },
+  "themes": {
+    "grid": {
+      "background": "#030409",
+      "foreground": "#f2f1ee",
+      "muted": "#8b8f9c",
+      "accent": "#a3d65c",
+      "accentSoft": "rgba(163, 214, 92, 0.18)",
+      "surface": "rgba(3, 4, 9, 0.72)"
+    },
+    "deep": {
+      "background": "#030409",
+      "foreground": "#f2f1ee",
+      "muted": "#8b8f9c",
+      "accent": "#7fd4ff",
+      "accentSoft": "rgba(127, 212, 255, 0.18)",
+      "surface": "rgba(3, 4, 9, 0.72)"
+    },
+    "sand": {
+      "background": "#030409",
+      "foreground": "#f4efe6",
+      "muted": "#a39a8a",
+      "accent": "#e8c28a",
+      "accentSoft": "rgba(232, 194, 138, 0.18)",
+      "surface": "rgba(8, 6, 4, 0.72)"
+    },
+    "river": {
+      "background": "#030409",
+      "foreground": "#f2ece6",
+      "muted": "#a3968a",
+      "accent": "#ff9a5c",
+      "accentSoft": "rgba(255, 154, 92, 0.18)",
+      "surface": "rgba(8, 5, 4, 0.72)"
+    },
+    "green": {
+      "background": "#030409",
+      "foreground": "#eef4ee",
+      "muted": "#8fa395",
+      "accent": "#9be38f",
+      "accentSoft": "rgba(155, 227, 143, 0.18)",
+      "surface": "rgba(4, 8, 5, 0.72)"
+    },
+    "heat": {
+      "background": "#030409",
+      "foreground": "#f4ece8",
+      "muted": "#a8928b",
+      "accent": "#ff6b5c",
+      "accentSoft": "rgba(255, 107, 92, 0.18)",
+      "surface": "rgba(9, 4, 4, 0.72)"
+    }
+  },
+  "scenes": [
+    {
+      "id": "welcome",
+      "name": {
+        "en": "GRID",
+        "fr": "GRID"
+      },
+      "theme": "grid",
+      "layout": "left",
+      "blocks": [
+        {
+          "id": "welcome-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "south-currents",
+          "presentation": "background"
+        },
+        {
+          "id": "welcome-copy",
+          "type": "copy",
+          "slot": "copy",
+          "heading": {
+            "en": "We care for our planet",
+            "fr": "Nous prenons soin de notre planète"
+          },
+          "text": {
+            "en": "A data and analytics centre established by UNEP in 1985. Our environmental data scientists turn data into knowledge that supports decisions, with open-source platforms and partners across the UN, governments and conventions.",
+            "fr": "Un centre de données et d’analyse créé par le PNUE en 1985. Nos scientifiques transforment les données en connaissances utiles à la décision, avec des plateformes open source et des partenaires de l’ONU, des gouvernements et des conventions."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "About GRID-Geneva",
+                "fr": "À propos du GRID-Genève"
+              },
+              "url": "https://unepgrid.ch/en/about-us/grid"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intro",
+      "name": {
+        "en": "Planet",
+        "fr": "Planète"
+      },
+      "theme": "deep",
+      "layout": "intro",
+      "blocks": [
+        {
+          "id": "intro-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "geneva-wind",
+          "presentation": "background"
+        },
+        {
+          "id": "intro-copy",
+          "type": "copy",
+          "slot": "copy",
+          "label": {
+            "en": "Surface wind · centred on Geneva",
+            "fr": "Vent de surface · centré sur Genève"
+          },
+          "heading": {
+            "en": "The planet, in motion",
+            "fr": "La planète en mouvement"
+          },
+          "text": {
+            "en": "Wind, currents, swell. For forty years we have read the Earth’s signals and turned them into knowledge people can act on.",
+            "fr": "Vents, courants, houle. Depuis quarante ans, nous lisons les signaux de la Terre pour en faire un savoir qui aide à agir."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean wind",
+                "fr": "Copernicus Marine, vent océanique global"
+              },
+              "url": "https://data.marine.copernicus.eu/product/WIND_GLO_PHY_L4_NRT_012_004/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sand",
+      "name": {
+        "en": "Sand",
+        "fr": "Sable"
+      },
+      "theme": "sand",
+      "layout": "left",
+      "blocks": [
+        {
+          "id": "sand-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "swell",
+          "presentation": "background"
+        },
+        {
+          "id": "sand-copy",
+          "type": "copy",
+          "slot": "copy",
+          "label": {
+            "en": "Primary swell · Mollweide",
+            "fr": "Houle principale · Mollweide"
+          },
+          "heading": {
+            "en": "Waves shape coastlines",
+            "fr": "Les vagues façonnent les côtes"
+          },
+          "text": {
+            "en": "Swell sorts and moves sediment along the shore, one force among many. Meanwhile, dredgers lift some six billion tonnes of marine sand every year.",
+            "fr": "La houle trie et déplace les sédiments le long des côtes, une force parmi d’autres. Pendant ce temps, les dragues prélèvent quelque six milliards de tonnes de sable marin chaque année."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Marine Sand Watch",
+                "fr": "Marine Sand Watch"
+              },
+              "url": "https://www.unep.org/news-and-stories/press-release/unep-marine-sand-watch-reveals-massive-extraction-worlds-oceans"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rivers",
+      "name": {
+        "en": "Rivers",
+        "fr": "Fleuves"
+      },
+      "theme": "river",
+      "layout": "right",
+      "blocks": [
+        {
+          "id": "rivers-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "po-rhone",
+          "presentation": "background"
+        },
+        {
+          "id": "rivers-copy",
+          "type": "copy",
+          "slot": "copy",
+          "label": {
+            "en": "Mediterranean currents × ammonium",
+            "fr": "Courants méditerranéens × ammonium"
+          },
+          "heading": {
+            "en": "Rivers write on the sea",
+            "fr": "Les fleuves écrivent sur la mer"
+          },
+          "text": {
+            "en": "What the Po and the Rhône wash down, the currents carry on. A few coastal hotspots weigh on an almost closed sea.",
+            "fr": "Ce que le Pô et le Rhône charrient, les courants l’emportent. Quelques points chauds côtiers pèsent sur une mer presque fermée."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "MedProgramme",
+                "fr": "MedProgramme"
+              },
+              "url": "https://medprogramme.unepgrid.ch/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "green",
+      "name": {
+        "en": "Plankton",
+        "fr": "Plancton"
+      },
+      "theme": "green",
+      "layout": "left",
+      "blocks": [
+        {
+          "id": "green-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "green-pulse",
+          "presentation": "background"
+        },
+        {
+          "id": "green-copy",
+          "type": "copy",
+          "slot": "copy",
+          "label": {
+            "en": "Phytoplankton · chlorophyll-a",
+            "fr": "Phytoplancton · chlorophylle a"
+          },
+          "heading": {
+            "en": "The ocean breathes green",
+            "fr": "L’océan respire en vert"
+          },
+          "text": {
+            "en": "Microscopic algae make about half of the oxygen we breathe. Where they bloom, fisheries and whole marine ecosystems follow.",
+            "fr": "Des algues microscopiques produisent environ la moitié de l’oxygène que nous respirons. Là où elles fleurissent, pêcheries et écosystèmes marins suivent."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean biogeochemistry",
+                "fr": "Copernicus Marine, biogéochimie océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_BGC_001_028/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "heat",
+      "name": {
+        "en": "Heat",
+        "fr": "Chaleur"
+      },
+      "theme": "heat",
+      "layout": "right",
+      "blocks": [
+        {
+          "id": "heat-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "pacific-heat",
+          "presentation": "background"
+        },
+        {
+          "id": "heat-copy",
+          "type": "copy",
+          "slot": "copy",
+          "label": {
+            "en": "Sea surface temperature anomaly · June 2026",
+            "fr": "Anomalie de température de surface · juin 2026"
+          },
+          "heading": {
+            "en": "Heat before the storm",
+            "fr": "La chaleur avant la tempête"
+          },
+          "text": {
+            "en": "A warm band stretches across the Pacific. Warm water feeds hazards; risk begins where they meet the people in their path.",
+            "fr": "Une bande chaude traverse le Pacifique. L’eau chaude nourrit les aléas ; le risque commence là où ils croisent ceux qui vivent sur leur route."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean physics analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision de la physique océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "outro",
+      "name": {
+        "en": "Data",
+        "fr": "Données"
+      },
+      "theme": "deep",
+      "layout": "intro",
+      "blocks": [
+        {
+          "id": "outro-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "back-to-geneva",
+          "presentation": "background"
+        },
+        {
+          "id": "outro-copy",
+          "type": "copy",
+          "slot": "copy",
+          "label": {
+            "en": "Open data · open platforms",
+            "fr": "Données ouvertes · plateformes ouvertes"
+          },
+          "heading": {
+            "en": "We love data",
+            "fr": "Nous aimons les données"
+          },
+          "text": {
+            "en": "Every layer on this page is open data, drawn live in your browser. We build platforms that turn abstract flows of data into signals, knowledge and decisions.",
+            "fr": "Chaque couche de cette page est une donnée ouverte, dessinée en direct dans votre navigateur. Nous construisons des plateformes qui transforment des flux de données abstraits en signaux, en savoirs et en décisions."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "MapX",
+                "fr": "MapX"
+              },
+              "url": "https://app.mapx.org/"
+            },
+            {
+              "label": {
+                "en": "Our activities",
+                "fr": "Nos activités"
+              },
+              "url": "https://unepgrid.ch/en/our-activities"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

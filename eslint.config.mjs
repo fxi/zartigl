@@ -56,7 +56,11 @@ export default [
   {
     // The projversor apps consume zartigl only through package entries, so
     // they can move to their own repository.
-    files: ["src/demo-projection/**/*.ts", "src/demo-story-projversor/**/*.ts"],
+    files: [
+      "src/demo-projection/**/*.ts",
+      "src/demo-story-projversor/**/*.ts",
+      "src/demo-site/**/*.ts",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",

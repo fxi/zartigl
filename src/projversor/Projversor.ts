@@ -2,7 +2,6 @@ import { easeCubicInOut, geoPath } from "d3";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import land110 from "world-atlas/land-110m.json";
-import land50 from "world-atlas/land-50m.json";
 import {
   requireCatalogEntry,
   sourceCoversTime,
@@ -259,8 +258,16 @@ export class Projversor {
     this.raster = new SphereScalar(gl);
     this.overlay = new Overlay(canvases.back, canvases.front, {
       land: landFeature(land110),
-      landDetail: landFeature(land50),
     });
+    // The finer coastline is ten times heavier: load it after first paint.
+    import("world-atlas/land-50m.json")
+      .then(({ default: land50 }) => {
+        if (!this.destroyed) {
+          this.overlay.setLandDetail(landFeature(land50));
+          this.detailed = false;
+        }
+      })
+      .catch(() => {});
     this.presetValue = findPreset(initial.preset) ?? PRESETS[0];
     const def = PROJECTIONS[this.presetValue.projection];
     this.view = {
