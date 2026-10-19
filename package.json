@@ -95,6 +95,11 @@
   "peerDependencies": {
     "maplibre-gl": ">=4.0.0"
   },
+  "peerDependenciesMeta": {
+    "maplibre-gl": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "@types/d3": "^7.4.3",
     "d3": "^7.9.0",
