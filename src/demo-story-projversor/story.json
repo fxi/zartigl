@@ -1,0 +1,451 @@
+{
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "fallbackLocales": ["fr"],
+  "title": {
+    "en": "One sphere, many maps",
+    "fr": "Une sphère, mille cartes"
+  },
+  "themes": {
+    "deep": {
+      "background": "#04050b",
+      "foreground": "#e9ebf2",
+      "muted": "#8a8fa3",
+      "accent": "#7fd4ff",
+      "accentSoft": "rgba(127, 212, 255, 0.18)",
+      "surface": "rgba(4, 5, 11, 0.72)"
+    },
+    "warm": {
+      "background": "#04050b",
+      "foreground": "#f2ece6",
+      "muted": "#a3968a",
+      "accent": "#ffb45c",
+      "accentSoft": "rgba(255, 180, 92, 0.18)",
+      "surface": "rgba(8, 5, 4, 0.72)"
+    },
+    "ice": {
+      "background": "#04050b",
+      "foreground": "#eef4f8",
+      "muted": "#8fa0ad",
+      "accent": "#c9ecff",
+      "accentSoft": "rgba(201, 236, 255, 0.18)",
+      "surface": "rgba(4, 6, 10, 0.72)"
+    }
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "name": {
+        "en": "Ocean",
+        "fr": "Océan"
+      },
+      "theme": "deep",
+      "layout": "title",
+      "durationMs": 14000,
+      "blocks": [
+        {
+          "id": "intro-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "japan-temperature",
+          "presentation": "background"
+        },
+        {
+          "id": "intro-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Sea water temperature · daily",
+            "fr": "Température de l’eau · quotidienne"
+          },
+          "heading": {
+            "en": "A planet in motion",
+            "fr": "Une planète en mouvement"
+          },
+          "text": {
+            "en": "Temperature, currents, swell and ice, drawn from Copernicus data on one sphere that changes projection as the story moves.",
+            "fr": "Température, courants, houle et glace, tirés des données Copernicus et dessinés sur une seule sphère qui change de projection au fil du récit."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean physics analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision de la physique océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gulf-stream",
+      "name": {
+        "en": "Gulf Stream",
+        "fr": "Gulf Stream"
+      },
+      "theme": "warm",
+      "layout": "w-e",
+      "durationMs": 16000,
+      "blocks": [
+        {
+          "id": "gulf-stream-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "gulf-stream",
+          "presentation": "background"
+        },
+        {
+          "id": "gulf-stream-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Currents × temperature",
+            "fr": "Courants × température"
+          },
+          "heading": {
+            "en": "The Gulf Stream",
+            "fr": "Le Gulf Stream"
+          },
+          "text": {
+            "en": "A river of warm water inside the Atlantic. It carries tropical heat north-east, all the way towards Europe.",
+            "fr": "Un fleuve d’eau chaude au cœur de l’Atlantique. Il emporte la chaleur des tropiques vers le nord-est, jusqu’à l’Europe."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean physics analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision de la physique océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "swell",
+      "name": {
+        "en": "Swell",
+        "fr": "Houle"
+      },
+      "theme": "deep",
+      "layout": "n-s",
+      "durationMs": 16000,
+      "blocks": [
+        {
+          "id": "swell-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "pacific-swell",
+          "presentation": "background"
+        },
+        {
+          "id": "swell-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Primary swell · Mollweide",
+            "fr": "Houle principale · Mollweide"
+          },
+          "heading": {
+            "en": "Waves that cross oceans",
+            "fr": "La houle traverse les océans"
+          },
+          "text": {
+            "en": "Swell outlives the storm that raised it. Born near Antarctica, it still breaks on Pacific beaches thousands of kilometres away.",
+            "fr": "La houle survit à la tempête qui l’a levée. Née près de l’Antarctique, elle déferle encore sur des plages du Pacifique, à des milliers de kilomètres."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean waves analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision des vagues à l'échelle globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_WAV_001_027/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mediterranean",
+      "name": {
+        "en": "Mediterranean",
+        "fr": "Méditerranée"
+      },
+      "theme": "warm",
+      "layout": "s-n",
+      "durationMs": 16000,
+      "blocks": [
+        {
+          "id": "mediterranean-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "mediterranean",
+          "presentation": "background"
+        },
+        {
+          "id": "mediterranean-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Mediterranean · reanalysis",
+            "fr": "Méditerranée · réanalyse"
+          },
+          "heading": {
+            "en": "An almost closed sea",
+            "fr": "Une mer presque fermée"
+          },
+          "text": {
+            "en": "Atlantic water slips in at Gibraltar and loops east along Africa, growing warmer and saltier as the sea evaporates.",
+            "fr": "L’eau atlantique entre par Gibraltar et longe l’Afrique vers l’est, toujours plus chaude et plus salée à mesure que la mer s’évapore."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, Mediterranean Sea physics reanalysis",
+                "fr": "Copernicus Marine, réanalyse physique de la mer Méditerranée"
+              },
+              "url": "https://data.marine.copernicus.eu/product/MEDSEA_MULTIYEAR_PHY_006_004/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "adriatic",
+      "name": {
+        "en": "Adriatic",
+        "fr": "Adriatique"
+      },
+      "theme": "warm",
+      "layout": "nw-se",
+      "durationMs": 16000,
+      "blocks": [
+        {
+          "id": "adriatic-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "adriatic-ammonium",
+          "presentation": "background"
+        },
+        {
+          "id": "adriatic-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Currents × ammonium",
+            "fr": "Courants × ammonium"
+          },
+          "heading": {
+            "en": "What rivers bring",
+            "fr": "Ce que les fleuves apportent"
+          },
+          "text": {
+            "en": "Rivers like the Po feed the northern Adriatic with nutrients. The currents spread them along the Italian coast.",
+            "fr": "Des fleuves comme le Pô nourrissent le nord de l’Adriatique en nutriments. Les courants les étalent le long de la côte italienne."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, Mediterranean Sea biogeochemistry reanalysis",
+                "fr": "Copernicus Marine, réanalyse biogéochimique de la mer Méditerranée"
+              },
+              "url": "https://data.marine.copernicus.eu/product/MEDSEA_MULTIYEAR_BGC_006_008/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arctic-ice",
+      "name": {
+        "en": "Arctic ice",
+        "fr": "Glace arctique"
+      },
+      "theme": "ice",
+      "layout": "se-nw",
+      "durationMs": 16000,
+      "blocks": [
+        {
+          "id": "arctic-ice-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "arctic-thickness",
+          "presentation": "background"
+        },
+        {
+          "id": "arctic-ice-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Sea ice thickness",
+            "fr": "Épaisseur de la glace de mer"
+          },
+          "heading": {
+            "en": "The top of the world",
+            "fr": "Le sommet du monde"
+          },
+          "text": {
+            "en": "The thickest ice piles up against Greenland and the Canadian islands, pushed there by the drift.",
+            "fr": "La glace la plus épaisse s’entasse contre le Groenland et l’archipel canadien, poussée par la dérive."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean physics analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision de la physique océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "southern-ocean",
+      "name": {
+        "en": "Southern Ocean",
+        "fr": "Océan Austral"
+      },
+      "theme": "deep",
+      "layout": "e-w",
+      "durationMs": 16000,
+      "blocks": [
+        {
+          "id": "southern-ocean-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "southern-ocean",
+          "presentation": "background"
+        },
+        {
+          "id": "southern-ocean-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Antarctic Circumpolar Current",
+            "fr": "Courant circumpolaire antarctique"
+          },
+          "heading": {
+            "en": "The endless current",
+            "fr": "Le courant sans fin"
+          },
+          "text": {
+            "en": "No continent stands in its way. It circles Antarctica and links the Atlantic, Indian and Pacific oceans.",
+            "fr": "Aucun continent ne lui barre la route. Il fait le tour de l’Antarctique et relie les océans Atlantique, Indien et Pacifique."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean physics analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision de la physique océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pacific",
+      "name": {
+        "en": "Pacific anomaly",
+        "fr": "Anomalie du Pacifique"
+      },
+      "theme": "warm",
+      "layout": "n-s",
+      "durationMs": 24000,
+      "blocks": [
+        {
+          "id": "pacific-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "pacific-anomaly",
+          "presentation": "background"
+        },
+        {
+          "id": "pacific-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "Sea surface temperature anomaly",
+            "fr": "Anomalie de température de surface"
+          },
+          "heading": {
+            "en": "El Niño returns",
+            "fr": "El Niño est de retour"
+          },
+          "text": {
+            "en": "June to August 2026: a strong El Niño spreads a warm band along the equatorial Pacific, felt far beyond the ocean.",
+            "fr": "De juin à août 2026, un fort El Niño étend une bande chaude le long du Pacifique équatorial, ressentie bien au-delà de l’océan."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "Copernicus Marine, global ocean physics analysis and forecast",
+                "fr": "Copernicus Marine, analyse et prévision de la physique océanique globale"
+              },
+              "url": "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "outro",
+      "name": {
+        "en": "Wave drift",
+        "fr": "Dérive des vagues"
+      },
+      "theme": "deep",
+      "layout": "end",
+      "durationMs": 18000,
+      "blocks": [
+        {
+          "id": "outro-view",
+          "type": "view",
+          "slot": "stage",
+          "view": "wave-drift-polar",
+          "presentation": "background"
+        },
+        {
+          "id": "outro-copy",
+          "type": "copy",
+          "slot": "copy",
+          "showTime": true,
+          "label": {
+            "en": "One sphere, many maps",
+            "fr": "Une sphère, mille cartes"
+          },
+          "heading": {
+            "en": "Same data, another map",
+            "fr": "Mêmes données, autre carte"
+          },
+          "text": {
+            "en": "Every scene was one sphere, morphed between projections in your browser. Drag it, or explore every layer in projversor.",
+            "fr": "Chaque scène était une seule sphère, transformée d’une projection à l’autre dans votre navigateur. Faites-la tourner, ou explorez toutes les couches dans projversor."
+          },
+          "references": [
+            {
+              "label": {
+                "en": "zartigl and projversor",
+                "fr": "zartigl et projversor"
+              },
+              "url": "https://github.com/fxi/zartigl"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

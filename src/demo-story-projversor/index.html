@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zartigl · projversor story</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <div id="app" class="story" data-variant="title">
+      <main class="stage" data-ref="stage">
+        <canvas class="layer-back" data-ref="back"></canvas>
+        <canvas class="layer-gl" data-ref="gl"></canvas>
+        <canvas class="layer-front" data-ref="front"></canvas>
+      </main>
+
+      <div class="veil" aria-hidden="true"></div>
+      <div class="floor" aria-hidden="true"></div>
+
+      <header class="masthead">
+        <p class="brand" data-ref="brand"></p>
+        <p class="counter" data-ref="counter"></p>
+      </header>
+
+      <p class="edge" data-ref="edge" aria-hidden="true"></p>
+
+      <section class="zone" data-ref="zone">
+        <article class="copy" data-ref="copy">
+          <div class="contour" data-ref="contour" aria-hidden="true"></div>
+          <p class="kicker" data-ref="kicker"></p>
+          <h1 class="headline" data-ref="headline"></h1>
+          <div class="body">
+            <p class="lede" data-ref="lede"></p>
+            <p class="source" data-ref="source"></p>
+          </div>
+        </article>
+      </section>
+
+      <footer class="dock">
+        <pv-timeline class="timeline" data-ref="timeline"></pv-timeline>
+        <div class="dock-row">
+          <story-pager class="pager" data-ref="pager"></story-pager>
+          <p class="credits" data-ref="credits"></p>
+        </div>
+      </footer>
+
+      <p class="status" data-ref="status" role="status"></p>
+      <canvas class="debug" data-ref="debug" hidden></canvas>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -44,6 +44,10 @@ jobs:
 
       - run: mkdir -p dist-demo/projversor && cp -R dist-projection/. dist-demo/projversor/
 
+      - run: npm run build:story-projversor
+
+      - run: mkdir -p dist-demo/projversor/story && cp -R dist-story-projversor/. dist-demo/projversor/story/
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-demo

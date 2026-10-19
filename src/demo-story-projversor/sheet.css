@@ -1,0 +1,92 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0c12;
+  --ink: #e9ebf2;
+  --muted: #8a8fa3;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter Tight Variable", system-ui, sans-serif;
+}
+
+.sheet-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+}
+
+.sheet-bar h1 {
+  margin: 0 8px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sheet-bar nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sheet-bar button {
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sheet-bar button[aria-pressed="true"] {
+  color: var(--bg);
+  background: var(--ink);
+}
+
+.sheet-grid {
+  --scale: 0.25;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, calc(var(--vw) / var(--vh) * 300px)), 1fr)
+  );
+  gap: 24px 16px;
+  padding: 16px;
+}
+
+.sheet-grid figure {
+  margin: 0;
+}
+
+/* The iframe keeps the real viewport size and is scaled down to fit. */
+.sheet-frame {
+  position: relative;
+  aspect-ratio: calc(var(--vw)) / calc(var(--vh));
+  overflow: hidden;
+  background: #000;
+}
+
+.sheet-frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform: scale(var(--scale));
+  transform-origin: 0 0;
+}
+
+.sheet-grid figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}

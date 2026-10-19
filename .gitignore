@@ -15,6 +15,7 @@ dist-demo-mapbox/
 dist-demo-prod/
 dist-story/
 dist-projection/
+dist-story-projversor/
 
 # Vite
 *.local

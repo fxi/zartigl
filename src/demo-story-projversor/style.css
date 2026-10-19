@@ -1,0 +1,690 @@
+/*
+ * Layout: the veil (one full-screen gradient) separates a text zone on its
+ * solid side from the map on its clear side. layout.ts places the zone and
+ * the map's free zone; nothing here draws a frame or a panel.
+ */
+
+@property --veil-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 180deg;
+}
+
+@property --veil-solid {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 30%;
+}
+
+@property --veil-clear {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 60%;
+}
+
+@property --veil-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+:root {
+  --bg: #030409;
+  --ink: #f2f1ee;
+  --muted: #8b8f9c;
+  --line: rgba(255, 255, 255, 0.16);
+  /* Read by the projversor overlay. */
+  --ocean: #000;
+  --land: #000;
+  --coast: rgba(150, 150, 150, 0.5);
+  --outline: rgba(255, 255, 255, 0.14);
+  --graticule: rgba(255, 255, 255, 0.06);
+  --equator: rgba(255, 196, 92, 0.45);
+  --sans: "Inter Tight Variable", "Inter Tight", system-ui, sans-serif;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Scene themes and layout.ts set these on the root. */
+.story {
+  --story-bg: var(--bg);
+  --story-fg: var(--ink);
+  --story-muted: var(--muted);
+  --accent: #7fd4ff;
+  --gutter: 24px;
+  --masthead: 64px;
+  --dock: 104px;
+  --zone-x: 24px;
+  --zone-y: 64px;
+  --zone-w: 600px;
+  --zone-h: 400px;
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  color: var(--story-fg);
+  background: var(--story-bg);
+}
+
+/* ---- stage and veils ---------------------------------------------------- */
+
+.stage {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.stage.dragging {
+  cursor: grabbing;
+}
+
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.layer-back,
+.layer-gl {
+  pointer-events: none;
+}
+
+/* Eased stops: an ease-out fade does not band like a linear one. */
+.veil {
+  --fade: calc(var(--veil-clear) - var(--veil-solid));
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--veil-opacity);
+  background: linear-gradient(
+    var(--veil-angle),
+    var(--story-bg) var(--veil-solid),
+    color-mix(in srgb, var(--story-bg) 82%, transparent)
+      calc(var(--veil-solid) + var(--fade) * 0.18),
+    color-mix(in srgb, var(--story-bg) 50%, transparent)
+      calc(var(--veil-solid) + var(--fade) * 0.45),
+    color-mix(in srgb, var(--story-bg) 18%, transparent)
+      calc(var(--veil-solid) + var(--fade) * 0.75),
+    transparent var(--veil-clear)
+  );
+  transition:
+    --veil-angle 900ms var(--ease),
+    --veil-solid 900ms var(--ease),
+    --veil-clear 900ms var(--ease),
+    --veil-opacity 600ms var(--ease);
+}
+
+/* The dock always reads over the map. */
+.floor {
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(var(--dock) + 72px);
+  pointer-events: none;
+  background: linear-gradient(
+    0deg,
+    var(--story-bg) 20%,
+    color-mix(in srgb, var(--story-bg) 60%, transparent) 55%,
+    transparent
+  );
+}
+
+/* ---- masthead and edge -------------------------------------------------- */
+
+.masthead {
+  position: absolute;
+  inset: 0 var(--gutter) auto;
+  height: var(--masthead);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.masthead p {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--story-muted);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
+
+.counter b {
+  font-weight: 600;
+  color: var(--story-fg);
+}
+
+/* Vertical label on the map side: where the view stands, in what projection. */
+.edge {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--gutter) * 0.6);
+  margin: 0;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--story-muted);
+  text-shadow: 0 0 8px var(--story-bg);
+  pointer-events: none;
+  transition: opacity 400ms;
+}
+
+.story[data-edge="left"] .edge {
+  right: auto;
+  left: calc(var(--gutter) * 0.6);
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* ---- text zone ---------------------------------------------------------- */
+
+.zone {
+  position: absolute;
+  left: var(--zone-x);
+  top: var(--zone-y);
+  width: var(--zone-w);
+  height: var(--zone-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  container-type: inline-size;
+  pointer-events: none;
+}
+
+.story[data-variant="s-n"] .zone,
+.story[data-variant="end"] .zone,
+.story[data-variant="sw-ne"] .zone,
+.story[data-variant="se-nw"] .zone {
+  justify-content: flex-end;
+}
+
+.story[data-variant="w-e"] .zone,
+.story[data-variant="e-w"] .zone {
+  justify-content: center;
+}
+
+.story[data-variant="none"] .zone {
+  display: none;
+}
+
+.copy {
+  pointer-events: auto;
+  text-align: start;
+}
+
+.story[data-align="end"] .copy {
+  text-align: end;
+}
+
+.story[data-align="center"] .copy {
+  text-align: center;
+}
+
+/* Wrap: a float shaped like the globe's limb, on the map side. */
+.contour {
+  float: right;
+  width: 100%;
+  shape-margin: 20px;
+  pointer-events: none;
+}
+
+.story[data-edge="left"] .contour {
+  float: left;
+}
+
+.contour:not([style*="shape-outside"]) {
+  display: none;
+}
+
+.kicker {
+  margin: 0 0 0.9em;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.headline {
+  margin: 0 0 0.32em;
+  /* --fit shrinks it when the text would overflow its zone (layout fit). */
+  font-size: calc(clamp(2.6rem, min(15cqi, 11dvh), 8rem) * var(--fit, 1));
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+  color: var(--story-fg);
+}
+
+/* Words reveal through a mask; the clip keeps descenders. */
+.headline .w {
+  display: inline-block;
+  overflow: clip;
+  overflow-clip-margin: 0.12em;
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+  vertical-align: top;
+}
+
+.headline .w > span {
+  display: inline-block;
+}
+
+.story[data-variant="title"] .headline {
+  font-size: calc(clamp(3rem, min(12.5cqi, 12dvh), 8.5rem) * var(--fit, 1));
+}
+
+.story[data-variant="end"] .headline {
+  font-size: calc(clamp(2.8rem, min(10cqi, 10dvh), 7rem) * var(--fit, 1));
+}
+
+.story[data-variant="minimal"] .headline {
+  font-size: calc(clamp(1.6rem, 7cqi, 2.4rem) * var(--fit, 1));
+  letter-spacing: -0.025em;
+}
+
+.lede {
+  max-width: 34ch;
+  margin: 0 0 1.1em;
+  font-size: clamp(15px, 1.15vw + 9px, 18px);
+  font-weight: 400;
+  line-height: 1.5;
+  text-wrap: pretty;
+  color: color-mix(in srgb, var(--story-fg) 86%, transparent);
+}
+
+.story[data-align="center"] .lede {
+  margin-inline: auto;
+}
+
+.story[data-align="end"] .lede {
+  margin-inline-start: auto;
+}
+
+.source {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--story-muted);
+}
+
+.source a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.source a:hover {
+  color: var(--story-fg);
+}
+
+/* A wide top or bottom zone sets the headline beside the text. */
+@container (min-width: 760px) {
+  .story:is([data-variant="n-s"], [data-variant="s-n"]) .copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    column-gap: clamp(32px, 5cqi, 80px);
+    align-items: end;
+  }
+
+  .story:is([data-variant="n-s"], [data-variant="s-n"]) .kicker {
+    grid-column: 1 / -1;
+  }
+
+  .story:is([data-variant="n-s"], [data-variant="s-n"]) .headline {
+    margin: 0;
+    font-size: calc(clamp(3rem, min(8.4cqi, 11dvh), 8rem) * var(--fit, 1));
+  }
+
+  .story:is([data-variant="n-s"], [data-variant="s-n"]) .body {
+    padding-bottom: 0.4em;
+  }
+}
+
+/* Last resort of the layout fit, after the headline has shrunk. */
+.story.is-compact .kicker {
+  margin-bottom: 0.5em;
+}
+
+.story.is-compact .lede {
+  margin-bottom: 0.6em;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.story.is-compact .source {
+  font-size: 10px;
+}
+
+/* ---- dock --------------------------------------------------------------- */
+
+.dock {
+  position: absolute;
+  inset: auto var(--gutter) 0;
+  height: var(--dock);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-bottom: calc(var(--gutter) * 0.6);
+}
+
+.dock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.credits {
+  margin: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--story-muted);
+  text-align: end;
+}
+
+/* Pager: bare numbers, the active one filled as its scene plays. */
+.story-pager__nav,
+.story-pager__steps {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+story-pager button {
+  appearance: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--story-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+story-pager button:hover:not(:disabled) {
+  color: var(--story-fg);
+}
+
+story-pager button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+story-pager button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.story-pager__step[aria-current="step"] {
+  color: var(--story-bg);
+  font-weight: 700;
+  background:
+    conic-gradient(
+      var(--accent) calc(var(--progress, 0) * 360deg),
+      color-mix(in srgb, var(--accent) 45%, transparent) 0
+    );
+}
+
+.story-pager__gap {
+  width: 14px;
+  text-align: center;
+  color: var(--story-muted);
+}
+
+.story-pager__previous::before,
+.story-pager__next::before,
+.story-pager__toggle::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+}
+
+.story-pager__previous::before {
+  clip-path: polygon(70% 10%, 25% 50%, 70% 90%, 80% 80%, 45% 50%, 80% 20%);
+}
+
+.story-pager__next::before {
+  clip-path: polygon(30% 10%, 75% 50%, 30% 90%, 20% 80%, 55% 50%, 20% 20%);
+}
+
+.story-pager__toggle {
+  margin-left: 8px;
+  color: var(--story-fg) !important;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.story-pager__toggle::before {
+  clip-path: polygon(28% 12%, 88% 50%, 28% 88%);
+}
+
+.story-pager__toggle.is-playing::before {
+  clip-path: polygon(
+    22% 12%,
+    42% 12%,
+    42% 88%,
+    22% 88%,
+    22% 12%,
+    58% 12%,
+    78% 12%,
+    78% 88%,
+    58% 88%,
+    58% 12%
+  );
+}
+
+/* Timeline: a hairline of months, the displayed one lit, a playhead dot. */
+pv-timeline {
+  display: block;
+  position: relative;
+  transition: opacity 400ms;
+}
+
+pv-timeline[hidden] {
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pv-timeline__track {
+  --head: 0;
+  --span-start: 0;
+  --span-end: 0;
+  position: relative;
+  height: 26px;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.pv-timeline__months,
+.pv-timeline__current {
+  position: absolute;
+  top: 50%;
+  height: 1px;
+}
+
+.pv-timeline__months {
+  left: 0;
+  right: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--line) 0 1px,
+      transparent 1px calc(100% / var(--months, 1))
+    ),
+    linear-gradient(var(--line), var(--line));
+  background-size:
+    100% 5px,
+    100% 1px;
+  background-position:
+    0 -2px,
+    0 0;
+  background-repeat: no-repeat;
+  height: 1px;
+  overflow: visible;
+}
+
+.pv-timeline__current {
+  left: calc(var(--span-start) * 100%);
+  width: max(2px, calc((var(--span-end) - var(--span-start)) * 100%));
+  height: 3px;
+  margin-top: -1px;
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.pv-timeline__head {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--head) * 100%);
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Slides from left- to right-aligned along the track, so it never overflows. */
+.pv-timeline__date {
+  position: absolute;
+  bottom: 14px;
+  left: 4.5px;
+  transform: translateX(calc(var(--head) * -100%));
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--story-fg);
+}
+
+.pv-timeline__track:focus-visible .pv-timeline__head,
+pv-timeline.is-dragging .pv-timeline__head {
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.pv-timeline__ticks {
+  position: relative;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pv-timeline__ticks li {
+  position: absolute;
+  top: 0;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--story-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.pv-timeline__ticks li.is-major {
+  opacity: 1;
+}
+
+/* ---- status and debug --------------------------------------------------- */
+
+.status {
+  position: absolute;
+  top: var(--masthead);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--story-muted);
+}
+
+.story.is-loading .story-pager__step[aria-current="step"] {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.debug {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---- small screens ------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  .dock-row {
+    justify-content: center;
+  }
+
+  .credits {
+    display: none;
+  }
+
+  .edge {
+    font-size: 9.5px;
+    letter-spacing: 0.26em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .veil,
+  .edge,
+  pv-timeline {
+    transition: none;
+  }
+
+  .story.is-loading .story-pager__step[aria-current="step"] {
+    animation: none;
+  }
+}
