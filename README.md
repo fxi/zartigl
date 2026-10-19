@@ -161,6 +161,50 @@ finishes publishing it; a renderable sparse frame is cached normally.
 
 `VectorLayer`, `ScalarLayer`, `GeoVideoLayer`, and `ZarrSource` remain exported for advanced use cases that need direct control over renderer internals. Ordinary MapLibre integrations should prefer `Zartigl`.
 
+### Projversor and story entries
+
+Two entries need no MapLibre (`maplibre-gl` is an optional peer):
+
+- `@fxi/zartigl/projversor`: GeoVideo archives on a WebGL2 sphere that morphs
+  between world projections.
+- `@fxi/zartigl/story`: the story runtime, with JSON documents, localized
+  copy and scroll activation.
+
+```ts
+import { Projversor, ProjversorStoryView } from "@fxi/zartigl/projversor";
+import {
+  StoryScroller,
+  parseStoryDocuments,
+  sceneViewId,
+} from "@fxi/zartigl/story";
+
+// Three stacked canvases in a positioned stage. Attach them before
+// constructing: the overlay reads its colors (--ocean, --land, --coast,
+// --graticule…) from the front canvas computed style. Throws without WebGL2.
+const projversor = new Projversor({ stage, back, gl, front });
+projversor.setPlaying(true);
+
+// One view per scene: layer, preset, rotate, zoom, palette, tint, time…
+const { story, views } = parseStoryDocuments(storyJson, viewsJson);
+const adapter = new ProjversorStoryView(projversor);
+
+// The section crossing 60% of the viewport height activates its view.
+const scroller = new StoryScroller(sections, (index) => {
+  const id = sceneViewId(story.scenes[index]);
+  const view = views.views.find((v) => v.id === id);
+  if (view) {
+    void adapter.activate(view);
+  }
+}, { line: 0.6 });
+
+// Later: scroller.destroy(); adapter.destroy();
+```
+
+`parseProjversorView` validates a view against the projversor layers and
+presets. `goTo`, `jumpTo` and `setInset` move the camera, keeping a screen area
+free for text. The finer coastline loads in a separate chunk after the first
+paint. `src/demo-site/` is a complete scroll story page built on both entries.
+
 ## Alternatives And Project Fit
 
 Zartigl overlaps with several useful projects. The goal is not to replace them, but to cover a specific cloud-native geoscience workflow: public Zarr stores and compatible WMTS/GeoVideo sources, MapLibre integration, animated vector particles, scalar rasters, time/depth controls, point inspection, and reproducible widget configuration without a dedicated tile server.
