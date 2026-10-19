@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   chunkLabel,
+  legendLabels,
+  monthLegend,
   playheadLabel,
   timeTicks,
   formatUnit,
@@ -188,5 +190,52 @@ describe("particleCount", () => {
     expect(at(0.004)).toBe(16800);
     expect(at(0.2)).toBe(MAX_PARTICLES);
     expect(at(0)).toBe(1);
+  });
+});
+
+describe("monthLegend", () => {
+  const field = (vector: boolean, domain: [number, number], unit: string) => ({
+    vector,
+    domain,
+    maxSpeed: vector ? 1.5 : domain[1],
+    manifest: { style: { unit } },
+  });
+
+  it("shows a scalar raster over its domain", () => {
+    expect(
+      monthLegend({ field: field(false, [-2, 32], "degrees_C"), tint: null }),
+    ).toEqual({ min: -2, max: 32, unit: "°C", ramp: "linear" });
+  });
+
+  it("shows the tint of tinted particles, not their speed", () => {
+    expect(
+      monthLegend({
+        field: field(true, [0, 1.5], "m s-1"),
+        tint: field(false, [0, 30], "degrees_C"),
+      }),
+    ).toEqual({ min: 0, max: 30, unit: "°C", ramp: "linear" });
+  });
+
+  it("shows the speed of plain particles on a square-root ramp", () => {
+    expect(
+      monthLegend({ field: field(true, [0, 1.5], "m s-1"), tint: null }),
+    ).toEqual({ min: 0, max: 1.5, unit: "m/s", ramp: "sqrt" });
+  });
+});
+
+describe("legendLabels", () => {
+  it("rounds the ends to the precision of their range", () => {
+    expect(legendLabels(0.00000537, 0.665)).toEqual(["0", "0.67"]);
+    expect(legendLabels(-1.74, 35)).toEqual(["-2", "35"]);
+    expect(legendLabels(0, 6.3)).toEqual(["0", "6.3"]);
+    expect(legendLabels(0.0012, 0.0087)).toEqual(["0.0012", "0.0087"]);
+  });
+
+  it("never shows a negative zero", () => {
+    expect(legendLabels(-0.004, 0.665)).toEqual(["0", "0.67"]);
+  });
+
+  it("follows the locale", () => {
+    expect(legendLabels(0, 0.665, "fr")).toEqual(["0", "0,67"]);
   });
 });

@@ -28,3 +28,45 @@ export function withBearing(
 export function rotationBearing(rotate: [number, number, number]): number {
   return normalizeBearing(-rotate[2]);
 }
+
+/** A projection from [lon, lat] to css px, with its inverse. */
+export interface ScreenProjection {
+  (point: [number, number]): [number, number] | null;
+  invert?(point: [number, number]): [number, number] | null;
+}
+
+/** Latitudes beyond which north has no single screen direction. */
+const POLE_LAT = 89;
+
+/**
+ * Screen direction of north at css point `at`, in degrees clockwise from
+ * up: the angle toward a point just north of it. Unlike the rotation's
+ * bearing, it holds on any projection, tilted or not. Null off the map and
+ * near a pole, where every direction is north (or south).
+ */
+export function screenNorth(
+  projection: ScreenProjection,
+  at: [number, number],
+): number | null {
+  const lonLat = projection.invert?.(at);
+  if (
+    !lonLat ||
+    !Number.isFinite(lonLat[0]) ||
+    !Number.isFinite(lonLat[1]) ||
+    Math.abs(lonLat[1]) > POLE_LAT
+  ) {
+    return null;
+  }
+  const here = projection(lonLat);
+  const north = projection([lonLat[0], lonLat[1] + 0.5]);
+  // Some inverses answer off the map too: keep points that project back.
+  if (!here || !north || Math.hypot(here[0] - at[0], here[1] - at[1]) > 1) {
+    return null;
+  }
+  const dx = north[0] - here[0];
+  const dy = north[1] - here[1];
+  if (!(Math.hypot(dx, dy) > 1e-6)) {
+    return null;
+  }
+  return normalizeBearing(pointerBearing(here[0], here[1], north[0], north[1]));
+}

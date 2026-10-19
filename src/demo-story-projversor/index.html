@@ -22,7 +22,23 @@
         <p class="counter" data-ref="counter"></p>
       </header>
 
-      <p class="edge" data-ref="edge" aria-hidden="true"></p>
+      <div class="shade" aria-hidden="true"></div>
+      <aside class="rail">
+        <svg class="north" data-ref="north" viewBox="0 0 24 24" role="img">
+          <circle cx="12" cy="12" r="11" />
+          <g class="north-needle">
+            <path d="M9.2 7.4 12 4.4l2.8 3" />
+            <text x="12" y="16.6">N</text>
+          </g>
+        </svg>
+        <p class="edge" data-ref="edge" aria-hidden="true"></p>
+        <figure class="legend" data-ref="legend" hidden>
+          <span class="legend-max" data-ref="legendMax"></span>
+          <span class="legend-ramp" data-ref="legendRamp"></span>
+          <span class="legend-min" data-ref="legendMin"></span>
+          <figcaption class="legend-unit" data-ref="legendUnit"></figcaption>
+        </figure>
+      </aside>
 
       <section class="zone" data-ref="zone">
         <article class="copy" data-ref="copy">

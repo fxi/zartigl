@@ -167,6 +167,68 @@ export function playheadLabel(
   };
 }
 
+/** The colored quantity of a month: its range, unit and ramp. */
+export interface LegendScale {
+  min: number;
+  max: number;
+  unit: string;
+  /** Linear over a scalar domain; square root over a particle speed. */
+  ramp: "linear" | "sqrt";
+}
+
+interface LegendField {
+  readonly vector: boolean;
+  readonly domain: [number, number];
+  readonly maxSpeed: number;
+  readonly manifest: { style: { unit?: string } };
+}
+
+/**
+ * What the colors of a month mean: the raster of a scalar layer, else the
+ * tint coloring the particles, over its domain; else the particle speed.
+ */
+export function monthLegend(month: {
+  field: LegendField;
+  tint: LegendField | null;
+}): LegendScale {
+  const { field, tint } = month;
+  const scalar = field.vector ? tint : field;
+  if (scalar) {
+    const [min, max] = scalar.domain;
+    return {
+      min,
+      max,
+      unit: formatUnit(scalar.manifest.style.unit),
+      ramp: "linear",
+    };
+  }
+  return {
+    min: 0,
+    max: field.maxSpeed,
+    unit: formatUnit(field.manifest.style.unit),
+    ramp: "sqrt",
+  };
+}
+
+/**
+ * Legend ends rounded to the precision of their range (about a hundredth of
+ * it), so a domain of 0.00000537–0.665 reads "0" and "0.67".
+ */
+export function legendLabels(
+  min: number,
+  max: number,
+  locale = "en",
+): [string, string] {
+  const span = Math.abs(max - min) || Math.abs(max) || 1;
+  const digits = Math.min(6, Math.max(0, 1 - Math.floor(Math.log10(span))));
+  const format = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: digits,
+  });
+  // Rounding must not show "-0".
+  const text = (value: number) => format.format(value).replace(/^[-−]0$/, "0");
+  return [text(min), text(max)];
+}
+
 /** "m s-1" → "m/s", "degrees_C" → "°C". */
 export function formatUnit(unit: string | undefined): string {
   if (unit === "degrees_C" || unit === "degC") {

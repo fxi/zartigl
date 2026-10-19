@@ -35,12 +35,15 @@ export {
   chunkLabel,
   formatUnit,
   legendTicks,
+  legendLabels,
   linearTicks,
+  monthLegend,
   playheadLabel,
   rampGradient,
   rampPosition,
   timeTicks,
 } from "./scales";
-export type { TimeTick } from "./scales";
-export { normalizeBearing, pointerBearing } from "./bearing";
+export type { LegendScale, TimeTick } from "./scales";
+export { normalizeBearing, pointerBearing, screenNorth } from "./bearing";
+export type { ScreenProjection } from "./bearing";
 export type { GeoVideoField } from "./GeoVideoField";

@@ -40,6 +40,12 @@ A scene's `layout` is an intent, resolved per viewport by `layout.ts`:
   bottom; on short landscape screens, top and bottom layouts go beside the map.
 - **Fit.** If the text overflows its zone (or a word its width), the headline
   shrinks step by step to 60%, then the text compacts.
+- **Rail.** The free edge carries, top to bottom, a north badge, the view
+  center and projection, and the color scale (min, palette, max, unit). North
+  is the true screen direction at the map center (`Projversor.northAngle`),
+  so it holds on tilted projections; near a pole it fades out. The scale
+  shows what the colors mean: a raster or tint over its domain, else the
+  particle speed (`monthLegend`). A thin shade keeps the rail readable.
 - **Wrap.** With `wrap: true` on a view, side layouts shape the paragraph to
   the globe limb (`shape-outside` from `Projversor.outline()`).
 

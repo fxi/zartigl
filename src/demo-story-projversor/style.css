@@ -176,14 +176,147 @@ body {
   color: var(--story-fg);
 }
 
-/* Vertical label on the map side: where the view stands, in what projection. */
-.edge {
+/*
+ * Rail on the map side, top to bottom: north, where the view stands and in
+ * what projection, and the color scale. A thin full-height shade keeps it
+ * readable over bright data.
+ */
+.shade {
   position: absolute;
-  top: 50%;
-  right: calc(var(--gutter) * 0.6);
+  inset: 0 0 0 auto;
+  width: calc(var(--gutter) + 48px);
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--story-bg) 62%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.story[data-edge="left"] .shade {
+  inset: 0 auto 0 0;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--story-bg) 62%, transparent),
+    transparent
+  );
+}
+
+.rail {
+  --rail-x: calc(var(--gutter) * 0.6);
+  position: absolute;
+  top: var(--masthead);
+  bottom: var(--dock);
+  right: var(--rail-x);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  pointer-events: none;
+}
+
+.story[data-edge="left"] .rail {
+  right: auto;
+  left: var(--rail-x);
+}
+
+.north {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+  transition: opacity 400ms;
+}
+
+.north circle {
+  fill: color-mix(in srgb, var(--story-bg) 55%, transparent);
+  stroke: var(--line);
+}
+
+.north-needle {
+  transform: rotate(var(--north, 0deg));
+  transform-origin: 12px 12px;
+}
+
+.north path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.north text {
+  fill: var(--story-fg);
+  font: 600 8.5px var(--sans);
+  text-anchor: middle;
+}
+
+/* Near a pole north has no direction: the badge steps back. */
+.north.is-pole {
+  opacity: 0.25;
+}
+
+.north.is-pole .north-needle {
+  display: none;
+}
+
+.legend {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--story-muted);
+  text-shadow: 0 0 6px var(--story-bg);
+}
+
+.legend[hidden] {
+  display: none;
+}
+
+/* Vertical like the edge label, so the rail stays one line wide. */
+.legend-max,
+.legend-min,
+.legend-unit {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+}
+
+.story[data-edge="left"] :is(.legend-max, .legend-min, .legend-unit) {
+  transform: rotate(180deg);
+}
+
+.legend-max {
+  color: var(--story-fg);
+}
+
+.legend-ramp {
+  width: 3px;
+  height: clamp(72px, 18dvh, 168px);
+  border-radius: 2px;
+  background: var(--ramp, transparent);
+}
+
+.legend-unit {
+  margin-top: 4px;
+  letter-spacing: 0.12em;
+}
+
+.edge {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
   margin: 0;
   writing-mode: vertical-rl;
-  transform: translateY(-50%);
+  white-space: nowrap;
   font-size: 10.5px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -196,9 +329,14 @@ body {
 }
 
 .story[data-edge="left"] .edge {
-  right: auto;
-  left: calc(var(--gutter) * 0.6);
-  transform: translateY(-50%) rotate(180deg);
+  transform: rotate(180deg);
+}
+
+/* Short screens: north and the scale only. */
+@media (max-height: 520px) {
+  .edge {
+    display: none;
+  }
 }
 
 /* ---- text zone ---------------------------------------------------------- */

@@ -9,6 +9,8 @@ export interface StoryUiLabels {
   source: string;
   render: string;
   timeline: string;
+  north: string;
+  legend: (min: string, max: string, unit: string) => string;
 }
 
 const LABELS: Record<string, StoryUiLabels> = {
@@ -22,6 +24,8 @@ const LABELS: Record<string, StoryUiLabels> = {
     source: "Source",
     render: "Rendered with",
     timeline: "Archive timeline",
+    north: "North",
+    legend: (min, max, unit) => `Color scale from ${min} to ${max} ${unit}`,
   },
   fr: {
     navigation: "Étapes du récit",
@@ -33,6 +37,9 @@ const LABELS: Record<string, StoryUiLabels> = {
     source: "Source",
     render: "Rendu avec",
     timeline: "Chronologie de l'archive",
+    north: "Nord",
+    legend: (min, max, unit) =>
+      `Échelle de couleurs de ${min} à ${max} ${unit}`,
   },
 };
 

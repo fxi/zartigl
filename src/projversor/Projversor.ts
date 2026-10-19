@@ -18,7 +18,12 @@ import {
   pairChunk,
   type ColorGrade,
 } from "../engine";
-import { rotationBearing, withBearing } from "./bearing";
+import {
+  rotationBearing,
+  screenNorth,
+  withBearing,
+  type ScreenProjection,
+} from "./bearing";
 import { GeoVideoField } from "./GeoVideoField";
 import {
   PROJVERSOR_LAYERS,
@@ -973,6 +978,17 @@ export class Projversor {
   /** Free zone, css px. */
   get inset(): Inset {
     return this.insetTransition?.to ?? this.view.inset ?? NO_INSET;
+  }
+
+  /**
+   * Screen direction of north at the center of the free zone, degrees
+   * clockwise from up; null near a pole, where it has none.
+   */
+  northAngle(): number | null {
+    const frame = viewFrame(this.view);
+    const projection = this.overlay.setView(frame);
+    const { cx, cy } = viewArea(frame);
+    return screenNorth(projection as ScreenProjection, [cx, cy]);
   }
 
   /**

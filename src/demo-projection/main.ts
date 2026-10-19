@@ -13,6 +13,7 @@ import {
   layerPalettes,
   legendTicks,
   linearTicks,
+  monthLegend,
   playheadLabel,
   rampGradient,
   rampPosition,
@@ -327,21 +328,20 @@ class ProjectionDemo {
       return li;
     };
     this.ui.speedKey.hidden = !tint;
-    // The raster of a scalar layer, else the tint, colors over its domain.
-    const scalar = field.vector ? tint : field;
-    if (scalar) {
-      const [min, max] = scalar.domain;
-      this.ui.unit.textContent = formatUnit(scalar.manifest.style.unit);
+    const legend = monthLegend({ field, tint });
+    this.ui.unit.textContent = legend.unit;
+    if (legend.ramp === "linear") {
       this.ui.ticks.replaceChildren(
-        ...linearTicks(min, max).map((t) => tick(t.value, t.position)),
+        ...linearTicks(legend.min, legend.max).map((t) =>
+          tick(t.value, t.position),
+        ),
       );
       this.ui.speedMax.textContent = `${field.maxSpeed} ${speedUnit}`;
       return;
     }
-    this.ui.unit.textContent = speedUnit;
     this.ui.ticks.replaceChildren(
-      ...legendTicks(field.maxSpeed).map((value) =>
-        tick(value, rampPosition(value, field.maxSpeed)),
+      ...legendTicks(legend.max).map((value) =>
+        tick(value, rampPosition(value, legend.max)),
       ),
     );
   }

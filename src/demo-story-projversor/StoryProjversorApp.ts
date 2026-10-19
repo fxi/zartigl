@@ -1,8 +1,12 @@
 import {
   PROJECTIONS,
   Projversor,
+  legendLabels,
+  monthLegend,
   playheadLabel,
+  rampGradient,
   type Inset,
+  type ProjversorMonth,
 } from "../projversor";
 import {
   LoadingIndicator,
@@ -72,6 +76,12 @@ function refs(root: HTMLElement) {
     brand: get<HTMLElement>("brand"),
     counter: get<HTMLElement>("counter"),
     edge: get<HTMLElement>("edge"),
+    north: get<SVGSVGElement>("north"),
+    legend: get<HTMLElement>("legend"),
+    legendMax: get<HTMLElement>("legendMax"),
+    legendMin: get<HTMLElement>("legendMin"),
+    legendRamp: get<HTMLElement>("legendRamp"),
+    legendUnit: get<HTMLElement>("legendUnit"),
     zone: get<HTMLElement>("zone"),
     copy: get<HTMLElement>("copy"),
     contour: get<HTMLElement>("contour"),
@@ -246,7 +256,12 @@ export class StoryProjversorApp {
       this.renderCredits();
       this.renderTimeline();
     });
+    p.on("month", (month) => this.renderLegend(month));
+    p.on("palette", (id) =>
+      this.ui.legendRamp.style.setProperty("--ramp", rampGradient(id)),
+    );
     p.on("frame", () => this.onFrame());
+    this.ui.north.setAttribute("aria-label", this.labels.north);
     const doc = this.root.ownerDocument;
     const win = doc.defaultView;
     win?.addEventListener("keydown", (event) => {
@@ -536,8 +551,25 @@ export class StoryProjversorApp {
     this.renderTime();
   }
 
+  /** Color scale of the shown month: min, palette and max. */
+  private renderLegend(month: ProjversorMonth): void {
+    const { legend, legendMax, legendMin, legendUnit } = this.ui;
+    const scale = monthLegend(month);
+    const [min, max] = legendLabels(scale.min, scale.max, this.locale);
+    legendMin.textContent = min;
+    legendMax.textContent = max;
+    legendUnit.textContent = scale.unit;
+    legend.setAttribute("aria-label", this.labels.legend(min, max, scale.unit));
+    legend.hidden = false;
+  }
+
   private renderEdge(): void {
     const p = this.projversor;
+    const north = p.northAngle();
+    this.ui.north.classList.toggle("is-pole", north === null);
+    if (north !== null) {
+      this.ui.north.style.setProperty("--north", `${north.toFixed(1)}deg`);
+    }
     const projection = PROJECTIONS[p.preset.projection].label;
     const text = `${centerLabel(p.rotate)}  ·  ${projection}`;
     if (text !== this.edgeText) {
