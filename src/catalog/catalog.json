@@ -2055,8 +2055,8 @@
         "palette": "rdylbu",
         "renderMode": "particles",
         "particles": {
-          "density": 0.02,
-          "speed": 1,
+          "density": 0.005,
+          "speed": 0.4,
           "fade": 0.7
         },
         "raster": {
@@ -5816,8 +5816,8 @@
         "palette": "rdylbu",
         "renderMode": "particles",
         "particles": {
-          "density": 0.02,
-          "speed": 1,
+          "density": 0.005,
+          "speed": 0.4,
           "fade": 0.7
         },
         "raster": {

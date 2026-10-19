@@ -3,8 +3,8 @@
   "defaultLocale": "en",
   "fallbackLocales": ["fr"],
   "title": {
-    "en": "One sphere, many maps",
-    "fr": "Une sphère, mille cartes"
+    "en": "Exploring Oceans",
+    "fr": "Explorer les Océans"
   },
   "themes": {
     "deep": {
@@ -60,12 +60,12 @@
             "fr": "Température de l’eau · quotidienne"
           },
           "heading": {
-            "en": "A planet in motion",
-            "fr": "Une planète en mouvement"
+            "en": "Oceans in motion",
+            "fr": "Océans en mouvement"
           },
           "text": {
-            "en": "Temperature, currents, swell and ice, drawn from Copernicus data on one sphere that changes projection as the story moves.",
-            "fr": "Température, courants, houle et glace, tirés des données Copernicus et dessinés sur une seule sphère qui change de projection au fil du récit."
+            "en": "Temperature, currents, swell and ice, drawn from Copernicus data.",
+            "fr": "Température, courants, houle et glace, tirés des données Copernicus."
           },
           "references": [
             {
