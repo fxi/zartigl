@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 
+_tmp
 .env 
 artifacts/
 plan.md
