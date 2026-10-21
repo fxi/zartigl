@@ -147,6 +147,16 @@ describe("particle shader invalid-state guards", () => {
     }
   });
 
+  it("draws the backdrop as a flat color on valid cells only", () => {
+    for (const shader of [gridFrag, gridGlobeFrag]) {
+      const valid = shader.indexOf("if (sample.a < 0.5)");
+      const solid = shader.indexOf("if (u_solid.a > 0.0)");
+      expect(valid).toBeGreaterThan(-1);
+      expect(solid).toBeGreaterThan(valid);
+      expect(shader).toContain("gl_FragColor = u_solid;");
+    }
+  });
+
   it("grades the trail composite only when enabled", () => {
     expect(compositeFrag).toContain("vec3 gradeColor(vec3 c, vec4 g)");
     expect(compositeFrag).toContain("vec3 applyVibrance(vec3 c, float v)");

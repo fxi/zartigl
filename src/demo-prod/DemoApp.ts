@@ -26,7 +26,12 @@ import {
   resolveLocalizedText,
 } from "../catalog";
 import type { LayerStyleInput } from "../catalog";
-import { hashStyle, patchedStyle, styleParams } from "./style-state";
+import {
+  backdropOf,
+  hashStyle,
+  patchedStyle,
+  styleParams,
+} from "./style-state";
 import type { HashStyle, StyleParams } from "./style-state";
 import type {
   CatalogEntry,
@@ -1260,6 +1265,24 @@ export class DemoApp {
           particles: { grade: ev.value ? "vibrant" : "off" },
         }),
       );
+
+    // The backdrop is replaced as a whole: each control sends all of it.
+    const patchBackdrop = () =>
+      this.patchStyle({ particles: { backdrop: backdropOf(this.params) } });
+    this.vectorFolder
+      .addBinding(this.params, "backdropEnabled", { label: "backdrop" })
+      .on("change", patchBackdrop);
+    this.vectorFolder
+      .addBinding(this.params, "backdropColor", { label: "backdrop color" })
+      .on("change", patchBackdrop);
+    this.vectorFolder
+      .addBinding(this.params, "backdropOpacity", {
+        min: 0,
+        max: 1,
+        step: 0.01,
+        label: "backdrop opacity",
+      })
+      .on("change", patchBackdrop);
   }
 
   /** Patch the style override and show it. */

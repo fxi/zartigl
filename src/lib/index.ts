@@ -29,6 +29,7 @@ export {
   resolveColorGrade,
 } from "./color-grade";
 export type { ColorGrade } from "./color-grade";
+export { BACKDROP_OFF, isHexColor, resolveBackdrop } from "./backdrop";
 export {
   deriveDirectionMagnitudeComponents,
   getVectorDerivationVariables,

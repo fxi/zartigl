@@ -15,6 +15,7 @@ import {
   type LayerStyleInput,
 } from "../catalog";
 import {
+  backdropVec4,
   COLOR_GRADE_OFF,
   TrailFade,
   colorGradeToGrade,
@@ -79,7 +80,7 @@ const STEPS_PER_SECOND = 0.4;
 /** Style keys projversor renders. */
 export const STYLE_SUPPORT = {
   palette: true,
-  particles: ["density", "speed", "fade", "grade"],
+  particles: ["density", "speed", "fade", "grade", "backdrop"],
   raster: ["opacity", "vibrance"],
 } as const;
 
@@ -246,6 +247,8 @@ export class Projversor {
   private layerValue: ProjversorLayer = PROJVERSOR_LAYERS[0];
   private opened = false;
   private presetValue: Preset = PRESETS[0];
+  /** `u_solid` of the particle backdrop; alpha 0 when off. */
+  private backdrop: [number, number, number, number] = [0, 0, 0, 0];
   private rasterOpacity = 1;
   private rasterVibrance = 0;
   private field: GeoVideoField | null = null;
@@ -839,6 +842,7 @@ export class Projversor {
     this.particleSettings = style.particles;
     this.rasterOpacity = style.raster.opacity;
     this.rasterVibrance = style.raster.vibrance;
+    this.backdrop = backdropVec4(style.particles.backdrop);
     this.trailFade.setBase(fadeToOpacity(style.particles.fade));
     // Paused particles redraw their trails with the new style.
     this.settle = this.settleFrames();
@@ -1384,6 +1388,9 @@ export class Projversor {
       if (!this.advancing && ready) {
         this.settle--;
       }
+    }
+    if (this.backdrop[3] > 0) {
+      this.raster.drawBackdrop(frame, field, this.ms, this.backdrop);
     }
     this.particles.present(this.gradeValue);
   }

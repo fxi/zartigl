@@ -38,12 +38,14 @@ export {
   styleForKind,
 } from "./style";
 export type {
+  BackdropStyle,
   GradeTuning,
   LayerStyle,
   LayerStyleInput,
   ParseLayerStyleOptions,
   ParticleGrade,
   ParticleStyle,
+  ParticleStyleInput,
   RasterStyle,
   StyleRenderMode,
   StyledEntry,

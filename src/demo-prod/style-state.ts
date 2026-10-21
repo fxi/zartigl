@@ -3,6 +3,7 @@ import {
   mergeStyles,
   resolveEntryStyle,
   styleForKind,
+  type BackdropStyle,
   type CatalogEntry,
   type LayerStyle,
   type LayerStyleInput,
@@ -19,6 +20,9 @@ export interface StyleParams {
   fade: number;
   /** Vibrant particle grade; a tuned grade shows as on. */
   vibrant: boolean;
+  backdropEnabled: boolean;
+  backdropColor: string;
+  backdropOpacity: number;
   opacity: number;
   logScale: boolean;
   vibrance: number;
@@ -37,12 +41,24 @@ export function styleParams(style: LayerStyle): StyleParams {
     speed: particles.speed,
     fade: particles.fade,
     vibrant: particles.grade !== "off",
+    backdropEnabled: particles.backdrop.enabled,
+    backdropColor: particles.backdrop.color,
+    backdropOpacity: particles.backdrop.opacity,
     opacity: raster.opacity,
     logScale: raster.logScale,
     vibrance: raster.vibrance,
     colorDomain: raster.colorDomain,
     colorDomainMin: raster.colorDomain?.[0] ?? 0,
     colorDomainMax: raster.colorDomain?.[1] ?? 1,
+  };
+}
+
+/** The whole backdrop the pane shows: it is replaced, not merged. */
+export function backdropOf(params: StyleParams): BackdropStyle {
+  return {
+    enabled: params.backdropEnabled,
+    color: params.backdropColor,
+    opacity: params.backdropOpacity,
   };
 }
 

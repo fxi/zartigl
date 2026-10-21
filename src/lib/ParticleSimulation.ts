@@ -30,6 +30,12 @@ import {
   resolveColorGrade,
   type ColorGrade,
 } from "./color-grade";
+import { BACKDROP_OFF, backdropVec4, resolveBackdrop } from "./backdrop";
+import type { BackdropStyle } from "../catalog/style";
+
+type Vec4 = [number, number, number, number];
+/** `u_solid` of a grid draw that shows the field colors. */
+const NO_SOLID: Vec4 = [0, 0, 0, 0];
 
 export type RenderMode = "raster" | "particles" | "raster+particles";
 export type ParticleStateMode = "auto" | "rgba8";
@@ -52,6 +58,7 @@ export interface ParticleSimulationDebugInfo {
   logScale: boolean;
   vibrance: number;
   colorGrade: ColorGrade;
+  backdrop: BackdropStyle;
   scalarMode: boolean;
   devicePixelRatio?: number;
   webgl: WebGLRendererInfo | null;
@@ -124,6 +131,8 @@ export interface SimulationParams {
   vibrance: number;
   /** Grade of the trail composite; off by default. */
   colorGrade: ColorGrade;
+  /** Solid color under the trails, on valid cells; off by default. */
+  backdrop: BackdropStyle;
   scalarMode: boolean;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
@@ -139,6 +148,7 @@ const DEFAULTS: SimulationParams = {
   logScale: false,
   vibrance: 0.0,
   colorGrade: COLOR_GRADE_OFF,
+  backdrop: BACKDROP_OFF,
   scalarMode: false,
   particleState: "auto",
   rgba8MaxParticleZoom: 4,
@@ -301,6 +311,7 @@ export class ParticleSimulation {
       "u_log_scale",
       "u_vibrance",
       "u_scalar_mode",
+      "u_solid",
     ]);
     this.gridGlobeLocs = this.getUniforms(this.gridGlobeProgram, [
       "u_field",
@@ -318,6 +329,7 @@ export class ParticleSimulation {
       "u_log_scale",
       "u_vibrance",
       "u_scalar_mode",
+      "u_solid",
     ]);
 
     // Shared resources
@@ -643,7 +655,10 @@ export class ParticleSimulation {
     this.drawQuad();
 
     // --- 3. Grid pass: rasterize velocity field as a colormap overlay ---
-    if (runGrid && geoBounds) {
+    const drawGrid = (solid: Vec4) => {
+      if (!geoBounds) {
+        return;
+      }
       if (isGlobe && clippingPlane) {
         this.renderGridGlobe(
           velocityTexUnit,
@@ -652,6 +667,8 @@ export class ParticleSimulation {
           matrix,
           geoBounds,
           clippingPlane,
+          1,
+          solid,
         );
       } else if (!isGlobe) {
         this.renderGrid(
@@ -662,8 +679,13 @@ export class ParticleSimulation {
           worldSize,
           worldCopyOffsets,
           geoBounds,
+          1,
+          solid,
         );
       }
+    };
+    if (runGrid) {
+      drawGrid(NO_SOLID);
     }
 
     // --- 4. Draw pass: render particles on top of trails/grid ---
@@ -767,6 +789,12 @@ export class ParticleSimulation {
     // --- 5. Display: blit screen texture to MapLibre's framebuffer ---
     gl.bindFramebuffer(gl.FRAMEBUFFER, mapFramebuffer);
     gl.viewport(0, 0, this.screenWidth, this.screenHeight);
+    // Backdrop straight on the map, under the trails: drawn into the trail
+    // texture, the fade pass would smear it.
+    const backdrop = backdropVec4(this.params.backdrop);
+    if (backdrop[3] > 0) {
+      drawGrid(backdrop);
+    }
     const grade = this.params.colorGrade;
     gl.useProgram(this.compositeProgram);
     bindTexture(gl, this.screenTextures[1], 0);
@@ -796,6 +824,7 @@ export class ParticleSimulation {
     worldCopyOffsets: number[],
     geoBounds: { west: number; south: number; east: number; north: number },
     opacityScale = 1,
+    solid: Vec4 = NO_SOLID,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridProgram);
@@ -809,6 +838,7 @@ export class ParticleSimulation {
       velocityMin,
       velocityMax,
       opacityScale,
+      solid,
     );
     gl.uniformMatrix4fv(
       this.gridLocs["u_matrix"],
@@ -850,6 +880,7 @@ export class ParticleSimulation {
     geoBounds: { west: number; south: number; east: number; north: number },
     clippingPlane: [number, number, number, number],
     opacityScale = 1,
+    solid: Vec4 = NO_SOLID,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridGlobeProgram);
@@ -863,6 +894,7 @@ export class ParticleSimulation {
       velocityMin,
       velocityMax,
       opacityScale,
+      solid,
     );
     gl.uniformMatrix4fv(
       this.gridGlobeLocs["u_matrix"],
@@ -905,9 +937,11 @@ export class ParticleSimulation {
     velocityMin: [number, number],
     velocityMax: [number, number],
     opacityScale: number,
+    solid: Vec4,
   ): void {
     const gl = this.gl;
     gl.uniform1i(locs["u_field"], velocityTexUnit);
+    gl.uniform4f(locs["u_solid"], ...solid);
 
     bindTexture(gl, this.colorRampTexture, 2);
     gl.uniform1i(locs["u_color_ramp"], 2);
@@ -1030,6 +1064,11 @@ export class ParticleSimulation {
     this.params.colorGrade = resolveColorGrade(grade);
   }
 
+  /** Missing values take the defaults; see resolveBackdrop. */
+  setBackdrop(backdrop: Partial<BackdropStyle>): void {
+    this.params.backdrop = resolveBackdrop(backdrop);
+  }
+
   setScalarMode(v: boolean): void {
     this.params.scalarMode = v;
   }
@@ -1101,6 +1140,7 @@ export class ParticleSimulation {
       logScale: this.params.logScale,
       vibrance: this.params.vibrance,
       colorGrade: { ...this.params.colorGrade },
+      backdrop: { ...this.params.backdrop },
       scalarMode: this.params.scalarMode,
       devicePixelRatio:
         typeof window !== "undefined" ? window.devicePixelRatio : undefined,

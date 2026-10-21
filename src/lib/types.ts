@@ -2,6 +2,7 @@ import type { ZarrSource } from "./ZarrSource";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import type { GeoVideoManifest } from "./geovideo";
 import type { ColorGrade } from "./color-grade";
+import type { BackdropStyle } from "../catalog/style";
 
 export interface DirectionMagnitudeVectorDerivation {
   kind: "direction_magnitude";
@@ -70,6 +71,8 @@ export interface VectorLayerOptions {
    * vibrant preset (see resolveColorGrade).
    */
   colorGrade?: Partial<ColorGrade>;
+  /** Solid color under the trails, on valid cells. Omitted: off. */
+  backdrop?: Partial<BackdropStyle>;
   unit?: string;
 }
 

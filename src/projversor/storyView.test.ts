@@ -67,6 +67,19 @@ describe("parseProjversorView", () => {
     ).toThrow("views.probe.config.style.particles needs a vector layer");
   });
 
+  it("accepts a particle backdrop on vector layers", () => {
+    const backdrop = { enabled: true, color: "#000", opacity: 0.2 };
+    expect(
+      parseProjversorView(view({ style: { particles: { backdrop } } })).style
+        ?.particles?.backdrop,
+    ).toEqual(backdrop);
+    expect(() =>
+      parseProjversorView(
+        view({ style: { particles: { backdrop: { color: "#0000" } } } }),
+      ),
+    ).toThrow("views.probe.config.style.particles.backdrop must be");
+  });
+
   it("rejects style keys projversor does not render", () => {
     expect(() =>
       parseProjversorView(view({ style: { renderMode: "raster" } })),

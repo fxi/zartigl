@@ -12,6 +12,7 @@ uniform float u_opacity;
 uniform float u_log_scale;
 uniform float u_vibrance;
 uniform float u_scalar_mode;
+uniform vec4 u_solid; // alpha > 0: flat backdrop color instead of the ramp
 
 varying vec2 v_geo_uv;
 
@@ -21,6 +22,10 @@ void main() {
     vec4 sample = texture2D(u_field, v_geo_uv);
     if (sample.a < 0.5) {
         discard;
+    }
+    if (u_solid.a > 0.0) {
+        gl_FragColor = u_solid;
+        return;
     }
 
     float t;

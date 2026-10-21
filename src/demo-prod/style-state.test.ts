@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { resolveEntryStyle } from "../catalog";
-import { hashStyle, patchedStyle, styleParams } from "./style-state";
+import {
+  backdropOf,
+  hashStyle,
+  patchedStyle,
+  styleParams,
+} from "./style-state";
 
 describe("hashStyle", () => {
   it("reads the style override of a share link", () => {
@@ -50,9 +55,28 @@ describe("styleParams", () => {
       palette: "rdylbu",
       renderMode: "raster",
       vibrant: true,
+      backdropEnabled: false,
+      backdropColor: "#000000",
+      backdropOpacity: 0.5,
       colorDomain: [-3, 3],
       colorDomainMin: -3,
       colorDomainMax: 3,
+    });
+  });
+});
+
+describe("backdropOf", () => {
+  it("is the whole backdrop the pane shows", () => {
+    const params = styleParams(
+      resolveEntryStyle(
+        { kind: "vector" },
+        { particles: { backdrop: { color: "#112233" } } },
+      ),
+    );
+    expect(backdropOf(params)).toEqual({
+      enabled: true,
+      color: "#112233",
+      opacity: 0.5,
     });
   });
 });

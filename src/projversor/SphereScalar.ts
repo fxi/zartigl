@@ -1,5 +1,6 @@
 import type { GeoVideoBounds } from "../engine";
 import type { GeoVideoField } from "./GeoVideoField";
+import backdropFrag from "./shaders/backdrop.frag.glsl";
 import rasterFrag from "./shaders/raster.frag.glsl";
 import rasterVert from "./shaders/raster.vert.glsl";
 import { Program, compositeBlend, isGlobalGrid, type ViewFrame } from "./view";
@@ -44,14 +45,17 @@ export function meshBounds(bounds: GeoVideoBounds): GeoVideoBounds {
 /**
  * A scalar GeoVideo field (TINT_UNIFORMS) drawn as a raster on the sphere: a
  * lon/lat mesh over its bounds, projected with the current view, so it
- * morphs with the projections like the particles and the coastlines.
+ * morphs with the projections like the particles and the coastlines. The
+ * same mesh draws the particle backdrop of a vector field.
  */
 export class SphereScalar {
   private readonly program: Program;
+  private readonly backdrop: Program;
   private readonly vao: WebGLVertexArrayObject;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
     this.program = new Program(gl, rasterVert, rasterFrag);
+    this.backdrop = new Program(gl, rasterVert, backdropFrag);
     // Attribute-less draws still want a bound vertex array.
     this.vao = gl.createVertexArray();
   }
@@ -63,11 +67,45 @@ export class SphereScalar {
     ms: number,
     style: RasterStyle,
   ): boolean {
-    const gl = this.gl;
     const p = this.program.use();
     if (!field.bind(p, ms)) {
       return false;
     }
+    p.texture("u_ramp", 2, style.ramp);
+    p.vec2("u_domain", ...style.domain);
+    p.float("u_opacity", style.opacity);
+    p.float("u_vibrance", style.vibrance);
+    this.drawMesh(p, frame, field);
+    return true;
+  }
+
+  /**
+   * Flat `solid` color (straight RGB, alpha) on the valid cells of a vector
+   * field, over the bound framebuffer; false until the field has a frame.
+   */
+  drawBackdrop(
+    frame: ViewFrame,
+    field: GeoVideoField,
+    ms: number,
+    solid: [number, number, number, number],
+  ): boolean {
+    const p = this.backdrop.use();
+    if (!field.bind(p, ms)) {
+      return false;
+    }
+    p.vec4("u_solid", solid);
+    this.drawMesh(p, frame, field);
+    return true;
+  }
+
+  destroy(): void {
+    this.program.delete();
+    this.backdrop.delete();
+    this.gl.deleteVertexArray(this.vao);
+  }
+
+  private drawMesh(p: Program, frame: ViewFrame, field: GeoVideoField): void {
+    const gl = this.gl;
     const mesh = meshBounds(field.bounds);
     const [cols, rows] = gridCells(mesh);
     p.projection(frame);
@@ -76,10 +114,6 @@ export class SphereScalar {
     p.int("u_cols", cols);
     p.int("u_rows", rows);
     p.float("u_max_jump", MAX_JUMP * frame.pxPerRadian);
-    p.texture("u_ramp", 2, style.ramp);
-    p.vec2("u_domain", ...style.domain);
-    p.float("u_opacity", style.opacity);
-    p.float("u_vibrance", style.vibrance);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
@@ -88,11 +122,5 @@ export class SphereScalar {
     gl.drawArrays(gl.TRIANGLES, 0, cols * rows * 6);
     gl.bindVertexArray(null);
     gl.disable(gl.BLEND);
-    return true;
-  }
-
-  destroy(): void {
-    this.program.delete();
-    this.gl.deleteVertexArray(this.vao);
   }
 }

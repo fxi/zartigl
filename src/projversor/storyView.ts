@@ -40,8 +40,9 @@ export interface ProjversorViewConfig {
   tint?: string;
   /**
    * Style over the layer's own: `palette`, `particles` (density, speed, fade,
-   * grade) on vector layers, `raster` (opacity, vibrance). Each view starts
-   * from the layer's style, so an override never leaks into the next view.
+   * grade, backdrop) on vector layers, `raster` (opacity, vibrance).
+   * Each view starts from the layer's style, so an override never leaks into
+   * the next view.
    */
   style?: LayerStyleInput;
   playback?: ProjversorViewPlayback;

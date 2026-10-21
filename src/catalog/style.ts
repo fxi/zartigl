@@ -5,6 +5,7 @@
  */
 
 import { COLOR_GRADE_RANGES } from "../lib/color-grade";
+import { BACKDROP_OFF, isHexColor, resolveBackdrop } from "../lib/backdrop";
 
 export type StyleRenderMode = "particles" | "raster" | "raster+particles";
 /** Vibrant grade values; each one left out takes the vibrant preset's. */
@@ -30,7 +31,14 @@ export interface ParticleStyle {
   fade: number;
   /** Trail color grade; replaced as a whole, not merged. */
   grade: ParticleGrade;
+  /** Solid color under the trails; replaced as a whole, not merged. */
+  backdrop: BackdropStyle;
 }
+
+/** Partial particle style; a partial backdrop takes the defaults' keys. */
+export type ParticleStyleInput = Partial<Omit<ParticleStyle, "backdrop">> & {
+  backdrop?: Partial<BackdropStyle>;
+};
 
 export interface RasterStyle {
   opacity: number;
@@ -39,6 +47,18 @@ export interface RasterStyle {
   vibrance: number;
   /** Fixed physical-value domain; null follows the data. */
   colorDomain: [number, number] | null;
+}
+
+/**
+ * Solid color under the particle trails, drawn on valid data cells only: it
+ * keeps particles readable over a light basemap. Off by default; an object
+ * without `enabled` is on.
+ */
+export interface BackdropStyle {
+  enabled: boolean;
+  /** Hex color, `#rgb` or `#rrggbb`. */
+  color: string;
+  opacity: number;
 }
 
 export interface LayerStyle {
@@ -53,7 +73,7 @@ export interface LayerStyle {
 export interface LayerStyleInput {
   palette?: string;
   renderMode?: StyleRenderMode;
-  particles?: Partial<ParticleStyle>;
+  particles?: ParticleStyleInput;
   raster?: Partial<RasterStyle>;
 }
 
@@ -65,6 +85,7 @@ export const LAYER_STYLE_DEFAULTS: Readonly<LayerStyle> = Object.freeze({
     speed: 1,
     fade: 0.7,
     grade: "off",
+    backdrop: BACKDROP_OFF,
   }),
   raster: Object.freeze({
     opacity: 1,
@@ -73,6 +94,9 @@ export const LAYER_STYLE_DEFAULTS: Readonly<LayerStyle> = Object.freeze({
     colorDomain: null,
   }),
 }) as LayerStyle;
+
+/** Style groups: objects merged key by key. */
+const GROUPS = ["particles", "raster"] as const;
 
 const defined = <T extends object>(value: T | undefined): Partial<T> =>
   Object.fromEntries(
@@ -104,10 +128,11 @@ export function resolveLayerStyle(
     Object.assign(style.particles, defined(input.particles));
     Object.assign(style.raster, defined(input.raster));
   }
-  const { grade } = style.particles;
+  const { grade, backdrop } = style.particles;
   if (typeof grade === "object") {
     style.particles.grade = { ...grade };
   }
+  style.particles.backdrop = resolveBackdrop(backdrop);
   return style;
 }
 
@@ -129,7 +154,7 @@ export function mergeStyles(
     if (input.renderMode !== undefined) {
       merged.renderMode = input.renderMode;
     }
-    for (const group of ["particles", "raster"] as const) {
+    for (const group of GROUPS) {
       const values = defined(input[group]);
       if (Object.keys(values).length) {
         merged[group] = { ...merged[group], ...values } as never;
@@ -153,7 +178,7 @@ export function diffStyle(
   if (style.renderMode !== undefined && style.renderMode !== base.renderMode) {
     diff.renderMode = style.renderMode;
   }
-  for (const group of ["particles", "raster"] as const) {
+  for (const group of GROUPS) {
     const values = Object.entries(defined(style[group])).filter(
       ([key, value]) =>
         !same(value, (base[group] as unknown as Record<string, unknown>)[key]),
@@ -233,6 +258,10 @@ const PARTICLE_CHECKS: Record<keyof ParticleStyle, [Check, string]> = {
     (v) => GRADES.includes(v as ParticleGrade) || isGradeTuning(v),
     `"off", "vibrant" or an object of ${Object.keys(COLOR_GRADE_RANGES).join(", ")} in range`,
   ],
+  backdrop: [
+    (v) => isBackdrop(v),
+    'an object of enabled (a boolean), color ("#rgb" or "#rrggbb") and opacity (a number in [0, 1])',
+  ],
 };
 const RASTER_CHECKS: Record<keyof RasterStyle, [Check, string]> = {
   opacity: [inRange(0, 1), "a number in [0, 1]"],
@@ -244,6 +273,12 @@ const RASTER_CHECKS: Record<keyof RasterStyle, [Check, string]> = {
       (Array.isArray(v) && v.length === 2 && v.every(isNumber) && v[0] < v[1]),
     "null or [min, max] with min < max",
   ],
+};
+
+const BACKDROP_CHECKS: Record<keyof BackdropStyle, Check> = {
+  enabled: (v) => typeof v === "boolean",
+  color: isHexColor,
+  opacity: inRange(0, 1),
 };
 
 /** Style keys, for checks against other definitions of the same shape. */
@@ -265,6 +300,14 @@ const isGradeTuning = (value: unknown): boolean =>
       : undefined;
     return range !== undefined && inRange(range[0], range[1])(item);
   });
+
+const isBackdrop = (value: unknown): boolean =>
+  isObject(value) &&
+  Object.entries(value).every(
+    ([key, item]) =>
+      Object.prototype.hasOwnProperty.call(BACKDROP_CHECKS, key) &&
+      BACKDROP_CHECKS[key as keyof BackdropStyle](item),
+  );
 
 function fail(message: string): never {
   throw new Error(message);

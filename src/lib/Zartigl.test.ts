@@ -1959,6 +1959,47 @@ describe("Zartigl facade", () => {
     ).toHaveLength(1);
   });
 
+  it("keeps the particle backdrop off by default and sets it from the style", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      { source: "zarr", map: map as never, catalog: catalog(vectorLayer()) },
+      "vector",
+    );
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
+    expect(
+      (renderLayer as unknown as { options: { backdrop: unknown } }).options
+        .backdrop,
+    ).toMatchObject({ enabled: false });
+    const spy = vi.spyOn(renderLayer, "setBackdrop");
+
+    await z.update({
+      style: {
+        particles: {
+          backdrop: { enabled: true, color: "#123456", opacity: 0.2 },
+        },
+      },
+    });
+
+    expect(spy).toHaveBeenCalledWith({
+      enabled: true,
+      color: "#123456",
+      opacity: 0.2,
+    });
+    expect(z.getStyle().particles.backdrop).toEqual({
+      enabled: true,
+      color: "#123456",
+      opacity: 0.2,
+    });
+    expect(z.getStyleOverride()).toEqual({
+      particles: {
+        backdrop: { enabled: true, color: "#123456", opacity: 0.2 },
+      },
+    });
+    expect(
+      map.addLayerCalls.filter((call) => call.id === "zartigl"),
+    ).toHaveLength(1);
+  });
+
   it("passes palette settings to the render layer", async () => {
     const map = new FakeMap();
     const z = await createZartigl(

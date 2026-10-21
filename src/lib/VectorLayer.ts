@@ -10,6 +10,8 @@ import type {
   VelocityData,
 } from "./types";
 import { requireWebGL2, saveGLState, restoreGLState } from "./gl-util";
+import { resolveBackdrop } from "./backdrop";
+import type { BackdropStyle } from "../catalog/style";
 import type { ColorRampInput } from "./gl-util";
 import {
   coversViewportLatitude,
@@ -124,6 +126,7 @@ export class VectorLayer implements CustomLayerInterface {
       logScale: options.logScale ?? false,
       vibrance: options.vibrance ?? 0.0,
       colorGrade: resolveColorGrade(options.colorGrade),
+      backdrop: resolveBackdrop(options.backdrop),
       particleState: options.particleState ?? "auto",
       rgba8MaxParticleZoom: options.rgba8MaxParticleZoom ?? 4,
     });
@@ -738,6 +741,10 @@ export class VectorLayer implements CustomLayerInterface {
 
   setColorGrade(grade: Partial<ColorGrade>): void {
     this.simulation.setColorGrade(grade);
+  }
+
+  setBackdrop(backdrop: Partial<BackdropStyle>): void {
+    this.simulation.setBackdrop(backdrop);
   }
 
   getDebugInfo(): VectorLayerDebugInfo {

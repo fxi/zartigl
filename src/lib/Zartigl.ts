@@ -16,6 +16,7 @@ import {
   styleForKind,
   resolveLocalizedText,
   sourceCoversTime,
+  type BackdropStyle,
   type LayerStyle,
   type LayerStyleInput,
   type SourceTimeRequest,
@@ -72,6 +73,8 @@ export interface ZartiglSettings {
    * vibrant preset (see resolveColorGrade).
    */
   colorGrade: Partial<ColorGrade>;
+  /** Solid color under particle trails, on valid cells; off by default. */
+  backdrop: Partial<BackdropStyle>;
   /** Fixed physical-value domain for scalar colors. Null uses frame extrema. */
   colorDomain: [number, number] | null;
   particleState: ParticleStateMode;
@@ -602,6 +605,7 @@ function styleToSettings(style: LayerStyleInput): Partial<ZartiglSettings> {
     logScale: raster.logScale,
     vibrance: raster.vibrance,
     colorDomain: raster.colorDomain,
+    backdrop: particles.backdrop && { ...particles.backdrop },
   };
   return Object.fromEntries(
     Object.entries(settings).filter(([, value]) => value !== undefined),
@@ -622,6 +626,7 @@ export const LEGACY_STYLE_SETTINGS: Readonly<
   logScale: "style.raster.logScale",
   vibrance: "style.raster.vibrance",
   colorDomain: "style.raster.colorDomain",
+  backdrop: "style.particles.backdrop",
 });
 
 /**
@@ -645,6 +650,7 @@ export function splitLegacySettings(settings?: Partial<ZartiglSettings>): {
     logScale,
     vibrance,
     colorDomain,
+    backdrop,
     ...tuning
   } = settings ?? {};
   const legacyKeys = Object.keys(settings ?? {}).filter(
@@ -660,6 +666,7 @@ export function splitLegacySettings(settings?: Partial<ZartiglSettings>): {
       speed,
       fade,
       grade: colorGrade && colorGradeToGrade(colorGrade),
+      backdrop,
     },
     raster: { opacity, logScale, vibrance, colorDomain },
   });
@@ -2144,6 +2151,7 @@ export class Zartigl {
       logScale: this.settings.logScale,
       vibrance: this.settings.vibrance,
       colorGrade: this.settings.colorGrade,
+      backdrop: this.settings.backdrop,
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
       geoVideoAutoplay: this.autoplay && this.autoplayPending,
@@ -2339,6 +2347,9 @@ export class Zartigl {
     }
     if (settings.colorGrade != null) {
       layer.setColorGrade(settings.colorGrade);
+    }
+    if (settings.backdrop != null) {
+      layer.setBackdrop(settings.backdrop);
     }
     if (settings.colorDomain !== undefined) {
       layer.setColorDomain(settings.colorDomain);

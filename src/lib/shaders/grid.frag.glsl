@@ -12,6 +12,7 @@ uniform float u_opacity;          // overall opacity of raster layer
 uniform float u_log_scale;        // 0.0 = linear, 1.0 = log normalization
 uniform float u_vibrance;         // vibrance adjustment [-1, 1]
 uniform float u_scalar_mode;      // 0.0 = vector (speed magnitude), 1.0 = scalar (R direct)
+uniform vec4 u_solid;             // alpha > 0: flat backdrop color instead of the ramp
 
 varying vec2 v_geo_uv;            // field texture UV [0,1]
 
@@ -27,6 +28,10 @@ void main() {
     // validity mask (alpha channel)
     if (sample.a < 0.5) {
         discard;
+    }
+    if (u_solid.a > 0.0) {
+        gl_FragColor = u_solid;
+        return;
     }
 
     float t;

@@ -31,6 +31,7 @@ describe("resolveLayerStyle", () => {
       speed: 2,
       fade: 0.9,
       grade: "off",
+      backdrop: LAYER_STYLE_DEFAULTS.particles.backdrop,
     });
     expect(style.raster.opacity).toBe(0.5);
     expect(style.raster.vibrance).toBe(0);
@@ -66,6 +67,36 @@ describe("grade", () => {
     expect(() =>
       parseLayerStyle({ particles: { grade: { glow: 1 } } }, "s"),
     ).toThrow("s.particles.grade must be");
+  });
+});
+
+describe("backdrop", () => {
+  it("is off by default and replaced as a whole, on when given", () => {
+    expect(resolveLayerStyle().particles.backdrop).toEqual({
+      enabled: false,
+      color: "#000000",
+      opacity: 0.5,
+    });
+    expect(LAYER_STYLE_DEFAULTS.particles.backdrop.enabled).toBe(false);
+    const style = resolveLayerStyle(
+      { particles: { backdrop: { color: "#fff" } } },
+      { particles: { backdrop: { opacity: 0.2 } } },
+    );
+    expect(style.particles.backdrop).toEqual({
+      enabled: true,
+      color: "#000000",
+      opacity: 0.2,
+    });
+    expect(
+      resolveLayerStyle({ particles: { backdrop: { enabled: false } } })
+        .particles.backdrop.enabled,
+    ).toBe(false);
+    expect(
+      mergeStyles(
+        { particles: { backdrop: { color: "#fff" } } },
+        { particles: { backdrop: { opacity: 1 } } },
+      ),
+    ).toEqual({ particles: { backdrop: { opacity: 1 } } });
   });
 });
 
@@ -112,9 +143,19 @@ describe("parseLayerStyle", () => {
       raster: { opacity: 0.9, colorDomain: [0, 5] },
     };
     expect(parseLayerStyle(style, path, { kind: "vector" })).toBe(style);
+    expect(() =>
+      parseLayerStyle(
+        {
+          particles: {
+            backdrop: { enabled: true, color: "#0B1A2A", opacity: 0.3 },
+          },
+        },
+        path,
+      ),
+    ).not.toThrow();
   });
 
-  it.each([
+  it.each<[unknown, string]>([
     [{ particles: { density: 0 } }, `${path}.particles.density must be`],
     [{ particles: { density: 0.5 } }, `${path}.particles.density must be`],
     [{ particles: { speed: -1 } }, `${path}.particles.speed must be`],
@@ -122,6 +163,17 @@ describe("parseLayerStyle", () => {
     [{ particles: { grade: "loud" } }, `${path}.particles.grade must be`],
     [{ particles: { size: 1 } }, `${path}.particles.size is not a style key`],
     [{ raster: { colorDomain: [5, 0] } }, `${path}.raster.colorDomain must be`],
+    ...[
+      { color: "black" },
+      { color: "#00000080" },
+      { opacity: 2 },
+      { enabled: 1 },
+      { size: 1 },
+      "on",
+    ].map((backdrop): [unknown, string] => [
+      { particles: { backdrop } },
+      `${path}.particles.backdrop must be`,
+    ]),
     [{ renderMode: "dots" }, `${path}.renderMode must be one of`],
     [{ speed: 1 }, `${path}.speed is not a style key`],
     [[], `${path} must be an object`],

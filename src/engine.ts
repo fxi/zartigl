@@ -44,4 +44,10 @@ export {
   resolveColorGrade,
 } from "./lib/color-grade";
 export type { ColorGrade } from "./lib/color-grade";
+export {
+  BACKDROP_OFF,
+  backdropVec4,
+  isHexColor,
+  resolveBackdrop,
+} from "./lib/backdrop";
 export { nextChunk, pairChunk } from "./lib/archive-timeline";

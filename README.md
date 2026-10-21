@@ -95,13 +95,26 @@ the MapX `ArcoMapLegend` and the snippets the demo exports.
 {
   "palette": "thermal",
   "renderMode": "particles", // or "raster", "raster+particles"
-  "particles": { "density": 0.03, "speed": 1, "fade": 0.7, "grade": "vibrant" },
+  "particles": {
+    "density": 0.03,
+    "speed": 1,
+    "fade": 0.7,
+    "grade": "vibrant",
+    "backdrop": { "enabled": true, "color": "#000000", "opacity": 0.3 }
+  },
   "raster": { "opacity": 0.9, "logScale": false, "vibrance": 0.2, "colorDomain": null }
 }
 ```
 
 `particles.grade` is `"off"`, `"vibrant"`, or a tuned vibrant grade
 `{ exposure, contrast, saturation, highlights }`; it is replaced as a whole.
+
+`particles.backdrop` paints a flat color under the particle trails, on the
+valid cells of the field only (the ocean, not the land), so particles stay
+readable over a light basemap. It is off by default; an object is on unless
+`enabled` is false, and its keys left out take the defaults (`color:
+"#000000"`, `#rgb` or `#rrggbb`; `opacity: 0.5`). Like the grade, it is
+replaced as a whole.
 
 Keys merge one by one: engine defaults (`LAYER_STYLE_DEFAULTS`), then the
 catalog entry `defaults`, then the engine's own layer style, then the view.

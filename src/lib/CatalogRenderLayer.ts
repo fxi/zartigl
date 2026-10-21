@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import type { ColorRampInput } from "./gl-util";
 import type { ColorGrade } from "./color-grade";
+import type { BackdropStyle } from "../catalog/style";
 import type {
   CatalogEntry,
   CatalogWmtsSource,
@@ -553,6 +554,13 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   setColorGrade(grade: Partial<ColorGrade>): void {
     if (this.delegate instanceof VectorLayer) {
       this.delegate.setColorGrade(grade);
+    }
+  }
+
+  /** Under particle trails only; rasters ignore it. */
+  setBackdrop(backdrop: Partial<BackdropStyle>): void {
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setBackdrop(backdrop);
     }
   }
 
