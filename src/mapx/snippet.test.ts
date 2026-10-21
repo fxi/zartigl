@@ -16,17 +16,19 @@ describe("buildMapxWidgetSnippet", () => {
     const snippet = buildMapxWidgetSnippet({
       layerId: "b15be4e7-94ca-4887-a874-3fab37d29638",
       layerKind: "vector",
+      layerDefaults: {},
       source: "zarr",
       time: new Date("2026-06-04T00:00:00.000Z"),
       depth: 10,
       timeRange: { trailing: "P1M" },
       geoVideo: { autoplay: false, loop: true, playbackRate: 2 },
-      settings: {
+      style: {
         palette: "rdylbu",
-        opacity: 0.8,
-        speed: 1.0,
         renderMode: "raster+particles",
+        particles: { speed: 1.0 },
+        raster: { opacity: 0.8 },
       },
+      settings: { particleState: "rgba8" },
     });
 
     expect(snippet).toContain("function handler()");
@@ -42,9 +44,14 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).toContain("elInputs: widget.elContent");
     expect(snippet).toContain('source: "zarr"');
     expect(snippet).toContain('layer: "b15be4e7-94ca-4887-a874-3fab37d29638"');
-    expect(snippet).toContain("settings: {");
+    expect(snippet).toContain("style: {");
     expect(snippet).toContain('"opacity": 0.8');
     expect(snippet).toContain('"renderMode": "raster+particles"');
+    // Same as the layer's own style: left out.
+    expect(snippet).not.toContain('"speed"');
+    expect(snippet).toContain("settings: {");
+    expect(snippet).toContain('"particleState": "rgba8"');
+    expect(snippet).not.toContain("particleDensity");
     expect(snippet).toContain('time: new Date("2026-06-04T00:00:00.000Z")');
     expect(snippet).toContain("depth: 10");
     expect(snippet).toContain('"trailing": "P1M"');
@@ -77,31 +84,56 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).not.toContain('"end"');
   });
 
-  it("omits particle-only settings from scalar GeoVideo snippets", () => {
+  it("writes only the style a scalar layer draws, over its own", () => {
     const snippet = buildMapxWidgetSnippet({
       layerId: "sea-temperature",
       layerKind: "scalar",
+      layerDefaults: { palette: "thermal", raster: { vibrance: 0.2 } },
       source: "geovideo",
-      settings: {
+      style: {
         palette: "balance",
-        opacity: 0.8,
-        logScale: false,
-        vibrance: 0.2,
-        colorDomain: [-3, 3],
-        particleDensity: 0.05,
-        speed: 1,
-        fade: 0.7,
         renderMode: "particles",
+        particles: { density: 0.05, speed: 1, fade: 0.7 },
+        raster: {
+          opacity: 0.8,
+          logScale: false,
+          vibrance: 0.2,
+          colorDomain: [-3, 3],
+        },
       },
+      settings: { particleState: "rgba8" },
     });
 
     expect(snippet).toContain('source: "geovideo"');
     expect(snippet).toContain('"palette": "balance"');
     expect(snippet).toContain('"colorDomain"');
-    expect(snippet).not.toContain("particleDensity");
-    expect(snippet).not.toContain('"speed"');
-    expect(snippet).not.toContain('"fade"');
+    expect(snippet).toContain('"opacity": 0.8');
+    expect(snippet).not.toContain("particles");
     expect(snippet).not.toContain("renderMode");
+    expect(snippet).not.toContain("logScale");
+    expect(snippet).not.toContain("vibrance");
+    expect(snippet).not.toContain("settings:");
+  });
+
+  it("writes the whole override when the layer's own style is unknown", () => {
+    const snippet = buildMapxWidgetSnippet({
+      layerId: "ocean-current-velocity",
+      layerKind: "vector",
+      style: { particles: { density: 0.05 } },
+    });
+
+    expect(snippet).toContain('"density": 0.05');
+  });
+
+  it("writes no style when the layer keeps its own", () => {
+    const snippet = buildMapxWidgetSnippet({
+      layerId: "wind",
+      layerKind: "vector",
+      layerDefaults: { palette: "thermal", particles: { density: 0.03 } },
+      style: { palette: "thermal", particles: { density: 0.03 } },
+    });
+
+    expect(snippet).not.toContain("style:");
   });
 });
 
@@ -116,7 +148,7 @@ describe("buildStandaloneDemoSnippet", () => {
       timeRange: { start: "2026-06-01T00:00:00Z", end: "2026-06-30T00:00:00Z" },
       geoVideo: { autoplay: true, loop: false, playbackRate: 5 },
       depth: 10,
-      settings: { opacity: 0.8, renderMode: "raster" },
+      style: { renderMode: "raster", raster: { opacity: 0.8, vibrance: 1 } },
       center: [6.1, 46.2],
       zoom: 4.1234,
       bearing: 12.5,
@@ -150,8 +182,10 @@ describe("buildStandaloneDemoSnippet", () => {
     expect(snippet).toContain('"start": "2026-06-01T00:00:00Z"');
     expect(snippet).toContain("geoVideo: {");
     expect(snippet).toContain('layer: "b15be4e7-94ca-4887-a874-3fab37d29638"');
-    expect(snippet).toContain("settings: {");
+    expect(snippet).toContain("style: {");
     expect(snippet).toContain('"opacity": 0.8');
+    // WMTS only takes its opacity.
+    expect(snippet).not.toContain("vibrance");
     expect(snippet).not.toContain("renderMode");
     expect(snippet).toContain('time: new Date("2026-06-04T00:00:00.000Z")');
     expect(snippet).toContain("depth: 10");
@@ -164,6 +198,18 @@ describe("buildStandaloneDemoSnippet", () => {
     ).toBeLessThan(snippet.indexOf("map.jumpTo({"));
     expect(snippet.indexOf("map.jumpTo({")).toBeLessThan(
       snippet.indexOf("new Zartigl({"),
+    );
+  });
+
+  it("takes a MapLibre map style URL", () => {
+    const snippet = buildStandaloneDemoSnippet({
+      layerId: "61a81ddd-6c8e-4020-a59f-06ef13a90419",
+      layerKind: "scalar",
+      mapStyle: "https://example.test/style.json",
+    });
+
+    expect(snippet).toContain(
+      'const style = "https://example.test/style.json";',
     );
   });
 

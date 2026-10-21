@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { CatalogRenderLayer } from "./CatalogRenderLayer";
-import { Zartigl } from "./Zartigl";
+import { Zartigl, splitLegacySettings } from "./Zartigl";
 import type { ZartiglOptions } from "./Zartigl";
 import { ZarrSource } from "./ZarrSource";
 import type { Catalog, CatalogEntry } from "../catalog/types";
@@ -1590,6 +1590,293 @@ describe("Zartigl facade", () => {
     expect(spy).toHaveBeenCalledWith("raster+particles");
   });
 
+  it("applies a layer style over flat settings and catalog defaults", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(vectorLayer()),
+        settings: { particleDensity: 0.1, fade: 0.2 },
+        style: {
+          particles: { density: 0.03, speed: 2, grade: "vibrant" },
+          raster: { opacity: 0.5 },
+        },
+      },
+      "vector",
+    );
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
+    expect(
+      (renderLayer as unknown as { options: Record<string, unknown> }).options,
+    ).toMatchObject({
+      particleDensity: 0.03,
+      speed: 2,
+      fade: 0.2,
+      opacity: 0.5,
+      colorGrade: { enabled: true },
+    });
+    const density = vi.spyOn(renderLayer, "setParticleDensity");
+    const speed = vi.spyOn(renderLayer, "setSpeed");
+
+    await z.update({ style: { particles: { density: 0.06, speed: 4 } } });
+
+    expect(density).toHaveBeenCalledWith(0.06);
+    expect(speed).toHaveBeenCalledWith(4);
+  });
+
+  it("replaces the style override on the same layer", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(
+          vectorLayer({ defaults: { particles: { density: 0.02 } } }),
+        ),
+        style: { particles: { density: 0.1 }, raster: { opacity: 0.5 } },
+      },
+      "vector",
+    );
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
+    const density = vi.spyOn(renderLayer, "setParticleDensity");
+    const opacity = vi.spyOn(renderLayer, "setOpacity");
+
+    await z.update({ style: { particles: { speed: 2 } } });
+
+    // Keys the new style leaves out return to the layer's own.
+    expect(density).toHaveBeenLastCalledWith(0.02);
+    expect(opacity).toHaveBeenLastCalledWith(1);
+    await z.update({ style: {} });
+    expect(z.getDebugInfo().settings).toMatchObject({
+      particleDensity: 0.02,
+      speed: 1,
+      opacity: 1,
+    });
+  });
+
+  it("splits flat settings into a style and engine tuning", () => {
+    expect(
+      splitLegacySettings({
+        palette: "thermal",
+        particleDensity: 0.1,
+        colorGrade: { enabled: false },
+        colorDomain: null,
+        particleState: "rgba8",
+      }),
+    ).toEqual({
+      style: {
+        palette: "thermal",
+        particles: { density: 0.1, grade: "off" },
+        raster: { colorDomain: null },
+      },
+      settings: { particleState: "rgba8" },
+      legacyKeys: ["palette", "particleDensity", "colorGrade", "colorDomain"],
+    });
+    // A custom ramp is not a palette id: it stays a setting.
+    const ramp = ["#000", "#fff"];
+    expect(splitLegacySettings({ palette: ramp })).toMatchObject({
+      style: {},
+      settings: { palette: ramp },
+    });
+  });
+
+  it("warns once per deprecated flat style setting", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => warn.mockRestore());
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(vectorLayer()),
+        settings: { vibrance: 0.2 },
+      },
+      "vector",
+    );
+    await z.update({ settings: { vibrance: 0.3, fade: 0.4 } });
+    const messages = warn.mock.calls
+      .map(([message]) => String(message))
+      .filter((message) => message.includes("deprecated"));
+    expect(messages.filter((m) => m.includes("settings.vibrance"))).toEqual([
+      "[zartigl] settings.vibrance is deprecated: use style.raster.vibrance",
+    ]);
+    // Flat keys patch the override.
+    expect(z.getStyleOverride()).toEqual({
+      particles: { fade: 0.4 },
+      raster: { vibrance: 0.3 },
+    });
+  });
+
+  it("keeps a custom palette ramp through a style without a palette", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => warn.mockRestore());
+    const map = new FakeMap();
+    const ramp = ["#000000", "#ffffff"];
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(vectorLayer({ defaults: { palette: "thermal" } })),
+        settings: { palette: ramp },
+      },
+      "vector",
+    );
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
+
+    await z.update({ style: { raster: { opacity: 0.5 } } });
+
+    expect(z.getDebugInfo().settings.palette).toEqual(ramp);
+    expect(map.getLayer("zartigl")).toBe(renderLayer);
+  });
+
+  it("lets a custom ramp replace a migrated palette", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => warn.mockRestore());
+    const map = new FakeMap();
+    const ramp = ["#000000", "#ffffff"];
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(vectorLayer()),
+        settings: { palette: "viridis" },
+      },
+      "vector",
+    );
+
+    await z.update({ settings: { palette: ramp } });
+    expect(z.getDebugInfo().settings.palette).toEqual(ramp);
+    expect(z.getStyleOverride().palette).toBeUndefined();
+    await z.update({ settings: { opacity: 0.4 } });
+    expect(z.getDebugInfo().settings.palette).toEqual(ramp);
+  });
+
+  it("applies only the style settings that change", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(
+          scalarLayer({ defaults: { raster: { colorDomain: [-3, 3] } } }),
+        ),
+      },
+      "scalar",
+    );
+    const renderLayer = map.getLayer("zartigl") as CatalogRenderLayer;
+    const domain = vi.spyOn(renderLayer, "setColorDomain");
+    const opacity = vi.spyOn(renderLayer, "setOpacity");
+
+    await z.update({ style: { raster: { opacity: 0.5 } } });
+
+    expect(opacity).toHaveBeenCalledWith(0.5);
+    expect(domain).not.toHaveBeenCalled();
+  });
+
+  it("keeps flat settings given with a replaced style", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(vectorLayer()),
+        style: { raster: { opacity: 0.5 } },
+      },
+      "vector",
+    );
+
+    await z.update({ settings: { opacity: 0.25, fade: 0.3 }, style: {} });
+    expect(z.getDebugInfo().settings).toMatchObject({
+      opacity: 0.25,
+      fade: 0.3,
+    });
+    await z.update({
+      settings: { opacity: 0.25 },
+      style: { raster: { opacity: 0.8 } },
+    });
+    expect(z.getDebugInfo().settings.opacity).toBe(0.8);
+  });
+
+  it("checks a queued style against the layer it applies to", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: {
+          ...catalog(),
+          layers: [scalarLayer(), vectorLayer()],
+        },
+      },
+      "scalar",
+    );
+
+    const switched = z.update({ layer: "vector", source: "zarr" });
+    const styled = z.update({ style: { particles: { density: 0.1 } } });
+    await Promise.all([switched, styled]);
+    expect(z.getDebugInfo().settings.particleDensity).toBe(0.1);
+  });
+
+  it("keeps only the style a new layer kind draws", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: { ...catalog(), layers: [vectorLayer(), scalarLayer()] },
+        style: { particles: { density: 0.1 } },
+      },
+      "vector",
+    );
+
+    await z.update({ layer: "scalar", source: "zarr" });
+    expect(z.getStyleOverride()).toEqual({});
+    expect(z.getStyle().renderMode).toBe("raster");
+    // A new style is still checked strictly.
+    await expect(
+      z.update({ style: { particles: { density: 0.1 } } }),
+    ).rejects.toThrow("style.particles needs a vector layer");
+  });
+
+  it("drops the style of a layer switch that fails", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        source: "zarr",
+        map: map as never,
+        catalog: {
+          ...catalog(),
+          layers: [vectorLayer(), vectorLayer({ id: "other" })],
+        },
+      },
+      "vector",
+    );
+
+    await expect(
+      z.update({ layer: "missing", style: { palette: "thermal" } }),
+    ).rejects.toThrow("Unknown zartigl catalog entry");
+    await z.update({ layer: "other", source: "zarr" });
+    expect(z.getDebugInfo().settings.palette).toBe("rdylbu");
+  });
+
+  it("validates a style against the layer kind", async () => {
+    const map = new FakeMap();
+    const options = { map: map as never, catalog: catalog(), layer: "scalar" };
+    expect(
+      () => new Zartigl({ ...options, style: { particles: { density: 0.1 } } }),
+    ).toThrow("style.particles needs a vector layer");
+    expect(
+      () => new Zartigl({ ...options, style: { renderMode: "particles" } }),
+    ).toThrow('style.renderMode must be "raster" on a scalar layer');
+    const z = await createZartigl(
+      { source: "zarr", map: map as never, catalog: catalog() },
+      "scalar",
+    );
+    await expect(
+      z.update({ style: { raster: { opacity: 2 } } }),
+    ).rejects.toThrow("style.raster.opacity must be");
+  });
+
   it("passes particle state settings to the render layer", async () => {
     const map = new FakeMap();
     const z = await createZartigl(
@@ -1663,7 +1950,10 @@ describe("Zartigl facade", () => {
 
     await z.update({ settings: { colorGrade: { contrast: 0.2 } } });
 
-    expect(spy).toHaveBeenCalledWith({ contrast: 0.2 });
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true, contrast: 0.2 }),
+    );
+    expect(z.getStyle().particles.grade).toMatchObject({ contrast: 0.2 });
     expect(
       map.addLayerCalls.filter((call) => call.id === "zartigl"),
     ).toHaveLength(1);
@@ -1765,7 +2055,7 @@ describe("Zartigl facade", () => {
 
     await expect(
       z.update({ settings: { colorDomain: [3, -3] } }),
-    ).rejects.toThrow(/finite, increasing/);
+    ).rejects.toThrow("style.raster.colorDomain must be");
 
     expect(spy).not.toHaveBeenCalled();
     expect(z.getLegend()).toMatchObject({ min: -3, max: 3 });
@@ -1787,7 +2077,7 @@ describe("Zartigl facade", () => {
           layer: "scalar",
           settings: { colorDomain: [Number.NaN, 3] },
         }),
-    ).toThrow(/finite, increasing/);
+    ).toThrow("style.raster.colorDomain must be");
 
     expect(map.listeners.size).toBe(0);
   });

@@ -9,9 +9,13 @@
         "preset": "mollweide",
         "rotate": [-137, -38, 0],
         "zoom": 4.6,
-        "palette": "cyclic",
-        "speed": 20,
-        "transitionMs": 1600
+        "transitionMs": 1600,
+        "style": {
+          "palette": "cyclic"
+        },
+        "playback": {
+          "speed": 20
+        }
       }
     },
     {
@@ -24,7 +28,9 @@
         "zoom": 1.35,
         "transitionMs": 2600,
         "wrap": true,
-        "palette": "thermal"
+        "style": {
+          "palette": "thermal"
+        }
       }
     },
     {
@@ -55,11 +61,13 @@
       "config": {
         "layer": "med-ocean-current-velocity",
         "tint": "acf3b528-6915-4c3c-8a31-0d5200fc800b",
-        "palette": "thermal",
         "preset": "globe",
         "rotate": [-14, -42, 0],
         "zoom": 10,
-        "transitionMs": 2400
+        "transitionMs": 2400,
+        "style": {
+          "palette": "thermal"
+        }
       }
     },
     {
@@ -71,9 +79,13 @@
         "rotate": [0, -90, 0],
         "zoom": 2.8,
         "transitionMs": 3200,
-        "palette": "oxygen",
-        "speed": 20,
-        "time": "2026-06-01"
+        "style": {
+          "palette": "oxygen"
+        },
+        "playback": {
+          "speed": 20,
+          "time": "2026-06-01"
+        }
       }
     },
     {
@@ -81,11 +93,13 @@
       "type": "projversor",
       "config": {
         "layer": "ocean-velocity-temperature",
-        "palette": "thermal",
         "preset": "south",
         "rotate": [0, 90, 0],
         "zoom": 2.2,
-        "transitionMs": 3200
+        "transitionMs": 3200,
+        "style": {
+          "palette": "thermal"
+        }
       }
     },
     {
@@ -97,8 +111,10 @@
         "rotate": [160, 0, 0],
         "zoom": 1.6,
         "transitionMs": 3000,
-        "time": "2026-06-01",
-        "speed": 10
+        "playback": {
+          "speed": 10,
+          "time": "2026-06-01"
+        }
       }
     },
     {
@@ -107,11 +123,13 @@
       "config": {
         "layer": "wave-stokes-drift",
         "tint": "3db0120b-17d2-4789-9952-efcc0953ecc4",
-        "palette": "viridis",
         "preset": "south",
         "rotate": [60, 25, 0],
         "zoom": 2.4,
-        "transitionMs": 3600
+        "transitionMs": 3600,
+        "style": {
+          "palette": "viridis"
+        }
       }
     }
   ]

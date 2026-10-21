@@ -1,7 +1,12 @@
 import maplibregl, { type PropertyValueSpecification } from "maplibre-gl";
 import { Zartigl } from "../../lib";
 import type { TimeRange, ZartiglSettings, ZartiglStatus } from "../../lib";
-import { catalog } from "../../catalog";
+import {
+  catalog,
+  getCatalogEntry,
+  parseLayerStyle,
+  type LayerStyleInput,
+} from "../../catalog";
 import type {
   StoryAnchor,
   StoryScene,
@@ -32,6 +37,9 @@ interface ZartiglViewConfig extends Record<string, unknown> {
   transition?: CameraTransitionConfig;
   anchor?: StoryAnchor;
   timeRange?: TimeRange;
+  /** Style over the layer's own; it does not carry to the next view. */
+  style?: LayerStyleInput;
+  /** Engine tuning; flat style keys are deprecated, use `style`. */
   settings?: Partial<ZartiglSettings>;
   overlays?: string[];
 }
@@ -184,6 +192,12 @@ function assertConfig(
       );
     }
   }
+  if (config.style !== undefined) {
+    const layerId = typeof config.layerId === "string" ? config.layerId : "";
+    parseLayerStyle(config.style, "zartigl-map config.style", {
+      kind: getCatalogEntry(layerId)?.kind,
+    });
+  }
 }
 
 export function cameraPadding(
@@ -304,6 +318,7 @@ export class ZartiglStoryView implements StoryViewAdapter {
       source: config.sourceId ?? "auto",
       timeRange: config.timeRange,
       settings: config.settings,
+      style: config.style,
       geoVideo: { autoplay: true, loop: true, playbackRate: 1 },
       visible: true,
       before: "enso-region-fill",
@@ -361,6 +376,8 @@ export class ZartiglStoryView implements StoryViewAdapter {
         source: config.sourceId ?? "auto",
         timeRange: config.timeRange ?? null,
         settings: config.settings,
+        // Each view starts from the layer's own style.
+        style: config.style ?? {},
         visible: true,
       });
     }

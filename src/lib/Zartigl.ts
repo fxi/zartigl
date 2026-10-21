@@ -8,10 +8,16 @@ import type {
   CatalogZarrSource,
 } from "../catalog/types";
 import {
+  mergeStyles,
+  parseLayerStyle,
   pickPreferredSource,
   pickSourceByPriority,
+  resolveEntryStyle,
+  styleForKind,
   resolveLocalizedText,
   sourceCoversTime,
+  type LayerStyle,
+  type LayerStyleInput,
   type SourceTimeRequest,
 } from "../catalog";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
@@ -26,7 +32,12 @@ import type {
 } from "./types";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import { validateScalarColorDomain } from "./scalar-color-domain";
-import { COLOR_GRADE_OFF, type ColorGrade } from "./color-grade";
+import {
+  COLOR_GRADE_OFF,
+  colorGradeToGrade,
+  gradeToColorGrade,
+  type ColorGrade,
+} from "./color-grade";
 import { nextChunk } from "./archive-timeline";
 import {
   ZartiglFrameUnavailableError,
@@ -78,6 +89,12 @@ export interface ZartiglOptions {
   depth?: number;
   geoVideo?: GeoVideoOptions;
   visible?: boolean;
+  /** Style override over the layer's own. */
+  style?: LayerStyleInput;
+  /**
+   * Engine tuning (`particleState`, `rgba8MaxParticleZoom`). Flat style
+   * keys are deprecated: they move to `style`, with a warning.
+   */
   settings?: Partial<ZartiglSettings>;
   metadata?: Record<string, unknown>;
   before?: string;
@@ -89,6 +106,17 @@ export interface ZartiglUpdate {
   timeRange?: TimeRange | null;
   time?: Date | string | number;
   depth?: number;
+  /**
+   * Replaces the style override: every style key returns to the layer's own,
+   * then this one applies (`{}` clears it). Omitted, the override stays,
+   * across layers too, without the keys a new layer kind cannot draw. Kept
+   * once a layer switch loads.
+   */
+  style?: LayerStyleInput;
+  /**
+   * Engine tuning. Flat style keys are deprecated: they patch the style
+   * override, with a warning.
+   */
   settings?: Partial<ZartiglSettings>;
   geoVideo?: GeoVideoOptions;
   visible?: boolean;
@@ -99,6 +127,9 @@ interface SourceTarget {
   time?: Date | string | number;
   depth?: number;
 }
+
+/** An update with deprecated flat style settings moved to a style patch. */
+type QueuedUpdate = ZartiglUpdate & { stylePatch?: LayerStyleInput };
 
 interface LoadContext {
   timeRange?: TimeRange;
@@ -554,29 +585,151 @@ function mergeTimeAxes(
 const ARCHIVE_INDEX_TTL_MS = 5 * 60_000;
 const ARCHIVE_INDEX_RETRY_MS = 60_000;
 
+/** Flat settings of a style; keys the style leaves out stay out. */
+function styleToSettings(style: LayerStyleInput): Partial<ZartiglSettings> {
+  const { particles = {}, raster = {} } = style;
+  const settings: Partial<ZartiglSettings> = {
+    palette: style.palette,
+    renderMode: style.renderMode,
+    particleDensity: particles.density,
+    speed: particles.speed,
+    fade: particles.fade,
+    colorGrade:
+      particles.grade === undefined
+        ? undefined
+        : gradeToColorGrade(particles.grade),
+    opacity: raster.opacity,
+    logScale: raster.logScale,
+    vibrance: raster.vibrance,
+    colorDomain: raster.colorDomain,
+  };
+  return Object.fromEntries(
+    Object.entries(settings).filter(([, value]) => value !== undefined),
+  ) as Partial<ZartiglSettings>;
+}
+
+/** Where each deprecated flat style setting moved in the style. */
+export const LEGACY_STYLE_SETTINGS: Readonly<
+  Partial<Record<keyof ZartiglSettings, string>>
+> = Object.freeze({
+  palette: "style.palette",
+  renderMode: "style.renderMode",
+  particleDensity: "style.particles.density",
+  speed: "style.particles.speed",
+  fade: "style.particles.fade",
+  colorGrade: "style.particles.grade",
+  opacity: "style.raster.opacity",
+  logScale: "style.raster.logScale",
+  vibrance: "style.raster.vibrance",
+  colorDomain: "style.raster.colorDomain",
+});
+
+/**
+ * Split flat settings into the style their style keys make and the engine
+ * tuning left. A custom palette ramp, not a palette id, stays in
+ * `settings`. `legacyKeys` lists the style keys found.
+ */
+export function splitLegacySettings(settings?: Partial<ZartiglSettings>): {
+  style: LayerStyleInput;
+  settings: Partial<ZartiglSettings>;
+  legacyKeys: (keyof ZartiglSettings)[];
+} {
+  const {
+    palette,
+    renderMode,
+    particleDensity,
+    speed,
+    fade,
+    colorGrade,
+    opacity,
+    logScale,
+    vibrance,
+    colorDomain,
+    ...tuning
+  } = settings ?? {};
+  const legacyKeys = Object.keys(settings ?? {}).filter(
+    (key) =>
+      key in LEGACY_STYLE_SETTINGS &&
+      settings![key as keyof ZartiglSettings] !== undefined,
+  ) as (keyof ZartiglSettings)[];
+  const style = mergeStyles({
+    palette: typeof palette === "string" ? palette : undefined,
+    renderMode,
+    particles: {
+      density: particleDensity,
+      speed,
+      fade,
+      grade: colorGrade && colorGradeToGrade(colorGrade),
+    },
+    raster: { opacity, logScale, vibrance, colorDomain },
+  });
+  return {
+    style,
+    settings:
+      palette === undefined || typeof palette === "string"
+        ? tuning
+        : { ...tuning, palette },
+    legacyKeys,
+  };
+}
+
+const warned = new Set<string>();
+
+/** Warn once per deprecated flat style setting. */
+function warnLegacySettings(keys: (keyof ZartiglSettings)[]): void {
+  for (const key of keys) {
+    if (!warned.has(key)) {
+      warned.add(key);
+      console.warn(
+        `[zartigl] settings.${key} is deprecated: use ${LEGACY_STYLE_SETTINGS[key]}`,
+      );
+    }
+  }
+}
+
+/**
+ * Every style key of a catalog layer as flat settings, as zartigl renders
+ * it: the layer's own style, then `style`.
+ */
+function layerStyleSettings(
+  catalogLayer?: CatalogEntry,
+  style?: LayerStyleInput,
+): Partial<ZartiglSettings> {
+  const resolved = resolveEntryStyle(catalogLayer, style);
+  return {
+    ...styleToSettings(resolved),
+    palette: resolved.palette ?? "rdylbu",
+    colorDomain: validateScalarColorDomain(resolved.raster.colorDomain),
+  };
+}
+
 function defaultSettings(
   catalogLayer?: CatalogEntry,
 ): Partial<ZartiglSettings> {
-  const defaults = catalogLayer?.defaults;
   return {
-    palette: defaults?.palette ?? "rdylbu",
-    particleDensity: defaults?.particles?.density ?? 0.05,
-    speed: defaults?.particles?.speed ?? 1.0,
-    fade: defaults?.particles?.fade ?? 0.7,
-    renderMode:
-      catalogLayer?.kind === "scalar"
-        ? "raster"
-        : (defaults?.renderMode ?? "particles"),
-    opacity: defaults?.raster?.opacity ?? 1,
-    logScale: defaults?.raster?.logScale ?? false,
-    vibrance: defaults?.raster?.vibrance ?? 0,
-    colorGrade: COLOR_GRADE_OFF,
-    colorDomain: validateScalarColorDomain(
-      defaults?.raster?.colorDomain ?? null,
-    ),
+    ...layerStyleSettings(catalogLayer),
     particleState: "auto",
     rgba8MaxParticleZoom: 4,
   };
+}
+
+/** `style` without its palette. */
+function withoutPalette(style: LayerStyleInput): LayerStyleInput {
+  const { palette: _palette, ...rest } = style;
+  return rest;
+}
+
+/** Validate a style against the kind of catalog entry `id`. */
+function checkStyle(
+  style: LayerStyleInput | undefined,
+  catalog: Catalog,
+  id: string | undefined,
+): void {
+  if (style !== undefined) {
+    parseLayerStyle(style, "style", {
+      kind: catalog.layers.find((entry) => entry.id === id)?.kind,
+    });
+  }
 }
 
 export class Zartigl {
@@ -618,6 +771,8 @@ export class Zartigl {
   /** GeoVideo manifests that failed to load; "auto" falls back to Zarr. */
   private failedGeoVideo = new Set<string>();
   private settings: Partial<ZartiglSettings>;
+  /** Style override over the layer's own, kept across layers. */
+  private style: LayerStyleInput;
   private colorDomainOverridden: boolean;
   private paletteOverridden: boolean;
   private lastMeta: FieldMeta | null = null;
@@ -680,14 +835,18 @@ export class Zartigl {
     this.metadata = options.metadata ? { ...options.metadata } : undefined;
     this.before = options.before;
     this.visible = options.visible ?? true;
-    this.settings = { ...options.settings };
-    if (options.settings?.colorDomain !== undefined) {
+    const legacy = splitLegacySettings(options.settings);
+    warnLegacySettings(legacy.legacyKeys);
+    this.style = mergeStyles(legacy.style, options.style);
+    checkStyle(this.style, options.catalog, options.layer);
+    this.settings = { ...legacy.settings, ...styleToSettings(this.style) };
+    if (this.settings.colorDomain !== undefined) {
       this.settings.colorDomain = validateScalarColorDomain(
-        options.settings.colorDomain,
+        this.settings.colorDomain,
       );
     }
-    this.colorDomainOverridden = options.settings?.colorDomain !== undefined;
-    this.paletteOverridden = options.settings?.palette !== undefined;
+    this.colorDomainOverridden = this.settings.colorDomain !== undefined;
+    this.paletteOverridden = this.settings.palette !== undefined;
 
     this.map.on("load", this.onMapLoad);
     this.map.on("styledata", this.onStyleData);
@@ -720,8 +879,13 @@ export class Zartigl {
     this.initialized = true;
   }
 
-  async update(change: ZartiglUpdate): Promise<void> {
+  async update(input: ZartiglUpdate): Promise<void> {
     this.assertAlive();
+    const legacy = splitLegacySettings(input.settings);
+    warnLegacySettings(legacy.legacyKeys);
+    const change: QueuedUpdate = legacy.legacyKeys.length
+      ? { ...input, settings: legacy.settings, stylePatch: legacy.style }
+      : input;
     if (!this.initialized) {
       throw new Error("Call init() before update()");
     }
@@ -736,6 +900,12 @@ export class Zartigl {
     if (change.settings?.colorDomain !== undefined) {
       validateScalarColorDomain(change.settings.colorDomain);
     }
+    // The layer kind is checked when the change runs, after queued switches.
+    for (const style of [change.style, change.stylePatch]) {
+      if (style !== undefined) {
+        parseLayerStyle(style, "style");
+      }
+    }
     // Choosing a date or a depth is navigation: it stops playback now, and
     // again once applied if an earlier queued request started it meanwhile.
     if (change.time != null || change.depth != null) {
@@ -748,7 +918,7 @@ export class Zartigl {
    * Queue a change after earlier ones. Internal seeks, such as an archive
    * chunk handoff, come here directly and keep playback going.
    */
-  private enqueue(change: ZartiglUpdate, seq?: number): Promise<void> {
+  private enqueue(change: QueuedUpdate, seq?: number): Promise<void> {
     // Another layer starts from its own default time and surface depth.
     const otherLayer =
       change.layer != null && change.layer !== this.catalogLayer?.id;
@@ -778,7 +948,7 @@ export class Zartigl {
   }
 
   private async applyUpdate(
-    change: ZartiglUpdate,
+    change: QueuedUpdate,
     generation?: number,
     seq?: number,
   ): Promise<void> {
@@ -806,21 +976,54 @@ export class Zartigl {
       change.source === "auto" &&
       this.sourcePreference === "auto";
     const target: SourceTarget = { time: change.time, depth: change.depth };
+    const targetId = changesLayer ? change.layer! : this.catalogLayer?.id;
+    // A new override is checked strictly: `style`, over deprecated flat
+    // settings, else those settings patching the current one. A kept one
+    // loses the keys a new layer kind cannot draw.
+    const merged =
+      change.stylePatch === undefined
+        ? change.style
+        : change.style === undefined
+          ? mergeStyles(this.style, change.stylePatch)
+          : mergeStyles(change.stylePatch, change.style);
+    // A custom ramp in `settings` replaces the style palette, unless
+    // `style` sets one.
+    const ramp = change.settings?.palette;
+    const requested =
+      merged !== undefined &&
+      ramp !== undefined &&
+      typeof ramp !== "string" &&
+      change.style?.palette === undefined
+        ? withoutPalette(merged)
+        : merged;
+    checkStyle(requested, this.catalog, targetId);
+    const style =
+      requested ??
+      (changesLayer
+        ? styleForKind(
+            this.style,
+            this.catalog.layers.find((entry) => entry.id === targetId)?.kind,
+          )
+        : undefined);
 
     if (changesLayer) {
+      // The new layer starts from its own style, with the override, which
+      // is kept once the layer loads.
+      const settings = { ...change.settings, ...styleToSettings(style!) };
       await this.loadLayer(
         change.layer!,
         change.source ?? "auto",
         {
           timeRange:
             change.timeRange == null ? undefined : { ...change.timeRange },
-          settings: { ...(change.settings ?? {}) },
-          colorDomainOverridden: change.settings?.colorDomain !== undefined,
-          paletteOverridden: change.settings?.palette !== undefined,
+          settings,
+          colorDomainOverridden: settings.colorDomain !== undefined,
+          paletteOverridden: settings.palette !== undefined,
           target,
         },
         generation,
       );
+      this.style = style!;
     } else {
       const hasTimeRange = Object.prototype.hasOwnProperty.call(
         change,
@@ -838,7 +1041,32 @@ export class Zartigl {
       }
     }
 
-    if (!changesLayer && change.settings) {
+    if (!changesLayer && style !== undefined) {
+      // As a load: the layer's own style, engine tuning, then the override.
+      this.style = style;
+      const settings = { ...change.settings, ...styleToSettings(this.style) };
+      // A custom ramp is engine tuning: a style without a palette keeps it.
+      const ramp = this.settings.palette;
+      if (settings.palette === undefined && ramp && typeof ramp !== "string") {
+        settings.palette = ramp;
+      }
+      // Only what changes: a scalar color domain re-encodes the field.
+      const next: Partial<ZartiglSettings> = {
+        ...this.styledSettings(),
+        ...settings,
+      };
+      this.applySettings(
+        Object.fromEntries(
+          Object.entries(next).filter(
+            ([key, value]) =>
+              JSON.stringify(value) !==
+              JSON.stringify(this.settings[key as keyof ZartiglSettings]),
+          ),
+        ),
+      );
+      this.colorDomainOverridden = settings.colorDomain !== undefined;
+      this.paletteOverridden = settings.palette !== undefined;
+    } else if (!changesLayer && change.settings) {
       this.applySettings(change.settings);
     }
 
@@ -1679,6 +1907,22 @@ export class Zartigl {
     );
   }
 
+  /**
+   * The style drawn: the layer's own, then the override, with what the
+   * source chose, such as a GeoVideo archive's palette.
+   */
+  getStyle(): LayerStyle {
+    return resolveEntryStyle(
+      this.catalogLayer ?? undefined,
+      splitLegacySettings(this.settings).style,
+    );
+  }
+
+  /** The style override over the layer's own. */
+  getStyleOverride(): LayerStyleInput {
+    return mergeStyles(this.style);
+  }
+
   getDebugInfo(): ZartiglDebugInfo {
     const canvas = this.map.getCanvas?.();
     return {
@@ -1723,6 +1967,27 @@ export class Zartigl {
       },
       layer: this.layer?.getDebugInfo() ?? null,
     };
+  }
+
+  /**
+   * Every style key of the shown layer with the override, the palette and
+   * color domain of a GeoVideo archive included, as a load sets them.
+   */
+  private styledSettings(): Partial<ZartiglSettings> {
+    const settings = layerStyleSettings(
+      this.catalogLayer ?? undefined,
+      this.style,
+    );
+    const manifest =
+      this.catalogSource?.type === "geovideo" ? this.geoVideoManifest : null;
+    if (manifest && this.style.raster?.colorDomain === undefined) {
+      settings.colorDomain = manifest.style.colorDomain;
+    }
+    if (manifest && this.style.palette === undefined) {
+      settings.palette =
+        this.catalogLayer?.defaults.palette ?? manifest.style.palette;
+    }
+    return settings;
   }
 
   private applySettings(settings: Partial<ZartiglSettings>): void {

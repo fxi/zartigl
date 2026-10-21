@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   COLOR_GRADE_OFF,
   COLOR_GRADE_VIBRANT,
+  colorGradeToGrade,
   colorGradeVec4,
+  gradeToColorGrade,
   resolveColorGrade,
 } from "./color-grade";
 
@@ -51,5 +53,25 @@ describe("color grade", () => {
         highlights: 4,
       }),
     ).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("style grade", () => {
+  it("maps presets and tuned grades both ways", () => {
+    expect(gradeToColorGrade(undefined)).toEqual(COLOR_GRADE_OFF);
+    expect(gradeToColorGrade("off")).toEqual(COLOR_GRADE_OFF);
+    expect(gradeToColorGrade("vibrant")).toEqual(COLOR_GRADE_VIBRANT);
+    expect(gradeToColorGrade({ contrast: 0.2 })).toEqual({
+      ...COLOR_GRADE_VIBRANT,
+      contrast: 0.2,
+    });
+    expect(colorGradeToGrade(COLOR_GRADE_OFF)).toBe("off");
+    expect(colorGradeToGrade({})).toBe("vibrant");
+    expect(colorGradeToGrade({ contrast: 0.2 })).toEqual({
+      exposure: COLOR_GRADE_VIBRANT.exposure,
+      contrast: 0.2,
+      saturation: COLOR_GRADE_VIBRANT.saturation,
+      highlights: COLOR_GRADE_VIBRANT.highlights,
+    });
   });
 });

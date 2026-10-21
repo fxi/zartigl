@@ -61,9 +61,15 @@ leaves the map at least 40% of the screen.
   sets how long a scene plays before the next one.
 - `views.json`: one `projversor` view per scene: a projversor layer (catalog
   alias or tinted pairing), a projection `preset` with optional `rotate` and
-  `zoom`, and optionally `palette`, `tint` (scalar entry id, `""` for speed
-  colors), `speed`, `time` (ISO date, else the latest month), `transitionMs`,
-  `vibrant` and `wrap`. `parseProjversorView` (`@fxi/zartigl/projversor`) validates it.
+  `zoom`, and optionally `tint` (scalar entry id, `""` for speed colors),
+  `style` (`palette`; `particles` density, speed, fade, grade: `"vibrant"`
+  or a tuned grade; `raster`
+  opacity, vibrance; see "Layer style" in the root README), `playback`
+  (`speed`, one of `SPEEDS`; `time`, ISO date, else the latest month),
+  `transitionMs` and `wrap`. Each view starts from the layer's own style.
+  The flat `palette`, `vibrant`, `speed` and `time` of the first format still
+  load, with a deprecation warning. `parseProjversorView`
+  (`@fxi/zartigl/projversor`) validates it.
 
 ## Tools
 

@@ -21,6 +21,7 @@ import {
   type ProjversorLayer,
   type ProjversorMonth,
 } from "../projversor";
+import { styleForKind } from "../catalog";
 import { Compass } from "./Compass";
 import { GradePanel } from "./GradePanel";
 
@@ -88,6 +89,11 @@ class ProjectionDemo {
   constructor(root: HTMLElement) {
     this.ui = refs(root);
     const shared = decodeShare(location.hash);
+    // Older links may hold a particle grade for a raster layer.
+    if (shared.style) {
+      const kind = (findLayer(shared.layer) ?? PROJVERSOR_LAYERS[0]).kind;
+      shared.style = styleForKind(shared.style, kind);
+    }
     const { stage, back, gl, front } = this.ui;
     const projversor = new Projversor({ stage, back, gl, front }, shared);
     this.projversor = projversor;
@@ -215,7 +221,6 @@ class ProjectionDemo {
       void run(
         p.open(p.layer, {
           at: p.time,
-          palette: p.palette,
           tint: tint.value || null,
           frame: false,
         }),

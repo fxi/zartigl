@@ -30,7 +30,7 @@ export {
 } from "./layers";
 export type { ProjversorLayer } from "./layers";
 export { decodeShare, encodeShare } from "./share";
-export type { ShareState } from "./share";
+export type { LegacyShareState, ShareState } from "./share";
 export {
   chunkLabel,
   formatUnit,

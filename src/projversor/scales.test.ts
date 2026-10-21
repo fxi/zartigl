@@ -11,7 +11,6 @@ import {
   legendTicks,
   MAX_PARTICLES,
   particleCount,
-  particleSettings,
   rampGradient,
   rampPosition,
 } from "./scales";
@@ -170,23 +169,9 @@ describe("formatUnit", () => {
   });
 });
 
-describe("particleSettings", () => {
-  it("layers zartigl defaults, catalog defaults, then the local override", () => {
-    expect(particleSettings(undefined, undefined)).toEqual({
-      density: 0.05,
-      speed: 1,
-      fade: 0.7,
-    });
-    expect(
-      particleSettings({ density: 0.004, fade: 0.5 }, { fade: 0.9 }),
-    ).toEqual({ density: 0.004, speed: 1, fade: 0.9 });
-  });
-});
-
 describe("particleCount", () => {
   it("counts particles per device pixel, capped by the state texture", () => {
-    const at = (density: number) =>
-      particleCount({ density, speed: 1, fade: 0.7 }, 2500, 1680);
+    const at = (density: number) => particleCount({ density }, 2500, 1680);
     expect(at(0.004)).toBe(16800);
     expect(at(0.2)).toBe(MAX_PARTICLES);
     expect(at(0)).toBe(1);

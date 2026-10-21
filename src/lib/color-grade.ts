@@ -1,3 +1,5 @@
+import type { ParticleGrade } from "../catalog/style";
+
 /**
  * Optional color grade applied when particle trails are composited
  * (`shaders/color-grade.glsl`): more intense highlights, deeper shadows and
@@ -34,12 +36,14 @@ export const COLOR_GRADE_VIBRANT: Readonly<ColorGrade> = Object.freeze({
   ...VIBRANT,
 });
 
-const RANGES = {
+/** Range of each tunable grade value. */
+export const COLOR_GRADE_RANGES = {
   exposure: [0, 4],
   contrast: [0, 1],
   saturation: [-1, 1],
   highlights: [0, 1],
 } as const;
+const RANGES = COLOR_GRADE_RANGES;
 
 /**
  * Complete grade from partial input. Missing or non-finite values take the
@@ -69,4 +73,28 @@ export function colorGradeVec4(
   grade: ColorGrade,
 ): [number, number, number, number] {
   return [grade.exposure, grade.contrast, grade.saturation, grade.highlights];
+}
+
+/** Color grade of a style `particles.grade`; an object tunes the vibrant one. */
+export function gradeToColorGrade(
+  grade: ParticleGrade | undefined,
+): ColorGrade {
+  if (grade === undefined || grade === "off") {
+    return { ...COLOR_GRADE_OFF };
+  }
+  return grade === "vibrant"
+    ? { ...COLOR_GRADE_VIBRANT }
+    : resolveColorGrade({ ...grade, enabled: true });
+}
+
+/** Style `particles.grade` of a color grade: a preset when it is one. */
+export function colorGradeToGrade(input: Partial<ColorGrade>): ParticleGrade {
+  const grade = resolveColorGrade(input);
+  if (!grade.enabled) {
+    return "off";
+  }
+  const keys = Object.keys(RANGES) as (keyof typeof RANGES)[];
+  return keys.every((key) => grade[key] === COLOR_GRADE_VIBRANT[key])
+    ? "vibrant"
+    : Object.fromEntries(keys.map((key) => [key, grade[key]]));
 }

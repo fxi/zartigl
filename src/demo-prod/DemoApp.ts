@@ -12,14 +12,22 @@ import {
   resolveTimeInputSelection,
 } from "../lib";
 import type {
-  RenderMode,
   ZarrPointSeriesResult,
   ZartiglDebugInfo,
-  ZartiglSettings,
   ZartiglStatus,
   TimeGranularity,
 } from "../lib";
-import { formatTime, formatVertical, resolveLocalizedText } from "../catalog";
+import {
+  diffStyle,
+  formatTime,
+  formatVertical,
+  mergeStyles,
+  resolveEntryStyle,
+  resolveLocalizedText,
+} from "../catalog";
+import type { LayerStyleInput } from "../catalog";
+import { hashStyle, patchedStyle, styleParams } from "./style-state";
+import type { HashStyle, StyleParams } from "./style-state";
 import type {
   CatalogEntry,
   Catalog,
@@ -40,7 +48,7 @@ import type { SharedTimeRange } from "./time-range";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-interface DemoParams {
+interface DemoParams extends StyleParams {
   timeIndex: number;
   timeLabel: string;
   allowedStart: number;
@@ -53,38 +61,19 @@ interface DemoParams {
   /** Time steps shown per second. */
   geoVideoStepsPerSecond: number;
   depth: number;
-  particleDensity: number;
-  speed: number;
-  fade: number;
-  renderMode: RenderMode;
-  palette: string;
-  opacity: number;
-  logScale: boolean;
-  vibrance: number;
-  colorDomain: [number, number] | null;
-  colorDomainMin: number;
-  colorDomainMax: number;
 }
 
-interface HashState {
+/** A share link; `st` is the style override, flat style keys are legacy. */
+interface HashState extends HashStyle {
   d: string;
   t: number;
   v: number;
-  p: string;
   s?: string;
   pr?: "mercator" | "globe";
   c?: [number, number];
   z?: number;
   b?: number;
   pi?: number;
-  pd: number;
-  sp?: number;
-  f?: number;
-  rm?: RenderMode;
-  op: number;
-  ls: boolean;
-  vb: number;
-  cd?: [number, number] | null;
   tr?: SharedTimeRange;
   pt?: boolean;
   ga?: boolean;
@@ -427,6 +416,8 @@ export class DemoApp {
   private z: Zartigl | null = null;
   private readonly pane: Pane;
   private params: DemoParams;
+  /** Style override over the layer's own: what shares and exports. */
+  private styleOverride: LayerStyleInput = {};
   private currentLayer: CatalogEntry;
   private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
   /** Active source, which "auto" or a type preference may move. */
@@ -542,7 +533,7 @@ export class DemoApp {
       timeRange: sharedTimeRange,
       time: hashState?.t,
       depth: hashState?.v,
-      settings: this.buildSettings(),
+      style: this.styleOverride,
       geoVideo: {
         autoplay: hashState?.ga ?? this.params.geoVideoAutoplay,
         loop: hashState?.gl ?? this.params.geoVideoLoop,
@@ -1153,7 +1144,7 @@ export class DemoApp {
     paletteSelect.value = this.params.palette;
     paletteSelect.addEventListener("change", () => {
       this.params.palette = paletteSelect.value;
-      void this.z?.update({ settings: { palette: paletteSelect.value } });
+      this.patchStyle({ palette: paletteSelect.value });
       this.syncLegend();
       setTimeout(() => this.syncLegend(), 400);
     });
@@ -1194,16 +1185,12 @@ export class DemoApp {
         step: 0.01,
         label: "opacity",
       })
-      .on(
-        "change",
-        (ev) => void this.z?.update({ settings: { opacity: ev.value } }),
-      );
+      .on("change", (ev) => this.patchStyle({ raster: { opacity: ev.value } }));
 
     folder
       .addBinding(this.params, "logScale", { label: "log scale" })
-      .on(
-        "change",
-        (ev) => void this.z?.update({ settings: { logScale: ev.value } }),
+      .on("change", (ev) =>
+        this.patchStyle({ raster: { logScale: ev.value } }),
       );
 
     folder
@@ -1213,9 +1200,8 @@ export class DemoApp {
         step: 0.01,
         label: "vibrance",
       })
-      .on(
-        "change",
-        (ev) => void this.z?.update({ settings: { vibrance: ev.value } }),
+      .on("change", (ev) =>
+        this.patchStyle({ raster: { vibrance: ev.value } }),
       );
   }
 
@@ -1234,22 +1220,17 @@ export class DemoApp {
         ],
         label: "mode",
       })
-      .on(
-        "change",
-        (ev) => void this.z?.update({ settings: { renderMode: ev.value } }),
-      );
+      .on("change", (ev) => this.patchStyle({ renderMode: ev.value }));
 
     this.vectorFolder
       .addBinding(this.params, "particleDensity", {
         min: 0.001,
-        max: 0.15,
+        max: 0.2,
         step: 0.001,
         label: "density",
       })
-      .on(
-        "change",
-        (ev) =>
-          void this.z?.update({ settings: { particleDensity: ev.value } }),
+      .on("change", (ev) =>
+        this.patchStyle({ particles: { density: ev.value } }),
       );
 
     this.vectorFolder
@@ -1259,9 +1240,8 @@ export class DemoApp {
         step: 0.1,
         label: "speed",
       })
-      .on(
-        "change",
-        (ev) => void this.z?.update({ settings: { speed: ev.value } }),
+      .on("change", (ev) =>
+        this.patchStyle({ particles: { speed: ev.value } }),
       );
 
     this.vectorFolder
@@ -1271,10 +1251,24 @@ export class DemoApp {
         step: 0.01,
         label: "fade",
       })
-      .on(
-        "change",
-        (ev) => void this.z?.update({ settings: { fade: ev.value } }),
+      .on("change", (ev) => this.patchStyle({ particles: { fade: ev.value } }));
+
+    this.vectorFolder
+      .addBinding(this.params, "vibrant", { label: "vibrant" })
+      .on("change", (ev) =>
+        this.patchStyle({
+          particles: { grade: ev.value ? "vibrant" : "off" },
+        }),
       );
+  }
+
+  /** Patch the style override and show it. */
+  private patchStyle(patch: LayerStyleInput): void {
+    const next = patchedStyle(this.styleOverride, patch, this.currentLayer);
+    if (next) {
+      this.styleOverride = next;
+      void this.z?.update({ style: next });
+    }
   }
 
   private buildExportFolder(): void {
@@ -1411,13 +1405,13 @@ export class DemoApp {
       return;
     }
     this.params.colorDomain = [min, max];
-    void this.z?.update({ settings: { colorDomain: this.params.colorDomain } });
+    this.patchStyle({ raster: { colorDomain: this.params.colorDomain } });
     this.syncLegend();
   }
 
   private resetColorDomain(): void {
     this.params.colorDomain = null;
-    void this.z?.update({ settings: { colorDomain: null } });
+    this.patchStyle({ raster: { colorDomain: null } });
     this.syncLegend();
   }
 
@@ -1736,7 +1730,8 @@ export class DemoApp {
         ? this.currentGeoVideoOptions()
         : undefined,
       depth: depthMeta.values.length > 0 ? this.params.depth : undefined,
-      settings: this.buildSettings(),
+      layerDefaults: layer.defaults,
+      style: this.styleOverride,
     };
   }
 
@@ -1754,21 +1749,13 @@ export class DemoApp {
       d: this.currentLayer.id,
       t: timeMs,
       v: this.params.depth,
-      p: this.params.palette,
+      st: diffStyle(this.styleOverride, resolveEntryStyle(this.currentLayer)),
       s: this.sourcePreference,
       pr: this.currentProjection,
       c: [Number(center.lng.toFixed(6)), Number(center.lat.toFixed(6))],
       z: Number(this.map.getZoom().toFixed(3)),
       b: Number(this.map.getBearing().toFixed(3)),
       pi: Number(this.map.getPitch().toFixed(3)),
-      pd: this.params.particleDensity,
-      sp: this.params.speed,
-      f: this.params.fade,
-      rm: this.params.renderMode,
-      op: this.params.opacity,
-      ls: this.params.logScale,
-      vb: this.params.vibrance,
-      cd: this.params.colorDomain,
       tr: this.currentNumericTimeRange(),
       pt: this.params.pinTime,
       ga: this.params.geoVideoAutoplay,
@@ -1883,17 +1870,7 @@ export class DemoApp {
       geoVideoLoop: true,
       geoVideoStepsPerSecond: 2,
       depth: 0,
-      particleDensity: 0.05,
-      speed: 1.0,
-      fade: 0.7,
-      renderMode: "particles",
-      palette: "rdylbu",
-      opacity: 1,
-      logScale: false,
-      vibrance: 0,
-      colorDomain: null,
-      colorDomainMin: 0,
-      colorDomainMax: 1,
+      ...styleParams(resolveEntryStyle(this.currentLayer)),
     };
   }
 
@@ -1919,19 +1896,8 @@ export class DemoApp {
   }
 
   private applyLayerDefaults(layer: CatalogEntry): void {
-    const d = layer.defaults ?? {};
-    this.params.particleDensity = d.particles?.density ?? 0.05;
-    this.params.speed = d.particles?.speed ?? 1.0;
-    this.params.fade = d.particles?.fade ?? 0.7;
-    this.params.renderMode =
-      layer.kind === "scalar" ? "raster" : (d.renderMode ?? "particles");
-    this.params.opacity = d.raster?.opacity ?? 1;
-    this.params.logScale = d.raster?.logScale ?? false;
-    this.params.vibrance = d.raster?.vibrance ?? 0;
-    this.params.colorDomain = d.raster?.colorDomain ?? null;
-    this.params.colorDomainMin = this.params.colorDomain?.[0] ?? 0;
-    this.params.colorDomainMax = this.params.colorDomain?.[1] ?? 1;
-    this.params.palette = d.palette ?? "rdylbu";
+    this.styleOverride = {};
+    Object.assign(this.params, styleParams(resolveEntryStyle(layer)));
     this.params.limitStart = false;
     this.params.limitEnd = false;
     this.params.pinTime = false;
@@ -1942,36 +1908,11 @@ export class DemoApp {
     this.params.limitStart = timeRange?.start !== undefined;
     this.params.limitEnd = timeRange?.end !== undefined;
     this.params.pinTime = hash.pt === true;
-    this.params.particleDensity = hash.pd;
-    this.params.speed = hash.sp ?? 1.0;
-    this.params.fade = hash.f ?? 0.7;
-    this.params.renderMode =
-      layer.kind === "scalar" ? "raster" : (hash.rm ?? this.params.renderMode);
-    this.params.opacity = hash.op;
-    this.params.logScale = hash.ls;
-    this.params.vibrance = hash.vb;
-    if (hash.cd !== undefined) {
-      this.params.colorDomain = hash.cd;
-      if (hash.cd) {
-        this.params.colorDomainMin = hash.cd[0];
-        this.params.colorDomainMax = hash.cd[1];
-      }
-    }
-    this.params.palette = hash.p;
-  }
-
-  private buildSettings(): Partial<ZartiglSettings> {
-    return {
-      palette: this.params.palette,
-      particleDensity: this.params.particleDensity,
-      speed: this.params.speed,
-      fade: this.params.fade,
-      renderMode: this.params.renderMode,
-      opacity: this.params.opacity,
-      logScale: this.params.logScale,
-      vibrance: this.params.vibrance,
-      colorDomain: this.params.colorDomain,
-    };
+    this.styleOverride = hashStyle(hash, layer.kind);
+    Object.assign(
+      this.params,
+      styleParams(resolveEntryStyle(layer, this.styleOverride)),
+    );
   }
 
   private loadHashState(): HashState | null {

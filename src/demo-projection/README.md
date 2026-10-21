@@ -85,13 +85,15 @@ File names below are in `src/projversor/` unless noted.
   layer, particles animate for about one trail length to rebuild trails,
   then hold again.
 - **Share.** A readable url hash (`share.ts`) restores layer, time,
-  projection, rotation, zoom, play state, speed, palette and tint.
+  projection, rotation, zoom, play state, speed, tint and the style
+  override (`st`: palette and particle grade, the zartigl layer style).
+  Older links' palette (`c`) and grade (`g`) still open.
 
 ## Reused from zartigl
 
 - The catalog: the layer list (every entry with a GeoVideo archive), titles,
   palettes, provenance, raster opacity and per-layer particle defaults.
-  `layers.ts` only adds styles and tinted pairings.
+  `layers.ts` only adds a layer style (palette) and tinted pairings.
 - The GeoVideo archive index and monthly chunks (`lib/geovideo-index`) and
   manifests (`lib/geovideo`).
 - Frame-accurate vector and scalar luma decoding (`lib/GeoVideoVectorSource`,

@@ -3,13 +3,22 @@ import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import land110 from "world-atlas/land-110m.json";
 import {
+  mergeStyles,
+  parseLayerStyle,
   requireCatalogEntry,
+  resolveEntryStyle,
+  resolveLayerStyle,
+  styleForKind,
   sourceCoversTime,
   type CatalogGeoVideoSource,
+  type LayerStyle,
+  type LayerStyleInput,
 } from "../catalog";
 import {
   COLOR_GRADE_OFF,
   TrailFade,
+  colorGradeToGrade,
+  gradeToColorGrade,
   createColorRampTexture,
   fadeToFrames,
   fadeToOpacity,
@@ -36,13 +45,8 @@ import {
 import { Overlay } from "./Overlay";
 import { PRESETS, findPreset, type Preset } from "./presets";
 import { PROJECTIONS, cartesian, fitScale } from "./projections";
-import {
-  particleCount,
-  particleSettings,
-  particleSpeedFactor,
-  type ParticleSettings,
-} from "./scales";
-import type { ShareState } from "./share";
+import { particleCount, particleSpeedFactor } from "./scales";
+import type { LegacyShareState, ShareState } from "./share";
 import {
   SphereParticles,
   visibleCap,
@@ -71,6 +75,50 @@ type Rotate = [number, number, number];
 
 /** Field time steps played per second at 1×. */
 const STEPS_PER_SECOND = 0.4;
+
+/** Style keys projversor renders. */
+export const STYLE_SUPPORT = {
+  palette: true,
+  particles: ["density", "speed", "fade", "grade"],
+  raster: ["opacity", "vibrance"],
+} as const;
+
+const warned = new Set<string>();
+
+/**
+ * The deprecated flat `palette` and `grade` of a state, as a style, with a
+ * one-time warning each.
+ */
+function legacyStyle(state: LegacyShareState): LayerStyleInput | undefined {
+  const { palette, grade } = state;
+  const moved = { palette: "style.palette", grade: "style.particles.grade" };
+  for (const key of ["palette", "grade"] as const) {
+    if (state[key] !== undefined && !warned.has(key)) {
+      warned.add(key);
+      console.warn(`projversor state.${key} is deprecated: use ${moved[key]}`);
+    }
+  }
+  return palette === undefined && grade === undefined
+    ? undefined
+    : mergeStyles({
+        palette,
+        particles: { grade: grade && colorGradeToGrade(grade) },
+      });
+}
+
+/** Validate a style against what projversor renders for `layer`. */
+function checkStyle(
+  style: LayerStyleInput | undefined,
+  layer: ProjversorLayer,
+): void {
+  if (style !== undefined) {
+    parseLayerStyle(style, "style", {
+      kind: layer.kind,
+      supports: STYLE_SUPPORT,
+    });
+  }
+}
+
 /**
  * Playback speeds and defaults per layer kind: particles need slow steps to
  * keep stable trails, while a raster only shows change when played faster.
@@ -206,10 +254,10 @@ export class Projversor {
   private tintChunks: CatalogGeoVideoSource[] = [];
   private chunksValue: CatalogGeoVideoSource[] = [];
   private chunkIndexValue = 0;
-  private particleSettings: ParticleSettings = particleSettings(
-    undefined,
-    undefined,
-  );
+  private particleSettings: LayerStyle["particles"] =
+    resolveLayerStyle().particles;
+  /** Style override of the current story view, over the layer's own. */
+  private viewStyle: LayerStyleInput = {};
   private upcoming: Upcoming | null = null;
   /** Bumped on every layer or month switch; stale loads drop out. */
   private loadId = 0;
@@ -277,7 +325,7 @@ export class Projversor {
       width: 1,
       height: 1,
     };
-    this.gradeValue = initial.grade ?? COLOR_GRADE_OFF;
+    this.gradeValue = gradeToColorGrade(initial.style?.particles?.grade);
     this.playingValue = initial.playing ?? true;
     this.resizer = new ResizeObserver(() => this.resize());
     this.resizer.observe(canvases.stage);
@@ -404,25 +452,38 @@ export class Projversor {
       zoom: this.view.zoom,
       playing: this.playingValue,
       speed: this.speed,
-      palette: this.paletteId,
       tint: this.tintIdValue ?? "",
-      grade: this.gradeValue,
+      style: styleForKind(this.viewStyle, this.layerValue.kind),
     };
   }
 
   /**
    * Show a state: unknown ids fall back to the layer's own choices. The
    * layer reopens only when it or its tint changes. A view in the state
-   * keeps its own framing, else a regional layer is framed.
+   * keeps its own framing, else a regional layer is framed. A `style`
+   * replaces the previous override over the layer's own style (`{}` clears
+   * it) once the layer shows; without one, the current override stays.
+   * The deprecated flat `palette` and `grade` patch it, `style` winning.
    */
   async apply(
-    state: Partial<ShareState>,
+    state: Partial<ShareState> & LegacyShareState,
     options: { animate?: boolean; durationMs?: number } = {},
   ): Promise<void> {
     const { animate = true, durationMs } = options;
     const layer =
       findLayer(state.layer) ??
       (this.opened ? this.layerValue : PROJVERSOR_LAYERS[0]);
+    checkStyle(state.style, layer);
+    const legacy = legacyStyle(state);
+    const style =
+      legacy === undefined
+        ? state.style
+        : styleForKind(
+            state.style === undefined
+              ? mergeStyles(this.viewStyle, legacy)
+              : mergeStyles(legacy, state.style),
+            layer.kind,
+          );
     const hasView =
       state.preset !== undefined ||
       state.rotate !== undefined ||
@@ -435,15 +496,9 @@ export class Projversor {
         this.jumpTo(target);
       }
     }
-    if (state.grade) {
-      this.setGrade(state.grade);
-    }
     if (state.playing !== undefined) {
       this.setPlaying(state.playing);
     }
-    const palette = layerPalettes(layer).some((p) => p.id === state.palette)
-      ? state.palette
-      : undefined;
     // "" is "no tint"; unknown ids fall back to the layer's own.
     const tintOption =
       state.tint === ""
@@ -464,17 +519,21 @@ export class Projversor {
     ) {
       await this.open(layer, {
         at: state.time,
-        palette,
         tint,
         speed: state.speed,
         frame: !hasView,
+        style,
       });
       return;
     }
-    this.setKindSpeed(layer.kind, state.speed);
-    if (palette && palette !== this.paletteId) {
-      this.setPalette(palette);
+    if (style !== undefined) {
+      this.restyle(style);
+      const palette = this.stylePalette(layer);
+      if (palette !== this.paletteId) {
+        this.applyPalette(palette);
+      }
     }
+    this.setKindSpeed(layer.kind, state.speed);
     if (state.time !== undefined) {
       await this.seek(state.time);
     }
@@ -484,18 +543,21 @@ export class Projversor {
 
   /**
    * Switch layer, opening the month that holds `at`, else the displayed
-   * month when the archive has it, else the latest. Palette and tint default
-   * to the layer's own; `frame` centers the view on a regional layer.
+   * month when the archive has it, else the latest. The palette is the
+   * view style's, else the layer's own; the tint defaults to the layer's.
+   * `frame` centers the view on a regional layer. The style applies once
+   * the layer shows.
    */
   async open(
     layerOrId: ProjversorLayer | string,
     options: {
       at?: number;
-      palette?: string;
       tint?: string | null;
       /** Playback speed, applied with the layer when it is one of its kind. */
       speed?: number;
       frame?: boolean;
+      /** Style override replacing the current one. */
+      style?: LayerStyleInput;
     } = {},
   ): Promise<void> {
     const layer =
@@ -503,7 +565,8 @@ export class Projversor {
     if (!layer) {
       throw new Error(`Unknown layer: ${String(layerOrId)}`);
     }
-    const { at, palette = layer.palette, frame = true } = options;
+    checkStyle(options.style, layer);
+    const { at, frame = true } = options;
     const tintId =
       layer.kind === "vector"
         ? options.tint === undefined
@@ -512,7 +575,6 @@ export class Projversor {
         : null;
     const id = ++this.loadId;
     this.dropUpcoming();
-    const entry = requireCatalogEntry(layer.entryId);
     this.setStatus(`Loading ${layer.label}…`);
     const stale = () => id !== this.loadId || this.destroyed;
     let chunks: CatalogGeoVideoSource[];
@@ -567,16 +629,10 @@ export class Projversor {
     this.chunksValue = chunks;
     this.overlay.fillLand = layer.fillLand;
     this.overlayKey = "";
-    this.particleSettings = particleSettings(
-      entry.defaults?.particles,
-      layer.particles,
-    );
-    this.rasterOpacity = entry.defaults.raster?.opacity ?? 1;
-    this.rasterVibrance = entry.defaults.raster?.vibrance ?? 0;
-    this.trailFade.setBase(fadeToOpacity(this.particleSettings.fade));
+    this.restyle(options.style);
     this.setKindSpeed(layer.kind, options.speed);
     this.emit("layer", layer);
-    this.setPalette(palette);
+    this.applyPalette(this.stylePalette(layer));
     this.adopt(month, chunkIndex, at);
     this.pendingRespawn = true;
     const region =
@@ -768,8 +824,52 @@ export class Projversor {
 
   // ---- styling and playback ----------------------------------------------
 
-  /** Recolor the particles or the raster. */
+  /**
+   * Style the shown layer: engine defaults, then catalog, then layer, then
+   * the view's override, which `viewStyle` replaces. The grade is the
+   * style's: a picked grade lives in the override.
+   */
+  private restyle(viewStyle?: LayerStyleInput): void {
+    if (viewStyle !== undefined) {
+      this.viewStyle = viewStyle;
+    }
+    const layer = this.layerValue;
+    const entry = requireCatalogEntry(layer.entryId);
+    const style = resolveEntryStyle(entry, layer.style, this.viewStyle);
+    this.particleSettings = style.particles;
+    this.rasterOpacity = style.raster.opacity;
+    this.rasterVibrance = style.raster.vibrance;
+    this.trailFade.setBase(fadeToOpacity(style.particles.fade));
+    // Paused particles redraw their trails with the new style.
+    this.settle = this.settleFrames();
+    this.gradeValue = gradeToColorGrade(style.particles.grade);
+  }
+
+  /** The view style's palette when the layer offers it, else its own. */
+  private stylePalette(layer: ProjversorLayer): string {
+    const id = this.viewStyle.palette;
+    return id !== undefined && layerPalettes(layer).some((p) => p.id === id)
+      ? id
+      : layer.style.palette;
+  }
+
+  /** Set the view style's palette, shown when the layer offers it. */
   setPalette(id: string): void {
+    this.restyle(mergeStyles(this.viewStyle, { palette: id }));
+    this.applyPalette(this.stylePalette(this.layerValue));
+  }
+
+  /** Set the view style's particle grade. */
+  setGrade(grade: ColorGrade): void {
+    this.restyle(
+      mergeStyles(this.viewStyle, {
+        particles: { grade: colorGradeToGrade(grade) },
+      }),
+    );
+  }
+
+  /** Recolor the particles or the raster. */
+  private applyPalette(id: string): void {
     if (this.ramp) {
       this.gl.deleteTexture(this.ramp);
     }
@@ -777,11 +877,6 @@ export class Projversor {
     this.ramp = createColorRampTexture(this.gl, id);
     this.settle = this.settleFrames();
     this.emit("palette", id);
-  }
-
-  /** Particle color grade, applied when the trails are composited. */
-  setGrade(grade: ColorGrade): void {
-    this.gradeValue = grade;
   }
 
   /** Set a kind's speed when it is one of that kind's {@link SPEEDS}. */

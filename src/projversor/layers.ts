@@ -12,7 +12,7 @@ import {
   loadGeoVideoIndex,
   type PaletteMeta,
 } from "../engine";
-import type { ParticleSettings } from "./scales";
+import type { LayerStyleInput } from "../catalog";
 
 /**
  * A catalog entry with a GeoVideo archive, with the styling this projversor
@@ -25,11 +25,13 @@ export interface ProjversorLayer {
   entryId: string;
   kind: CatalogEntry["kind"];
   label: string;
-  palette: string;
+  /**
+   * Style over the catalog entry's `defaults`, under a view's: always a
+   * palette, one this renderer offers for the kind.
+   */
+  style: LayerStyleInput & { palette: string };
   /** Draw land opaque: off for fields that also cover land. */
   fillLand: boolean;
-  /** Overrides of the catalog entry `defaults.particles` (density, speed, fade). */
-  particles?: Partial<ParticleSettings>;
   /**
    * Default scalar entry id whose GeoVideo archive colors the particles (over
    * its catalog color domain); speed then sets their brightness. Its monthly
@@ -38,29 +40,30 @@ export interface ProjversorLayer {
   tint?: string;
 }
 
-type LayerStyle = Partial<Omit<ProjversorLayer, "entryId" | "kind">>;
+/** What a layer changes of the base one made from its entry. */
+type LayerLook = Partial<Omit<ProjversorLayer, "entryId" | "kind">>;
 
 /**
  * Particle palettes start dark so the bright trails read against the black
  * background. Keyed by entry alias.
  */
-const STYLES: Record<string, LayerStyle> = {
+const STYLES: Record<string, LayerLook> = {
   "surface-wind": {},
-  "wave-stokes-drift": { palette: "viridis" },
-  "primary-swell-propagation": { palette: "thermal" },
-  "sea-ice-drift": { palette: "ice" },
-  "med-wave-stokes-drift": { palette: "viridis" },
-  "med-primary-swell-propagation": { palette: "thermal" },
+  "wave-stokes-drift": { style: { palette: "viridis" } },
+  "primary-swell-propagation": { style: { palette: "thermal" } },
+  "sea-ice-drift": { style: { palette: "ice" } },
+  "med-wave-stokes-drift": { style: { palette: "viridis" } },
+  "med-primary-swell-propagation": { style: { palette: "thermal" } },
 };
 
 /** Vector layers repeated with a default tint, after their plain layer. */
-const TINTED: Record<string, LayerStyle[]> = {
+const TINTED: Record<string, LayerLook[]> = {
   "ocean-current-velocity": [
     {
       id: "ocean-velocity-temperature",
       label: "Currents × Temperature",
       // Starts bright: cold, slow water stays visible once dimmed by speed.
-      palette: "thermal-alt",
+      style: { palette: "thermal-alt" },
       tint: "3db0120b-17d2-4789-9952-efcc0953ecc4", // sea-water-temperature
     },
   ],
@@ -68,7 +71,7 @@ const TINTED: Record<string, LayerStyle[]> = {
     {
       id: "med-currents-temperature",
       label: "Mediterranean Currents × Temperature",
-      palette: "thermal-alt",
+      style: { palette: "thermal-alt" },
       tint: "f0812aa5-f9b6-4149-ab51-3de9d9d100c3", // med-sea-water-temperature
     },
   ],
@@ -112,10 +115,12 @@ export function catalogLayers(
       entryId: entry.id,
       kind: entry.kind,
       label: resolveLocalizedText(entry.title, "en"),
-      palette:
-        entry.kind === "vector"
-          ? PARTICLE_PALETTE
-          : (entry.defaults.palette ?? "viridis"),
+      style: {
+        palette:
+          entry.kind === "vector"
+            ? PARTICLE_PALETTE
+            : (entry.defaults.palette ?? "viridis"),
+      },
       fillLand: true,
       ...STYLES[id],
     };

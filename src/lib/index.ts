@@ -1,4 +1,10 @@
-export { Zartigl, GEOVIDEO_SPEEDS, VECTOR_GEOVIDEO_SPEEDS } from "./Zartigl";
+export {
+  Zartigl,
+  GEOVIDEO_SPEEDS,
+  VECTOR_GEOVIDEO_SPEEDS,
+  LEGACY_STYLE_SETTINGS,
+  splitLegacySettings,
+} from "./Zartigl";
 export { resolveTimeInputSelection } from "./time-selection";
 export { ScalarLayer } from "./ScalarLayer";
 export { GeoVideoLayer } from "./GeoVideoLayer";
@@ -18,6 +24,8 @@ export { getPalettes } from "./gl-util";
 export {
   COLOR_GRADE_OFF,
   COLOR_GRADE_VIBRANT,
+  colorGradeToGrade,
+  gradeToColorGrade,
   resolveColorGrade,
 } from "./color-grade";
 export type { ColorGrade } from "./color-grade";

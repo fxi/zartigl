@@ -11,7 +11,12 @@
       "type": "object",
       "required": ["center", "zoom"],
       "properties": {
-        "center": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "center": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
         "zoom": { "type": "number" },
         "pitch": { "type": "number", "minimum": 0, "maximum": 85 },
         "bearing": { "type": "number" }
@@ -26,10 +31,96 @@
       },
       "additionalProperties": false
     },
-    "anchor": { "enum": ["center", "top-left", "top-right", "bottom-left", "bottom-right"] },
+    "anchor": {
+      "enum": ["center", "top-left", "top-right", "bottom-left", "bottom-right"]
+    },
     "timeRange": { "type": "object" },
-    "settings": { "type": "object" },
-    "overlays": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+    "style": {
+      "description": "Layer style over the catalog defaults, as src/catalog/style.ts.",
+      "type": "object",
+      "properties": {
+        "palette": { "type": "string" },
+        "renderMode": { "enum": ["particles", "raster", "raster+particles"] },
+        "particles": {
+          "type": "object",
+          "properties": {
+            "density": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 0.2
+            },
+            "speed": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 },
+            "fade": { "type": "number", "minimum": 0, "maximum": 1 },
+            "grade": {
+              "oneOf": [
+                { "enum": ["off", "vibrant"] },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "exposure": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4
+                    },
+                    "contrast": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "saturation": {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    },
+                    "highlights": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "raster": {
+          "type": "object",
+          "properties": {
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "logScale": { "type": "boolean" },
+            "vibrance": { "type": "number", "minimum": -1, "maximum": 1 },
+            "colorDomain": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "object",
+      "description": "Engine tuning. Flat style keys (particleDensity, opacity…) are deprecated: use style.",
+      "properties": {
+        "particleState": { "enum": ["auto", "rgba8"] },
+        "rgba8MaxParticleZoom": { "type": "number", "minimum": 0 }
+      }
+    },
+    "overlays": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    }
   },
   "additionalProperties": false
 }

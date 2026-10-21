@@ -38,6 +38,8 @@ export { TrailFade, fadeToFrames, fadeToOpacity } from "./lib/trail-fade";
 export {
   COLOR_GRADE_OFF,
   COLOR_GRADE_VIBRANT,
+  colorGradeToGrade,
+  gradeToColorGrade,
   colorGradeVec4,
   resolveColorGrade,
 } from "./lib/color-grade";

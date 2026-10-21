@@ -26,6 +26,29 @@ export type {
   LocalizedText,
 } from "./types";
 
+export {
+  LAYER_STYLE_DEFAULTS,
+  diffStyle,
+  mergeStyles,
+  PARTICLE_STYLE_KEYS,
+  RASTER_STYLE_KEYS,
+  parseLayerStyle,
+  resolveEntryStyle,
+  resolveLayerStyle,
+  styleForKind,
+} from "./style";
+export type {
+  GradeTuning,
+  LayerStyle,
+  LayerStyleInput,
+  ParseLayerStyleOptions,
+  ParticleGrade,
+  ParticleStyle,
+  RasterStyle,
+  StyleRenderMode,
+  StyledEntry,
+} from "./style";
+
 export const catalog = catalogJson as Catalog;
 
 export function resolveLocalizedText(

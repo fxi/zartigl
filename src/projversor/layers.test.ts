@@ -51,15 +51,15 @@ describe("catalogLayers", () => {
 
   it("styles particles with speed palettes, rasters with the catalog's", () => {
     for (const layer of PROJVERSOR_LAYERS) {
-      expect(layerPalettes(layer).some((p) => p.id === layer.palette)).toBe(
-        true,
-      );
+      expect(
+        layerPalettes(layer).some((p) => p.id === layer.style.palette),
+      ).toBe(true);
     }
-    expect(findLayer("ocean-current-velocity")?.palette).toBe("plasma");
+    expect(findLayer("ocean-current-velocity")?.style.palette).toBe("plasma");
     const sst = catalog.layers.find(
       (e) => e.aliases?.[0] === "sea-water-temperature",
     )!;
-    expect(findLayer("sea-water-temperature")?.palette).toBe(
+    expect(findLayer("sea-water-temperature")?.style.palette).toBe(
       sst.defaults.palette,
     );
     expect(PARTICLE_PALETTES.some((p) => p.tags.includes("diverging"))).toBe(

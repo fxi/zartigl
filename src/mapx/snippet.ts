@@ -4,6 +4,12 @@ import type {
   ZartiglSettings,
 } from "../lib/Zartigl";
 import type { CatalogEntry } from "../catalog/types";
+import {
+  diffStyle,
+  resolveEntryStyle,
+  styleForKind,
+  type LayerStyleInput,
+} from "../catalog/style";
 import pkg from "../../package.json";
 
 type SnippetSourceType = "zarr" | "geovideo" | "wmts";
@@ -11,12 +17,20 @@ type SnippetSourceType = "zarr" | "geovideo" | "wmts";
 export interface MapxWidgetSnippetOptions {
   layerId: string;
   layerKind: CatalogEntry["kind"];
+  /**
+   * The layer's own style, the catalog `defaults`: only override keys that
+   * differ from it are written. Unknown, the whole override is written.
+   */
+  layerDefaults?: LayerStyleInput;
   source?: string;
   sourceType?: SnippetSourceType;
   time?: string | number | Date;
   timeRange?: TimeRange;
   geoVideo?: GeoVideoOptions;
   depth?: number;
+  /** Style override; only keys that differ from the layer's own are written. */
+  style?: LayerStyleInput;
+  /** Engine tuning; flat style keys are ignored. */
   settings?: Partial<ZartiglSettings>;
 }
 
@@ -27,7 +41,8 @@ export interface StandaloneDemoSnippetOptions extends MapxWidgetSnippetOptions {
   bearing?: number;
   pitch?: number;
   projection?: "mercator" | "globe";
-  style?: string;
+  /** MapLibre map style URL; a cloudless imagery style when omitted. */
+  mapStyle?: string;
 }
 
 const maplibreVersion = pkg.devDependencies["maplibre-gl"].replace(
@@ -98,57 +113,58 @@ function indentBlock(value: string, spaces: number): string {
     .join("\n");
 }
 
-function pickSettings(
-  settings: Partial<ZartiglSettings>,
-  keys: Array<keyof ZartiglSettings>,
-): Partial<ZartiglSettings> {
-  return Object.fromEntries(
-    keys
-      .filter((key) => Object.prototype.hasOwnProperty.call(settings, key))
-      .map((key) => [key, settings[key]]),
-  ) as Partial<ZartiglSettings>;
+const sourceTypeOf = (options: MapxWidgetSnippetOptions): SnippetSourceType => {
+  const source = options.source ?? "auto";
+  return (
+    options.sourceType ??
+    (source === "wmts" || source === "geovideo" ? source : "zarr")
+  );
+};
+
+/**
+ * The style a snippet writes: the override keys the layer draws that differ
+ * from its own style. A WMTS layer only takes its opacity.
+ */
+export function snippetStyle(
+  options: MapxWidgetSnippetOptions,
+): LayerStyleInput | undefined {
+  const { layerKind: kind, layerDefaults: defaults } = options;
+  const override = styleForKind(options.style ?? {}, kind);
+  const style =
+    defaults === undefined
+      ? override
+      : diffStyle(override, resolveEntryStyle({ kind, defaults }));
+  const opacity = style.raster?.opacity;
+  const written =
+    sourceTypeOf(options) !== "wmts"
+      ? style
+      : opacity === undefined
+        ? {}
+        : { raster: { opacity } };
+  return Object.keys(written).length ? written : undefined;
 }
 
-/** Keep only settings supported by the selected layer and transport. */
-export function effectiveSnippetSettings(
-  layerKind: CatalogEntry["kind"],
-  sourceType: SnippetSourceType,
-  settings?: Partial<ZartiglSettings>,
+/** The engine tuning a snippet writes: particle state on vector layers. */
+export function snippetSettings(
+  options: MapxWidgetSnippetOptions,
 ): Partial<ZartiglSettings> | undefined {
-  if (!settings) {
-    return undefined;
-  }
-  const keys: Array<keyof ZartiglSettings> =
-    layerKind === "vector"
-      ? [
-          "palette",
-          "opacity",
-          "logScale",
-          "vibrance",
-          "particleDensity",
-          "speed",
-          "fade",
-          "renderMode",
-          "particleState",
-          "rgba8MaxParticleZoom",
-        ]
-      : sourceType === "wmts"
-        ? ["opacity"]
-        : ["palette", "opacity", "logScale", "vibrance", "colorDomain"];
-  const effective = pickSettings(settings, keys);
-  return Object.keys(effective).length > 0 ? effective : undefined;
+  const { particleState, rgba8MaxParticleZoom } = options.settings ?? {};
+  const settings = Object.fromEntries(
+    Object.entries({ particleState, rgba8MaxParticleZoom }).filter(
+      ([, value]) => value !== undefined,
+    ),
+  );
+  return options.layerKind === "vector" && Object.keys(settings).length
+    ? settings
+    : undefined;
 }
 
 export function buildMapxWidgetSnippet(
   options: MapxWidgetSnippetOptions,
 ): string {
   const source = options.source ?? "auto";
-  const settings = effectiveSnippetSettings(
-    options.layerKind,
-    options.sourceType ??
-      (source === "wmts" || source === "geovideo" ? source : "zarr"),
-    options.settings,
-  );
+  const style = snippetStyle(options);
+  const settings = snippetSettings(options);
   const optionLines = [
     "        idView: widget.opt.view.id,",
     "        map: widget.opt.map,",
@@ -156,6 +172,9 @@ export function buildMapxWidgetSnippet(
     `        source: ${codeString(source)},`,
   ];
 
+  if (style) {
+    optionLines.push(`        style: ${indentedValue(style, 10)},`);
+  }
   if (settings) {
     optionLines.push(`        settings: ${indentedValue(settings, 10)},`);
   }
@@ -220,12 +239,8 @@ export function buildStandaloneDemoSnippet(
     options.moduleBaseUrl ??
     `https://cdn.jsdelivr.net/npm/@fxi/zartigl@${pkg.version}/dist`;
   const source = options.source ?? "auto";
-  const settings = effectiveSnippetSettings(
-    options.layerKind,
-    options.sourceType ??
-      (source === "wmts" || source === "geovideo" ? source : "zarr"),
-    options.settings,
-  );
+  const layerStyle = snippetStyle(options);
+  const settings = snippetSettings(options);
   const timeRangeLine =
     options.timeRange == null
       ? ""
@@ -234,6 +249,8 @@ export function buildStandaloneDemoSnippet(
     options.geoVideo == null
       ? ""
       : `  geoVideo: ${indentedValue(options.geoVideo, 2)},\n`;
+  const styleLine =
+    layerStyle == null ? "" : `  style: ${indentedValue(layerStyle, 2)},\n`;
   const settingsLine =
     settings == null ? "" : `  settings: ${indentedValue(settings, 2)},\n`;
   const timeLine =
@@ -242,7 +259,7 @@ export function buildStandaloneDemoSnippet(
   const center = options.center ?? [0, 20];
   const projection = options.projection ?? "mercator";
   const style =
-    options.style == null ? eoxCloudlessStyle : codeString(options.style);
+    options.mapStyle == null ? eoxCloudlessStyle : codeString(options.mapStyle);
   const runtime = `map.setProjection({ type: ${codeString(projection)} });
 map.jumpTo({
   center: [${codeNumber(center[0])}, ${codeNumber(center[1])}],
@@ -272,7 +289,7 @@ const z = new Zartigl({
   catalog,
   layer: ${codeString(options.layerId)},
   source: ${codeString(source)},
-${timeRangeLine}${geoVideoLine}${settingsLine}${timeLine}${depthLine}});
+${timeRangeLine}${geoVideoLine}${styleLine}${settingsLine}${timeLine}${depthLine}});
 
 await z.init();`;
 

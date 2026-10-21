@@ -70,7 +70,7 @@ const z = new Zartigl({
   timeRange: { trailing: "P1M" },
   time: new Date("2025-01-01T00:00:00Z"),
   depth: 0,
-  settings: { palette: "rdylbu", opacity: 0.9 },
+  style: { palette: "rdylbu", raster: { opacity: 0.9 } },
   geoVideo: { autoplay: false, loop: true, stepsPerSecond: 4 },
 });
 
@@ -84,6 +84,50 @@ Pass `layer` and `source` together when both should switch atomically.
 `init()` and layer/source updates resolve after consolidated metadata and coordinate axes have loaded. Metadata getters are therefore authoritative afterward, including exact values for irregular time axes.
 
 The root import does not bundle the catalog presets. Import catalog data from `@fxi/zartigl/catalog` only when you want the built-in catalog.
+
+## Layer style
+
+A layer style has the same shape everywhere: catalog `defaults`, the
+`Zartigl` `style` option and `update({ style })`, story views, projversor,
+the MapX `ArcoMapLegend` and the snippets the demo exports.
+
+```jsonc
+{
+  "palette": "thermal",
+  "renderMode": "particles", // or "raster", "raster+particles"
+  "particles": { "density": 0.03, "speed": 1, "fade": 0.7, "grade": "vibrant" },
+  "raster": { "opacity": 0.9, "logScale": false, "vibrance": 0.2, "colorDomain": null }
+}
+```
+
+`particles.grade` is `"off"`, `"vibrant"`, or a tuned vibrant grade
+`{ exposure, contrast, saturation, highlights }`; it is replaced as a whole.
+
+Keys merge one by one: engine defaults (`LAYER_STYLE_DEFAULTS`), then the
+catalog entry `defaults`, then the engine's own layer style, then the view.
+From `@fxi/zartigl/catalog`: `resolveEntryStyle(entry, ...styles)` gives the
+style a layer is drawn with, `mergeStyles` patches an override,
+`diffStyle` keeps what differs from a resolved style, and `parseLayerStyle`
+validates, with the path of the offending key. `z.getStyle()` returns the
+style drawn, `z.getStyleOverride()` the override.
+
+The view style is an override that replaces the previous one:
+`update({ style })` and projversor `apply({ style })` return every style key
+to the layer's own, then apply it (`{}` clears it). Without `style`, the
+override stays, across layers too. Scalar layers take no `particles` and only
+the `"raster"` render mode.
+
+`particles.speed` is always the particle speed; playback speed lives
+elsewhere (`geoVideo.stepsPerSecond`, or a projversor view `playback.speed`).
+In projversor, playback also scales the particles by `particleSpeedFactor`:
+0.325 at 1×, 1 at 5×.
+
+`settings` carries engine tuning only (`particleState`,
+`rgba8MaxParticleZoom`). Flat style keys in it (`particleDensity`,
+`opacity`, `colorGrade`…) are deprecated until 1.0: they patch the style
+override, `style` winning, with one warning per key
+(`splitLegacySettings`, `LEGACY_STYLE_SETTINGS`). A custom palette ramp
+stays a setting.
 
 ## Demo
 
@@ -184,7 +228,7 @@ import {
 const projversor = new Projversor({ stage, back, gl, front });
 projversor.setPlaying(true);
 
-// One view per scene: layer, preset, rotate, zoom, palette, tint, time…
+// One view per scene: layer, preset, rotate, zoom, tint, style, playback…
 const { story, views } = parseStoryDocuments(storyJson, viewsJson);
 const adapter = new ProjversorStoryView(projversor);
 

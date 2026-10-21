@@ -1,3 +1,5 @@
+import type { LayerStyleInput } from "./style";
+
 export type LocalizedText = Record<string, string>;
 
 export interface CatalogSourceProvenance {
@@ -87,18 +89,10 @@ export interface CatalogEntry {
   tags?: string[];
   kind: "scalar" | "vector";
   sources: CatalogSource[];
-  defaults: {
+  /** Default source, plus the layer's base style. */
+  defaults: LayerStyleInput & {
     sourceId: string;
     querySourceId?: string;
-    palette?: string;
-    renderMode?: "particles" | "raster" | "raster+particles";
-    particles?: { density?: number; speed?: number; fade?: number };
-    raster?: {
-      opacity?: number;
-      logScale?: boolean;
-      vibrance?: number;
-      colorDomain?: [number, number];
-    };
   };
 }
 

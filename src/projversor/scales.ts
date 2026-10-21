@@ -260,37 +260,12 @@ export function linearTicks(
   return ticks;
 }
 
-/** zartigl particle settings, as in catalog `defaults.particles`. */
-export interface ParticleSettings {
-  /** Particles per device pixel. */
-  density: number;
-  /** Css px per frame at the top of the speed range. */
-  speed: number;
-  /** Trail length, 0–1 (20 to 600 frames). */
-  fade: number;
-}
-
-/** zartigl VectorLayer defaults. */
-const DEFAULT_PARTICLES: ParticleSettings = {
-  density: 0.05,
-  speed: 1,
-  fade: 0.7,
-};
-
-/** Projversor defaults, then the catalog entry defaults, then the layer override. */
-export function particleSettings(
-  catalog: Partial<ParticleSettings> | undefined,
-  override: Partial<ParticleSettings> | undefined,
-): ParticleSettings {
-  return { ...DEFAULT_PARTICLES, ...catalog, ...override };
-}
-
 /** zartigl's MAX_PARTICLES (512² state texture). */
 export const MAX_PARTICLES = 512 * 512;
 
 /** Drawn particle count for a device-pixel canvas, as zartigl. */
 export function particleCount(
-  settings: ParticleSettings,
+  settings: { density: number },
   widthPx: number,
   heightPx: number,
 ): number {

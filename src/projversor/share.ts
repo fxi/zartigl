@@ -1,4 +1,5 @@
-import { colorGradeVec4, resolveColorGrade, type ColorGrade } from "../engine";
+import { mergeStyles, parseLayerStyle, type LayerStyleInput } from "../catalog";
+import { colorGradeToGrade, type ColorGrade } from "../engine";
 
 /** Everything needed to reproduce the displayed view. */
 export interface ShareState {
@@ -13,11 +14,17 @@ export interface ShareState {
   playing: boolean;
   /** Playback speed multiplier. */
   speed: number;
-  /** Palette id. */
-  palette: string;
   /** Scalar entry id coloring the particles; "" colors them by speed. */
   tint: string;
-  /** Particle color grade; written only when enabled. */
+  /** Style override over the layer's own: palette, particles, raster. */
+  style?: LayerStyleInput;
+}
+
+/** Flat fields of the first format, moved to `style`. */
+export interface LegacyShareState {
+  /** @deprecated Use `style.palette`. */
+  palette?: string;
+  /** @deprecated Use `style.particles.grade`. */
   grade?: ColorGrade;
 }
 
@@ -33,19 +40,45 @@ export function encodeShare(state: ShareState): string {
     z: String(round(state.zoom)),
     play: state.playing ? "1" : "0",
     s: String(state.speed),
-    c: state.palette,
     k: state.tint,
   });
-  const { grade } = state;
-  if (grade?.enabled) {
-    params.set("g", colorGradeVec4(grade).map(round).join(","));
+  if (state.style && Object.keys(state.style).length) {
+    params.set("st", JSON.stringify(state.style));
   }
   return params.toString();
 }
 
+/** A shared style, or undefined when it is malformed. */
+function parseStyle(text: string | null): LayerStyleInput | undefined {
+  if (text === null) {
+    return undefined;
+  }
+  try {
+    return parseLayerStyle(JSON.parse(text), "st");
+  } catch {
+    return undefined;
+  }
+}
+
+/** The style of the first format's palette (`c`) and grade (`g`). */
+function legacyStyle(params: URLSearchParams): LayerStyleInput {
+  const grade = (params.get("g") ?? "").split(",").map(Number);
+  const [exposure, contrast, saturation, highlights] = grade;
+  return mergeStyles({
+    palette: params.get("c") || undefined,
+    particles: {
+      grade:
+        grade.length === 4 && grade.every(Number.isFinite)
+          ? colorGradeToGrade({ exposure, contrast, saturation, highlights })
+          : undefined,
+    },
+  });
+}
+
 /**
- * Valid fields of a hash written by {@link encodeShare}; the caller checks the
- * layer, preset and palette ids and the speed against its choices.
+ * Valid fields of a hash written by {@link encodeShare}, or by the first
+ * format; the caller checks the layer, preset and palette ids, the speed,
+ * and the style against the layer.
  */
 export function decodeShare(hash: string): Partial<ShareState> {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
@@ -74,23 +107,13 @@ export function decodeShare(hash: string): Partial<ShareState> {
   if (params.has("s") && Number.isFinite(speed) && speed > 0) {
     state.speed = speed;
   }
-  const palette = params.get("c");
-  if (palette) {
-    state.palette = palette;
-  }
   const tint = params.get("k");
   if (tint !== null) {
     state.tint = tint;
   }
-  const grade = (params.get("g") ?? "").split(",").map(Number);
-  if (grade.length === 4 && grade.every(Number.isFinite)) {
-    const [exposure, contrast, saturation, highlights] = grade;
-    state.grade = resolveColorGrade({
-      exposure,
-      contrast,
-      saturation,
-      highlights,
-    });
+  const style = mergeStyles(legacyStyle(params), parseStyle(params.get("st")));
+  if (Object.keys(style).length) {
+    state.style = style;
   }
   const play = params.get("play");
   if (play === "0" || play === "1") {

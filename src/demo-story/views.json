@@ -40,12 +40,14 @@
           "durationMs": 1400
         },
         "anchor": "top-right",
-        "settings": {
+        "style": {
           "palette": "oxygen",
-          "opacity": 0.9,
-          "logScale": false,
-          "vibrance": 0.1,
-          "colorDomain": null
+          "raster": {
+            "opacity": 0.9,
+            "logScale": false,
+            "vibrance": 0.1,
+            "colorDomain": null
+          }
         },
         "overlays": [
           "arctic-measurement"
@@ -72,12 +74,14 @@
           "durationMs": 1400
         },
         "anchor": "top-right",
-        "settings": {
+        "style": {
           "palette": "balance",
-          "opacity": 1,
-          "logScale": false,
-          "vibrance": 0.1,
-          "colorDomain": null
+          "raster": {
+            "opacity": 1,
+            "logScale": false,
+            "vibrance": 0.1,
+            "colorDomain": null
+          }
         },
         "overlays": [
           "enso-regions"
@@ -104,12 +108,14 @@
           "durationMs": 1400
         },
         "anchor": "top-right",
-        "settings": {
+        "style": {
           "palette": "oxygen",
-          "opacity": 0.92,
-          "logScale": false,
-          "vibrance": 0.1,
-          "colorDomain": null
+          "raster": {
+            "opacity": 0.92,
+            "logScale": false,
+            "vibrance": 0.1,
+            "colorDomain": null
+          }
         },
         "sourceId": "f65db382-5a6e-442b-a7e1-f79898487ec9"
       }
@@ -138,16 +144,20 @@
           "start": "2024-12-14T00:00:00.000Z",
           "end": "2024-12-14T22:00:00.000Z"
         },
-        "settings": {
+        "style": {
           "palette": "rdylbu",
-          "particleDensity": 0.15,
-          "speed": 5.9,
-          "fade": 0.7,
           "renderMode": "particles",
-          "opacity": 0.9,
-          "logScale": true,
-          "vibrance": 1,
-          "colorDomain": null
+          "particles": {
+            "density": 0.15,
+            "speed": 5.9,
+            "fade": 0.7
+          },
+          "raster": {
+            "opacity": 0.9,
+            "logScale": true,
+            "vibrance": 1,
+            "colorDomain": null
+          }
         },
         "overlays": [
           "chido-track"
