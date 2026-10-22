@@ -23,10 +23,6 @@
       "import": "./dist/engine.js",
       "types": "./dist/engine.d.ts"
     },
-    "./projversor": {
-      "import": "./dist/projversor.js",
-      "types": "./dist/projversor.d.ts"
-    },
     "./story": {
       "import": "./dist/story.js",
       "types": "./dist/story.d.ts"
@@ -39,19 +35,14 @@
     "dev": "vite",
     "dev:story": "vite --config vite.config.story.ts",
     "dev:geovideo-vector": "vite --config vite.config.geovideo-vector.ts",
-    "dev:projection": "vite --config vite.config.projection.ts",
-    "dev:story-projversor": "vite --config vite.config.story-projversor.ts",
-    "dev:site": "vite --config vite.config.site.ts",
     "dev:prod": "npm run dev",
     "test": "vitest run",
     "test:unit": "vitest run",
     "build": "vite build",
     "build:story": "vite build --config vite.config.story.ts",
-    "build:projection": "vite build --config vite.config.projection.ts",
-    "build:story-projversor": "vite build --config vite.config.story-projversor.ts",
-    "build:site": "vite build --config vite.config.site.ts",
     "build:prod": "npm run build",
-    "build:lib": "vite build --config vite.config.lib.ts",
+    "build:lib": "vite build --config vite.config.lib.ts && npm run check:dist",
+    "check:dist": "node scripts/check-dist-imports.mjs",
     "preview": "vite preview",
     "release": "npm run release:patch",
     "release:patch": "npm version patch && git push origin main --follow-tags",
@@ -101,18 +92,15 @@
     }
   },
   "dependencies": {
-    "@types/d3": "^7.4.3",
-    "d3": "^7.9.0",
     "numcodecs": "^0.3.2",
-    "pako": "^2.1.0",
-    "topojson-client": "^3.1.0"
+    "pako": "^2.1.0"
   },
   "devDependencies": {
-    "@fontsource-variable/inter-tight": "^5.3.0",
     "@tweakpane/core": "^2.0.5",
+    "@types/d3": "^7.4.3",
     "@types/pako": "^2.0.4",
-    "@types/topojson-client": "^3.1.5",
     "@typescript-eslint/parser": "8.46.4",
+    "d3": "^7.9.0",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
     "globals": "16.5.0",
@@ -123,7 +111,6 @@
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",
     "vite-plugin-glsl": "^1.5.5",
-    "vitest": "^4.1.7",
-    "world-atlas": "^2.0.2"
+    "vitest": "^4.1.7"
   }
 }

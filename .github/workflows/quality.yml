@@ -19,3 +19,6 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run quality
+      - run: npm test
+      # Builds the package and checks the dist import boundaries.
+      - run: npm run build:lib

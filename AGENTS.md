@@ -5,19 +5,28 @@
 - `src/lib/` contains the zartigl runtime: Zarr loading, scalar/vector layers,
   shaders, particle simulation, and the `Zartigl` facade.
 - `src/catalog/` contains the built-in catalog JSON and TypeScript exports.
-- `src/projversor/` contains the MapLibre-free projversor renderer (blended
-  projections, sphere particles and rasters), published as
-  `@fxi/zartigl/projversor`.
+- `src/engine.ts` is `@fxi/zartigl/engine`: the MapLibre-free primitives
+  (GeoVideo decoding and archives, palettes, color grade, backdrop, trail
+  fade, WebGL helpers, shared GLSL chunks as strings). `engine`, `catalog`
+  and `story` never import MapLibre (`npm run build:lib` checks the dist).
 - `src/story/` contains the story runtime (documents, registry, pager, scene
   timer), published as `@fxi/zartigl/story`.
 - `src/demo-prod/` is the full interactive demo app.
-- `src/demo-site/` is the home page prototype: a scroll story framed by a
-  header and a footer, driven by runtime content (`public/content/`).
-- `src/demo-projection/` and `src/demo-story-projversor/` are the projversor
-  explorer and story; they import zartigl only through its package entries.
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
   helper scripts.
+
+## Projversor
+
+The projversor renderer, its demos (explorer, story, home page) and their
+browser tests live in their own repository,
+[fxi/projversor](https://github.com/fxi/projversor), next to this one in MapX
+(`submodules/projversor`). projversor depends on zartigl
+(`file:../zartigl` during development) and uses only the `engine`,
+`catalog` and `story` entries. zartigl never imports projversor, and MapX
+uses only the MapLibre entry and the catalog. A primitive both renderers
+need lives here, exported by `engine`: rebuild with `npm run build:lib`
+before testing projversor.
 
 ## Catalog Work
 

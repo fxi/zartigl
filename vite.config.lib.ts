@@ -11,7 +11,6 @@ export default defineConfig({
         zartigl: "src/index.ts",
         catalog: "src/catalog/index.ts",
         engine: "src/engine.ts",
-        projversor: "src/projversor/index.ts",
         story: "src/story/index.ts",
       },
       name: "zartigl",
@@ -19,7 +18,7 @@ export default defineConfig({
       fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: [/^maplibre-gl/, /^d3/, "topojson-client"],
+      external: [/^maplibre-gl/],
     },
     outDir: "dist",
     emptyOutDir: true,
