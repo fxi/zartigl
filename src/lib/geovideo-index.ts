@@ -4,6 +4,7 @@ import type {
   CatalogGeoVideoSource,
   CatalogSource,
 } from "../catalog/types";
+import type { GeoVideoArchiveChunk } from "./GeoVideoArchiveSource";
 
 /** One immutable, calendar-aligned artifact of a GeoVideo archive. */
 export interface GeoVideoIndexChunk {
@@ -84,6 +85,45 @@ export async function loadGeoVideoIndex(
   return validateGeoVideoIndex(await response.json());
 }
 
+/** An index URL resolved like the browser resolves it. */
+function absoluteUrl(url: string): string {
+  return typeof document !== "undefined"
+    ? new URL(url, document.baseURI).href
+    : url;
+}
+
+/**
+ * Catalog-free chunk descriptors of an index, manifest URLs resolved
+ * against the index URL, in index order.
+ */
+export function geoVideoIndexChunks(
+  index: GeoVideoIndex,
+  indexUrl: string,
+): GeoVideoArchiveChunk[] {
+  const base = absoluteUrl(indexUrl);
+  return index.chunks.map((chunk) => ({
+    key: chunk.key,
+    manifestUrl: new URL(chunk.manifestUrl, base).href,
+    start: Date.parse(chunk.start),
+    end: Date.parse(chunk.end),
+    samples: chunk.samples,
+    ...(chunk.provisional ? { provisional: true } : {}),
+  }));
+}
+
+/** Throws unless the index was written for this catalog entry and source. */
+export function assertGeoVideoIndexIdentity(
+  source: CatalogGeoVideoArchiveSource,
+  index: GeoVideoIndex,
+  entry: CatalogEntry,
+): void {
+  if (index.sourceId !== source.id || index.catalogEntryId !== entry.id) {
+    throw new Error(
+      `GeoVideo index identity does not match catalog entry/source: ${source.id}`,
+    );
+  }
+}
+
 /**
  * Fixed-period GeoVideo sources, one per chunk. They keep the archive source
  * id, which the chunk manifests carry as their identity.
@@ -93,17 +133,10 @@ export function geoVideoChunkSources(
   index: GeoVideoIndex,
   entry: CatalogEntry,
 ): CatalogGeoVideoSource[] {
-  if (index.sourceId !== source.id || index.catalogEntryId !== entry.id) {
-    throw new Error(
-      `GeoVideo index identity does not match catalog entry/source: ${source.id}`,
-    );
-  }
-  const base =
-    typeof document !== "undefined"
-      ? new URL(source.indexUrl, document.baseURI).href
-      : source.indexUrl;
+  assertGeoVideoIndexIdentity(source, index, entry);
+  const chunks = geoVideoIndexChunks(index, source.indexUrl);
   return index.chunks.map(
-    (chunk): CatalogGeoVideoSource => ({
+    (chunk, i): CatalogGeoVideoSource => ({
       id: source.id,
       type: "geovideo",
       title: source.title,
@@ -114,7 +147,7 @@ export function geoVideoChunkSources(
         start: chunk.start,
         end: chunk.end,
       },
-      manifestUrl: new URL(chunk.manifestUrl, base).href,
+      manifestUrl: chunks[i].manifestUrl,
     }),
   );
 }

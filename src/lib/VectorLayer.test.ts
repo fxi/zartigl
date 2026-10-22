@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeWebGL2 } from "./test-webgl2";
+import { GeoVideoVectorSource } from "./GeoVideoVectorSource";
+import type { GeoVideoManifest } from "./geovideo";
 import { VectorLayer } from "./VectorLayer";
 import { stitchVelocityChunks } from "./VelocityField";
 import type { VectorFieldSource, VelocityData } from "./types";
@@ -420,5 +422,110 @@ describe("VectorLayer camera particle state", () => {
     layer.resume();
     expect(load).toHaveBeenCalledOnce();
     expect(load).toHaveBeenCalledWith({ resetParticles: true });
+  });
+  it("absorbs GeoVideo frame cancellation and loads the frame later", async () => {
+    const manifest = {
+      schemaVersion: 3,
+      id: "1c21d5ae-ee20-47aa-aec0-30e69506bc9b",
+      type: "geovideo",
+      projection: "equirectangular",
+      bounds: [-180, -80, 180, 80],
+      media: {
+        url: "https://example.test/currents.mp4",
+        mimeType: "video/mp4",
+        width: 2,
+        height: 2,
+        fps: 24,
+        durationSeconds: 1 / 12,
+        codec: "h264",
+      },
+      encoding: {
+        kind: "vector-luma",
+        bits: 8,
+        codeMin: 16,
+        codeMax: 235,
+        valueDomain: 1,
+        transfer: "linear",
+        layout: "stacked-uv",
+        colorSpace: "bt709",
+        colorRange: "limited",
+      },
+      mask: {
+        kind: "static-validity",
+        url: "https://example.test/mask.png",
+        mimeType: "image/png",
+        width: 2,
+        height: 1,
+        threshold: 0.5,
+      },
+      timeline: {
+        kind: "sample-sequence",
+        values: ["2026-09-01T00:00:00Z", "2026-09-02T00:00:00Z"],
+      },
+      provenance: {
+        catalogEntryId: "3db0120b-17d2-4789-9952-efcc0953ecc4",
+        inputSourceId: "e18cff03-d2a3-4a41-bfd8-b4ea62bca2a3",
+        variables: ["uo", "vo"],
+        generatedAt: "2026-10-10T00:00:00Z",
+      },
+      style: { palette: "speed", colorDomain: [0, 1] },
+    } as GeoVideoManifest;
+    // The MapLibre route: CatalogRenderLayer gives VectorLayer this source.
+    const source = new GeoVideoVectorSource(manifest);
+    const resolvers: Array<() => void> = [];
+    const decode = vi
+      .spyOn(source as unknown as { decode(): Promise<unknown> }, "decode")
+      .mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            resolvers.push(() =>
+              resolve({ u: new Float32Array(2), v: new Float32Array(2) }),
+            ),
+          ),
+      );
+    vi.mocked(stitchVelocityChunks).mockReturnValue(vectorData());
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const layer = new VectorLayer({
+      id: "geovideo",
+      source: manifest.media.url,
+      zarrSource: source,
+    });
+    const internals = layer as unknown as {
+      map: FakeMap;
+      initialized: boolean;
+    };
+    internals.map = new FakeMap();
+    internals.initialized = true;
+    const onError = vi.fn();
+    const buffered = vi.fn();
+    layer.on("error", onError);
+    layer.on("frameBuffered", buffered);
+    const time = Date.parse("2026-09-02T00:00:00Z");
+
+    const cancelled = layer.prefetchTime(time);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    layer.cancelPrefetches();
+    await expect(cancelled).resolves.toBeUndefined();
+    expect(layer.isFrameCached(time)).toBe(false);
+
+    const later = layer.prefetchTime(time);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The cancelled seek settles first, then the new request decodes.
+    resolvers.forEach((resolve) => resolve());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    resolvers.forEach((resolve) => resolve());
+    await later;
+    expect(layer.isFrameCached(time)).toBe(true);
+    expect(buffered).toHaveBeenCalledWith(time);
+    expect(decode).toHaveBeenCalledTimes(2);
+    expect(onError).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleWarn).not.toHaveBeenCalled();
   });
 });

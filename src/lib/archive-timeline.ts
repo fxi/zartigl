@@ -1,9 +1,25 @@
 import type { CatalogSource } from "../catalog/types";
+import {
+  nextChunkSpan,
+  pairChunkSpan,
+  type GeoVideoChunkSpan,
+} from "./GeoVideoArchiveSource";
+
+/**
+ * Catalog adapters of the neutral archive timeline helpers
+ * (nextChunkSpan, pairChunkSpan) for fixed-period catalog sources.
+ */
 
 /** Sample range of a fixed-period chunk; the end defaults to the start. */
-function chunkSpan(chunk: CatalogSource): [number, number] {
-  const { start, end } = chunk.temporal ?? {};
-  return [Date.parse(start ?? ""), Date.parse(end ?? start ?? "")];
+function chunkSpan<T extends CatalogSource>(
+  source: T,
+): GeoVideoChunkSpan & { source: T } {
+  const { start, end } = source.temporal ?? {};
+  return {
+    source,
+    start: Date.parse(start ?? ""),
+    end: Date.parse(end ?? start ?? ""),
+  };
 }
 
 /**
@@ -15,27 +31,15 @@ export function nextChunk<T extends CatalogSource>(
   current: CatalogSource,
   options: { range?: readonly [number, number] | null; loop?: boolean } = {},
 ): { source: T; time: number } | null {
-  const [rangeStart, rangeEnd] = options.range ?? [-Infinity, Infinity];
-  const sorted = chunks
+  const spans = chunks
     .filter((chunk) => chunk.id === current.id && chunk.temporal?.start != null)
-    .map((source) => {
-      const [start, end] = chunkSpan(source);
-      return { source, start, end };
-    })
-    .sort((a, b) => a.start - b.start);
-  const currentEnd = Date.parse(current.temporal?.end ?? "");
-  const next =
-    sorted.find(
-      (chunk) => chunk.start > currentEnd && chunk.start <= rangeEnd,
-    ) ??
-    (options.loop
-      ? sorted.find(
-          (chunk) => chunk.end >= rangeStart && chunk.start <= rangeEnd,
-        )
-      : undefined);
-  return next
-    ? { source: next.source, time: Math.max(next.start, rangeStart) }
-    : null;
+    .map(chunkSpan);
+  const next = nextChunkSpan(
+    spans,
+    Date.parse(current.temporal?.end ?? ""),
+    options,
+  );
+  return next ? { source: next.chunk.source, time: next.time } : null;
 }
 
 /**
@@ -47,16 +51,7 @@ export function pairChunk<T extends CatalogSource>(
   chunk: CatalogSource,
   candidates: readonly T[],
 ): T | null {
-  const [start, end] = chunkSpan(chunk);
-  let best: T | null = null;
-  let bestOverlap = -Infinity;
-  for (const candidate of candidates) {
-    const [s, e] = chunkSpan(candidate);
-    const overlap = Math.min(end, e) - Math.max(start, s);
-    if (Number.isFinite(overlap) && overlap >= 0 && overlap > bestOverlap) {
-      best = candidate;
-      bestOverlap = overlap;
-    }
-  }
-  return best;
+  return (
+    pairChunkSpan(chunkSpan(chunk), candidates.map(chunkSpan))?.source ?? null
+  );
 }

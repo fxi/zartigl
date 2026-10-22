@@ -1,10 +1,13 @@
 /**
  * MapLibre-free rendering primitives: GeoVideo archives, manifests and frame
- * decoding, color ramps, trail fading and WebGL helpers. Published as
- * `@fxi/zartigl/engine` for renderers that own their projection and canvas.
+ * decoding, color ramps, color grade, backdrop, trail fading, WebGL helpers
+ * and shared GLSL chunks. Published as `@fxi/zartigl/engine` for renderers
+ * that own their projection and canvas, such as `@fxi/projversor`.
  */
 export {
+  assertGeoVideoIndexIdentity,
   geoVideoChunkSources,
+  geoVideoIndexChunks,
   isGeoVideoArchiveSource,
   loadGeoVideoIndex,
   validateGeoVideoIndex,
@@ -22,15 +25,40 @@ export type {
   GeoVideoVectorEncoding,
 } from "./lib/geovideo";
 export { GeoVideoFrameSource } from "./lib/GeoVideoFrameSource";
+export type { GeoVideoFrameRequest } from "./lib/GeoVideoFrameSource";
+export {
+  GeoVideoArchiveSource,
+  createGeoVideoFrameSource,
+  geoVideoGrid,
+  nextChunkSpan,
+  pairChunkSpan,
+} from "./lib/GeoVideoArchiveSource";
+export type {
+  GeoVideoArchiveChunk,
+  GeoVideoArchiveFrame,
+  GeoVideoArchiveSample,
+  GeoVideoArchiveSourceOptions,
+  GeoVideoChunkSpan,
+  GeoVideoFrameData,
+  GeoVideoFrameReader,
+  GeoVideoGrid,
+  GeoVideoSampleMode,
+} from "./lib/GeoVideoArchiveSource";
 export { GeoVideoScalarSource } from "./lib/GeoVideoScalarSource";
 export { GeoVideoVectorSource } from "./lib/GeoVideoVectorSource";
 export type { GeoVideoVectorFrame } from "./lib/GeoVideoVectorSource";
 export {
   createColorRampTexture,
   createProgram,
+  createShader,
   getPalettes,
   resolveColorRamp,
 } from "./lib/gl-util";
+export {
+  COLOR_GRADE_GLSL,
+  RANDOM_GLSL,
+  VIBRANCE_GLSL,
+} from "./lib/glsl-chunks";
 export type { ColorRampInput, PaletteMeta } from "./lib/gl-util";
 export { validateScalarColorDomain } from "./lib/scalar-color-domain";
 export type { ScalarColorDomain } from "./lib/scalar-color-domain";

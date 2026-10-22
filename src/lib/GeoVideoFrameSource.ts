@@ -89,8 +89,54 @@ export function isBlankReadback(rgba: Uint8Array): boolean {
   return true;
 }
 
-function abortError(): DOMException {
+export function abortError(): DOMException {
   return new DOMException("GeoVideo frame request was cancelled", "AbortError");
+}
+
+/**
+ * `promise`, or an AbortError as soon as `signal` aborts. The work behind
+ * `promise` is not stopped: callers sharing it keep waiting for it.
+ */
+export function abortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined,
+  onAbort?: () => void,
+): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+  if (signal.aborted) {
+    // The shared work goes on; its outcome is observed, never unhandled.
+    promise.catch(() => undefined);
+    onAbort?.();
+    return Promise.reject(abortError());
+  }
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => {
+      onAbort?.();
+      reject(abortError());
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", abort);
+    });
+  });
+}
+
+/** Options of one frame request. */
+export interface GeoVideoFrameRequest {
+  /** Abandons this request only; the decode stops once no request needs it. */
+  signal?: AbortSignal;
+}
+
+/** One time step's decode, shared by the requests waiting for it. */
+interface FrameJob<TFrame> {
+  readonly index: number;
+  readonly controller: AbortController;
+  promise: Promise<TFrame>;
+  /** Requests still waiting; one without a signal never leaves. */
+  waiters: number;
+  settled: boolean;
 }
 
 function once(target: EventTarget, type: string): Promise<void> {
@@ -117,9 +163,11 @@ function presentedFrame(video: HTMLVideoElement): Promise<void> {
 
 /**
  * GeoVideo frames read one time step at a time (seek, no playback): video
- * and static mask loading, luma readback, a serial decode queue that
- * cancelAll() aborts, and a small LRU cache of decoded frames. Subclasses
- * turn the luma codes of a frame into values.
+ * and static mask loading, luma readback, a serial decode queue, and a small
+ * LRU cache of decoded frames. Requests for the same step share one decode;
+ * each can be abandoned with its own signal, and the decode is dropped once
+ * no request waits for it. cancelAll() aborts every pending decode.
+ * Subclasses turn the luma codes of a frame into values.
  */
 export abstract class GeoVideoFrameSource<TFrame> {
   /** Grid size; the video stacks `planes` grids vertically. */
@@ -135,9 +183,12 @@ export abstract class GeoVideoFrameSource<TFrame> {
   private initPromise: Promise<void> | null = null;
   private presented = false;
   private primed = false;
+  /** Serializes seeks: the previous decode, settled or not, runs first. */
   private queue: Promise<unknown> = Promise.resolve();
-  private epoch = 0;
-  private readonly frames = new Map<number, Promise<TFrame>>();
+  /** LRU of decoded and pending steps. */
+  private readonly frames = new Map<number, FrameJob<TFrame>>();
+  /** Pending decodes, including those the LRU already evicted. */
+  private readonly pending = new Set<FrameJob<TFrame>>();
 
   constructor(
     manifest: GeoVideoManifest,
@@ -167,11 +218,10 @@ export abstract class GeoVideoFrameSource<TFrame> {
     return this.initPromise;
   }
 
-  /** Abort queued frame decodes; frames already decoded stay cached. */
+  /** Abort every pending frame decode; frames already decoded stay cached. */
   cancelAll(): void {
-    this.epoch++;
-    for (const [index, frame] of this.frames) {
-      frame.catch(() => this.frames.delete(index));
+    for (const job of [...this.pending]) {
+      this.drop(job);
     }
   }
 
@@ -191,27 +241,83 @@ export abstract class GeoVideoFrameSource<TFrame> {
     this.reader.release();
   }
 
-  /** One decode per time step, cached. */
-  frame(index: number): Promise<TFrame> {
-    const cached = this.frames.get(index);
-    if (cached) {
-      this.frames.delete(index);
-      this.frames.set(index, cached);
-      return cached;
+  /**
+   * One decode per time step, cached and shared by concurrent requests.
+   * Aborting `request.signal` rejects this request with an AbortError; the
+   * decode goes on while another request waits for it.
+   */
+  frame(index: number, request: GeoVideoFrameRequest = {}): Promise<TFrame> {
+    const { signal } = request;
+    if (signal?.aborted) {
+      return Promise.reject(abortError());
     }
-    const epoch = this.epoch;
-    const job = this.queue.then(() => this.decode(index, epoch));
-    this.queue = job.catch(() => undefined);
+    let job = this.frames.get(index);
+    if (job) {
+      this.frames.delete(index);
+      this.frames.set(index, job);
+    } else {
+      job = this.enqueue(index);
+    }
+    if (job.settled) {
+      return job.promise;
+    }
+    const waiting = job;
+    waiting.waiters++;
+    return abortable(waiting.promise, signal, () => this.leave(waiting));
+  }
+
+  private enqueue(index: number): FrameJob<TFrame> {
+    const controller = new AbortController();
+    // A decode abandoned while queued is skipped.
+    const run = this.queue.then(() =>
+      controller.signal.aborted
+        ? Promise.reject(abortError())
+        : this.decode(index, controller.signal),
+    );
+    // The next seek waits for this one, even once its requests left.
+    this.queue = run.catch(() => undefined);
+    const job: FrameJob<TFrame> = {
+      index,
+      controller,
+      promise: abortable(run, controller.signal),
+      waiters: 0,
+      settled: false,
+    };
+    this.pending.add(job);
+    job.promise.then(
+      () => {
+        job.settled = true;
+        this.pending.delete(job);
+      },
+      () => {
+        job.settled = true;
+        this.pending.delete(job);
+        if (this.frames.get(index) === job) {
+          this.frames.delete(index);
+        }
+      },
+    );
     this.frames.set(index, job);
-    job.catch(() => {
-      if (this.frames.get(index) === job) {
-        this.frames.delete(index);
-      }
-    });
     while (this.frames.size > this.cacheSize) {
       this.frames.delete(this.frames.keys().next().value!);
     }
     return job;
+  }
+
+  /** A request left; drop the decode when it was the last one waiting. */
+  private leave(job: FrameJob<TFrame>): void {
+    job.waiters--;
+    if (job.waiters <= 0 && !job.settled) {
+      this.drop(job);
+    }
+  }
+
+  private drop(job: FrameJob<TFrame>): void {
+    job.controller.abort();
+    this.pending.delete(job);
+    if (this.frames.get(job.index) === job) {
+      this.frames.delete(job.index);
+    }
   }
 
   private async load(): Promise<void> {
@@ -310,16 +416,23 @@ export abstract class GeoVideoFrameSource<TFrame> {
     this.presented = false;
   }
 
-  protected async decode(index: number, epoch: number): Promise<TFrame> {
+  /**
+   * Seek, read back and decode one step. `signal` aborts it between steps;
+   * a seek already started completes first, keeping the queue serial.
+   */
+  protected async decode(index: number, signal: AbortSignal): Promise<TFrame> {
+    if (signal.aborted) {
+      throw abortError();
+    }
     await this.init();
     const video = this.video;
     const mask = this.mask;
-    if (epoch !== this.epoch || !video || !mask) {
+    if (signal.aborted || !video || !mask) {
       throw abortError();
     }
     const seconds = geoVideoSecondsForTime(this.manifest, this.times[index]);
     await this.presentFrame(video, seconds);
-    if (epoch !== this.epoch || video !== this.video) {
+    if (signal.aborted || video !== this.video) {
       throw abortError();
     }
     const rows = this.height * this.planes;
@@ -327,7 +440,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
     if (isBlankReadback(rgba) && !this.primed) {
       await this.primeDecoder(video);
       await this.presentFrame(video, seconds);
-      if (epoch !== this.epoch || video !== this.video) {
+      if (signal.aborted || video !== this.video) {
         throw abortError();
       }
       rgba = this.reader.read(video, this.width, rows);
