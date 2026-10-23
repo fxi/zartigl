@@ -89,10 +89,12 @@ export function requireCatalogEntry(
   return entry;
 }
 
+// WMTS comes last: the server styles its tiles, so the layer style would not
+// apply. "auto" stays on client-styled sources while one is available.
 const SCALAR_SOURCE_PRIORITY: CatalogSource["type"][] = [
   "geovideo",
-  "wmts",
   "zarr",
+  "wmts",
 ];
 
 const VECTOR_SOURCE_PRIORITY: CatalogSource["type"][] = ["geovideo", "zarr"];
@@ -128,7 +130,7 @@ export function sourceCoversTime(
 }
 
 /**
- * Preferred render source: GeoVideo, then WMTS (scalar), then Zarr, skipping
+ * Preferred render source: GeoVideo, then Zarr, then WMTS (scalar), skipping
  * fixed-period sources that cannot show the requested time. Several GeoVideo
  * periods may coexist; the latest covering one wins. GeoVideo is a
  * lightweight display transport; Zarr stays the fallback and query source.

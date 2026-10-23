@@ -98,8 +98,13 @@ describe("pickPreferredSource", () => {
     );
   });
 
-  it("prefers wmts over zarr when geovideo is unavailable", () => {
-    expect(pickPreferredSource(scalarEntry([zarr, wmts])).id).toBe("s-wmts");
+  it("prefers zarr over wmts when geovideo is unavailable", () => {
+    // WMTS tiles are styled by the server; Zarr keeps the layer style.
+    expect(pickPreferredSource(scalarEntry([wmts, zarr])).id).toBe("s-zarr");
+  });
+
+  it("falls back to wmts when it is the only scalar source", () => {
+    expect(pickPreferredSource(scalarEntry([wmts])).id).toBe("s-wmts");
   });
 
   it("falls back to zarr when it is the only source", () => {
@@ -174,7 +179,7 @@ describe("pickPreferredSource", () => {
     expect(pickPreferredSource(vector).id).toBe("s-fixed-video");
     expect(
       pickPreferredSource(scalarEntry([zarr, wmts, fixedVideo]), chido).id,
-    ).toBe("s-wmts");
+    ).toBe("s-zarr");
   });
 
   it("chooses among several GeoVideo periods by coverage, then recency", () => {

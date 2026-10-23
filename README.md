@@ -81,6 +81,15 @@ await z.init();
 Use `await z.update({ ... })` to change any subset of the active configuration.
 Pass `layer` and `source` together when both should switch atomically.
 
+`source` takes a source id or a preference:
+
+- `"geovideo"`: fast; surface level and GeoVideo dates only.
+- `"zarr"`: all dates and depths; heavier on the client.
+- `"auto"`: GeoVideo, falling back to Zarr for other dates and depths; the
+  layer style always applies. WMTS only when the entry has neither.
+- `"wmts"`: rendered by the server, palette and legend included; no
+  particles, and the layer style has no effect.
+
 `init()` and layer/source updates resolve after consolidated metadata and coordinate axes have loaded. Metadata getters are therefore authoritative afterward, including exact values for irregular time axes.
 
 The root import does not bundle the catalog presets. Import catalog data from `@fxi/zartigl/catalog` only when you want the built-in catalog.

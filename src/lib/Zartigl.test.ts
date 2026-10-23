@@ -2374,7 +2374,25 @@ describe("Zartigl facade", () => {
     });
   });
 
-  it("uses scalar WMTS when the entry's default source asks for it", async () => {
+  it("keeps a client-styled Zarr source over WMTS in auto", async () => {
+    const map = new FakeMap();
+    const z = await createZartigl(
+      {
+        map: map as never,
+        catalog: catalog(scalarLayer()),
+        source: "auto",
+        style: { palette: "ice" },
+      },
+      "scalar",
+    );
+
+    const renderLayer = map.getLayer("zartigl") as { getBackend(): string };
+    expect(renderLayer.getBackend()).toBe("scalar-zarr");
+    expect(z.supportsDynamicStyle()).toBe(true);
+    expect(z.getLegend()).toMatchObject({ type: "gradient", palette: "ice" });
+  });
+
+  it("uses scalar WMTS when asked for it", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -2387,9 +2405,8 @@ describe("Zartigl facade", () => {
       }),
     );
     const map = new FakeMap();
-    const layer = scalarLayer({ defaults: { sourceId: "wmts" } });
     const z = await createZartigl(
-      { map: map as never, catalog: catalog(layer), source: "auto" },
+      { map: map as never, catalog: catalog(scalarLayer()), source: "wmts" },
       "scalar",
     );
 
