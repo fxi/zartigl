@@ -1026,6 +1026,27 @@
         36.29166793823242,
         45.97916793823242
       ]
+    },
+    {
+      "sourceId": "97ea8543-1c11-487d-aed3-ffe0466478ee",
+      "catalogEntryId": "7b020ade-b780-4b5c-972a-fed23632a11e",
+      "title": "Coral Degree Heating Week",
+      "windows": [
+        {
+          "start": "2023-01-01T00:00:00Z"
+        }
+      ],
+      "bounds": [
+        -180,
+        -60,
+        180,
+        60
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
     }
   ]
 }

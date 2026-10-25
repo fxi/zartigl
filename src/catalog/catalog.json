@@ -5827,6 +5827,194 @@
         },
         "querySourceId": "4a4e3d29-1eee-44ac-9a03-55c3ee1479cc"
       }
+    },
+    {
+      "id": "7b020ade-b780-4b5c-972a-fed23632a11e",
+      "aliases": [
+        "coral-degree-heating-week"
+      ],
+      "title": {
+        "en": "Coral Degree Heating Week"
+      },
+      "description": {
+        "en": "Daily accumulated coral heat stress over the past 12 weeks from NOAA Coral Reef Watch (5 km, v3.1). Bleaching is likely from 4 °C-weeks and severe bleaching with mortality from 8 °C-weeks."
+      },
+      "category": "biology",
+      "tags": [
+        "coral",
+        "bleaching",
+        "heat-stress",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "6929d810-e85e-4772-ab08-c48cbffabe7e",
+          "type": "zarr",
+          "title": {
+            "en": "NOAA Coral Reef Watch Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "noaa-coral-reef-watch",
+            "identifiers": {
+              "product": "CRW_5KM_DAILY_V3.1",
+              "dataset": "ct5km_dhw_v3.1"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "degree_heating_week"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "6929d810-e85e-4772-ab08-c48cbffabe7e",
+        "palette": "amp",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0,
+            20
+          ]
+        },
+        "querySourceId": "6929d810-e85e-4772-ab08-c48cbffabe7e"
+      }
+    },
+    {
+      "id": "13324d23-a70b-424d-b580-8d8cb7f7e528",
+      "aliases": [
+        "coral-bleaching-alert"
+      ],
+      "title": {
+        "en": "Coral Bleaching Alert Area"
+      },
+      "description": {
+        "en": "Daily NOAA Coral Reef Watch bleaching heat stress level (5 km, v3.1): 0 no stress, 1 watch, 2 warning, 3 alert level 1, 4 alert level 2."
+      },
+      "category": "biology",
+      "tags": [
+        "coral",
+        "bleaching",
+        "heat-stress",
+        "alert"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "c012088d-828d-4037-9198-b5ca52c40895",
+          "type": "zarr",
+          "title": {
+            "en": "NOAA Coral Reef Watch Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "noaa-coral-reef-watch",
+            "identifiers": {
+              "product": "CRW_5KM_DAILY_V3.1",
+              "dataset": "ct5km_baa_v3.1"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "bleaching_alert_area"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "c012088d-828d-4037-9198-b5ca52c40895",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0,
+            4
+          ]
+        },
+        "querySourceId": "c012088d-828d-4037-9198-b5ca52c40895"
+      }
+    },
+    {
+      "id": "b70167b6-337b-4e3c-869a-300c7abe05b1",
+      "aliases": [
+        "coral-sst-anomaly"
+      ],
+      "title": {
+        "en": "Coral Reef Watch SST Anomaly"
+      },
+      "description": {
+        "en": "Daily sea surface temperature anomaly against the 1985–2012 climatology from NOAA Coral Reef Watch CoralTemp (5 km, v3.1)."
+      },
+      "category": "biology",
+      "tags": [
+        "coral",
+        "anomaly",
+        "el-nino",
+        "la-nina",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "3bcb1768-28c2-4e6f-8a61-a66298a5b285",
+          "type": "zarr",
+          "title": {
+            "en": "NOAA Coral Reef Watch Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "noaa-coral-reef-watch",
+            "identifiers": {
+              "product": "CRW_5KM_DAILY_V3.1",
+              "dataset": "ct5km_ssta_v3.1"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "sea_surface_temperature_anomaly"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "3bcb1768-28c2-4e6f-8a61-a66298a5b285",
+        "palette": "balance",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            -5,
+            5
+          ]
+        },
+        "querySourceId": "3bcb1768-28c2-4e6f-8a61-a66298a5b285"
+      }
     }
   ]
 }

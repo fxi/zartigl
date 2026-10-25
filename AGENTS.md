@@ -15,6 +15,9 @@
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
   helper scripts.
+- `scripts/netcdf_to_zarr/` converts file-only products (netCDF) into
+  ARCO-shaped Zarr on the zartigl bucket, one directory per
+  `<org>/<product>`, run daily by `.github/workflows/netcdf-to-zarr.yml`.
 
 ## Projversor
 
@@ -69,8 +72,12 @@ WMTS is only an optional scalar shortcut. For polar products, prefer Zarr unless
 WMTS coverage has been verified to reach the poles; zartigl's shader path is
 intended to cover polar views.
 
-Do not propose non-cloud-native services, GRIB/netCDF/HDF-only products, bespoke
-APIs, or sources that require ingestion or conversion as catalog-ready entries.
+File-only products (netCDF/GRIB/HDF) become catalog-ready only through a
+maintained `scripts/netcdf_to_zarr/<org>/<product>/` pipeline that publishes to
+the zartigl bucket (see `scripts/netcdf_to_zarr/README.md`); propose one when
+ARCO has no equivalent. NOAA Coral Reef Watch heat stress (`noaa/crw_dhw`) is
+the reference implementation. Do not propose non-cloud-native services,
+bespoke APIs, or one-off conversions as catalog-ready entries.
 
 
 Commits

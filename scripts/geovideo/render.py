@@ -26,7 +26,6 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
-import os
 from pathlib import Path
 import shutil
 import struct
@@ -43,24 +42,12 @@ import xarray as xr
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from arco_zarr import open_arco_zarr  # noqa: E402
+from s3_bucket import require_bucket_cors, s3_client  # noqa: E402,F401
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
 P99_CODE_ERROR_LIMIT = 8
 MAX_CODE_ERROR_LIMIT = 16
-
-
-def read_dotenv(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.exists():
-        return values
-    for raw in path.read_text().splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip("'\"")
-    return values
 
 
 def required(config: dict[str, Any], key: str) -> Any:
@@ -751,41 +738,6 @@ def create_manifest(
             "vibrance": config["style"]["vibrance"],
         },
     }
-
-
-def require_bucket_cors(client: Any, bucket: str) -> None:
-    """Fail early when the bucket cannot serve browser Range reads; never rewrite shared bucket CORS."""
-    try:
-        rules = client.get_bucket_cors(Bucket=bucket)["CORSRules"]
-    except client.exceptions.ClientError as exc:
-        raise RuntimeError(
-            f"Bucket {bucket} has no readable CORS configuration; configure GET/HEAD with the Range header once"
-        ) from exc
-    for rule in rules:
-        methods = {method.upper() for method in rule.get("AllowedMethods", [])}
-        headers = {header.lower() for header in rule.get("AllowedHeaders", [])}
-        exposed = {header.lower() for header in rule.get("ExposeHeaders", [])}
-        if {"GET", "HEAD"} <= methods and ("range" in headers or "*" in headers) and "content-range" in exposed:
-            return
-    raise RuntimeError(f"Bucket {bucket} CORS does not allow GET/HEAD Range reads exposing Content-Range")
-
-
-def s3_client() -> tuple[Any, dict[str, str]]:
-    """S3 client and settings: public defaults from .env.demo, credentials from .env or the environment."""
-    import boto3
-
-    env = {**read_dotenv(ROOT / ".env.demo"), **read_dotenv(ROOT / ".env"), **os.environ}
-    required_names = ["S3_ENDPOINT", "S3_KEY", "S3_SECRET", "S3_BUCKET"]
-    missing = [name for name in required_names if not env.get(name)]
-    if missing:
-        raise RuntimeError(f"Missing S3 configuration: {', '.join(missing)}")
-    client = boto3.client(
-        "s3",
-        endpoint_url=env["S3_ENDPOINT"],
-        aws_access_key_id=env["S3_KEY"],
-        aws_secret_access_key=env["S3_SECRET"],
-    )
-    return client, env
 
 
 def publish(directory: Path, config: dict[str, Any], artifact_id: str, object_prefix: str | None = None) -> str:
