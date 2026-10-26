@@ -85,3 +85,9 @@ export {
   resolveBackdrop,
 } from "./lib/backdrop";
 export { nextChunk, pairChunk } from "./lib/archive-timeline";
+export {
+  parseTimeRange,
+  subtractIsoDuration,
+  timeRangeBounds,
+} from "./lib/time-range";
+export type { TimeRange } from "./lib/time-range";
