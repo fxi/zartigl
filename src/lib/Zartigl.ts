@@ -256,6 +256,8 @@ type ZartiglEventMap = {
   playbackChange: (playing: boolean) => void;
   /** The active source changed, including an automatic fallback. */
   sourceChange: (source: { id: string; type: CatalogSource["type"] }) => void;
+  /** The render layer was added to the map, e.g. for the host to order it. */
+  layerAttach: (id: string) => void;
 };
 
 /** GeoVideo playback speeds, in time steps per second. */
@@ -809,12 +811,21 @@ export class Zartigl {
   private updateQueue: Promise<void> = Promise.resolve();
   private suspended = false;
   private attachQueued = false;
+  /**
+   * Place of the detached render layer, for the next one : the layer above
+   * it, `undefined` at the top, `null` when none was attached.
+   */
+  private anchor: string | undefined | null = null;
   private querySources = new Map<string, ZarrSource>();
   private listeners: Map<keyof ZartiglEventMap, Set<Function>> = new Map();
 
-  private readonly onMapLoad = () => this.attachWhenReady();
-  private readonly onStyleData = () => this.attachWhenReady();
-  private readonly onMapIdle = () => this.attachWhenReady();
+  // Map events only retry an attach the map was not ready for : a layer the
+  // host removed stays removed.
+  private readonly onMapReady = () => {
+    if (this.attachQueued) {
+      this.attachWhenReady();
+    }
+  };
 
   constructor(options: ZartiglOptions) {
     if (!options.layer) {
@@ -856,9 +867,9 @@ export class Zartigl {
     this.colorDomainOverridden = this.settings.colorDomain !== undefined;
     this.paletteOverridden = this.settings.palette !== undefined;
 
-    this.map.on("load", this.onMapLoad);
-    this.map.on("styledata", this.onStyleData);
-    this.map.on("idle", this.onMapIdle);
+    this.map.on("load", this.onMapReady);
+    this.map.on("styledata", this.onMapReady);
+    this.map.on("idle", this.onMapReady);
   }
 
   async init(): Promise<void> {
@@ -1565,9 +1576,9 @@ export class Zartigl {
     this.fieldSources.forEach((source) => source.cancelAll());
     this.querySources.clear();
     this.fieldSources.clear();
-    this.map.off("load", this.onMapLoad);
-    this.map.off("styledata", this.onStyleData);
-    this.map.off("idle", this.onMapIdle);
+    this.map.off("load", this.onMapReady);
+    this.map.off("styledata", this.onMapReady);
+    this.map.off("idle", this.onMapReady);
     this.destroyed = true;
   }
 
@@ -2133,10 +2144,17 @@ export class Zartigl {
       this.attachQueued = true;
       return;
     }
-    if (this.layer && this.map.getLayer(this.layer.id)) {
+    if (this.layer && this.isAttached(this.layer)) {
       return;
     }
     this.attachQueued = false;
+    if (this.map.getLayer(this.id)) {
+      this.emit(
+        "error",
+        new Error(`Map layer id '${this.id}' is already used by another layer`),
+      );
+      return;
+    }
 
     const layer = new CatalogRenderLayer({
       id: this.id,
@@ -2206,12 +2224,8 @@ export class Zartigl {
     });
     layer.on("playbackEnd", () => void this.continueArchivePlayback());
     this.layer = layer;
-    const before = this.getBeforeLayerId();
-    if (before) {
-      this.map.addLayer(layer, before);
-      return;
-    }
-    this.map.addLayer(layer);
+    this.map.addLayer(layer, this.getBeforeLayerId());
+    this.emit("layerAttach", layer.id);
   }
 
   /** GeoVideo playback options shared by a new layer and an in-place swap. */
@@ -2244,7 +2258,7 @@ export class Zartigl {
     if (
       !layer ||
       !this.geoVideoManifest ||
-      !this.map.getLayer(layer.id) ||
+      !this.isAttached(layer) ||
       layer.getBackend() !== "scalar-geovideo"
     ) {
       return false;
@@ -2268,20 +2282,14 @@ export class Zartigl {
   }
 
   private detach(): void {
-    const layerId = this.layer?.id ?? this.id;
-    const wmtsLayerId = `${layerId}-wmts`;
-    const wmtsSourceId = `${layerId}-wmts-source`;
-
-    if (this.map.getLayer(layerId)) {
-      this.map.removeLayer(layerId);
-    }
-    if (this.map.getLayer(wmtsLayerId)) {
-      this.map.removeLayer(wmtsLayerId);
-    }
-    if (this.map.getSource(wmtsSourceId)) {
-      this.map.removeSource(wmtsSourceId);
-    }
+    const layer = this.layer;
     this.layer = null;
+    // Another instance may use the same id : remove only this layer, which
+    // removes its WMTS raster too.
+    if (layer && this.isAttached(layer)) {
+      this.anchor = this.layerAbove(layer.id);
+      this.map.removeLayer(layer.id);
+    }
     // A removed layer stops its media and timers without reporting it.
     if (this.playing) {
       this.playing = false;
@@ -2740,11 +2748,34 @@ export class Zartigl {
     return map.isStyleLoaded?.() ?? map.loaded?.() ?? true;
   }
 
+  /** A new render layer takes the place of the detached one, else `before`. */
   private getBeforeLayerId(): string | undefined {
-    if (!this.before || !this.map.getLayer(this.before)) {
+    if (this.anchor === undefined) {
       return undefined;
     }
-    return this.before;
+    for (const id of [this.anchor, this.before]) {
+      if (id && this.map.getLayer(id)) {
+        return id;
+      }
+    }
+    return undefined;
+  }
+
+  private isAttached(layer: CatalogRenderLayer): boolean {
+    const found = this.map.getLayer(layer.id) as
+      | { implementation?: unknown }
+      | undefined;
+    // MapLibre wraps a custom layer in a style layer.
+    return found === layer || found?.implementation === layer;
+  }
+
+  /** First layer above the render layer that is not its own WMTS raster. */
+  private layerAbove(id: string): string | undefined {
+    const order = this.map.getLayersOrder?.() ?? [];
+    const index = order.indexOf(id);
+    return index < 0
+      ? undefined
+      : order.slice(index + 1).find((other) => other !== `${id}-wmts`);
   }
 
   private requireLayer(): CatalogEntry {

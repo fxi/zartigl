@@ -737,12 +737,7 @@ export class CatalogRenderLayer implements CustomLayerInterface {
       metadata: this.metadata ? { ...this.metadata } : undefined,
       paint: { "raster-opacity": this.opacity },
     } as const;
-    const before = this.getBeforeLayerId();
-    if (before) {
-      this.map.addLayer(rasterLayer, before);
-      return;
-    }
-    this.map.addLayer(rasterLayer);
+    this.map.addLayer(rasterLayer, this.getBeforeLayerId());
   }
 
   private removeWmts(): void {
@@ -783,11 +778,14 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     }
   }
 
+  /** The WMTS raster takes the place of this custom layer, right above it. */
   private getBeforeLayerId(): string | undefined {
-    const before = this.options.before;
-    if (!before || !this.map?.getLayer(before)) {
-      return undefined;
+    const order = this.map?.getLayersOrder?.() ?? [];
+    const index = order.indexOf(this.options.id);
+    if (index > -1) {
+      return order[index + 1];
     }
-    return before;
+    const before = this.options.before;
+    return before && this.map?.getLayer(before) ? before : undefined;
   }
 }

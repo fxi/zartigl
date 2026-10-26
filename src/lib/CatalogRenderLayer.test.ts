@@ -160,6 +160,27 @@ describe("source dispatch", () => {
       (sources.get("layer-wmts-source") as { tiles: string[] }).tiles[0],
     ).toContain(encodeURIComponent(new Date(2_000).toISOString()));
   });
+  it("keeps the WMTS raster right above its custom layer", () => {
+    const order = ["below", "layer", "above"];
+    const map = {
+      addLayer: (value: { id: string }, before?: string) =>
+        order.splice(
+          before ? order.indexOf(before) : order.length,
+          0,
+          value.id,
+        ),
+      removeLayer: (id: string) => order.splice(order.indexOf(id), 1),
+      getLayer: (id: string) => (order.includes(id) ? { id } : undefined),
+      getLayersOrder: () => [...order],
+      addSource: () => {},
+      removeSource: () => {},
+      getSource: () => undefined,
+    };
+    const layer = new CatalogRenderLayer(options(wmts, { time: 1_000 }));
+    layer.onAdd(map as never, {} as never);
+    layer.setTime(2_000);
+    expect(order).toEqual(["below", "layer", "layer-wmts", "above"]);
+  });
 });
 
 describe("vector GeoVideo playback", () => {

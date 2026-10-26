@@ -15,6 +15,7 @@ class FakeMap {
   sources = new Map<string, unknown>();
   listeners = new Map<string, Set<() => void>>();
   addLayerCalls: Array<{ id: string; before?: string }> = [];
+  order: string[] = [];
 
   on(event: string, handler: () => void): void {
     if (!this.listeners.has(event)) {
@@ -38,14 +39,25 @@ class FakeMap {
   addLayer(layer: { id: string }, before?: string): void {
     this.addLayerCalls.push({ id: layer.id, before });
     this.layers.set(layer.id, layer);
+    const index = before ? this.order.indexOf(before) : -1;
+    this.order.splice(index < 0 ? this.order.length : index, 0, layer.id);
   }
 
   removeLayer(id: string): void {
     this.layers.delete(id);
+    this.order = this.order.filter((other) => other !== id);
   }
 
+  getLayersOrder(): string[] {
+    return [...this.order];
+  }
+
+  /** Return layers wrapped, as MapLibre does for custom layers. */
+  wrap = false;
+
   getLayer(id: string): unknown {
-    return this.layers.get(id);
+    const layer = this.layers.get(id);
+    return this.wrap && layer ? { id, implementation: layer } : layer;
   }
 
   addSource(id: string, source: unknown): void {
@@ -1916,6 +1928,107 @@ describe("Zartigl facade", () => {
     expect(
       map.addLayerCalls.filter((call) => call.id === "zartigl"),
     ).toHaveLength(2);
+  });
+
+  describe("map layer ownership", () => {
+    const create = (map: FakeMap, options: Partial<ZartiglOptions> = {}) =>
+      createZartigl(
+        {
+          source: "zarr",
+          map: map as never,
+          catalog: catalog(vectorLayer()),
+          ...options,
+        },
+        "vector",
+      );
+
+    it("does not add back a layer the host removed", async () => {
+      const map = new FakeMap();
+      await create(map);
+
+      map.removeLayer("zartigl");
+      map.emit("idle");
+      map.emit("styledata");
+
+      expect(map.getLayer("zartigl")).toBeUndefined();
+      expect(map.addLayerCalls).toHaveLength(1);
+    });
+
+    it("reports, but does not replace, a layer id used by another layer", async () => {
+      const map = new FakeMap();
+      const first = await create(map);
+      const firstLayer = map.getLayer("zartigl");
+      const onError = vi.fn();
+      const second = new Zartigl({
+        source: "zarr",
+        map: map as never,
+        catalog: catalog(vectorLayer()),
+        layer: "vector",
+      });
+      second.on("error", onError);
+
+      await second.init();
+      second.destroy();
+
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("zartigl"),
+        }),
+      );
+      expect(map.getLayer("zartigl")).toBe(firstLayer);
+      first.destroy();
+      expect(map.getLayer("zartigl")).toBeUndefined();
+    });
+
+    it("recreates and removes its own layer when MapLibre wraps it", async () => {
+      const map = new FakeMap();
+      map.wrap = true;
+      const z = await create(map);
+
+      await z.update({ settings: { particleState: "rgba8" } });
+      expect(map.getLayersOrder()).toEqual(["zartigl"]);
+      expect(map.addLayerCalls).toHaveLength(2);
+
+      z.destroy();
+      expect(map.getLayersOrder()).toEqual([]);
+    });
+
+    it("stays at the top when recreated there", async () => {
+      const map = new FakeMap();
+      map.addLayer({ id: "host" });
+      const z = await create(map, { before: "host" });
+      map.order = ["host", "zartigl"];
+
+      await z.update({ settings: { particleState: "rgba8" } });
+
+      expect(map.getLayersOrder()).toEqual(["host", "zartigl"]);
+    });
+
+    it("keeps its place among host layers when recreated", async () => {
+      const map = new FakeMap();
+      for (const id of ["below", "middle", "above"]) {
+        map.addLayer({ id });
+      }
+      const z = await create(map, { before: "above" });
+      const onAttach = vi.fn();
+      z.on("layerAttach", onAttach);
+      // The host moves zartigl under "middle".
+      map.order = ["below", "zartigl", "middle", "above"];
+
+      await z.update({ settings: { particleState: "rgba8" } });
+
+      expect(onAttach).toHaveBeenCalledWith("zartigl");
+      expect(map.addLayerCalls[map.addLayerCalls.length - 1]).toEqual({
+        id: "zartigl",
+        before: "middle",
+      });
+      expect(map.getLayersOrder()).toEqual([
+        "below",
+        "zartigl",
+        "middle",
+        "above",
+      ]);
+    });
   });
 
   it("updates RGBA8 max zoom without recreating the render layer", async () => {
