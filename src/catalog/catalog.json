@@ -5897,9 +5897,9 @@
       ],
       "defaults": {
         "sourceId": "6929d810-e85e-4772-ab08-c48cbffabe7e",
-        "palette": "amp",
+        "palette": "heat-alert",
         "raster": {
-          "opacity": 0.9,
+          "opacity": 1,
           "logScale": false,
           "vibrance": 0.1,
           "colorDomain": [

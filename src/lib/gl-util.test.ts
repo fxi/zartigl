@@ -191,4 +191,10 @@ describe("WebGL utility helpers", () => {
       1: "#ff2aa1",
     });
   });
+
+  it("keeps transparent stops of alpha palettes", () => {
+    const ramp = resolveColorRamp("heat-alert");
+    expect(ramp[0]).toBe("#fde72500");
+    expect(ramp[1]).toBe("#3a0007");
+  });
 });

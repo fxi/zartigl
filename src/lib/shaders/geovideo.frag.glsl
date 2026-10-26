@@ -30,8 +30,10 @@ void main() {
         float value = mix(u_value_range.x, u_value_range.y, code);
         float t = clamp((value - u_color_domain.x) / (u_color_domain.y - u_color_domain.x), 0.0, 1.0);
         t = mix(t, log(1.0 + t * 9.0) / log(10.0), u_log_scale);
-        color = texture2D(u_color_ramp, vec2(t, 0.5)).rgb;
-        color = applyVibrance(color, u_vibrance);
+        // Palettes with transparent stops fade low values out.
+        vec4 ramp = texture2D(u_color_ramp, vec2(t, 0.5));
+        color = applyVibrance(ramp.rgb, u_vibrance);
+        alpha *= ramp.a;
     }
     gl_FragColor = vec4(color, alpha * u_opacity);
 }

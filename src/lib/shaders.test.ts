@@ -19,6 +19,7 @@ describe("particle shader invalid-state guards", () => {
     expect(geoVideoFrag).toContain("u_value_range");
     expect(geoVideoFrag).toContain("u_color_domain");
     expect(geoVideoFrag).toContain("texture2D(u_color_ramp");
+    expect(geoVideoFrag).toContain("alpha *= ramp.a");
   });
   it("fades trail alpha only, so fading trails keep their color", () => {
     expect(fadeFrag).toContain(

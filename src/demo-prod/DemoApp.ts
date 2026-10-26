@@ -1335,9 +1335,10 @@ export class DemoApp {
       }
       const palette = palettes.find((p) => p.id === legend.palette);
       if (palette) {
+        // Checkerboard under the ramp shows transparent stops as see-through.
         this.legendBar.style.background = `linear-gradient(to right, ${palette.colors.join(
           ", ",
-        )})`;
+        )}), repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0 / 8px 8px`;
       }
       this.legendMin.textContent = legend.min?.toFixed(2) ?? "";
       this.legendMax.textContent = legend.max?.toFixed(2) ?? "";

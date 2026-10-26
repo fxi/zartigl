@@ -234,6 +234,18 @@
       "#110a35"
     ]
   },
+  "heat-alert": {
+    "label": "Heat Alert",
+    "tags": ["sequential", "alpha"],
+    "colors": [
+      "#fde72500",
+      "#fde725cc",
+      "#f8961e",
+      "#e63946",
+      "#9d0208",
+      "#3a0007"
+    ]
+  },
   "balance": {
     "label": "Balance",
     "tags": ["diverging"],
