@@ -1,6 +1,6 @@
 {
   "name": "@fxi/zartigl",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "MapLibre GL JS visualization for catalog-backed Zarr, WMTS, and GeoVideo data",
   "repository": {
     "type": "git",
