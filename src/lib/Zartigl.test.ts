@@ -335,7 +335,7 @@ describe("Zartigl facade", () => {
     expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
     expect(z.getSource()?.type).toBe("geovideo");
     expect(z.supportsDynamicStyle()).toBe(true);
-    expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "degC" });
+    expect(z.getLegend()).toMatchObject({ min: -3, max: 3, unit: "°C" });
     await z.update({ settings: { palette: "ice", colorDomain: [0, 5] } });
     expect(z.getLegend()).toMatchObject({ palette: "ice", min: 0, max: 5 });
     expect(z.getTimeMeta()).toMatchObject({ size: 4 });
@@ -438,7 +438,7 @@ describe("Zartigl facade", () => {
     const depthMeta = z.getDepthMeta();
     expect(depthMeta.values.length).toBeGreaterThan(1);
     expect(depthMeta.current).toBe(depthMeta.values[0]);
-    expect(z.getLegend()).toMatchObject({ min: 0, max: 2.83, unit: "m s-1" });
+    expect(z.getLegend()).toMatchObject({ min: 0, max: 2.83, unit: "m/s" });
     const rendered = map.layers.get(z.getDebugInfo().id) as CatalogRenderLayer;
     expect(rendered.getBackend()).toBe("vector-geovideo");
     vi.unstubAllGlobals();

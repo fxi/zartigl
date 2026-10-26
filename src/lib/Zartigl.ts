@@ -22,6 +22,7 @@ import {
   type SourceTimeRequest,
 } from "../catalog";
 import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
+import { formatUnit } from "./units";
 import { CatalogRenderLayer, buildWmtsLegendUrl } from "./CatalogRenderLayer";
 import type { CatalogRenderLayerDebugInfo } from "./CatalogRenderLayer";
 import { ZarrSource } from "./ZarrSource";
@@ -1828,7 +1829,7 @@ export class Zartigl {
         palette,
         min: colorDomain[0],
         max: colorDomain[1],
-        unit: this.geoVideoManifest.style.unit,
+        unit: formatUnit(this.geoVideoManifest.style.unit),
       };
     }
     const palette =
@@ -1842,7 +1843,7 @@ export class Zartigl {
       palette,
       min: colorDomain?.[0] ?? this.lastMeta?.min,
       max: colorDomain?.[1] ?? this.lastMeta?.max,
-      unit: this.lastMeta?.unit ?? this.variableUnit,
+      unit: formatUnit(this.lastMeta?.unit ?? this.variableUnit),
     };
   }
 

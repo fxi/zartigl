@@ -8,6 +8,7 @@ import {
   buildStandaloneDemoSnippet,
   Zartigl,
   deriveDirectionMagnitudeComponents,
+  formatUnit,
   getPalettes,
   resolveTimeInputSelection,
 } from "../lib";
@@ -1525,7 +1526,7 @@ export class DemoApp {
         }
 
         const data = pointResultToData(result, layer);
-        const unit = z.getVariableMeta().units ?? "";
+        const unit = formatUnit(z.getVariableMeta().units);
         const nearest = nearestDatum(
           data,
           mode === "time" ? currentMs : this.params.depth,

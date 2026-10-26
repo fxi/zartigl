@@ -21,6 +21,7 @@ export { ZarrSource } from "./ZarrSource";
 export { VelocityField, stitchVelocityChunks } from "./VelocityField";
 export { ParticleSimulation } from "./ParticleSimulation";
 export { getPalettes } from "./gl-util";
+export { formatUnit } from "./units";
 export {
   COLOR_GRADE_OFF,
   COLOR_GRADE_VIBRANT,
