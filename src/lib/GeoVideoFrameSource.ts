@@ -163,11 +163,12 @@ function presentedFrame(video: HTMLVideoElement): Promise<void> {
 
 /**
  * GeoVideo frames read one time step at a time (seek, no playback): video
- * and static mask loading, luma readback, a serial decode queue, and a small
- * LRU cache of decoded frames. Requests for the same step share one decode;
- * each can be abandoned with its own signal, and the decode is dropped once
- * no request waits for it. cancelAll() aborts every pending decode.
- * Subclasses turn the luma codes of a frame into values.
+ * and static mask loading, a serial decode queue, and a small LRU cache of
+ * decoded frames. Requests for the same step share one decode; each can be
+ * abandoned with its own signal, and the decode is dropped once no request
+ * waits for it. cancelAll() aborts every pending decode. Subclasses capture
+ * the presented frame: read back as luma codes (readCodes) or kept as an
+ * image for the GPU.
  */
 export abstract class GeoVideoFrameSource<TFrame> {
   /** Grid size; the video stacks `planes` grids vertically. */
@@ -179,7 +180,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
   private readonly cacheSize: number;
   private readonly reader = new PixelReader();
   private video: HTMLVideoElement | null = null;
-  private mask: Uint8Array | null = null;
+  private maskCodes: Uint8Array | null = null;
   private initPromise: Promise<void> | null = null;
   private presented = false;
   private primed = false;
@@ -203,12 +204,36 @@ export abstract class GeoVideoFrameSource<TFrame> {
     this.times = Float64Array.from(geoVideoTimelineValues(manifest));
   }
 
-  /** Codes of the stacked planes and the per-cell mask to frame values. */
-  protected abstract decodeCodes(
-    codes: Uint8Array,
+  /**
+   * The presented frame (`rows` = stacked planes) and the per-cell mask to
+   * frame data; null when the decoder exposed no pixels yet.
+   */
+  protected abstract capture(
+    video: HTMLVideoElement,
+    rows: number,
     mask: Uint8Array,
-    threshold: number,
-  ): TFrame;
+  ): Promise<TFrame | null>;
+
+  /** Static validity, one 8-bit value per grid cell; null before init(). */
+  get mask(): Uint8Array | null {
+    return this.maskCodes;
+  }
+
+  /** Luma codes of the presented frame, or null when it is blank. */
+  protected readCodes(
+    video: HTMLVideoElement,
+    rows: number,
+  ): Uint8Array | null {
+    const rgba = this.reader.read(video, this.width, rows);
+    return isBlankReadback(rgba)
+      ? null
+      : lumaCodesFromRgba(rgba, this.manifest.encoding.colorRange);
+  }
+
+  /** True when the decoder exposed no pixels; reads back one row only. */
+  protected isBlank(video: HTMLVideoElement): boolean {
+    return isBlankReadback(this.reader.read(video, this.width, 1));
+  }
 
   init(): Promise<void> {
     this.initPromise ??= this.load().catch((error: unknown) => {
@@ -234,7 +259,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
       this.video.load();
     }
     this.video = null;
-    this.mask = null;
+    this.maskCodes = null;
     this.presented = false;
     this.primed = false;
     this.initPromise = null;
@@ -322,7 +347,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
 
   private async load(): Promise<void> {
     const [mask] = await Promise.all([this.loadMask(), this.loadVideo()]);
-    this.mask = mask;
+    this.maskCodes = mask;
   }
 
   private async loadMask(): Promise<Uint8Array> {
@@ -417,8 +442,8 @@ export abstract class GeoVideoFrameSource<TFrame> {
   }
 
   /**
-   * Seek, read back and decode one step. `signal` aborts it between steps;
-   * a seek already started completes first, keeping the queue serial.
+   * Seek and capture one step. `signal` aborts it between steps; a seek
+   * already started completes first, keeping the queue serial.
    */
   protected async decode(index: number, signal: AbortSignal): Promise<TFrame> {
     if (signal.aborted) {
@@ -426,7 +451,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
     }
     await this.init();
     const video = this.video;
-    const mask = this.mask;
+    const mask = this.maskCodes;
     if (signal.aborted || !video || !mask) {
       throw abortError();
     }
@@ -436,19 +461,18 @@ export abstract class GeoVideoFrameSource<TFrame> {
       throw abortError();
     }
     const rows = this.height * this.planes;
-    let rgba = this.reader.read(video, this.width, rows);
-    if (isBlankReadback(rgba) && !this.primed) {
+    let frame = await this.capture(video, rows, mask);
+    if (frame === null && !this.primed) {
       await this.primeDecoder(video);
       await this.presentFrame(video, seconds);
       if (signal.aborted || video !== this.video) {
         throw abortError();
       }
-      rgba = this.reader.read(video, this.width, rows);
+      frame = await this.capture(video, rows, mask);
     }
-    if (isBlankReadback(rgba)) {
+    if (frame === null) {
       throw new Error("GeoVideo frame could not be read back from the decoder");
     }
-    const codes = lumaCodesFromRgba(rgba, this.manifest.encoding.colorRange);
-    return this.decodeCodes(codes, mask, this.manifest.mask.threshold);
+    return frame;
   }
 }

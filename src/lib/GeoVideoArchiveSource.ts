@@ -9,7 +9,10 @@ import {
   abortError,
   type GeoVideoFrameRequest,
 } from "./GeoVideoFrameSource";
-import { GeoVideoScalarSource } from "./GeoVideoScalarSource";
+import {
+  GeoVideoScalarSource,
+  type GeoVideoScalarFrame,
+} from "./GeoVideoScalarSource";
 import {
   GeoVideoVectorSource,
   type GeoVideoVectorFrame,
@@ -104,8 +107,8 @@ export function geoVideoGrid(manifest: GeoVideoManifest): GeoVideoGrid {
   };
 }
 
-/** Scalar values (NaN invalid) or u/v components (NaN invalid). */
-export type GeoVideoFrameData = Float32Array | GeoVideoVectorFrame;
+/** A scalar frame image (decoded on the GPU) or u/v components (NaN invalid). */
+export type GeoVideoFrameData = GeoVideoScalarFrame | GeoVideoVectorFrame;
 
 /** The part of a frame source an archive reads. */
 export interface GeoVideoFrameReader<TFrame> {

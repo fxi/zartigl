@@ -17,6 +17,8 @@ describe("particle shader invalid-state guards", () => {
     expect(geoVideoFrag).toContain("u_scalar_luma");
     expect(geoVideoFrag).toContain("u_code_range");
     expect(geoVideoFrag).toContain("u_value_range");
+    // The shared scalar decoder (GEOVIDEO_SCALAR_GLSL) reads the red channel.
+    expect(geoVideoFrag).toContain("geoVideoScalarValue(media.r)");
     expect(geoVideoFrag).toContain("u_color_domain");
     expect(geoVideoFrag).toContain("texture2D(u_color_ramp");
     expect(geoVideoFrag).toContain("alpha *= ramp.a");

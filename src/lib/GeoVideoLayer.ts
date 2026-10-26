@@ -13,6 +13,7 @@ import {
   type ColorRampInput,
 } from "./gl-util";
 import { visibleWorldCopyOffsets } from "./geo-util";
+import { geoVideoScalarUniforms } from "./GeoVideoScalarSource";
 import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
 import geoVideoFrag from "./shaders/geovideo.frag.glsl";
@@ -410,21 +411,17 @@ export class GeoVideoLayer implements CustomLayerInterface {
         gl.getUniformLocation(program, "u_mask_threshold"),
         manifest.mask.threshold,
       );
-      const encoding = manifest.encoding as GeoVideoScalarEncoding;
-      const codeMin = encoding.codeMin / 255;
-      const codeMax = encoding.codeMax / 255;
-      const valueMin = encoding.valueMin;
-      const valueMax = encoding.valueMax;
-      const domain = this.colorDomain ?? [valueMin, valueMax];
+      const { codeRange, valueRange } = geoVideoScalarUniforms(
+        manifest.encoding as GeoVideoScalarEncoding,
+      );
+      const domain = this.colorDomain ?? valueRange;
       gl.uniform2f(
         gl.getUniformLocation(program, "u_code_range"),
-        codeMin,
-        codeMax,
+        ...codeRange,
       );
       gl.uniform2f(
         gl.getUniformLocation(program, "u_value_range"),
-        valueMin,
-        valueMax,
+        ...valueRange,
       );
       gl.uniform2f(
         gl.getUniformLocation(program, "u_color_domain"),

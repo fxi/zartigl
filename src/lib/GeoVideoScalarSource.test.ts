@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   GeoVideoScalarSource,
-  decodeScalarFrame,
-  decodeScalarValue,
+  geoVideoScalarUniforms,
 } from "./GeoVideoScalarSource";
 import type { GeoVideoManifest, GeoVideoScalarEncoding } from "./geovideo";
 
@@ -55,29 +54,13 @@ const manifest: GeoVideoManifest = {
   style: { palette: "thermal", colorDomain: [-2, 30], unit: "degrees_C" },
 };
 
-describe("scalar-luma decoding", () => {
-  it("maps the code range linearly onto the value range, clamped", () => {
-    expect(decodeScalarValue(8, encoding)).toBe(-2);
-    expect(decodeScalarValue(247, encoding)).toBe(30);
-    expect(decodeScalarValue(127.5, encoding)).toBeCloseTo(14, 9);
-    expect(decodeScalarValue(0, encoding)).toBe(-2);
-    expect(decodeScalarValue(255, encoding)).toBe(30);
-  });
-
-  it("masks invalid cells as NaN", () => {
-    const values = decodeScalarFrame(
-      new Uint8Array([8, 247, 8, 247]),
-      new Uint8Array([255, 255, 0, 127]),
-      0.5,
-      encoding,
-    );
-    expect(Array.from(values)).toEqual([-2, 30, NaN, NaN]);
-  });
-
-  it("rejects frames whose size does not match the mask", () => {
-    expect(() =>
-      decodeScalarFrame(new Uint8Array(3), new Uint8Array(4), 0.5, encoding),
-    ).toThrow(/expected 4/);
+describe("geoVideoScalarUniforms", () => {
+  it("gives the codes as red channel fractions, as the frame decodes", () => {
+    // The codes are gray RGB: limited range does not shift them.
+    expect(geoVideoScalarUniforms(encoding)).toEqual({
+      codeRange: [8 / 255, 247 / 255],
+      valueRange: [-2, 30],
+    });
   });
 });
 
@@ -142,6 +125,41 @@ describe("GeoVideoScalarSource", () => {
       vi.useRealTimers();
       vi.unstubAllGlobals();
     }
+  });
+
+  it("keeps the presented frame as an image, never read back", async () => {
+    const source = new GeoVideoScalarSource(manifest);
+    const internals = source as unknown as {
+      isBlank(video: unknown): boolean;
+      readCodes(video: unknown, rows: number): Uint8Array | null;
+      capture(video: unknown, rows: number, mask: Uint8Array): Promise<unknown>;
+    };
+    const video = {};
+    const bitmap = { width: 4, height: 2 };
+    const create = vi.fn().mockResolvedValue(bitmap);
+    vi.stubGlobal("createImageBitmap", create);
+    try {
+      vi.spyOn(internals, "isBlank").mockReturnValue(false);
+      const readCodes = vi.spyOn(internals, "readCodes");
+      expect(await internals.capture(video, 2, new Uint8Array(8))).toBe(bitmap);
+      expect(create).toHaveBeenCalledWith(video, {
+        premultiplyAlpha: "none",
+        colorSpaceConversion: "none",
+      });
+      expect(readCodes).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("reports a blank decoder so the source can prime it", async () => {
+    const source = new GeoVideoScalarSource(manifest);
+    const internals = source as unknown as {
+      isBlank(video: unknown): boolean;
+      capture(video: unknown): Promise<unknown>;
+    };
+    vi.spyOn(internals, "isBlank").mockReturnValue(true);
+    expect(await internals.capture({})).toBeNull();
   });
 
   it("decodes each frame once and serves it from the cache", async () => {

@@ -1,4 +1,5 @@
 import colorGradeGlsl from "./shaders/color-grade.glsl";
+import geoVideoScalarGlsl from "./shaders/geovideo-scalar.glsl";
 import randomGlsl from "./shaders/random.glsl";
 import vibranceGlsl from "./shaders/vibrance.glsl";
 
@@ -17,3 +18,11 @@ export const COLOR_GRADE_GLSL: string = colorGradeGlsl;
 
 /** `float random(uvec3 v)`, an integer hash in [0, 1); GLSL ES 3.0. */
 export const RANDOM_GLSL: string = randomGlsl;
+
+/**
+ * `float geoVideoScalarValue(float r)`: a scalar-luma frame's red channel to
+ * its value, with the `u_code_range` / `u_value_range` uniforms it declares
+ * (geoVideoScalarUniforms); GLSL ES 1.0 and 3.0. The one scalar GeoVideo
+ * decoder: frames go to the GPU as images, never read back.
+ */
+export const GEOVIDEO_SCALAR_GLSL: string = geoVideoScalarGlsl;

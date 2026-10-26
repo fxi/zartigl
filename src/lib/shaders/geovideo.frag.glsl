@@ -8,14 +8,13 @@ uniform float u_scalar_luma;
 uniform float u_log_scale;
 uniform float u_vibrance;
 uniform float u_mask_threshold;
-uniform vec2 u_code_range;
-uniform vec2 u_value_range;
 uniform vec2 u_color_domain;
 uniform vec2 u_texel_size;
 
 varying vec2 v_geo_uv;
 
 #include ./vibrance.glsl;
+#include ./geovideo-scalar.glsl;
 
 void main() {
     vec2 sourceUv = vec2(v_geo_uv.x, 1.0 - v_geo_uv.y);
@@ -26,8 +25,7 @@ void main() {
     if (alpha <= u_mask_threshold) discard;
     vec3 color = media;
     if (u_scalar_luma > 0.5) {
-        float code = clamp((media.r - u_code_range.x) / (u_code_range.y - u_code_range.x), 0.0, 1.0);
-        float value = mix(u_value_range.x, u_value_range.y, code);
+        float value = geoVideoScalarValue(media.r);
         float t = clamp((value - u_color_domain.x) / (u_color_domain.y - u_color_domain.x), 0.0, 1.0);
         t = mix(t, log(1.0 + t * 9.0) / log(10.0), u_log_scale);
         // Palettes with transparent stops fade low values out.

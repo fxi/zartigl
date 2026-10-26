@@ -183,11 +183,20 @@ export class GeoVideoVectorSource
     };
   }
 
-  protected decodeCodes(
-    codes: Uint8Array,
+  /** u/v codes are written into luma: read back, then decoded on the CPU. */
+  protected async capture(
+    video: HTMLVideoElement,
+    rows: number,
     mask: Uint8Array,
-    threshold: number,
-  ): GeoVideoVectorFrame {
-    return decodeVectorFrame(codes, mask, threshold, this.encoding);
+  ): Promise<GeoVideoVectorFrame | null> {
+    const codes = this.readCodes(video, rows);
+    return codes
+      ? decodeVectorFrame(
+          codes,
+          mask,
+          this.manifest.mask.threshold,
+          this.encoding,
+        )
+      : null;
   }
 }

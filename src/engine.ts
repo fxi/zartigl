@@ -44,7 +44,11 @@ export type {
   GeoVideoGrid,
   GeoVideoSampleMode,
 } from "./lib/GeoVideoArchiveSource";
-export { GeoVideoScalarSource } from "./lib/GeoVideoScalarSource";
+export {
+  GeoVideoScalarSource,
+  geoVideoScalarUniforms,
+} from "./lib/GeoVideoScalarSource";
+export type { GeoVideoScalarFrame } from "./lib/GeoVideoScalarSource";
 export { GeoVideoVectorSource } from "./lib/GeoVideoVectorSource";
 export type { GeoVideoVectorFrame } from "./lib/GeoVideoVectorSource";
 export {
@@ -56,6 +60,7 @@ export {
 } from "./lib/gl-util";
 export {
   COLOR_GRADE_GLSL,
+  GEOVIDEO_SCALAR_GLSL,
   RANDOM_GLSL,
   VIBRANCE_GLSL,
 } from "./lib/glsl-chunks";

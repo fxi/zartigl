@@ -1,62 +1,29 @@
 import type { GeoVideoManifest, GeoVideoScalarEncoding } from "./geovideo";
 import { GeoVideoFrameSource } from "./GeoVideoFrameSource";
 
-/** Code to physical value, inverse of the linear scalar-luma quantization. */
-export function decodeScalarValue(
-  code: number,
+/** One scalar-luma frame, as decoded by the browser; GPU input only. */
+export type GeoVideoScalarFrame = ImageBitmap;
+
+/** Uniforms of GEOVIDEO_SCALAR_GLSL for a scalar-luma encoding. */
+export function geoVideoScalarUniforms(
   encoding: Pick<
     GeoVideoScalarEncoding,
     "codeMin" | "codeMax" | "valueMin" | "valueMax"
   >,
-): number {
-  const s = Math.max(
-    0,
-    Math.min(
-      1,
-      (code - encoding.codeMin) / (encoding.codeMax - encoding.codeMin),
-    ),
-  );
-  return encoding.valueMin + s * (encoding.valueMax - encoding.valueMin);
+): { codeRange: [number, number]; valueRange: [number, number] } {
+  return {
+    codeRange: [encoding.codeMin / 255, encoding.codeMax / 255],
+    valueRange: [encoding.valueMin, encoding.valueMax],
+  };
 }
 
 /**
- * Luma codes to a value plane, NaN where the static mask is invalid.
- * `mask` holds one 8-bit validity value per grid cell.
+ * Scalar-luma GeoVideo read frame by frame (seek, no playback). Frames stay
+ * images, uploaded as textures and decoded by GEOVIDEO_SCALAR_GLSL, the
+ * decoder GeoVideoLayer uses: never read back, so both renderers turn the
+ * same pixels into the same values.
  */
-export function decodeScalarFrame(
-  codes: Uint8Array,
-  mask: Uint8Array,
-  threshold: number,
-  encoding: Pick<
-    GeoVideoScalarEncoding,
-    "codeMin" | "codeMax" | "valueMin" | "valueMax"
-  >,
-): Float32Array {
-  const n = mask.length;
-  if (codes.length !== n) {
-    throw new Error(
-      `GeoVideo scalar frame has ${codes.length} codes, expected ${n}`,
-    );
-  }
-  const lut = new Float32Array(256);
-  for (let code = 0; code < 256; code++) {
-    lut[code] = decodeScalarValue(code, encoding);
-  }
-  const limit = threshold * 255;
-  const values = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    values[i] = mask[i] >= limit ? lut[codes[i]] : NaN;
-  }
-  return values;
-}
-
-/**
- * Scalar-luma GeoVideo read frame by frame (seek, no playback), for values
- * sampled on the GPU rather than the styled playback of GeoVideoLayer.
- */
-export class GeoVideoScalarSource extends GeoVideoFrameSource<Float32Array> {
-  private readonly encoding: GeoVideoScalarEncoding;
-
+export class GeoVideoScalarSource extends GeoVideoFrameSource<GeoVideoScalarFrame> {
   constructor(
     manifest: GeoVideoManifest,
     options: { cacheSize?: number } = {},
@@ -65,14 +32,17 @@ export class GeoVideoScalarSource extends GeoVideoFrameSource<Float32Array> {
       throw new Error("GeoVideoScalarSource requires a scalar-luma manifest");
     }
     super(manifest, 1, options);
-    this.encoding = manifest.encoding;
   }
 
-  protected decodeCodes(
-    codes: Uint8Array,
-    mask: Uint8Array,
-    threshold: number,
-  ): Float32Array {
-    return decodeScalarFrame(codes, mask, threshold, this.encoding);
+  protected async capture(
+    video: HTMLVideoElement,
+  ): Promise<GeoVideoScalarFrame | null> {
+    if (this.isBlank(video)) {
+      return null;
+    }
+    return createImageBitmap(video, {
+      premultiplyAlpha: "none",
+      colorSpaceConversion: "none",
+    });
   }
 }
