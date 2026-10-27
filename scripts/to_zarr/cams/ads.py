@@ -207,7 +207,9 @@ def read_day(config: dict[str, Any], paths: list[Path], day: date) -> xr.Dataset
                     + np.float32(spec.get("offset", 0)))
         if spec.get("zeroAsFill"):
             variable = variable.where(variable != 0)
-        variables[name] = variable.assign_attrs(long_name=spec["longName"], units=spec["units"])
+        # Replace, not extend: arithmetic keeps the provider's GRIB_* attributes.
+        variable.attrs = {"long_name": spec["longName"], "units": spec["units"]}
+        variables[name] = variable
     dataset = xr.Dataset(variables).transpose("time", ...)
     dataset = dataset.drop_vars([name for name in dataset.coords if name not in ("time", "latitude", "longitude")])
     dataset, interpolated = on_grid(dataset, config["grid"])

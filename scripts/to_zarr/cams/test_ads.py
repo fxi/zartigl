@@ -83,7 +83,8 @@ def write_forecast(config: dict, first: date, last: date, path: Path) -> None:
         for index, spec in enumerate(config["variables"].values()):
             data = np.stack([np.stack([field(day, int(lead), index) for day in days]) for lead in leads]) * 1e-9
             dataset = xr.Dataset(
-                {spec["source"]: (("forecast_period", "forecast_reference_time", "latitude", "longitude"), data)},
+                {spec["source"]: (("forecast_period", "forecast_reference_time", "latitude", "longitude"), data,
+                                  {"GRIB_paramId": 167, "units": "K"})},
                 coords={"forecast_period": leads.astype("timedelta64[h]").astype("timedelta64[ns]"),
                         "forecast_reference_time": references,
                         "valid_time": (("forecast_period", "forecast_reference_time"), valid.astype("datetime64[ns]")),
@@ -198,7 +199,7 @@ class ReadDayTest(unittest.TestCase):
         # Kelvin to Celsius through the offset; t2m is the third variable written.
         kelvin = field(date(2026, 1, 2), 21, 2)[::-1][:, [2, 3, 0, 1]] * np.float32(1e-9)
         np.testing.assert_allclose(dataset["t2m"].values[-1], kelvin - np.float32(273.15), atol=1e-4)
-        self.assertEqual(dataset["t2m"].attrs["units"], "degC")
+        self.assertEqual(dataset["t2m"].attrs, {"long_name": "Air temperature at 2 m", "units": "degC"})
 
     def test_a_missing_short_name_names_what_the_file_holds(self):
         config = gfas_config(date(2026, 1, 1))
