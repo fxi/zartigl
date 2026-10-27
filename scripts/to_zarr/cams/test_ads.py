@@ -40,7 +40,7 @@ def forecast_config(start: date) -> dict:
     config = ads.load_config(HERE / "global_forecast" / "config.json")
     return {
         **config,
-        "variables": {name: config["variables"][name] for name in ("pm2p5", "gtco3")},
+        "variables": {name: config["variables"][name] for name in ("pm2p5", "gtco3", "t2m")},
         "grid": GRID,
         "start": start.isoformat(),
         "requestDays": 2,
@@ -182,6 +182,10 @@ class ReadDayTest(unittest.TestCase):
         expected = field(date(2026, 1, 2), 21)[::-1][:, [2, 3, 0, 1]] * np.float32(1e-9) * np.float32(1e9)
         np.testing.assert_allclose(dataset["pm2p5"].values[-1], expected, rtol=1e-5)
         self.assertEqual(dataset["gtco3"].attrs["units"], "DU")
+        # Kelvin to Celsius through the offset; t2m is the third variable written.
+        kelvin = field(date(2026, 1, 2), 21, 2)[::-1][:, [2, 3, 0, 1]] * np.float32(1e-9)
+        np.testing.assert_allclose(dataset["t2m"].values[-1], kelvin - np.float32(273.15), atol=1e-4)
+        self.assertEqual(dataset["t2m"].attrs["units"], "degC")
 
     def test_a_missing_short_name_names_what_the_file_holds(self):
         config = gfas_config(date(2026, 1, 1))

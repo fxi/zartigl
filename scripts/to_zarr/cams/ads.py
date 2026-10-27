@@ -5,7 +5,8 @@ One module serves every CAMS product; each product directory only holds a
 base request, the variables and how each one is stored:
 
 - `variables.<store name>`: `request` (the ADS variable), `source` (its short
-  name in the netCDF), `factor` (unit conversion applied before storing),
+  name in the netCDF), `factor` and `offset` (unit conversion applied before
+  storing, value × factor + offset),
   `units`, `longName`, and either `scaleFactor` (int16) or `dtype: "float32"`.
   `zeroAsFill` stores exact zeros as missing (no fire, no plume), so empty
   chunks are not written and the map stays transparent there.
@@ -202,7 +203,8 @@ def read_day(config: dict[str, Any], paths: list[Path], day: date) -> xr.Dataset
         if spec["source"] not in merged:
             available = sorted(str(key) for key in merged.data_vars)
             raise KeyError(f"{spec['source']} ({spec['request']}) is not in the ADS file; it holds {available}")
-        variable = merged[spec["source"]].astype(np.float32) * np.float32(spec.get("factor", 1))
+        variable = (merged[spec["source"]].astype(np.float32) * np.float32(spec.get("factor", 1))
+                    + np.float32(spec.get("offset", 0)))
         if spec.get("zeroAsFill"):
             variable = variable.where(variable != 0)
         variables[name] = variable.assign_attrs(long_name=spec["longName"], units=spec["units"])

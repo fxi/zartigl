@@ -95,7 +95,7 @@ catalogue does not list yet are never requested.
 
 | Product | ADS dataset | Grid, steps | Variables |
 |---|---|---|---|
-| `cams/global_forecast` → `cams/global-forecast/v1` | `cams-global-atmospheric-composition-forecasts` | 0.4°, 00 UTC run, lead times 0–21 h every 3 h | PM2.5 (µg m⁻³), total column ozone (DU), total and organic-matter AOD at 550 nm, CO column (10¹⁸ molec cm⁻²) |
+| `cams/global_forecast` → `cams/global-forecast/v1` | `cams-global-atmospheric-composition-forecasts` | 0.4°, 00 UTC run, lead times 0–21 h every 3 h | PM2.5 (µg m⁻³), total column ozone (DU), total and organic-matter AOD at 550 nm, CO column (10¹⁸ molec cm⁻²), 2 m air temperature (°C) |
 | `cams/gfas` → `cams/gfas/v1.4.2` | `cams-global-fire-emissions-gfas` | 0.1°, daily | FRP, fraction of area observed, combustion rate, burnt carbon, CO₂/CH₄/N₂O/CO/NOₓ/SO₂/NH₃/PM2.5/BC/OC/TPM fluxes, plume top/bottom, injection heights |
 
 Both start on 2026-01-01. GFAS switched from v1.2 to v1.4.2 on that day, and

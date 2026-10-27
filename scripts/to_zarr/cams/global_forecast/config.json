@@ -27,6 +27,10 @@
     "tcco": {
       "request": "total_column_carbon_monoxide", "source": "tcco",
       "longName": "Total column carbon monoxide", "units": "1e18 molecules cm-2", "factor": 2150.0, "scaleFactor": 0.002
+    },
+    "t2m": {
+      "request": "2m_temperature", "source": "t2m",
+      "longName": "Air temperature at 2 m", "units": "degC", "offset": -273.15, "scaleFactor": 0.01
     }
   },
   "grid": {"latitude": [-90, 90, 451], "longitude": [-180, 179.6, 900]},
