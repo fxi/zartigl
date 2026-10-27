@@ -95,10 +95,23 @@ def write_forecast(config: dict, first: date, last: date, path: Path) -> None:
 
 
 class FakeADS:
-    """Stands in for the ADS client and catalogue; records the requested blocks."""
+    """Stands in for the ADS client and catalogue; records the requested blocks.
 
-    def __init__(self, writer, last: date) -> None:
-        self.writer, self.last_day, self.requests = writer, last, []
+    Every block is written up front: retrieve runs in the driver's worker
+    threads, and HDF5 is not thread-safe while the main thread reads netCDF.
+    """
+
+    def __init__(self, config: dict, writer, last: date, cache: Path) -> None:
+        self.last_day, self.requests, self.cache = last, [], cache
+        start = date.fromisoformat(config["start"])
+        for offset in range((last - start).days + 1):
+            first, end = ads.request_range(config, start + timedelta(days=offset), last)
+            path = self.block(first, end)
+            if not path.exists():
+                writer(config, first, end, path)
+
+    def block(self, first: date, last: date) -> Path:
+        return self.cache / f"{first:%Y%m%d}_{last:%Y%m%d}"
 
     def fetcher(self) -> ads.Fetcher:
         fetcher = ads.Fetcher(retrieve=self.retrieve)
@@ -108,7 +121,7 @@ class FakeADS:
     def retrieve(self, _dataset, request, destination):
         first, last = (date.fromisoformat(part) for part in request["date"][0].split("/"))
         self.requests.append((first, last))
-        self.writer(self.config, first, last, Path(destination))
+        shutil.copy(self.block(first, last), destination)
 
 
 def args(directory: Path, **extra) -> argparse.Namespace:
@@ -201,8 +214,9 @@ class PipelineTest(unittest.TestCase):
     def check(self, config: dict, writer, days: int, per_day: int):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
-        fake = FakeADS(writer, date.fromisoformat(config["start"]) + timedelta(days=days - 1))
-        fake.config = config
+        cache = Path(tmp) / "cache"
+        cache.mkdir()
+        fake = FakeADS(config, writer, date.fromisoformat(config["start"]) + timedelta(days=days - 1), cache)
         out = Path(tmp) / "out"
         run(args(out, max_days=3), config, ads.product(config, "test", fake.fetcher()))
         run(args(out), config, ads.product(config, "test", fake.fetcher()))
