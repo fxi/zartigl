@@ -5867,8 +5867,8 @@
             "cadence": "P1D"
           },
           "endpoints": {
-            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
-            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
           },
           "variables": {
             "kind": "scalar",
@@ -5948,8 +5948,8 @@
             "cadence": "P1D"
           },
           "endpoints": {
-            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
-            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
           },
           "variables": {
             "kind": "scalar",
@@ -6011,8 +6011,8 @@
             "cadence": "P1D"
           },
           "endpoints": {
-            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
-            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/netcdf-to-zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/crw-dhw/v3.1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/crw-dhw/v3.1/geoChunked.zarr"
           },
           "variables": {
             "kind": "scalar",

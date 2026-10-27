@@ -15,9 +15,11 @@
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
   helper scripts.
-- `scripts/netcdf_to_zarr/` converts file-only products (netCDF) into
-  ARCO-shaped Zarr on the zartigl bucket, one directory per
-  `<org>/<product>`, run daily by `.github/workflows/netcdf-to-zarr.yml`.
+- `scripts/to_zarr/` converts file-only products (netCDF, ADS downloads) into
+  ARCO-shaped Zarr under `zarr/<org>/<product>/<version>/` on the zartigl
+  bucket, one directory per `<org>/<product>`, run daily by
+  `.github/workflows/to-zarr.yml`. `common.py` holds the shared day driver;
+  `cams/ads.py` serves every CAMS product from its `config.json`.
 
 ## Projversor
 
@@ -73,10 +75,12 @@ WMTS coverage has been verified to reach the poles; zartigl's shader path is
 intended to cover polar views.
 
 File-only products (netCDF/GRIB/HDF) become catalog-ready only through a
-maintained `scripts/netcdf_to_zarr/<org>/<product>/` pipeline that publishes to
-the zartigl bucket (see `scripts/netcdf_to_zarr/README.md`); propose one when
+maintained `scripts/to_zarr/<org>/<product>/` pipeline that publishes to
+the zartigl bucket (see `scripts/to_zarr/README.md`); propose one when
 ARCO has no equivalent. NOAA Coral Reef Watch heat stress (`noaa/crw_dhw`) is
-the reference implementation. Do not propose non-cloud-native services,
+the reference implementation for plain files; CAMS products from the
+Atmosphere Data Store (`cams/global_forecast`, `cams/gfas`) only need a
+`config.json` for `cams/ads.py`. Do not propose non-cloud-native services,
 bespoke APIs, or one-off conversions as catalog-ready entries.
 
 

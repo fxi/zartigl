@@ -1,0 +1,43 @@
+{
+  "product": "CAMS global atmospheric composition forecasts (00 UTC run, lead times 0-21 h)",
+  "dataset": "cams-global-atmospheric-composition-forecasts",
+  "request": {
+    "type": ["forecast"],
+    "time": ["00:00"],
+    "leadtime_hour": ["0", "3", "6", "9", "12", "15", "18", "21"],
+    "data_format": "netcdf_zip"
+  },
+  "variables": {
+    "pm2p5": {
+      "request": "particulate_matter_2.5um", "source": "pm2p5",
+      "longName": "Particulate matter d < 2.5 um (PM2.5)", "units": "ug m-3", "factor": 1e9, "scaleFactor": 0.2
+    },
+    "gtco3": {
+      "request": "total_column_ozone", "source": "gtco3",
+      "longName": "Total column ozone", "units": "DU", "factor": 46696.24, "scaleFactor": 0.1
+    },
+    "aod550": {
+      "request": "total_aerosol_optical_depth_550nm", "source": "aod550",
+      "longName": "Total aerosol optical depth at 550 nm", "units": "1", "scaleFactor": 0.001
+    },
+    "omaod550": {
+      "request": "organic_matter_aerosol_optical_depth_550nm", "source": "omaod550",
+      "longName": "Organic matter aerosol optical depth at 550 nm (smoke)", "units": "1", "scaleFactor": 0.001
+    },
+    "tcco": {
+      "request": "total_column_carbon_monoxide", "source": "tcco",
+      "longName": "Total column carbon monoxide", "units": "1e18 molecules cm-2", "factor": 2150.0, "scaleFactor": 0.002
+    }
+  },
+  "grid": {"latitude": [-90, 90, 451], "longitude": [-180, 179.6, 900]},
+  "start": "2026-01-01",
+  "stepsPerDay": 8,
+  "requestDays": 15,
+  "publicationDelayDays": 3,
+  "prefix": "zarr/cams/global-forecast/v1",
+  "stores": {
+    "timeChunked": {"time": 1, "latitude": 451, "longitude": 900},
+    "geoChunked": {"time": 64, "latitude": 100, "longitude": 100}
+  },
+  "geoSyncMinLagDays": 7
+}

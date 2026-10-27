@@ -1,4 +1,4 @@
-name: netCDF to Zarr
+name: File to Zarr
 
 # Runs before the GeoVideo archive (02:17 UTC), which renders from these stores.
 on:
@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       product:
-        description: Product directory under scripts/netcdf_to_zarr
-        default: noaa/crw_dhw
+        description: Product directory under scripts/to_zarr (empty for all)
+        required: false
       budget:
         description: Time after which no new day or chunk starts, e.g. 90m or 20h
         default: 90m
@@ -21,20 +21,8 @@ permissions:
   contents: read
 
 jobs:
-  convert:
+  test:
     runs-on: [self-hosted, bigproc]
-    # Hang guard; the budget bounds normal runs and the next run resumes after the last stored day.
-    timeout-minutes: 1440
-    # One writer per store.
-    concurrency:
-      group: netcdf-to-zarr-${{ inputs.product || 'noaa/crw_dhw' }}
-      cancel-in-progress: false
-    env:
-      CONVERT: scripts/netcdf_to_zarr/${{ inputs.product || 'noaa/crw_dhw' }}/convert.py
-      BUDGET: ${{ inputs.budget || '90m' }}
-      FORCE_GEO: ${{ inputs.force-geo && '--force' || '' }}
-      S3_KEY: ${{ secrets.S3_KEY }}
-      S3_SECRET: ${{ secrets.S3_SECRET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -46,13 +34,49 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: npm run test:netcdf-to-zarr
+      - run: npm run test:to-zarr
+
+  convert:
+    needs: test
+    runs-on: [self-hosted, bigproc]
+    # Hang guard; the budget bounds normal runs and the next run resumes after the last stored day.
+    timeout-minutes: 1440
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [noaa/crw_dhw, cams/global_forecast, cams/gfas]
+    # One writer per store.
+    concurrency:
+      group: to-zarr-${{ matrix.product }}
+      cancel-in-progress: false
+    env:
+      CONVERT: scripts/to_zarr/${{ matrix.product }}/convert.py
+      BUDGET: ${{ inputs.budget || '90m' }}
+      FORCE_GEO: ${{ inputs.force-geo && '--force' || '' }}
+      S3_KEY: ${{ secrets.S3_KEY }}
+      S3_SECRET: ${{ secrets.S3_SECRET }}
+      ADS_KEY: ${{ secrets.ADS_KEY }}
+    steps:
+      - name: Skip other products
+        id: selected
+        run: echo "run=${{ !inputs.product || inputs.product == matrix.product }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.selected.outputs.run == 'true'
+
+      - uses: astral-sh/setup-uv@v6
+        if: steps.selected.outputs.run == 'true'
+        with:
+          python-version: "3.12"
 
       - name: Plan
+        if: steps.selected.outputs.run == 'true'
         run: uv run "$CONVERT" plan
 
       - name: Append new days
+        if: steps.selected.outputs.run == 'true'
         run: uv run "$CONVERT" run --budget "$BUDGET"
 
       - name: Sync point-series store
+        if: steps.selected.outputs.run == 'true'
         run: uv run "$CONVERT" sync-geo --budget "$BUDGET" $FORCE_GEO

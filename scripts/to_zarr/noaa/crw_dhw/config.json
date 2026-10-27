@@ -9,7 +9,7 @@
     "sea_surface_temperature_anomaly": "ssta",
     "hotspot": "hs"
   },
-  "prefix": "netcdf-to-zarr/noaa/crw-dhw/v3.1",
+  "prefix": "zarr/noaa/crw-dhw/v3.1",
   "stores": {
     "timeChunked": {"time": 1, "latitude": 600, "longitude": 1800},
     "geoChunked": {"time": 32, "latitude": 100, "longitude": 100}
