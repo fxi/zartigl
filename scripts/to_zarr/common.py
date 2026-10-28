@@ -30,7 +30,9 @@ from typing import Any, Callable
 import numpy as np
 import xarray as xr
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import contract  # noqa: E402
 from s3_bucket import require_bucket_cors, s3_client  # noqa: E402
 
 STORE_NAMES = ("timeChunked", "geoChunked")
@@ -99,7 +101,11 @@ def open_store(target: Target, name: str, *, decode: bool = True) -> xr.Dataset:
 
 def write(dataset: xr.Dataset, target: Target, name: str, chunks: dict[str, int],
           encodings: dict[str, dict[str, Any]], *, append: bool) -> None:
-    """Create the store or append along time; dask chunks must already match the store chunks."""
+    """Create the store or append along time; dask chunks must already match the store chunks.
+
+    Every write must meet the store contract (contract.py); the encodings are checked when the store is created.
+    """
+    contract.require(dataset, None if append else encodings)
     store = target.store(name)
     if append:
         dataset.to_zarr(store, append_dim="time", consolidated=True, zarr_format=2, write_empty_chunks=False)

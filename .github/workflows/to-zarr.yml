@@ -80,3 +80,7 @@ jobs:
       - name: Sync point-series store
         if: steps.selected.outputs.run == 'true'
         run: uv run "$CONVERT" sync-geo --budget "$BUDGET" $FORCE_GEO
+
+      - name: Check the published stores against the contract
+        if: steps.selected.outputs.run == 'true'
+        run: uv run scripts/to_zarr/contract.py "${{ matrix.product }}"

@@ -36,22 +36,68 @@ npm run test:to-zarr
 
 ## Store contract
 
+`contract.py` holds the rules marked ✓ as code. `common.write` refuses any
+write that breaks them, before touching the store, and the workflow checks
+each published store after its nightly update.
+
 - Two consolidated Zarr v2 stores: `timeChunked.zarr` (one time step per chunk,
   for maps and GeoVideo) and `geoChunked.zarr` (long time chunks over small
-  tiles, for point series).
-- Dimensions `time, latitude, longitude`; latitude ascending, longitude in
-  −180…180.
-- Time is an integer in `hours since …`: the browser decodes integer arrays
+  tiles, for point series). ✓ `geoChunked` holds a prefix of the same time axis.
+- ✓ Dimensions `time, latitude, longitude`; latitude strictly ascending in
+  −90…90, longitude strictly ascending in −180…180, with `degrees_north` and
+  `degrees_east` units.
+- ✓ Time is an integer in `hours since …`: the browser decodes integer arrays
   through float32, so seconds since 1981 would be off by a minute.
-- The time coordinate is a single chunk, which the browser reads whole.
-- Values are int16 with CF `scale_factor` and a `fill_value`, compressed with
-  blosc/lz4. The browser reads `f4`, `f8`, `i2`, `i4` and `i8`, but not `u1`.
+- ✓ The time coordinate is a single chunk, which the browser reads whole.
+- ✓ Values are int16 with CF `scale_factor` and a fill value, or float32 with
+  NaN for fields spanning orders of magnitude; compressed with blosc/lz4. The
+  browser reads `f4`, `f8`, `i2`, `i4` and `i8`, but not `u1`.
+- ✓ Each variable describes itself with `long_name` and `units` (required) and
+  at most `valid_min`, `valid_max`, `flag_values`, `flag_meanings` and
+  `comment`, in the units the store holds. Provider attributes never pass
+  through: no `GRIB_*`, no provider `standard_name` (it names the provider's
+  units, not ours). Set the attributes, never extend the provider's: xarray
+  keeps a variable's attributes through arithmetic.
+- ✓ The store attributes include `title`, `source`, `license` and `history`.
 - Chunks that are all fill are not written; the browser treats 403/404 as
   missing.
 - Objects are `public-read`, and the bucket CORS must allow Range reads.
 
 Readers see a new day only once the consolidated metadata, written last,
 lists it. Each run resumes after the last stored day.
+
+```bash
+uv run scripts/to_zarr/contract.py              # check every published product
+uv run scripts/to_zarr/contract.py cams/gfas    # one product
+```
+
+## Adding a product
+
+1. Check that no public, browser-readable Zarr already exists (Copernicus
+   Marine ARCO first, see `scripts/catalog_builder/DEVELOPERS.md`).
+2. Pick the bucket path before writing anything: `zarr/<org>/<product>/<version>/`,
+   with the upstream version, or `v1` when the provider has none. Starting from
+   a version boundary (GFAS v1.2 → v1.4.2 on 2026-01-01) keeps one version per store.
+3. Download one or two real days first and look at them: dimension and
+   variable names, time stamps (a daily mean may be stamped at the end of its
+   window), latitude order, longitude range, units and value ranges. Check that
+   int16 at the chosen scale holds the observed extremes.
+4. Add `scripts/to_zarr/<org>/<product>/` with `config.json` (`prefix`,
+   `start`, `stepsPerDay`, `publicationDelayDays`, store chunks), a
+   `convert.py` built on `common.main` (or only a `config.json` for a CAMS
+   dataset, see below), and tests that run on fixtures shaped like the real
+   files. Netcdf fixtures are written before a run starts, never in worker
+   threads: HDF5 is not thread-safe.
+5. Run `convert.py run --local <dir> --max-days 2`, then check the local stores
+   with xarray: orientation against known geography, units, timestamps.
+6. Add the product to the matrix of `.github/workflows/to-zarr.yml` and any
+   provider key as a repository secret. Backfill by dispatching the workflow
+   with a long budget and `force-geo`, then run `contract.py` on the product.
+7. Only then propose catalog entries (`scripts/catalog_builder/DEVELOPERS.md`).
+
+Changing a store in place is limited to its metadata. Anything else (grid,
+encoding, variable set, adding a variable) means a new store version, or a
+deleted and rebuilt store when nothing reads it yet.
 
 ## NOAA Coral Reef Watch heat stress (`noaa/crw_dhw`)
 

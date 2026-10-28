@@ -80,7 +80,10 @@ the zartigl bucket (see `scripts/to_zarr/README.md`); propose one when
 ARCO has no equivalent. NOAA Coral Reef Watch heat stress (`noaa/crw_dhw`) is
 the reference implementation for plain files; CAMS products from the
 Atmosphere Data Store (`cams/global_forecast`, `cams/gfas`) only need a
-`config.json` for `cams/ads.py`. Do not propose non-cloud-native services,
+`config.json` for `cams/ads.py`. Before writing to the bucket, follow "Adding
+a product" in `scripts/to_zarr/README.md`; the store contract
+(`scripts/to_zarr/contract.py`) is enforced on every write and checked after
+each nightly update. Do not propose non-cloud-native services,
 bespoke APIs, or one-off conversions as catalog-ready entries.
 
 

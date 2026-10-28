@@ -62,7 +62,7 @@ def write_crw_file(directory: Path, name: str, day: date) -> Path:
             "lat": LAT,
             "lon": LON,
         },
-        attrs={"title": "CRW test", "license": "public"},
+        attrs={"title": "CRW test", "source": "satellite", "license": "public"},
     )
     path = directory / f"{family}_{day:%Y%m%d}.nc"
     for variable in dataset.variables.values():
