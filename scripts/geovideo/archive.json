@@ -1047,6 +1047,101 @@
         "maxBitrate": "48M",
         "tune": "psnr"
       }
+    },
+    {
+      "sourceId": "bf82e932-baa3-44bf-b678-8cc309f365ef",
+      "catalogEntryId": "6f875f3f-1ddd-41af-98f1-5db02c39a85d",
+      "title": "Fine Particulate Matter (PM2.5)",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "sourceId": "6b10984a-848a-459d-92cc-4a5921258912",
+      "catalogEntryId": "105b3302-b7c9-46cf-a235-eb79346793dd",
+      "title": "Total Column Ozone",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "sourceId": "abe45138-b89b-4af6-a3ef-bfbd91cffac0",
+      "catalogEntryId": "aec4f72e-4654-45b5-9b94-562aa4cf6d91",
+      "title": "Aerosol Optical Depth",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "sourceId": "cbaa8c36-b9c4-444d-a316-14941719196e",
+      "catalogEntryId": "fa2b5219-0f1d-44d2-a105-d9388dba7acb",
+      "title": "Smoke Aerosol Optical Depth",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "sourceId": "0e61c20a-8bba-4f93-9f78-c69faf09ad5c",
+      "catalogEntryId": "b45b2598-c7c1-4367-a3c2-4acb9b31deba",
+      "title": "Air Temperature (2 m)",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "sourceId": "3194a161-71af-4f9e-854e-4fe7365ac12e",
+      "catalogEntryId": "c495a019-0bc8-4ee7-a9de-b1422751e31f",
+      "title": "Wildfire Radiative Power",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "1e3586b4-0bef-43b1-a2b1-ff8c958d0865",
+      "catalogEntryId": "9298ea47-af9a-4fd1-bc83-5eb9dbf25c42",
+      "title": "Wildfire CO₂ Emissions",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "992af902-2b1b-438a-bb64-2f75e82ed4b9",
+      "catalogEntryId": "0389b091-6a73-4aef-9769-5995ac5d7cc4",
+      "title": "Smoke Injection Height",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
     }
   ]
 }

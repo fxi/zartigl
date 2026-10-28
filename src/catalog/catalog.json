@@ -6034,6 +6034,508 @@
         },
         "querySourceId": "3bcb1768-28c2-4e6f-8a61-a66298a5b285"
       }
+    },
+    {
+      "id": "6f875f3f-1ddd-41af-98f1-5db02c39a85d",
+      "aliases": [
+        "pm2-5",
+        "fine-particulate-matter"
+      ],
+      "title": {
+        "en": "Fine Particulate Matter (PM2.5)"
+      },
+      "description": {
+        "en": "Surface concentration of particles smaller than 2.5 µm from the CAMS global atmospheric composition forecasts (0.4°, every 3 hours, 00 UTC run): dust, sea salt, wildfire smoke and pollution. The WHO 24-hour guideline is 15 µg/m³."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "air-quality",
+        "pm2.5",
+        "aerosol",
+        "pollution",
+        "dust",
+        "smoke"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "962bb819-d9dc-42ec-94cc-7c6282373d44",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS global forecasts Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "particulate_matter_2.5um"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "pm2p5"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "962bb819-d9dc-42ec-94cc-7c6282373d44",
+        "palette": "matter",
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0.25,
+            32
+          ]
+        },
+        "querySourceId": "962bb819-d9dc-42ec-94cc-7c6282373d44"
+      }
+    },
+    {
+      "id": "105b3302-b7c9-46cf-a235-eb79346793dd",
+      "aliases": [
+        "total-column-ozone",
+        "ozone-layer"
+      ],
+      "title": {
+        "en": "Total Column Ozone"
+      },
+      "description": {
+        "en": "Total column ozone from the CAMS global atmospheric composition forecasts (0.4°, every 3 hours), in Dobson units. Values below 220 DU over Antarctica mark the ozone hole, open each year from about September to November."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "ozone",
+        "ozone-hole",
+        "stratosphere",
+        "uv"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "42ad8a22-82b1-4a4a-8752-07744896f0be",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS global forecasts Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "total_column_ozone"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "gtco3"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "42ad8a22-82b1-4a4a-8752-07744896f0be",
+        "palette": "plasma",
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            190,
+            460
+          ]
+        },
+        "querySourceId": "42ad8a22-82b1-4a4a-8752-07744896f0be"
+      }
+    },
+    {
+      "id": "aec4f72e-4654-45b5-9b94-562aa4cf6d91",
+      "aliases": [
+        "aerosol-optical-depth"
+      ],
+      "title": {
+        "en": "Aerosol Optical Depth"
+      },
+      "description": {
+        "en": "Total aerosol optical depth at 550 nm from the CAMS global atmospheric composition forecasts (0.4°, every 3 hours): how much dust, sea salt, smoke and pollution dim sunlight through the whole atmosphere."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "aerosol",
+        "dust",
+        "smoke",
+        "haze",
+        "air-quality"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "a8f99d33-5dfd-4a46-89e1-beeb0730485d",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS global forecasts Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "total_aerosol_optical_depth_550nm"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "aod550"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "a8f99d33-5dfd-4a46-89e1-beeb0730485d",
+        "palette": "turbid",
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0.014,
+            0.51
+          ]
+        },
+        "querySourceId": "a8f99d33-5dfd-4a46-89e1-beeb0730485d"
+      }
+    },
+    {
+      "id": "fa2b5219-0f1d-44d2-a105-d9388dba7acb",
+      "aliases": [
+        "smoke-aerosol-optical-depth"
+      ],
+      "title": {
+        "en": "Smoke Aerosol Optical Depth"
+      },
+      "description": {
+        "en": "Organic matter aerosol optical depth at 550 nm from the CAMS global atmospheric composition forecasts (0.4°, every 3 hours), the CAMS proxy for wildfire smoke plumes as they travel away from the fires."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "smoke",
+        "wildfire",
+        "aerosol",
+        "plume"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "2d69503b-e689-4967-a7ea-37b98ff4f6de",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS global forecasts Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "organic_matter_aerosol_optical_depth_550nm"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "omaod550"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "2d69503b-e689-4967-a7ea-37b98ff4f6de",
+        "palette": "solar",
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0.001,
+            0.12
+          ]
+        },
+        "querySourceId": "2d69503b-e689-4967-a7ea-37b98ff4f6de"
+      }
+    },
+    {
+      "id": "b45b2598-c7c1-4367-a3c2-4acb9b31deba",
+      "aliases": [
+        "air-temperature-2m"
+      ],
+      "title": {
+        "en": "Air Temperature (2 m)"
+      },
+      "description": {
+        "en": "Air temperature 2 m above the surface from the CAMS global atmospheric composition forecasts (0.4°, every 3 hours, 00 UTC run)."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "temperature",
+        "air-temperature",
+        "heat",
+        "weather"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "6c9c6076-d925-4219-b169-9df98588d5ee",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS global forecasts Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "2m_temperature"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/global-forecast/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "t2m"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "6c9c6076-d925-4219-b169-9df98588d5ee",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            -52,
+            31
+          ]
+        },
+        "querySourceId": "6c9c6076-d925-4219-b169-9df98588d5ee"
+      }
+    },
+    {
+      "id": "c495a019-0bc8-4ee7-a9de-b1422751e31f",
+      "aliases": [
+        "fire-radiative-power"
+      ],
+      "title": {
+        "en": "Wildfire Radiative Power"
+      },
+      "description": {
+        "en": "Daily wildfire radiative power from CAMS GFAS v1.4.2 (0.1°), assimilated from satellite fire observations; it measures how intensely vegetation is burning. Cells without fire are transparent."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "wildfire",
+        "fire",
+        "frp",
+        "biomass-burning"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "012525a1-d516-416d-b459-b8458c822942",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS GFAS v1.4.2 Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-fire-emissions-gfas",
+              "dataset": "wildfire_radiative_power"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/gfas/v1.4.2/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/gfas/v1.4.2/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "frpfire"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "012525a1-d516-416d-b459-b8458c822942",
+        "palette": "amp",
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0.00071,
+            0.53
+          ]
+        },
+        "querySourceId": "012525a1-d516-416d-b459-b8458c822942"
+      }
+    },
+    {
+      "id": "9298ea47-af9a-4fd1-bc83-5eb9dbf25c42",
+      "aliases": [
+        "wildfire-co2-emissions"
+      ],
+      "title": {
+        "en": "Wildfire CO₂ Emissions"
+      },
+      "description": {
+        "en": "Daily carbon dioxide emitted by wildfires from CAMS GFAS v1.4.2 (0.1°), estimated from fire radiative power with land-cover emission factors. Cells without fire are transparent."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "wildfire",
+        "co2",
+        "greenhouse-gas",
+        "emissions",
+        "carbon"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "aa6e7072-c2db-41f1-8c00-857de2ab11ad",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS GFAS v1.4.2 Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-fire-emissions-gfas",
+              "dataset": "wildfire_flux_of_carbon_dioxide"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/gfas/v1.4.2/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/gfas/v1.4.2/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "co2fire"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "aa6e7072-c2db-41f1-8c00-857de2ab11ad",
+        "palette": "matter",
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.1,
+          "colorDomain": [
+            3.6e-9,
+            7.1e-7
+          ]
+        },
+        "querySourceId": "aa6e7072-c2db-41f1-8c00-857de2ab11ad"
+      }
+    },
+    {
+      "id": "0389b091-6a73-4aef-9769-5995ac5d7cc4",
+      "aliases": [
+        "smoke-injection-height"
+      ],
+      "title": {
+        "en": "Smoke Injection Height"
+      },
+      "description": {
+        "en": "Daily height above the surface at which wildfire smoke is injected into the atmosphere, from CAMS GFAS v1.4.2 (0.1°, IS4FIRES plume model). Cells without fire are transparent."
+      },
+      "category": "atmosphere",
+      "tags": [
+        "wildfire",
+        "smoke",
+        "plume",
+        "injection-height"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "6fb6d430-19c4-4a25-a940-a75ad7d005d8",
+          "type": "zarr",
+          "title": {
+            "en": "CAMS GFAS v1.4.2 Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-fire-emissions-gfas",
+              "dataset": "injection_height"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/gfas/v1.4.2/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/cams/gfas/v1.4.2/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "injh"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "6fb6d430-19c4-4a25-a940-a75ad7d005d8",
+        "palette": "viridis",
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            6,
+            420
+          ]
+        },
+        "querySourceId": "6fb6d430-19c4-4a25-a940-a75ad7d005d8"
+      }
     }
   ]
 }
