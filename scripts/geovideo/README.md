@@ -218,8 +218,13 @@ Policies live in `archive.json`, keyed by an archive `sourceId`:
 
 A chunk key hashes the encoding profile (store URL including the dataset
 version, variables, color domain or vector settings, bounds, output) and the
-exact timestamps. Palette and vibrance are excluded because the browser applies
-them; zartigl takes the palette from catalog defaults. A key already in the
+exact timestamps. Palette, its reversal, vibrance and alpha fades are excluded
+because the browser applies them; zartigl takes the palette from catalog
+defaults. `logScale` is not a pure style for scalars: a log-scaled entry is
+encoded with the `log10-1p9` transfer (codes at `log10(1 + 9t)`, the curve
+the display applies), which gives its low end, where such fields keep most of
+their values, far more codes. The transfer enters the key only when it is not
+linear, so linear archives keep their keys. A key already in the
 index is never rendered again; a changed key re-renders its period, which also
 repairs drift after a catalog or upstream change.
 

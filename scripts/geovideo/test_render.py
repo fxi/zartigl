@@ -6,7 +6,9 @@ import xarray as xr
 from render import (
     ScalarFrames,
     create_manifest,
+    render_scalar_luma,
     require_bucket_cors,
+    scalar_transfer,
     surface_index,
     validate_config,
     validate_monthly_samples,
@@ -146,6 +148,26 @@ class GeoVideoSamplingTest(unittest.TestCase):
         frames.config = {"interpolation": "linear"}
         frames._slice = lambda index: np.array([index], dtype=np.float32)
         np.testing.assert_array_equal(frames._frame_at(frames.times[1]), np.array([1], dtype=np.float32))
+
+
+class ScalarTransferTest(unittest.TestCase):
+    def style(self, log_scale):
+        return {"style": {"colorDomain": [0.0, 1.0], "logScale": log_scale}}
+
+    def test_log_scaled_codes_follow_the_displayed_curve(self):
+        values = np.array([[0.0, 0.01, 0.1, 1.0]], dtype=np.float32)
+        linear = render_scalar_luma(values, self.style(False))[0, :, 0]
+        logged = render_scalar_luma(values, self.style(True))[0, :, 0]
+        np.testing.assert_array_equal(linear, [8, 10, 32, 247])
+        # The low end gets far more codes: 0.01 is code 17, not 10.
+        np.testing.assert_array_equal(logged, [8, 17, 75, 247])
+        # The browser inverts it: t = (10^code - 1) / 9 within half a code.
+        code = (logged.astype(float) - 8) / (247 - 8)
+        np.testing.assert_allclose((10 ** code - 1) / 9, values[0], atol=0.004)
+
+    def test_manifest_records_the_transfer(self):
+        self.assertEqual(scalar_transfer({"logScale": True}), "log10-1p9")
+        self.assertEqual(scalar_transfer({"logScale": False}), "linear")
 
 
 class SurfaceIndexTest(unittest.TestCase):

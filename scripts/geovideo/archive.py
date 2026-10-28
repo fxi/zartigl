@@ -202,7 +202,8 @@ def plan_chunks(
 
 
 def encoding_profile(archive: dict[str, Any], layer: dict[str, Any]) -> dict[str, Any]:
-    """Everything that changes encoded values. Palette and vibrance are applied in WebGL and excluded."""
+    """Everything that changes encoded values. Palette, vibrance and alpha fades are applied in
+    WebGL and excluded; logScale sets the scalar transfer, so it changes the key."""
     source = render.zarr_source(layer)
     profile = {
         "kind": layer["kind"],
@@ -218,6 +219,10 @@ def encoding_profile(archive: dict[str, Any], layer: dict[str, Any]) -> dict[str
     if layer["kind"] == "scalar":
         profile["format"] = "geovideo-v3-scalar-luma-static-mask-intersection-exact-samples"
         profile["colorDomain"] = render.catalog_style(layer)["colorDomain"]
+        # Only a non-linear transfer enters the key, so linear archives keep theirs.
+        transfer = render.scalar_transfer(render.catalog_style(layer))
+        if transfer != "linear":
+            profile["transfer"] = transfer
         profile["framesPerSample"] = archive.get("framesPerSample", 1)
     else:
         profile["format"] = "geovideo-v3-vector-luma-stacked-uv"

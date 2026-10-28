@@ -92,6 +92,12 @@ def zarr_source(layer: dict[str, Any]) -> dict[str, Any]:
     return next(source for source in layer["sources"] if source["type"] == "zarr")
 
 
+def scalar_transfer(style: dict[str, Any]) -> str:
+    """Codes of a log-scaled layer sit at log10(1 + 9t), the curve its display applies, so the
+    low end, where such fields keep most of their values, gets most of the codes."""
+    return "log10-1p9" if style["logScale"] else "linear"
+
+
 def catalog_style(layer: dict[str, Any]) -> dict[str, Any]:
     defaults = layer.get("defaults") or {}
     raster = defaults.get("raster") or {}
@@ -262,6 +268,9 @@ def artifact_hash(config: dict[str, Any], layer: dict[str, Any]) -> str:
         "provenance": zarr_source(layer).get("provenance"),
         "store": zarr_source(layer)["endpoints"]["field"],
     }
+    # Linear artifacts keep the ids they had before the transfer existed.
+    if config.get("style") and scalar_transfer(config["style"]) != "linear":
+        material["transfer"] = scalar_transfer(config["style"])
     return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()[:12]
 
 
@@ -501,6 +510,8 @@ def render_scalar_luma(values: np.ndarray, config: dict[str, Any]) -> np.ndarray
     valid = np.isfinite(values)
     filled = fill_invalid_for_video(values, valid)
     normalized = np.clip((filled - minimum) / (maximum - minimum), 0, 1)
+    if scalar_transfer(config["style"]) == "log10-1p9":
+        normalized = np.log10(1 + 9 * normalized)
     codes = np.rint(8 + normalized * (247 - 8)).astype(np.uint8)
     return np.repeat(codes[:, :, None], 3, axis=2)
 
@@ -709,7 +720,7 @@ def create_manifest(
             "codeMax": 247,
             "valueMin": config["style"]["colorDomain"][0],
             "valueMax": config["style"]["colorDomain"][1],
-            "transfer": "linear",
+            "transfer": scalar_transfer(config["style"]),
             "colorSpace": "bt709",
             "colorRange": "limited",
         },

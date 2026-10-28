@@ -147,9 +147,17 @@ class KeyTest(unittest.TestCase):
         base = layer()
         restyled = copy.deepcopy(base)
         restyled["defaults"]["palette"] = "viridis"
+        restyled["defaults"]["reversePalette"] = True
         restyled["defaults"]["raster"]["vibrance"] = 0.8
-        restyled["defaults"]["raster"]["logScale"] = True
+        restyled["defaults"]["raster"]["alphaFadeLow"] = 0.3
         self.assertEqual(self.key(base), self.key(restyled))
+
+    def test_log_scale_sets_the_transfer_and_only_then_changes_the_key(self):
+        # Linear profiles carry no transfer, so archives made before it keep their keys.
+        self.assertNotIn("transfer", encoding_profile(ARCHIVE, layer()))
+        logged = layer(logScale=True)
+        self.assertEqual(encoding_profile(ARCHIVE, logged)["transfer"], "log10-1p9")
+        self.assertNotEqual(self.key(layer()), self.key(logged))
 
     def test_encoding_or_dataset_version_changes_keys(self):
         base = layer()
