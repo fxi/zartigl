@@ -6084,6 +6084,25 @@
             "kind": "scalar",
             "value": "pm2p5"
           }
+        },
+        {
+          "id": "bf82e932-baa3-44bf-b678-8cc309f365ef",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "particulate_matter_2.5um"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6f875f3f-1ddd-41af-98f1-5db02c39a85d/bf82e932-baa3-44bf-b678-8cc309f365ef/index.json"
         }
       ],
       "defaults": {
@@ -6310,6 +6329,25 @@
             "kind": "scalar",
             "value": "omaod550"
           }
+        },
+        {
+          "id": "cbaa8c36-b9c4-444d-a316-14941719196e",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "organic_matter_aerosol_optical_depth_550nm"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa2b5219-0f1d-44d2-a105-d9388dba7acb/cbaa8c36-b9c4-444d-a316-14941719196e/index.json"
         }
       ],
       "defaults": {
@@ -6453,6 +6491,25 @@
             "kind": "scalar",
             "value": "frpfire"
           }
+        },
+        {
+          "id": "3194a161-71af-4f9e-854e-4fe7365ac12e",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-fire-emissions-gfas",
+              "dataset": "wildfire_radiative_power"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/c495a019-0bc8-4ee7-a9de-b1422751e31f/3194a161-71af-4f9e-854e-4fe7365ac12e/index.json"
         }
       ],
       "defaults": {
@@ -6518,6 +6575,25 @@
             "kind": "scalar",
             "value": "co2fire"
           }
+        },
+        {
+          "id": "1e3586b4-0bef-43b1-a2b1-ff8c958d0865",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-fire-emissions-gfas",
+              "dataset": "wildfire_flux_of_carbon_dioxide"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9298ea47-af9a-4fd1-bc83-5eb9dbf25c42/1e3586b4-0bef-43b1-a2b1-ff8c958d0865/index.json"
         }
       ],
       "defaults": {
@@ -6582,6 +6658,25 @@
             "kind": "scalar",
             "value": "injh"
           }
+        },
+        {
+          "id": "992af902-2b1b-438a-bb64-2f75e82ed4b9",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-fire-emissions-gfas",
+              "dataset": "injection_height"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1D"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0389b091-6a73-4aef-9769-5995ac5d7cc4/992af902-2b1b-438a-bb64-2f75e82ed4b9/index.json"
         }
       ],
       "defaults": {
