@@ -6147,6 +6147,25 @@
             "kind": "scalar",
             "value": "gtco3"
           }
+        },
+        {
+          "id": "6b10984a-848a-459d-92cc-4a5921258912",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "total_column_ozone"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/105b3302-b7c9-46cf-a235-eb79346793dd/6b10984a-848a-459d-92cc-4a5921258912/index.json"
         }
       ],
       "defaults": {
@@ -6210,6 +6229,25 @@
             "kind": "scalar",
             "value": "aod550"
           }
+        },
+        {
+          "id": "abe45138-b89b-4af6-a3ef-bfbd91cffac0",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "total_aerosol_optical_depth_550nm"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/aec4f72e-4654-45b5-9b94-562aa4cf6d91/abe45138-b89b-4af6-a3ef-bfbd91cffac0/index.json"
         }
       ],
       "defaults": {
@@ -6334,6 +6372,25 @@
             "kind": "scalar",
             "value": "t2m"
           }
+        },
+        {
+          "id": "0e61c20a-8bba-4f93-9f78-c69faf09ad5c",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "copernicus-atmosphere",
+            "identifiers": {
+              "product": "cams-global-atmospheric-composition-forecasts",
+              "dataset": "2m_temperature"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b45b2598-c7c1-4367-a3c2-4acb9b31deba/0e61c20a-8bba-4f93-9f78-c69faf09ad5c/index.json"
         }
       ],
       "defaults": {
