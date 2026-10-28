@@ -136,6 +136,23 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).not.toContain("style:");
   });
 
+  it("embeds the layer definition only when given", () => {
+    const entry = {
+      id: "c495a019-0bc8-4ee7-a9de-b1422751e31f",
+      title: { en: "Wildfire Radiative Power" },
+      category: "atmosphere",
+      kind: "scalar" as const,
+      sources: [],
+      defaults: { sourceId: "x" },
+    };
+    const base = { layerId: entry.id, layerKind: "scalar" as const };
+    expect(buildMapxWidgetSnippet(base)).not.toContain("entry:");
+    const snippet = buildMapxWidgetSnippet({ ...base, entry });
+    expect(snippet).toContain("entry: {");
+    expect(snippet).toContain('"title": {');
+    expect(snippet).toContain('"en": "Wildfire Radiative Power"');
+  });
+
   it("writes a reversed palette and alpha fades when they differ", () => {
     const snippet = buildMapxWidgetSnippet({
       layerId: "fire-radiative-power",

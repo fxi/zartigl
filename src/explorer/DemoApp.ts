@@ -425,6 +425,8 @@ export class DemoApp {
   private params: DemoParams;
   /** Style override over the layer's own: what shares and exports. */
   private styleOverride: LayerStyleInput = {};
+  /** Export pane state: write the layer definition into MapX widget code. */
+  private exportParams = { embedEntry: false };
   private currentLayer: CatalogEntry;
   private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
   /** Active source, which "auto" or a type preference may move. */
@@ -1318,6 +1320,10 @@ export class DemoApp {
 
   private buildExportFolder(): void {
     const folder = this.pane.addFolder({ title: "Export", expanded: false });
+    // MapX reads layers from the live catalog; embed only for a layer it may not know.
+    folder.addBinding(this.exportParams, "embedEntry", {
+      label: "embed layer definition",
+    });
     folder
       .addButton({ title: "Copy MapX widget code" })
       .on("click", () => this.copyMapxWidgetSnippet());
@@ -1624,7 +1630,10 @@ export class DemoApp {
     if (!this.z) {
       return;
     }
-    const snippet = buildMapxWidgetSnippet(this.currentSnippetOptions());
+    const snippet = buildMapxWidgetSnippet({
+      ...this.currentSnippetOptions(),
+      entry: this.exportParams.embedEntry ? this.currentLayer : undefined,
+    });
 
     navigator.clipboard
       .writeText(snippet)

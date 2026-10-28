@@ -32,6 +32,12 @@ export interface MapxWidgetSnippetOptions {
   style?: LayerStyleInput;
   /** Engine tuning; flat style keys are ignored. */
   settings?: Partial<ZartiglSettings>;
+  /**
+   * The layer definition, written inline (MapX widget only): for a layer
+   * MapX may not know, such as a custom or unpublished entry. Left out, the
+   * widget names the layer and MapX reads it from the live catalog.
+   */
+  entry?: CatalogEntry;
 }
 
 export interface StandaloneDemoSnippetOptions extends MapxWidgetSnippetOptions {
@@ -171,6 +177,10 @@ export function buildMapxWidgetSnippet(
     `        layer: ${codeString(options.layerId)},`,
     `        source: ${codeString(source)},`,
   ];
+
+  if (options.entry) {
+    optionLines.push(`        entry: ${indentedValue(options.entry, 10)},`);
+  }
 
   if (style) {
     optionLines.push(`        style: ${indentedValue(style, 10)},`);
