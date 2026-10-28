@@ -103,6 +103,7 @@ the MapX `ArcoMapLegend` and the snippets the demo exports.
 ```jsonc
 {
   "palette": "thermal",
+  "reversePalette": false,
   "renderMode": "particles", // or "raster", "raster+particles"
   "particles": {
     "density": 0.03,
@@ -111,9 +112,35 @@ the MapX `ArcoMapLegend` and the snippets the demo exports.
     "grade": "vibrant",
     "backdrop": { "enabled": true, "color": "#000000", "opacity": 0.3 }
   },
-  "raster": { "opacity": 0.9, "logScale": false, "vibrance": 0.2, "colorDomain": null }
+  "raster": {
+    "opacity": 0.9, "logScale": false, "vibrance": 0.2, "colorDomain": null,
+    "alphaFadeLow": 0, "alphaFadeHigh": 0, "alphaFadeCurve": "linear"
+  }
 }
 ```
+
+`reversePalette` runs the palette from its last color to its first, for the
+raster and the particles.
+
+`raster.alphaFadeLow` and `alphaFadeHigh` make the ends of the color range
+transparent, with any palette. Each is a fraction of the range as displayed
+(the color domain, after log scale): `alphaFadeLow: 0.25` fades the lowest
+quarter in from transparent, `alphaFadeHigh: 0.5` fades the upper half out,
+and values beyond the domain take its transparent ends. A field that is
+mostly zero, such as fire radiative power or coral heat stress, then shows
+only where something happens. `alphaFadeCurve` shapes both fades, with the
+curves of `logScale`: `"linear"`, `"log"` (`log10(1 + 9x)`, rises fast) or
+`"exp"` (its inverse, stays faint longer, which also hides codec noise at the
+ends of a GeoVideo). The fade is part of the color ramp
+(`resolveColorRamp(palette, { reverse, alphaFade })`), so Zarr, GeoVideo,
+projversor and legends show the same transparency. Neither key changes how
+GeoVideo archives are encoded, so restyling never re-renders them.
+
+`heat-alert`, which faded low values in through transparent palette stops, is
+deprecated: `migrateLegacyStyle` reads it as `heat` with `alphaFadeLow: 0.25`
+(the closest fit of its alpha), wherever a style enters, so old catalogs,
+share links and story views keep working. `getPalettes()` leaves deprecated
+palettes out of pickers.
 
 `particles.grade` is `"off"`, `"vibrant"`, or a tuned vibrant grade
 `{ exposure, contrast, saturation, highlights }`; it is replaced as a whole.

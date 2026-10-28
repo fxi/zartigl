@@ -9,11 +9,18 @@ export function geoVideoScalarUniforms(
   encoding: Pick<
     GeoVideoScalarEncoding,
     "codeMin" | "codeMax" | "valueMin" | "valueMax"
-  >,
-): { codeRange: [number, number]; valueRange: [number, number] } {
+  > &
+    Partial<Pick<GeoVideoScalarEncoding, "transfer">>,
+): {
+  codeRange: [number, number];
+  valueRange: [number, number];
+  /** `u_scalar_transfer`: 0 linear, 1 "log10-1p9". */
+  transfer: number;
+} {
   return {
     codeRange: [encoding.codeMin / 255, encoding.codeMax / 255],
     valueRange: [encoding.valueMin, encoding.valueMax],
+    transfer: encoding.transfer === "log10-1p9" ? 1 : 0,
   };
 }
 

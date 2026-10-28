@@ -60,7 +60,14 @@ describe("geoVideoScalarUniforms", () => {
     expect(geoVideoScalarUniforms(encoding)).toEqual({
       codeRange: [8 / 255, 247 / 255],
       valueRange: [-2, 30],
+      transfer: 0,
     });
+  });
+
+  it("flags codes stored at log10(1 + 9t)", () => {
+    expect(
+      geoVideoScalarUniforms({ ...encoding, transfer: "log10-1p9" }).transfer,
+    ).toBe(1);
   });
 });
 

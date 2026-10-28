@@ -52,6 +52,7 @@ export type { GeoVideoScalarFrame } from "./lib/GeoVideoScalarSource";
 export { GeoVideoVectorSource } from "./lib/GeoVideoVectorSource";
 export type { GeoVideoVectorFrame } from "./lib/GeoVideoVectorSource";
 export {
+  alphaFadeAt,
   createColorRampTexture,
   createProgram,
   createShader,
@@ -64,7 +65,12 @@ export {
   RANDOM_GLSL,
   VIBRANCE_GLSL,
 } from "./lib/glsl-chunks";
-export type { ColorRampInput, PaletteMeta } from "./lib/gl-util";
+export type {
+  AlphaFade,
+  AlphaFadeCurve,
+  ColorRampInput,
+  PaletteMeta,
+} from "./lib/gl-util";
 export { validateScalarColorDomain } from "./lib/scalar-color-domain";
 export type { ScalarColorDomain } from "./lib/scalar-color-domain";
 export { TrailFade, fadeToFrames, fadeToOpacity } from "./lib/trail-fade";

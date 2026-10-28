@@ -120,6 +120,8 @@ def main():
         palette = defaults.get("palette")
         if palette and palette not in palettes:
             fail(f"{layer['id']}: unknown default palette {palette!r}")
+        if palette and "deprecated" in palettes.get(palette, {}).get("tags", []):
+            fail(f"{layer['id']}: deprecated default palette {palette!r}; see LEGACY_PALETTES in src/catalog/style.ts")
 
         color_domain = (defaults.get("raster") or {}).get("colorDomain")
         if color_domain is not None:

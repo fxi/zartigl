@@ -14,6 +14,7 @@ import type { RenderMode } from "../lib";
 /** Tweakpane fields showing a layer style. */
 export interface StyleParams {
   palette: string;
+  reversePalette: boolean;
   renderMode: RenderMode;
   particleDensity: number;
   speed: number;
@@ -25,6 +26,8 @@ export interface StyleParams {
   backdropOpacity: number;
   opacity: number;
   logScale: boolean;
+  alphaFadeLow: number;
+  alphaFadeHigh: number;
   vibrance: number;
   colorDomain: [number, number] | null;
   colorDomainMin: number;
@@ -36,6 +39,7 @@ export function styleParams(style: LayerStyle): StyleParams {
   const { particles, raster } = style;
   return {
     palette: style.palette ?? "rdylbu",
+    reversePalette: style.reversePalette,
     renderMode: style.renderMode,
     particleDensity: particles.density,
     speed: particles.speed,
@@ -46,6 +50,8 @@ export function styleParams(style: LayerStyle): StyleParams {
     backdropOpacity: particles.backdrop.opacity,
     opacity: raster.opacity,
     logScale: raster.logScale,
+    alphaFadeLow: raster.alphaFadeLow,
+    alphaFadeHigh: raster.alphaFadeHigh,
     vibrance: raster.vibrance,
     colorDomain: raster.colorDomain,
     colorDomainMin: raster.colorDomain?.[0] ?? 0,

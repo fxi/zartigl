@@ -5897,7 +5897,7 @@
       ],
       "defaults": {
         "sourceId": "6929d810-e85e-4772-ab08-c48cbffabe7e",
-        "palette": "heat-alert",
+        "palette": "heat",
         "raster": {
           "opacity": 1,
           "logScale": false,
@@ -5905,7 +5905,8 @@
           "colorDomain": [
             0,
             20
-          ]
+          ],
+          "alphaFadeLow": 0.25
         },
         "querySourceId": "6929d810-e85e-4772-ab08-c48cbffabe7e"
       }

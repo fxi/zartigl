@@ -9,6 +9,7 @@ import type {
 } from "../catalog/types";
 import {
   mergeStyles,
+  migrateLegacyStyle,
   parseLayerStyle,
   pickPreferredSource,
   pickSourceByPriority,
@@ -21,7 +22,14 @@ import {
   type LayerStyleInput,
   type SourceTimeRequest,
 } from "../catalog";
-import { getPalettes, type ColorRampInput, type PaletteMeta } from "./gl-util";
+import {
+  getPalettes,
+  resolveColorRamp,
+  type AlphaFade,
+  type AlphaFadeCurve,
+  type ColorRampInput,
+  type PaletteMeta,
+} from "./gl-util";
 import { formatUnit } from "./units";
 import { CatalogRenderLayer, buildWmtsLegendUrl } from "./CatalogRenderLayer";
 import type { CatalogRenderLayerDebugInfo } from "./CatalogRenderLayer";
@@ -63,6 +71,8 @@ import { loadWmtsCapabilities, type WmtsMetadata } from "./WmtsCapabilities";
 
 export interface ZartiglSettings {
   palette: ColorRampInput;
+  /** Run the palette from its last color to its first. */
+  reversePalette: boolean;
   particleDensity: number;
   speed: number;
   fade: number;
@@ -79,6 +89,10 @@ export interface ZartiglSettings {
   backdrop: Partial<BackdropStyle>;
   /** Fixed physical-value domain for scalar colors. Null uses frame extrema. */
   colorDomain: [number, number] | null;
+  /** Transparent ends of the color range, as in RasterStyle. */
+  alphaFadeLow: number;
+  alphaFadeHigh: number;
+  alphaFadeCurve: AlphaFadeCurve;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
 }
@@ -219,6 +233,10 @@ export type Legend =
   | {
       type: "gradient";
       palette: string;
+      /** The palette runs from its last color to its first. */
+      reverse?: boolean;
+      /** Transparent ends of the ramp, already in the legend colors. */
+      alphaFade?: AlphaFade;
       min?: number;
       max?: number;
       unit?: string;
@@ -527,6 +545,7 @@ function styleToSettings(style: LayerStyleInput): Partial<ZartiglSettings> {
   const { particles = {}, raster = {} } = style;
   const settings: Partial<ZartiglSettings> = {
     palette: style.palette,
+    reversePalette: style.reversePalette,
     renderMode: style.renderMode,
     particleDensity: particles.density,
     speed: particles.speed,
@@ -539,12 +558,50 @@ function styleToSettings(style: LayerStyleInput): Partial<ZartiglSettings> {
     logScale: raster.logScale,
     vibrance: raster.vibrance,
     colorDomain: raster.colorDomain,
+    alphaFadeLow: raster.alphaFadeLow,
+    alphaFadeHigh: raster.alphaFadeHigh,
+    alphaFadeCurve: raster.alphaFadeCurve,
     backdrop: particles.backdrop && { ...particles.backdrop },
   };
   return Object.fromEntries(
     Object.entries(settings).filter(([, value]) => value !== undefined),
   ) as Partial<ZartiglSettings>;
 }
+
+/** The alpha fade of settings, or undefined when neither end fades. */
+function alphaFadeOf(
+  settings: Partial<ZartiglSettings>,
+): AlphaFade | undefined {
+  const low = settings.alphaFadeLow ?? 0;
+  const high = settings.alphaFadeHigh ?? 0;
+  return low > 0 || high > 0
+    ? { low, high, curve: settings.alphaFadeCurve ?? "linear" }
+    : undefined;
+}
+
+/**
+ * The ramp layers draw with: the palette, as stops reversed and faded when
+ * the style asks, so every layer kind (Zarr, GeoVideo, particles) shows the
+ * same colors through the ramp texture it already samples.
+ */
+function layerRamp(
+  settings: Partial<ZartiglSettings>,
+): ColorRampInput | undefined {
+  const { palette, reversePalette } = settings;
+  const alphaFade = alphaFadeOf(settings);
+  return palette != null && (reversePalette || alphaFade)
+    ? resolveColorRamp(palette, { reverse: reversePalette, alphaFade })
+    : palette;
+}
+
+/** Settings that change the ramp, not only how it is applied. */
+const RAMP_SETTINGS = [
+  "palette",
+  "reversePalette",
+  "alphaFadeLow",
+  "alphaFadeHigh",
+  "alphaFadeCurve",
+] as const;
 
 /** Where each deprecated flat style setting moved in the style. */
 export const LEGACY_STYLE_SETTINGS: Readonly<
@@ -1215,7 +1272,8 @@ export class Zartigl {
         // catalog default wins over the one recorded at render time.
         this.settings.palette = requestedPaletteOverride
           ? this.settings.palette
-          : (catalogLayer.defaults.palette ?? manifest.style.palette);
+          : (migrateLegacyStyle(catalogLayer.defaults).palette ??
+            manifest.style.palette);
         this.lastMeta = null;
         if (swapInPlace && this.replaceGeoVideoInPlace(previousPalette)) {
           return;
@@ -1769,6 +1827,8 @@ export class Zartigl {
       return {
         type: "gradient",
         palette,
+        reverse: this.settings.reversePalette ?? false,
+        alphaFade: alphaFadeOf(this.settings),
         min: colorDomain[0],
         max: colorDomain[1],
         unit: formatUnit(this.geoVideoManifest.style.unit),
@@ -1783,6 +1843,11 @@ export class Zartigl {
     return {
       type: "gradient",
       palette,
+      reverse: this.settings.reversePalette ?? false,
+      alphaFade:
+        this.catalogLayer.kind === "scalar"
+          ? alphaFadeOf(this.settings)
+          : undefined,
       min: colorDomain?.[0] ?? this.lastMeta?.min,
       max: colorDomain?.[1] ?? this.lastMeta?.max,
       unit: formatUnit(this.lastMeta?.unit ?? this.variableUnit),
@@ -1935,7 +2000,8 @@ export class Zartigl {
     }
     if (manifest && this.style.palette === undefined) {
       settings.palette =
-        this.catalogLayer?.defaults.palette ?? manifest.style.palette;
+        migrateLegacyStyle(this.catalogLayer?.defaults)?.palette ??
+        manifest.style.palette;
     }
     return settings;
   }
@@ -1949,9 +2015,11 @@ export class Zartigl {
             ...settings,
             colorDomain: validateScalarColorDomain(settings.colorDomain),
           };
-    const paletteChanged =
-      validatedSettings.palette != null &&
-      validatedSettings.palette !== this.settings.palette;
+    const paletteChanged = RAMP_SETTINGS.some(
+      (key) =>
+        validatedSettings[key] != null &&
+        validatedSettings[key] !== this.settings[key],
+    );
     const particleStateChanged =
       validatedSettings.particleState != null &&
       validatedSettings.particleState !== this.settings.particleState;
@@ -1967,7 +2035,7 @@ export class Zartigl {
     }
 
     if (paletteChanged && this.catalogSource?.type === "geovideo") {
-      this.layer.setColorRamp(validatedSettings.palette!);
+      this.layer.setColorRamp(layerRamp(this.settings)!);
       this.applyMutableSettings(this.layer, validatedSettings);
       return;
     }
@@ -2112,7 +2180,7 @@ export class Zartigl {
       zarrSource: this.activeFieldSource ?? undefined,
       unit: this.variableUnit,
       verticalLabel: this.verticalMeta?.label,
-      colorRamp: this.settings.palette,
+      colorRamp: layerRamp(this.settings),
       metadata: this.metadata ? { ...this.metadata } : undefined,
       before: this.before,
     });
@@ -2207,7 +2275,7 @@ export class Zartigl {
     }
     layer.setColorDomain(this.settings.colorDomain ?? null);
     if (this.settings.palette && this.settings.palette !== previousPalette) {
-      layer.setColorRamp(this.settings.palette);
+      layer.setColorRamp(layerRamp(this.settings)!);
     }
     return true;
   }

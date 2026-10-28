@@ -20,7 +20,8 @@ export { buildWmtsLegendUrl, buildWmtsTileUrl } from "./CatalogRenderLayer";
 export { ZarrSource } from "./ZarrSource";
 export { VelocityField, stitchVelocityChunks } from "./VelocityField";
 export { ParticleSimulation } from "./ParticleSimulation";
-export { getPalettes } from "./gl-util";
+export { getPalettes, resolveColorRamp } from "./gl-util";
+export type { AlphaFade, AlphaFadeCurve } from "./gl-util";
 export { formatUnit } from "./units";
 export {
   COLOR_GRADE_OFF,

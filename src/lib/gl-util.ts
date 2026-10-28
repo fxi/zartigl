@@ -17,6 +17,110 @@ type PalettesJson = Record<
   { label: string; tags: string[]; colors: string[] }
 >;
 
+/** Shape of an alpha fade inside its zone; the same curves as `logScale`. */
+export type AlphaFadeCurve = "linear" | "log" | "exp";
+
+/**
+ * Transparent ends of a ramp, as fractions of the ramp from each end: `low`
+ * fades the lowest values in from transparent, `high` fades the highest out.
+ */
+export interface AlphaFade {
+  low?: number;
+  high?: number;
+  curve?: AlphaFadeCurve;
+}
+
+/** Ramp positions sampled when a fade rewrites the alpha of a ramp. */
+const ALPHA_FADE_SAMPLES = 64;
+
+const ALPHA_FADE_CURVES: Record<AlphaFadeCurve, (x: number) => number> = {
+  linear: (x) => x,
+  // Rises fast: values just inside the zone already show.
+  log: (x) => Math.log10(1 + 9 * x),
+  // Stays faint longer: codec noise at the end of the range stays hidden.
+  exp: (x) => (10 ** x - 1) / 9,
+};
+
+/** Alpha factor at ramp position `t` in [0, 1]; the stricter end wins. */
+export function alphaFadeAt(t: number, fade: AlphaFade): number {
+  const shape = ALPHA_FADE_CURVES[fade.curve ?? "linear"];
+  const low = fade.low ?? 0;
+  const high = fade.high ?? 0;
+  let alpha = 1;
+  if (low > 0 && t < low) {
+    alpha = Math.min(alpha, shape(Math.max(t, 0) / low));
+  }
+  if (high > 0 && t > 1 - high) {
+    alpha = Math.min(alpha, shape(Math.max(1 - t, 0) / high));
+  }
+  return alpha;
+}
+
+type Rgba = [number, number, number, number];
+
+function parseHex(color: string): Rgba {
+  let hex = color.replace("#", "");
+  if (hex.length === 3 || hex.length === 4) {
+    hex = [...hex].map((c) => c + c).join("");
+  }
+  const channel = (i: number) => parseInt(hex.slice(i, i + 2), 16);
+  return [
+    channel(0),
+    channel(2),
+    channel(4),
+    hex.length === 8 ? channel(6) : 255,
+  ];
+}
+
+function toHex([r, g, b, a]: Rgba): string {
+  return `#${[r, g, b, a]
+    .map((v) =>
+      Math.round(Math.min(255, Math.max(0, v)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+/** Color of sorted stops at `t`, interpolated as a canvas gradient does. */
+function colorAt(stops: [number, Rgba][], t: number): Rgba {
+  if (t <= stops[0][0]) {
+    return stops[0][1];
+  }
+  for (let i = 1; i < stops.length; i++) {
+    const [position, color] = stops[i];
+    if (t <= position) {
+      const [previous, from] = stops[i - 1];
+      const k =
+        position === previous ? 1 : (t - previous) / (position - previous);
+      return from.map((v, c) => v + (color[c] - v) * k) as Rgba;
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+
+function withAlphaFade(
+  ramp: Record<number, string>,
+  fade: AlphaFade,
+): Record<number, string> {
+  const stops = Object.entries(ramp)
+    .map(
+      ([position, color]) =>
+        [Number(position), parseHex(color)] as [number, Rgba],
+    )
+    .sort((a, b) => a[0] - b[0]);
+  const result: Record<number, string> = {};
+  for (let i = 0; i <= ALPHA_FADE_SAMPLES; i++) {
+    const t = i / ALPHA_FADE_SAMPLES;
+    const [r, g, b, a] = colorAt(stops, t);
+    result[t] = toHex([r, g, b, a * alphaFadeAt(t, fade)]);
+  }
+  return result;
+}
+
+const fades = (fade: AlphaFade | undefined): fade is AlphaFade =>
+  !!fade && ((fade.low ?? 0) > 0 || (fade.high ?? 0) > 0);
+
 function colorsToStops(colors: string[]): Record<number, string> {
   const stops: Record<number, string> = {};
   const last = colors.length - 1;
@@ -26,9 +130,24 @@ function colorsToStops(colors: string[]): Record<number, string> {
   return stops;
 }
 
+/**
+ * Stops of a ramp, reversed on request, then with `alphaFade` multiplied into
+ * the alpha of its ends. The fade follows positions, not colors: on a reversed
+ * ramp it still fades the low values.
+ */
 export function resolveColorRamp(
   input: ColorRampInput,
-  options?: { reverse?: boolean },
+  options?: { reverse?: boolean; alphaFade?: AlphaFade },
+): Record<number, string> {
+  const ramp = orientedRamp(input, options?.reverse ?? false);
+  return fades(options?.alphaFade)
+    ? withAlphaFade(ramp, options.alphaFade)
+    : ramp;
+}
+
+function orientedRamp(
+  input: ColorRampInput,
+  reverse: boolean,
 ): Record<number, string> {
   const palettes = palettesJson as PalettesJson;
 
@@ -41,24 +160,37 @@ export function resolveColorRamp(
         ).join(", ")}`,
       );
     }
-    const colors = options?.reverse
-      ? [...entry.colors].reverse()
-      : entry.colors;
+    const colors = reverse ? [...entry.colors].reverse() : entry.colors;
     return colorsToStops(colors);
   }
 
   if (Array.isArray(input)) {
-    const colors = options?.reverse ? [...input].reverse() : input;
+    const colors = reverse ? [...input].reverse() : input;
     return colorsToStops(colors);
   }
 
-  // Record<number, string> — return as-is (reverse not applicable to arbitrary stops)
-  return input;
+  if (!reverse) {
+    return input;
+  }
+  return Object.fromEntries(
+    Object.entries(input).map(([stop, color]) => [1 - Number(stop), color]),
+  );
 }
 
-export function getPalettes(): PaletteMeta[] {
+/**
+ * Palettes to offer, without deprecated ones (still resolvable for old
+ * configs) unless `includeDeprecated`.
+ */
+export function getPalettes(
+  options: { includeDeprecated?: boolean } = {},
+): PaletteMeta[] {
   const palettes = palettesJson as PalettesJson;
-  return Object.entries(palettes).map(([id, entry]) => ({ id, ...entry }));
+  return Object.entries(palettes)
+    .map(([id, entry]) => ({ id, ...entry }))
+    .filter(
+      (palette) =>
+        options.includeDeprecated || !palette.tags.includes("deprecated"),
+    );
 }
 
 export function createShader(
@@ -358,8 +490,9 @@ const DEFAULT_COLOR_RAMP: Record<number, string> = {
 export function createColorRampTexture(
   gl: WebGL2RenderingContext,
   ramp?: ColorRampInput,
+  options?: { reverse?: boolean; alphaFade?: AlphaFade },
 ): WebGLTexture {
-  const colors = ramp != null ? resolveColorRamp(ramp) : DEFAULT_COLOR_RAMP;
+  const colors = resolveColorRamp(ramp ?? DEFAULT_COLOR_RAMP, options);
   const canvas = document.createElement("canvas");
   canvas.width = 256;
   canvas.height = 1;

@@ -29,7 +29,7 @@ export interface GeoVideoScalarEncoding {
   codeMax: number;
   valueMin: number;
   valueMax: number;
-  transfer: "linear";
+  transfer: "linear" | "log10-1p9";
   colorSpace: "bt709";
   colorRange: "limited" | "full";
 }
@@ -172,7 +172,7 @@ export function validateGeoVideoManifest(value: unknown): GeoVideoManifest {
   let maskHeight = media.height;
   if (encoding.kind === "scalar-luma") {
     if (
-      encoding.transfer !== "linear" ||
+      (encoding.transfer !== "linear" && encoding.transfer !== "log10-1p9") ||
       finite(encoding.valueMin, "encoding.valueMin") >=
         finite(encoding.valueMax, "encoding.valueMax")
     ) {

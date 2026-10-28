@@ -117,7 +117,7 @@
       "type": "object", "required": ["sourceId"], "additionalProperties": false,
       "properties": {
         "sourceId": { "$ref": "#/$defs/Uuid" }, "querySourceId": { "$ref": "#/$defs/Uuid" },
-        "palette": { "type": "string" }, "renderMode": { "enum": ["particles", "raster", "raster+particles"] },
+        "palette": { "type": "string" }, "reversePalette": { "type": "boolean" }, "renderMode": { "enum": ["particles", "raster", "raster+particles"] },
         "particles": {
           "type": "object", "additionalProperties": false,
           "properties": { "density": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.2 }, "speed": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 }, "fade": { "type": "number", "minimum": 0, "maximum": 1 }, "grade": { "oneOf": [{ "enum": ["off", "vibrant"] }, { "type": "object", "additionalProperties": false, "properties": { "exposure": { "type": "number", "minimum": 0, "maximum": 4 }, "contrast": { "type": "number", "minimum": 0, "maximum": 1 }, "saturation": { "type": "number", "minimum": -1, "maximum": 1 }, "highlights": { "type": "number", "minimum": 0, "maximum": 1 } } }] },
@@ -128,7 +128,9 @@
           "properties": {
             "opacity": { "type": "number", "minimum": 0, "maximum": 1 }, "logScale": { "type": "boolean" },
             "vibrance": { "type": "number", "minimum": -1, "maximum": 1 },
-            "colorDomain": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }] }
+            "colorDomain": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }] },
+            "alphaFadeLow": { "type": "number", "minimum": 0, "maximum": 1 }, "alphaFadeHigh": { "type": "number", "minimum": 0, "maximum": 1 },
+            "alphaFadeCurve": { "enum": ["linear", "log", "exp"] }
           }
         }
       }

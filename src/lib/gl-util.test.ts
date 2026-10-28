@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  alphaFadeAt,
   createTexture,
   detectStateTextureFormat,
   getPalettes,
@@ -196,5 +197,66 @@ describe("WebGL utility helpers", () => {
     const ramp = resolveColorRamp("heat-alert");
     expect(ramp[0]).toBe("#fde72500");
     expect(ramp[1]).toBe("#3a0007");
+  });
+
+  it("hides deprecated palettes from pickers but still resolves them", () => {
+    const ids = getPalettes().map((palette) => palette.id);
+    expect(ids).toContain("heat");
+    expect(ids).not.toContain("heat-alert");
+    expect(
+      getPalettes({ includeDeprecated: true }).map((palette) => palette.id),
+    ).toContain("heat-alert");
+  });
+
+  it("fades the ends of a ramp with the chosen curve", () => {
+    const fade = { low: 0.5, high: 0.25 };
+    expect(alphaFadeAt(0, fade)).toBe(0);
+    expect(alphaFadeAt(0.25, fade)).toBeCloseTo(0.5);
+    expect(alphaFadeAt(0.6, fade)).toBe(1);
+    expect(alphaFadeAt(0.875, fade)).toBeCloseTo(0.5);
+    expect(alphaFadeAt(1, fade)).toBe(0);
+    // log rises fast, exp stays faint longer, both inverse of each other.
+    expect(alphaFadeAt(0.25, { ...fade, curve: "log" })).toBeCloseTo(
+      Math.log10(5.5),
+    );
+    expect(alphaFadeAt(0.25, { ...fade, curve: "exp" })).toBeCloseTo(
+      (10 ** 0.5 - 1) / 9,
+    );
+    // Overlapping fades: the stricter end wins.
+    expect(alphaFadeAt(0.5, { low: 1, high: 1 })).toBeCloseTo(0.5);
+  });
+
+  it("multiplies the fade into the ramp alpha, after reversing", () => {
+    const ramp = resolveColorRamp(["#000000", "#ffffff"], {
+      reverse: true,
+      alphaFade: { low: 0.5 },
+    });
+    expect(ramp[0]).toBe("#ffffff00");
+    expect(ramp[0.25]).toBe("#bfbfbf80");
+    expect(ramp[1]).toBe("#000000ff");
+    // Existing palette alpha is kept and multiplied.
+    expect(
+      resolveColorRamp(["#ff000080", "#ff000080"], {
+        alphaFade: { high: 1 },
+      })[0],
+    ).toBe("#ff000080");
+    // No fade, no resampling.
+    expect(resolveColorRamp("heat", { alphaFade: { low: 0 } })).toEqual(
+      resolveColorRamp("heat"),
+    );
+  });
+
+  it("reverses palettes, hex lists and stop maps alike", () => {
+    expect(resolveColorRamp("heat", { reverse: true })[0]).toBe("#3a0007");
+    expect(resolveColorRamp(["#000", "#fff"], { reverse: true })).toEqual({
+      0: "#fff",
+      1: "#000",
+    });
+    expect(
+      resolveColorRamp(
+        { 0: "#000", 0.25: "#888", 1: "#fff" },
+        { reverse: true },
+      ),
+    ).toEqual({ 1: "#000", 0.75: "#888", 0: "#fff" });
   });
 });

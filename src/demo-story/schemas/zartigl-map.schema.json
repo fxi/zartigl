@@ -40,6 +40,7 @@
       "type": "object",
       "properties": {
         "palette": { "type": "string" },
+        "reversePalette": { "type": "boolean" },
         "renderMode": { "enum": ["particles", "raster", "raster+particles"] },
         "particles": {
           "type": "object",
@@ -113,7 +114,10 @@
                   "maxItems": 2
                 }
               ]
-            }
+            },
+            "alphaFadeLow": { "type": "number", "minimum": 0, "maximum": 1 },
+            "alphaFadeHigh": { "type": "number", "minimum": 0, "maximum": 1 },
+            "alphaFadeCurve": { "enum": ["linear", "log", "exp"] }
           },
           "additionalProperties": false
         }

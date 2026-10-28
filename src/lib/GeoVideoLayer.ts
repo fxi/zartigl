@@ -411,8 +411,12 @@ export class GeoVideoLayer implements CustomLayerInterface {
         gl.getUniformLocation(program, "u_mask_threshold"),
         manifest.mask.threshold,
       );
-      const { codeRange, valueRange } = geoVideoScalarUniforms(
+      const { codeRange, valueRange, transfer } = geoVideoScalarUniforms(
         manifest.encoding as GeoVideoScalarEncoding,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program, "u_scalar_transfer"),
+        transfer,
       );
       const domain = this.colorDomain ?? valueRange;
       gl.uniform2f(

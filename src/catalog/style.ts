@@ -6,7 +6,9 @@
 
 import { COLOR_GRADE_RANGES } from "../lib/color-grade";
 import { BACKDROP_OFF, isHexColor, resolveBackdrop } from "../lib/backdrop";
+import type { AlphaFadeCurve } from "../lib/gl-util";
 
+export type { AlphaFadeCurve };
 export type StyleRenderMode = "particles" | "raster" | "raster+particles";
 /** Vibrant grade values; each one left out takes the vibrant preset's. */
 export interface GradeTuning {
@@ -47,6 +49,17 @@ export interface RasterStyle {
   vibrance: number;
   /** Fixed physical-value domain; null follows the data. */
   colorDomain: [number, number] | null;
+  /**
+   * Fraction of the color range, from its low end, over which colors fade in
+   * from transparent, [0, 1]: a field that is mostly zero (fires, heat
+   * stress) shows only where something happens. Values below the domain are
+   * transparent too.
+   */
+  alphaFadeLow: number;
+  /** Fraction of the color range, from its high end, fading out, [0, 1]. */
+  alphaFadeHigh: number;
+  /** Shape of both fades: "log" rises fast, "exp" stays faint longer. */
+  alphaFadeCurve: AlphaFadeCurve;
 }
 
 /**
@@ -64,6 +77,8 @@ export interface BackdropStyle {
 export interface LayerStyle {
   /** Palette id; undefined lets the engine pick its own. */
   palette?: string;
+  /** Run the palette from its last color to its first, for raster and particles. */
+  reversePalette: boolean;
   renderMode: StyleRenderMode;
   particles: ParticleStyle;
   raster: RasterStyle;
@@ -72,6 +87,7 @@ export interface LayerStyle {
 /** A partial style: any key left out takes the value below it. */
 export interface LayerStyleInput {
   palette?: string;
+  reversePalette?: boolean;
   renderMode?: StyleRenderMode;
   particles?: ParticleStyleInput;
   raster?: Partial<RasterStyle>;
@@ -79,6 +95,7 @@ export interface LayerStyleInput {
 
 /** Engine fallbacks, under the catalog `defaults`. */
 export const LAYER_STYLE_DEFAULTS: Readonly<LayerStyle> = Object.freeze({
+  reversePalette: false,
   renderMode: "particles",
   particles: Object.freeze({
     density: 0.05,
@@ -92,6 +109,9 @@ export const LAYER_STYLE_DEFAULTS: Readonly<LayerStyle> = Object.freeze({
     logScale: false,
     vibrance: 0,
     colorDomain: null,
+    alphaFadeLow: 0,
+    alphaFadeHigh: 0,
+    alphaFadeCurve: "linear",
   }),
 }) as LayerStyle;
 
@@ -104,6 +124,40 @@ const defined = <T extends object>(value: T | undefined): Partial<T> =>
   ) as Partial<T>;
 
 /**
+ * Palettes replaced by a palette plus style keys. `heat-alert` faded its
+ * lowest values in through alpha stops; `raster.alphaFadeLow` now does that
+ * with any palette (0.25, linear, fits its alpha within 0.04 RMS).
+ */
+const LEGACY_PALETTES: Record<
+  string,
+  { palette: string; raster: Partial<RasterStyle> }
+> = {
+  "heat-alert": { palette: "heat", raster: { alphaFadeLow: 0.25 } },
+};
+
+/**
+ * `input` with legacy palettes rewritten, so old catalogs, share links and
+ * story views keep their look. Keys the input sets itself win.
+ */
+export function migrateLegacyStyle(input: LayerStyleInput): LayerStyleInput;
+export function migrateLegacyStyle(
+  input: LayerStyleInput | undefined,
+): LayerStyleInput | undefined;
+export function migrateLegacyStyle(
+  input: LayerStyleInput | undefined,
+): LayerStyleInput | undefined {
+  const legacy = input?.palette ? LEGACY_PALETTES[input.palette] : undefined;
+  if (!input || !legacy) {
+    return input;
+  }
+  return {
+    ...input,
+    palette: legacy.palette,
+    raster: { ...legacy.raster, ...input.raster },
+  };
+}
+
+/**
  * Merge styles over {@link LAYER_STYLE_DEFAULTS}, later inputs winning key by
  * key. Usual order: catalog `defaults`, engine style, view.
  */
@@ -111,16 +165,21 @@ export function resolveLayerStyle(
   ...inputs: (LayerStyleInput | undefined)[]
 ): LayerStyle {
   const style: LayerStyle = {
+    reversePalette: LAYER_STYLE_DEFAULTS.reversePalette,
     renderMode: LAYER_STYLE_DEFAULTS.renderMode,
     particles: { ...LAYER_STYLE_DEFAULTS.particles },
     raster: { ...LAYER_STYLE_DEFAULTS.raster },
   };
-  for (const input of inputs) {
+  for (const raw of inputs) {
+    const input = migrateLegacyStyle(raw);
     if (!input) {
       continue;
     }
     if (input.palette !== undefined) {
       style.palette = input.palette;
+    }
+    if (input.reversePalette !== undefined) {
+      style.reversePalette = input.reversePalette;
     }
     if (input.renderMode !== undefined) {
       style.renderMode = input.renderMode;
@@ -144,12 +203,16 @@ export function mergeStyles(
   ...inputs: (LayerStyleInput | undefined)[]
 ): LayerStyleInput {
   const merged: LayerStyleInput = {};
-  for (const input of inputs) {
+  for (const raw of inputs) {
+    const input = migrateLegacyStyle(raw);
     if (!input) {
       continue;
     }
     if (input.palette !== undefined) {
       merged.palette = input.palette;
+    }
+    if (input.reversePalette !== undefined) {
+      merged.reversePalette = input.reversePalette;
     }
     if (input.renderMode !== undefined) {
       merged.renderMode = input.renderMode;
@@ -174,6 +237,12 @@ export function diffStyle(
   const diff: LayerStyleInput = {};
   if (style.palette !== undefined && style.palette !== base.palette) {
     diff.palette = style.palette;
+  }
+  if (
+    style.reversePalette !== undefined &&
+    style.reversePalette !== base.reversePalette
+  ) {
+    diff.reversePalette = style.reversePalette;
   }
   if (style.renderMode !== undefined && style.renderMode !== base.renderMode) {
     diff.renderMode = style.renderMode;
@@ -241,6 +310,7 @@ const RENDER_MODES: StyleRenderMode[] = [
   "raster+particles",
 ];
 const GRADES: ParticleGrade[] = ["off", "vibrant"];
+const ALPHA_FADE_CURVES: AlphaFadeCurve[] = ["linear", "log", "exp"];
 
 type Check = (value: unknown) => boolean;
 const isNumber = (value: unknown): value is number =>
@@ -272,6 +342,12 @@ const RASTER_CHECKS: Record<keyof RasterStyle, [Check, string]> = {
       v === null ||
       (Array.isArray(v) && v.length === 2 && v.every(isNumber) && v[0] < v[1]),
     "null or [min, max] with min < max",
+  ],
+  alphaFadeLow: [inRange(0, 1), "a number in [0, 1]"],
+  alphaFadeHigh: [inRange(0, 1), "a number in [0, 1]"],
+  alphaFadeCurve: [
+    (v) => ALPHA_FADE_CURVES.includes(v as AlphaFadeCurve),
+    `one of ${ALPHA_FADE_CURVES.join(", ")}`,
   ],
 };
 
@@ -361,6 +437,14 @@ export function parseLayerStyle(
           fail(`${at} must be a string`);
         }
         break;
+      case "reversePalette":
+        if (supports && !supports.palette) {
+          fail(`${at} is not supported here`);
+        }
+        if (typeof item !== "boolean") {
+          fail(`${at} must be a boolean`);
+        }
+        break;
       case "renderMode":
         if (supports && !supports.renderMode) {
           fail(`${at} is not supported here`);
@@ -395,5 +479,5 @@ export function parseLayerStyle(
         fail(`${at} is not a style key`);
     }
   }
-  return value as LayerStyleInput;
+  return migrateLegacyStyle(value as LayerStyleInput);
 }

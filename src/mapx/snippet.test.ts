@@ -135,6 +135,23 @@ describe("buildMapxWidgetSnippet", () => {
 
     expect(snippet).not.toContain("style:");
   });
+
+  it("writes a reversed palette and alpha fades when they differ", () => {
+    const snippet = buildMapxWidgetSnippet({
+      layerId: "fire-radiative-power",
+      layerKind: "scalar",
+      layerDefaults: { palette: "amp", raster: { alphaFadeLow: 0.1 } },
+      style: {
+        palette: "amp",
+        reversePalette: true,
+        raster: { alphaFadeLow: 0.1, alphaFadeHigh: 0.2 },
+      },
+    });
+
+    expect(snippet).toContain('"reversePalette": true');
+    expect(snippet).toContain('"alphaFadeHigh": 0.2');
+    expect(snippet).not.toContain("alphaFadeLow");
+  });
 });
 
 describe("buildStandaloneDemoSnippet", () => {

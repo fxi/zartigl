@@ -10,6 +10,7 @@ import {
   deriveDirectionMagnitudeComponents,
   formatUnit,
   getPalettes,
+  resolveColorRamp,
   resolveTimeInputSelection,
 } from "../lib";
 import type {
@@ -1157,6 +1158,13 @@ export class DemoApp {
     addDomBlade(folder, paletteSelect);
     this.paletteSelectEl = paletteSelect;
 
+    folder
+      .addBinding(this.params, "reversePalette", { label: "reverse palette" })
+      .on("change", (ev) => {
+        this.patchStyle({ reversePalette: ev.value });
+        this.syncLegend();
+      });
+
     // Legend DOM (gradient + image, toggled by syncLegend)
     const legendWrapper = document.createElement("div");
     legendWrapper.className = "pane-legend";
@@ -1198,6 +1206,19 @@ export class DemoApp {
       .on("change", (ev) =>
         this.patchStyle({ raster: { logScale: ev.value } }),
       );
+
+    // The fade curve (alphaFadeCurve) is a style key, not a pane control yet.
+    for (const [key, label] of [
+      ["alphaFadeLow", "fade low"],
+      ["alphaFadeHigh", "fade high"],
+    ] as const) {
+      folder
+        .addBinding(this.params, key, { min: 0, max: 1, step: 0.01, label })
+        .on("change", (ev) => {
+          this.patchStyle({ raster: { [key]: ev.value } });
+          this.syncLegend();
+        });
+    }
 
     folder
       .addBinding(this.params, "vibrance", {
@@ -1334,10 +1355,19 @@ export class DemoApp {
       if (this.paletteSelectEl) {
         this.paletteSelectEl.disabled = false;
       }
-      const palette = palettes.find((p) => p.id === legend.palette);
-      if (palette) {
-        // Checkerboard under the ramp shows transparent stops as see-through.
-        this.legendBar.style.background = `linear-gradient(to right, ${palette.colors.join(
+      if (palettes.some((p) => p.id === legend.palette)) {
+        // The ramp the map draws, reversed and faded alike; the checkerboard
+        // under it shows the transparent parts as see-through.
+        const stops = Object.entries(
+          resolveColorRamp(legend.palette, {
+            reverse: legend.reverse,
+            alphaFade: legend.alphaFade,
+          }),
+        )
+          .map(([position, color]) => [Number(position), color] as const)
+          .sort((a, b) => a[0] - b[0])
+          .map(([position, color]) => `${color} ${position * 100}%`);
+        this.legendBar.style.background = `linear-gradient(to right, ${stops.join(
           ", ",
         )}), repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0 / 8px 8px`;
       }

@@ -7,7 +7,9 @@ import {
   LAYER_STYLE_DEFAULTS,
   PARTICLE_STYLE_KEYS,
   RASTER_STYLE_KEYS,
+  diffStyle,
   mergeStyles,
+  migrateLegacyStyle,
   parseLayerStyle,
   resolveEntryStyle,
   resolveLayerStyle,
@@ -109,6 +111,96 @@ describe("mergeStyles", () => {
         undefined,
       ),
     ).toEqual({ palette: "a", particles: { density: 0.1, fade: 0.2 } });
+  });
+});
+
+describe("reversePalette and alpha fades", () => {
+  it("are off by default and travel like palette and raster keys", () => {
+    expect(LAYER_STYLE_DEFAULTS.reversePalette).toBe(false);
+    expect(LAYER_STYLE_DEFAULTS.raster).toMatchObject({
+      alphaFadeLow: 0,
+      alphaFadeHigh: 0,
+      alphaFadeCurve: "linear",
+    });
+    const style = resolveLayerStyle(
+      { palette: "viridis", raster: { alphaFadeLow: 0.2 } },
+      { reversePalette: true, raster: { alphaFadeHigh: 0.5 } },
+    );
+    expect(style.reversePalette).toBe(true);
+    expect(style.raster).toMatchObject({
+      alphaFadeLow: 0.2,
+      alphaFadeHigh: 0.5,
+    });
+    expect(mergeStyles({ reversePalette: true }, { palette: "a" })).toEqual({
+      palette: "a",
+      reversePalette: true,
+    });
+    expect(
+      diffStyle(
+        { reversePalette: false, raster: { alphaFadeCurve: "exp" } },
+        resolveLayerStyle(),
+      ),
+    ).toEqual({ raster: { alphaFadeCurve: "exp" } });
+  });
+
+  it("parse in range, reversePalette under palette support", () => {
+    const path = "style";
+    expect(
+      parseLayerStyle(
+        {
+          reversePalette: true,
+          raster: { alphaFadeLow: 0.1, alphaFadeCurve: "log" },
+        },
+        path,
+      ),
+    ).toEqual({
+      reversePalette: true,
+      raster: { alphaFadeLow: 0.1, alphaFadeCurve: "log" },
+    });
+    expect(() => parseLayerStyle({ reversePalette: "yes" }, path)).toThrow(
+      "style.reversePalette must be a boolean",
+    );
+    expect(() =>
+      parseLayerStyle({ raster: { alphaFadeHigh: 1.5 } }, path),
+    ).toThrow("style.raster.alphaFadeHigh must be a number in [0, 1]");
+    expect(() =>
+      parseLayerStyle({ raster: { alphaFadeCurve: "cubic" } }, path),
+    ).toThrow("style.raster.alphaFadeCurve must be one of linear, log, exp");
+    expect(() =>
+      parseLayerStyle({ reversePalette: true }, path, {
+        supports: { palette: false },
+      }),
+    ).toThrow("style.reversePalette is not supported here");
+  });
+});
+
+describe("migrateLegacyStyle", () => {
+  it("turns heat-alert into heat with its low values faded in", () => {
+    expect(
+      migrateLegacyStyle({ palette: "heat-alert", raster: { opacity: 0.5 } }),
+    ).toEqual({
+      palette: "heat",
+      raster: { alphaFadeLow: 0.25, opacity: 0.5 },
+    });
+    // What the input sets itself wins.
+    expect(
+      migrateLegacyStyle({ palette: "heat-alert", raster: { alphaFadeLow: 0 } })
+        .raster,
+    ).toEqual({ alphaFadeLow: 0 });
+    expect(migrateLegacyStyle({ palette: "viridis" })).toEqual({
+      palette: "viridis",
+    });
+  });
+
+  it("applies wherever styles enter", () => {
+    const legacy = { palette: "heat-alert" };
+    expect(resolveLayerStyle(legacy).palette).toBe("heat");
+    expect(resolveLayerStyle(legacy).raster.alphaFadeLow).toBe(0.25);
+    expect(mergeStyles(legacy).palette).toBe("heat");
+    expect(parseLayerStyle(legacy, "style")).toEqual({
+      palette: "heat",
+      raster: { alphaFadeLow: 0.25 },
+    });
   });
 });
 

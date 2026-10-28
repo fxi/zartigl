@@ -234,9 +234,14 @@
       "#110a35"
     ]
   },
+  "heat": {
+    "label": "Heat",
+    "tags": ["sequential"],
+    "colors": ["#fde725", "#fde725", "#f8961e", "#e63946", "#9d0208", "#3a0007"]
+  },
   "heat-alert": {
     "label": "Heat Alert",
-    "tags": ["sequential", "alpha"],
+    "tags": ["sequential", "alpha", "deprecated"],
     "colors": [
       "#fde72500",
       "#fde725cc",
