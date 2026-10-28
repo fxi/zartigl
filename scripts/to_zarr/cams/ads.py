@@ -8,8 +8,9 @@ base request, the variables and how each one is stored:
   name in the netCDF), `factor` and `offset` (unit conversion applied before
   storing, value × factor + offset),
   `units`, `longName`, and either `scaleFactor` (int16) or `dtype: "float32"`.
-  `zeroAsFill` stores exact zeros as missing (no fire, no plume), so empty
-  chunks are not written and the map stays transparent there.
+  `zeroAsFill` stores exact zeros as missing. Prefer real zeros: point series
+  then read 0, GeoVideo keeps a usable validity mask (it is the intersection
+  over frames), and the catalog style's `alphaFadeLow` makes them transparent.
 - `grid`: the fixed store grid. Each day is snapped onto it, or linearly
   interpolated when the provider changes resolution, so one store never mixes
   grids.

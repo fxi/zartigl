@@ -172,22 +172,26 @@ class PureFunctionsTest(unittest.TestCase):
 
 
 class ReadDayTest(unittest.TestCase):
-    def test_gfas_day_is_flipped_shifted_and_masked(self):
+    def test_gfas_day_is_flipped_and_shifted_with_its_zeros(self):
         config = gfas_config(date(2026, 1, 1))
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "gfas.nc"
             write_gfas(config, date(2026, 1, 1), date(2026, 1, 3), path)
             dataset = ads.read_day(config, [path], date(2026, 1, 2))
+            masked = ads.read_day(
+                {**config, "variables": {"frpfire": {**config["variables"]["frpfire"], "zeroAsFill": True}}},
+                [path], date(2026, 1, 2))
         self.assertEqual(dataset["frpfire"].dims, ("time", "latitude", "longitude"))
         np.testing.assert_array_equal(dataset["time"].values, [np.datetime64("2026-01-02T12:00", "ns")])
         np.testing.assert_array_equal(dataset["latitude"], [-60, -20, 20, 60])
         np.testing.assert_array_equal(dataset["longitude"], [-180, -90, 0, 90])
         expected = field(date(2026, 1, 2), 0)[::-1][:, [2, 3, 0, 1]] * np.float32(1e-3)
         frp = dataset["frpfire"].values[0]
-        # The zero pixel (north, lon 270 → −90) is missing for fire variables, kept for the observed fraction.
-        self.assertTrue(np.isnan(frp[3, 1]))
-        np.testing.assert_allclose(np.nan_to_num(frp), expected, rtol=1e-6)
-        self.assertEqual(dataset["offire"].values[0, 3, 1], 0)
+        # The zero pixel (north, lon 270 → −90) stays 0: no fire is a value, made transparent by style.
+        self.assertEqual(frp[3, 1], 0)
+        np.testing.assert_allclose(frp, expected, rtol=1e-6)
+        # zeroAsFill, still available, turns it into missing.
+        self.assertTrue(np.isnan(masked["frpfire"].values[0, 3, 1]))
         self.assertIn("Copernicus Atmosphere Monitoring Service information 2026", dataset.attrs["license"])
 
     def test_forecast_steps_become_valid_times_in_store_units(self):

@@ -6408,7 +6408,9 @@
           "colorDomain": [
             0.00071,
             0.53
-          ]
+          ],
+          "alphaFadeLow": 0.1,
+          "alphaFadeCurve": "exp"
         },
         "querySourceId": "012525a1-d516-416d-b459-b8458c822942"
       }
@@ -6471,7 +6473,9 @@
           "colorDomain": [
             3.6e-9,
             7.1e-7
-          ]
+          ],
+          "alphaFadeLow": 0.1,
+          "alphaFadeCurve": "exp"
         },
         "querySourceId": "aa6e7072-c2db-41f1-8c00-857de2ab11ad"
       }
@@ -6533,7 +6537,9 @@
           "colorDomain": [
             6,
             420
-          ]
+          ],
+          "alphaFadeLow": 0.05,
+          "alphaFadeCurve": "exp"
         },
         "querySourceId": "6fb6d430-19c4-4a25-a940-a75ad7d005d8"
       }

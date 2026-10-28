@@ -1112,6 +1112,51 @@
           "start": "2026-01-01T00:00:00Z"
         }
       ]
+    },
+    {
+      "sourceId": "3194a161-71af-4f9e-854e-4fe7365ac12e",
+      "catalogEntryId": "c495a019-0bc8-4ee7-a9de-b1422751e31f",
+      "title": "Wildfire Radiative Power",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "1e3586b4-0bef-43b1-a2b1-ff8c958d0865",
+      "catalogEntryId": "9298ea47-af9a-4fd1-bc83-5eb9dbf25c42",
+      "title": "Wildfire CO₂ Emissions",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "992af902-2b1b-438a-bb64-2f75e82ed4b9",
+      "catalogEntryId": "0389b091-6a73-4aef-9769-5995ac5d7cc4",
+      "title": "Smoke Injection Height",
+      "windows": [
+        {
+          "start": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
     }
   ]
 }

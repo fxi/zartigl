@@ -149,8 +149,9 @@ for today before the daily mean is out.
 Both start on 2026-01-01. GFAS switched from v1.2 to v1.4.2 on that day, and
 the two are not directly comparable, so the store holds only v1.4.2. GFAS
 fluxes are float32, because they span orders of magnitude. Zeros (no fire, no
-plume) are stored as missing, so empty chunks are skipped and the map is
-transparent there. The observed fraction keeps its zeros.
+plume) are stored as zeros: point series read 0, and GeoVideo, whose validity
+mask is the intersection over a chunk's frames, keeps a full mask. The catalog
+styles make them transparent with `raster.alphaFadeLow` (curve `exp`).
 
 ```bash
 uv run scripts/to_zarr/cams/gfas/convert.py plan
