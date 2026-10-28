@@ -123,6 +123,12 @@ describe("particle shader invalid-state guards", () => {
     expect(drawFrag).toContain("u_particle_contrast > 0.5");
   });
 
+  it("keeps the ramp alpha on particles, so alpha fades hide them too", () => {
+    expect(drawFrag).toContain(
+      "gl_FragColor = vec4(color.rgb, color.a * u_opacity)",
+    );
+  });
+
   it("uses CPU-normalized scalar values without physical-value arithmetic", () => {
     for (const shader of [gridFrag, gridGlobeFrag]) {
       expect(shader).toContain("t = clamp(sample.r, 0.0, 1.0)");

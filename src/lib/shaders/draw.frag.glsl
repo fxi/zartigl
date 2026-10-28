@@ -29,5 +29,6 @@ void main() {
         float useBlack = step(0.179, relativeLuminance(color.rgb));
         color.rgb = mix(vec3(1.0), vec3(0.0), useBlack);
     }
-    gl_FragColor = vec4(color.rgb, u_opacity);
+    // Ramp alpha (alphaFade, alpha palettes) hides slow or fast particles too.
+    gl_FragColor = vec4(color.rgb, color.a * u_opacity);
 }
