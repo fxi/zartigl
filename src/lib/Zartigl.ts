@@ -579,6 +579,30 @@ function alphaFadeOf(
     : undefined;
 }
 
+const FALLBACK_PALETTE = "rdylbu";
+const knownPalettes = new Set(
+  getPalettes({ includeDeprecated: true }).map((palette) => palette.id),
+);
+const warnedPalettes = new Set<string>();
+
+/**
+ * A palette id this engine can draw: an id it does not know (a palette added
+ * after it, named by a newer live catalog or widget) falls back, with one
+ * warning, instead of failing the layer.
+ */
+function drawablePalette<T extends ColorRampInput | undefined>(palette: T): T {
+  if (typeof palette !== "string" || knownPalettes.has(palette)) {
+    return palette;
+  }
+  if (!warnedPalettes.has(palette)) {
+    warnedPalettes.add(palette);
+    console.warn(
+      `[zartigl] palette "${palette}" is not in this version: drawn with "${FALLBACK_PALETTE}"`,
+    );
+  }
+  return FALLBACK_PALETTE as T;
+}
+
 /**
  * The ramp layers draw with: the palette, as stops reversed and faded when
  * the style asks, so every layer kind (Zarr, GeoVideo, particles) shows the
@@ -587,7 +611,8 @@ function alphaFadeOf(
 function layerRamp(
   settings: Partial<ZartiglSettings>,
 ): ColorRampInput | undefined {
-  const { palette, reversePalette } = settings;
+  const { reversePalette } = settings;
+  const palette = drawablePalette(settings.palette);
   const alphaFade = alphaFadeOf(settings);
   return palette != null && (reversePalette || alphaFade)
     ? resolveColorRamp(palette, { reverse: reversePalette, alphaFade })
@@ -1820,7 +1845,7 @@ export class Zartigl {
     if (this.catalogSource.type === "geovideo" && this.geoVideoManifest) {
       const palette =
         typeof this.settings.palette === "string"
-          ? this.settings.palette
+          ? drawablePalette(this.settings.palette)
           : "custom";
       const colorDomain =
         this.settings.colorDomain ?? this.geoVideoManifest.style.colorDomain;
@@ -1836,7 +1861,7 @@ export class Zartigl {
     }
     const palette =
       typeof this.settings.palette === "string"
-        ? this.settings.palette
+        ? drawablePalette(this.settings.palette)
         : "custom";
     const colorDomain =
       this.catalogLayer.kind === "scalar" ? this.settings.colorDomain : null;

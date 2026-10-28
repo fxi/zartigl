@@ -234,7 +234,7 @@ describe("parseLayerStyle", () => {
       particles: { density: 0.03, speed: 1, fade: 0.7, grade: "vibrant" },
       raster: { opacity: 0.9, colorDomain: [0, 5] },
     };
-    expect(parseLayerStyle(style, path, { kind: "vector" })).toBe(style);
+    expect(parseLayerStyle(style, path, { kind: "vector" })).toEqual(style);
     expect(() =>
       parseLayerStyle(
         {
@@ -294,6 +294,33 @@ describe("parseLayerStyle", () => {
     expect(() =>
       parseLayerStyle({ renderMode: "raster" }, path, { kind: "scalar" }),
     ).not.toThrow();
+  });
+
+  it("drops keys of a newer engine on request, still rejecting bad values", () => {
+    const warnings: string[] = [];
+    const warn = (message: string) => warnings.push(message);
+    expect(
+      parseLayerStyle(
+        { palette: "amp", glow: 1, raster: { opacity: 0.5, futureKey: true } },
+        path,
+        { unknownKeys: "drop", warn },
+      ),
+    ).toEqual({ palette: "amp", raster: { opacity: 0.5 } });
+    expect(warnings).toEqual([
+      `${path}.glow is not a style key of this zartigl version: ignored`,
+      `${path}.raster.futureKey is not a style key of this zartigl version: ignored`,
+    ]);
+    // A known key with a wrong value is a bug, not a newer engine.
+    expect(() =>
+      parseLayerStyle({ raster: { opacity: 2 } }, path, {
+        unknownKeys: "drop",
+        warn,
+      }),
+    ).toThrow(`${path}.raster.opacity must be a number in [0, 1]`);
+    // Strict by default.
+    expect(() => parseLayerStyle({ glow: 1 }, path)).toThrow(
+      `${path}.glow is not a style key`,
+    );
   });
 
   it("rejects keys the caller does not support", () => {

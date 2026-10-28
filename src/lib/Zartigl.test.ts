@@ -2164,6 +2164,33 @@ describe("Zartigl facade", () => {
     });
   });
 
+  it("draws a palette of a newer version with the fallback, warning once", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const map = new FakeMap();
+    const layer = scalarLayer({
+      defaults: {
+        palette: "palette-of-the-future",
+        raster: { colorDomain: [0, 1] },
+      },
+    });
+    const z = await createZartigl(
+      { source: "zarr", map: map as never, catalog: catalog(layer) },
+      "scalar",
+    );
+
+    expect(
+      (map.getLayer("zartigl") as unknown as { options: { colorRamp: string } })
+        .options.colorRamp,
+    ).toBe("rdylbu");
+    expect(z.getLegend()).toMatchObject({ palette: "rdylbu" });
+    expect(
+      warn.mock.calls.filter(([message]) =>
+        String(message).includes("palette-of-the-future"),
+      ),
+    ).toHaveLength(1);
+    warn.mockRestore();
+  });
+
   it("updates and clears a scalar color domain without recreating the layer", async () => {
     const map = new FakeMap();
     const z = await createZartigl(

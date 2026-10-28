@@ -302,7 +302,18 @@ export interface ParseLayerStyleOptions {
     particles?: readonly (keyof ParticleStyle)[];
     raster?: readonly (keyof RasterStyle)[];
   };
+  /**
+   * Keys that are not style keys at all: "throw" (default), or "drop" them
+   * with a warning, so a style written for a newer engine still renders with
+   * an older one. Invalid values of known keys always throw.
+   */
+  unknownKeys?: "throw" | "drop";
+  /** Where dropped keys are reported; console.warn by default. */
+  warn?: (message: string) => void;
 }
+
+/** What parseGroup and parseLayerStyle do with a key that is not a style key. */
+type Unknown = (at: string) => void;
 
 const RENDER_MODES: StyleRenderMode[] = [
   "particles",
@@ -394,13 +405,16 @@ function parseGroup<K extends string>(
   path: string,
   checks: Record<K, [Check, string]>,
   supported: readonly K[] | undefined,
+  unknown: Unknown,
 ): Partial<Record<K, unknown>> {
   if (!isObject(value)) {
     fail(`${path} must be an object`);
   }
+  const parsed: Partial<Record<K, unknown>> = {};
   for (const [key, item] of Object.entries(value)) {
     if (!Object.prototype.hasOwnProperty.call(checks, key)) {
-      fail(`${path}.${key} is not a style key`);
+      unknown(`${path}.${key}`);
+      continue;
     }
     if (supported && !supported.includes(key as K)) {
       fail(`${path}.${key} is not supported here`);
@@ -409,8 +423,9 @@ function parseGroup<K extends string>(
     if (!check(item)) {
       fail(`${path}.${key} must be ${expected}`);
     }
+    parsed[key as K] = item;
   }
-  return value as Partial<Record<K, unknown>>;
+  return parsed;
 }
 
 /**
@@ -422,10 +437,18 @@ export function parseLayerStyle(
   path: string,
   options: ParseLayerStyleOptions = {},
 ): LayerStyleInput {
-  const { kind, supports } = options;
+  const { kind, supports, unknownKeys = "throw" } = options;
+  const warn = options.warn ?? ((message: string) => console.warn(message));
+  const unknown: Unknown = (at) => {
+    if (unknownKeys === "throw") {
+      fail(`${at} is not a style key`);
+    }
+    warn(`${at} is not a style key of this zartigl version: ignored`);
+  };
   if (!isObject(value)) {
     fail(`${path} must be an object`);
   }
+  const parsed: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value)) {
     const at = `${path}.${key}`;
     switch (key) {
@@ -460,24 +483,28 @@ export function parseLayerStyle(
         if (kind === "scalar") {
           fail(`${at} needs a vector layer`);
         }
-        parseGroup(
+        parsed[key] = parseGroup(
           item,
           at,
           PARTICLE_CHECKS,
           supports && (supports.particles ?? []),
+          unknown,
         );
-        break;
+        continue;
       case "raster":
-        parseGroup(
+        parsed[key] = parseGroup(
           item,
           at,
           RASTER_CHECKS,
           supports && (supports.raster ?? []),
+          unknown,
         );
-        break;
+        continue;
       default:
-        fail(`${at} is not a style key`);
+        unknown(at);
+        continue;
     }
+    parsed[key] = item;
   }
-  return migrateLegacyStyle(value as LayerStyleInput);
+  return migrateLegacyStyle(parsed as LayerStyleInput);
 }

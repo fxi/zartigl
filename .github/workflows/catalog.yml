@@ -1,0 +1,40 @@
+name: Publish catalog
+
+# The live catalog that apps built against an older package (MapX) read:
+# loadCatalog() in @fxi/zartigl/catalog. Releases also keep an immutable copy.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - src/catalog/catalog.json
+      - src/lib/palettes.json
+      - package.json
+      - scripts/catalog_builder/publish_catalog.py
+      - scripts/catalog_builder/skills/validate_catalog.py
+      - .github/workflows/catalog.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One writer at a time; the newest catalog wins.
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      S3_KEY: ${{ secrets.S3_KEY }}
+      S3_SECRET: ${{ secrets.S3_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Publish
+        run: uv run scripts/catalog_builder/publish_catalog.py ${{ startsWith(github.ref, 'refs/tags/v') && '--release' || '' }}

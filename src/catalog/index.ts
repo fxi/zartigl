@@ -341,3 +341,10 @@ export function formatVertical(
   }
   return `${Math.round(v)} m`;
 }
+
+export { CATALOG_URL, compareVersions, loadCatalog } from "./remote";
+export type {
+  LoadCatalogOptions,
+  LoadedCatalog,
+  PublishedCatalog,
+} from "./remote";

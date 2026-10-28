@@ -44,3 +44,7 @@ uv run scripts/catalog_builder/skills/validate_remote.py --entry <uuid-or-alias>
 6. Validate the catalog, compare it with live provider metadata, and smoke-test remote rendering/query behavior.
 
 Catalog validation checks structure and cross-references, not remote availability.
+
+## Publishing
+
+A merged catalog change is live at once: `.github/workflows/catalog.yml` publishes `catalog.json` to `catalog/v2/catalog.json` on the zartigl bucket (`scripts/catalog_builder/publish_catalog.py`), and each release tag keeps an immutable `catalog/v2/releases/<version>.json`. Apps built against an older package read the live copy with `loadCatalog()` from `@fxi/zartigl/catalog` (MapX `ArcoMapLegend` does by default), falling back to their bundled catalog when it cannot be read. A new entry therefore reaches MapX without a MapX release, but it is drawn by MapX's engine: a style key or palette that engine predates is ignored or replaced, with a warning. The published document adds `minEngine`, the package version that published it. A schema change publishes under `catalog/v3/`; `v2/` then stays frozen for older apps.
