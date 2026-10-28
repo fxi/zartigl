@@ -24,7 +24,7 @@ ARCO layers of [MapX](https://app.mapx.org).
 | Runtime library | `src/lib/` | `@fxi/zartigl`: the `Zartigl` facade, Zarr/WMTS/GeoVideo layers, shaders, particle simulation, point queries |
 | Catalog | `src/catalog/`, `scripts/catalog_builder/` | `@fxi/zartigl/catalog` presets and the tools that discover, describe, and validate entries |
 | GeoVideo pipeline | `scripts/geovideo/`, `.github/workflows/geovideo.yml` | Single renders and incremental archives published to S3, rendered daily on a self-hosted runner |
-| Demos | `src/demo-prod/`, `src/demo-story/` | Technical demo and narrative story, deployed to GitHub Pages |
+| Demos | `src/explorer/`, `src/demo-story/` | Catalog explorer and narrative story, deployed to GitHub Pages |
 | MapX integration | `src/mapx/` | Widget and standalone snippet generation for reproducible MapX views |
 
 ## Features

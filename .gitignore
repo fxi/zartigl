@@ -13,7 +13,6 @@ dist/
 dist-demo/
 dist-demo-minimal/
 dist-demo-mapbox/
-dist-demo-prod/
 dist-story/
 dist-projection/
 dist-story-projversor/

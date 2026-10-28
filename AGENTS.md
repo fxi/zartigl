@@ -11,7 +11,7 @@
   and `story` never import MapLibre (`npm run build:lib` checks the dist).
 - `src/story/` contains the story runtime (documents, registry, pager, scene
   timer), published as `@fxi/zartigl/story`.
-- `src/demo-prod/` is the full interactive demo app.
+- `src/explorer/` is the catalog explorer, the full interactive demo app.
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
   helper scripts.

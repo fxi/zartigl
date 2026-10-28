@@ -4,7 +4,7 @@ import glsl from "vite-plugin-glsl";
 export default defineConfig({
   plugins: [glsl()],
   base: "/zartigl/",
-  root: "src/demo-prod",
+  root: "src/explorer",
   publicDir: false,
   envDir: "../..",
   envPrefix: ["VITE_", "MAPTILER_", "PROTOMAPS_"],
