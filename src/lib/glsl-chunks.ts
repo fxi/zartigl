@@ -1,3 +1,4 @@
+import velocityBlendGlsl from "./shaders/velocity-blend.glsl";
 import colorGradeGlsl from "./shaders/color-grade.glsl";
 import geoVideoScalarGlsl from "./shaders/geovideo-scalar.glsl";
 import randomGlsl from "./shaders/random.glsl";
@@ -26,3 +27,6 @@ export const RANDOM_GLSL: string = randomGlsl;
  * decoder: frames go to the GPU as images, never read back.
  */
 export const GEOVIDEO_SCALAR_GLSL: string = geoVideoScalarGlsl;
+
+/** Physical velocity/validity decoding and temporal blending; GLSL ES 1.0 and 3.0. */
+export const VELOCITY_BLEND_GLSL: string = velocityBlendGlsl;

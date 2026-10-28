@@ -35,6 +35,8 @@ float draw(uint stream) {
 }
 
 // Mercator [0,1] -> geographic longitude [-180,180]
+#include ./velocity-pair.glsl;
+
 float mercToLng(float x) {
     return x * 360.0 - 180.0;
 }
@@ -113,8 +115,8 @@ void main() {
     float inData = geoInData(geoUV);
 
     // Sample velocity and decode from normalized [0,1] back to physical
-    vec2 velNorm = texture(u_velocity, geoUV).rg;
-    vec2 velocity = mix(u_velocity_min, u_velocity_max, velNorm);
+    vec3 field = sampleVelocityPair(u_velocity, geoUV, u_velocity_min, u_velocity_max);
+    vec2 velocity = field.xy;
     float speed = length(velocity);
 
     // Mercator distortion correction
@@ -188,7 +190,7 @@ void main() {
     float drop = step(1.0 - dropRate, draw(DROP));
 
     // Drop if on land / no data (alpha channel = validity mask)
-    float valid = texture(u_velocity, geoUV).a * inData;
+    float valid = field.z * inData;
     float outOfData = 1.0 - step(u_valid_threshold, valid);
 
     // Also drop if out of viewport bounds

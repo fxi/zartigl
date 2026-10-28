@@ -52,6 +52,24 @@ export const scalarManifest: GeoVideoManifest = {
   style: { palette: "balance", colorDomain: [-3, 3] },
 };
 
+/** The same sample timeline encoded as physical vector components. */
+export const vectorManifest: GeoVideoManifest = {
+  ...scalarManifest,
+  media: { ...scalarManifest.media, height: scalarManifest.media.height * 2 },
+  encoding: {
+    kind: "vector-luma",
+    bits: 8,
+    codeMin: 16,
+    codeMax: 235,
+    valueDomain: 2,
+    transfer: "sqrt",
+    layout: "stacked-uv",
+    colorSpace: "bt709",
+    colorRange: "limited",
+  },
+  style: { palette: "balance", colorDomain: [0, Math.SQRT2 * 2], unit: "m/s" },
+};
+
 /** GL calls with distinct constants, texture identities and recorded uploads. */
 export function geoVideoTestGl() {
   let textureId = 0;
@@ -63,6 +81,8 @@ export function geoVideoTestGl() {
     bindTexture: vi.fn(),
     pixelStorei: vi.fn(),
     uniform1f: vi.fn(),
+    uniform1i: vi.fn(),
+    uniform2f: vi.fn(),
     drawElements: vi.fn(),
     getUniformLocation: vi.fn((_program: unknown, name: string) => name),
     getParameter: vi.fn((name: number): unknown => {

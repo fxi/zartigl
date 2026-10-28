@@ -1,3 +1,6 @@
+import { geoVideoTestGl } from "./test-geovideo";
+import type { VelocityTexturePair } from "./velocity-pair";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { StateTextureFormat } from "./gl-util";
@@ -128,5 +131,126 @@ describe("ParticleSimulation camera trail fade", () => {
     };
 
     expect(internals.shouldSuppressRgba8Particles(512 * 2 ** 12)).toBe(false);
+  });
+});
+
+describe("ParticleSimulation velocity pairs", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function setup() {
+    const { gl, calls } = geoVideoTestGl();
+    const simulation = new ParticleSimulation();
+    // Test the render passes with already-allocated GPU resources.
+    const locations = (pass: string) =>
+      new Proxy({}, { get: (_target, name) => `${pass}:${String(name)}` });
+    Object.assign(simulation, {
+      gl,
+      screenWidth: 800,
+      screenHeight: 600,
+      updateLocs: locations("update"),
+      drawLocs: locations("draw"),
+      gridLocs: locations("grid"),
+      gridGlobeLocs: locations("globe"),
+      fadeLocs: locations("fade"),
+      compositeLocs: locations("composite"),
+      particleStateTextures: [{}, {}],
+      particleFramebuffers: [{}, {}],
+      screenTextures: [{}, {}],
+      screenFramebuffers: [{}, {}],
+    });
+    const render = (pair?: VelocityTexturePair, globe = false) =>
+      simulation.render(
+        1,
+        [-2, -3],
+        [2, 3],
+        new Float32Array(16),
+        { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+        512,
+        [0],
+        { west: -180, south: -90, east: 180, north: 90 },
+        globe,
+        [0, 0, 1],
+        [0, 0, 1, 0],
+        pair,
+      );
+    return { calls, render };
+  }
+
+  it.each([false, true])(
+    "sends the same mix to advection, speed color and raster (globe=%s)",
+    (globe) => {
+      const { calls, render } = setup();
+      render(
+        {
+          a: {
+            unit: 1,
+            min: [-2, -3],
+            max: [2, 3],
+            physical: true,
+            northToSouth: true,
+          },
+          b: {
+            unit: 4,
+            min: [-5, -6],
+            max: [5, 6],
+            physical: true,
+            northToSouth: true,
+          },
+          mix: 0.375,
+        },
+        globe,
+      );
+      for (const pass of ["update", "draw", globe ? "globe" : "grid"]) {
+        expect(calls.uniform1f).toHaveBeenCalledWith(
+          `${pass}:u_velocity_mix`,
+          0.375,
+        );
+        expect(calls.uniform1f).toHaveBeenCalledWith(
+          `${pass}:u_velocity_physical`,
+          1,
+        );
+        expect(calls.uniform1f).toHaveBeenCalledWith(
+          `${pass}:u_velocity_next_flip_y`,
+          1,
+        );
+        expect(calls.uniform1i).toHaveBeenCalledWith(
+          `${pass}:u_velocity_next`,
+          4,
+        );
+        expect(calls.uniform2f).toHaveBeenCalledWith(
+          `${pass}:u_velocity_next_min`,
+          -5,
+          -6,
+        );
+        expect(calls.uniform2f).toHaveBeenCalledWith(
+          `${pass}:u_velocity_next_max`,
+          5,
+          6,
+        );
+      }
+    },
+  );
+
+  it("keeps Zarr single-field sampling, decoding and row order", () => {
+    const { calls, render } = setup();
+    render();
+    for (const pass of ["update", "draw", "grid"]) {
+      expect(calls.uniform1f).toHaveBeenCalledWith(`${pass}:u_velocity_mix`, 0);
+      expect(calls.uniform1f).toHaveBeenCalledWith(
+        `${pass}:u_velocity_physical`,
+        0,
+      );
+      expect(calls.uniform1f).toHaveBeenCalledWith(
+        `${pass}:u_velocity_flip_y`,
+        0,
+      );
+      expect(calls.uniform1i).toHaveBeenCalledWith(
+        `${pass}:u_velocity_next`,
+        1,
+      );
+    }
   });
 });

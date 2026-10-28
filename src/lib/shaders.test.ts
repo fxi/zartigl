@@ -32,6 +32,25 @@ describe("particle shader invalid-state guards", () => {
     expect(geoVideoFrag).toContain("texture2D(u_color_ramp");
     expect(geoVideoFrag).toContain("alpha *= ramp.a");
   });
+  it("uses the shared physical velocity blend in advection, color and both speed rasters", () => {
+    for (const shader of [updateFrag, drawVert, gridFrag, gridGlobeFrag]) {
+      expect(shader).toContain(
+        "vec3 blendVelocity(vec3 a, vec3 b, float fraction)",
+      );
+      expect(shader).toContain("vec3 sampleVelocityPair(");
+      expect(shader).toContain("u_velocity_next_min");
+      expect(shader).toContain("u_velocity_next_max");
+      expect(shader).toContain("if (u_velocity_mix <= 0.0) return a");
+      expect(shader).toContain("u_velocity_next_flip_y");
+      expect(shader).toContain("return blendVelocity(a, b, u_velocity_mix)");
+    }
+    expect(updateFrag).toContain("vec2 velocity = field.xy");
+    expect(drawVert).toContain("vec2 velocity = velSample.xy");
+    for (const shader of [gridFrag, gridGlobeFrag]) {
+      expect(shader).toContain("float speed = length(sample.rg)");
+    }
+  });
+
   it("fades trail alpha only, so fading trails keep their color", () => {
     expect(fadeFrag).toContain(
       "float alpha = floor(color.a * 255.0 * u_opacity) / 255.0",

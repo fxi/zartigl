@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CatalogRenderLayer,
   buildWmtsLegendUrl,
@@ -14,7 +14,10 @@ import type {
   CatalogZarrSource,
 } from "../catalog/types";
 import type { CatalogRenderLayerOptions } from "./types";
-import type { GeoVideoManifest } from "./geovideo";
+import { geoVideoTimelineValues } from "./geovideo";
+import { GeoVideoVectorSource } from "./GeoVideoVectorSource";
+import { ParticleSimulation } from "./ParticleSimulation";
+import { vectorManifest, geoVideoTestGl, flushFrames } from "./test-geovideo";
 import { VectorLayer } from "./VectorLayer";
 
 const zarr: CatalogZarrSource = {
@@ -184,106 +187,183 @@ describe("source dispatch", () => {
 });
 
 describe("vector GeoVideo playback", () => {
-  const times = [
-    "2026-08-01T00:00:00Z",
-    "2026-08-01T01:00:00Z",
-    "2026-08-01T02:00:00Z",
-  ];
-  const manifest = {
-    id: "video",
-    bounds: [-180, -80, 180, 90],
-    media: { url: "video.mp4", width: 16, height: 16, fps: 3 },
-    encoding: { kind: "vector-luma", codeMin: 16, codeMax: 235 },
-    mask: { threshold: 0.5 },
-    timeline: { kind: "sample-sequence", values: times },
-  } as unknown as GeoVideoManifest;
+  const times = geoVideoTimelineValues(vectorManifest);
+  const frame = {
+    u: new Float32Array(128).fill(1),
+    v: new Float32Array(128).fill(-0.5),
+  };
   const vectorEntry: CatalogEntry = {
     ...entry,
     kind: "vector",
     sources: [video],
   };
 
-  it("steps through the artifact at the requested cadence and emits playback events", () => {
-    vi.useFakeTimers();
-    const cached = vi
-      .spyOn(VectorLayer.prototype, "isFrameCached")
-      .mockReturnValue(true);
-    const prefetch = vi
-      .spyOn(VectorLayer.prototype, "prefetchTime")
-      .mockResolvedValue();
-    const setTime = vi
-      .spyOn(VectorLayer.prototype, "setTime")
-      .mockImplementation(() => {});
-    const layer = new CatalogRenderLayer({
-      ...options(video),
-      entry: vectorEntry,
-      time: Date.parse(times[0]),
-      geoVideoManifest: manifest,
-      geoVideoLoop: false,
-      geoVideoStepsPerSecond: 2,
-    });
-    const events: Array<[string, unknown]> = [];
-    layer.on("timeChange", (time) => events.push(["time", time]));
-    layer.on("playbackChange", (playing) => events.push(["playing", playing]));
-    layer.on("playbackEnd", () => events.push(["end", null]));
-
-    void layer.play();
-    vi.advanceTimersByTime(1_500);
-
-    expect(events).toEqual([
-      ["playing", true],
-      ["time", Date.parse(times[1])],
-      ["time", Date.parse(times[2])],
-      ["playing", false],
-      ["end", null],
-    ]);
-    expect(setTime).toHaveBeenLastCalledWith(Date.parse(times[2]));
-
-    void layer.play();
-    expect(vi.getTimerCount()).toBe(1);
-    const remove = vi
-      .spyOn(VectorLayer.prototype, "onRemove")
-      .mockImplementation(() => {});
-    layer.onRemove();
-    expect(vi.getTimerCount()).toBe(0);
-    remove.mockRestore();
-    cached.mockRestore();
-    prefetch.mockRestore();
-    setTime.mockRestore();
-    vi.useRealTimers();
+  beforeEach(() => {
+    vi.spyOn(GeoVideoVectorSource.prototype, "frame").mockResolvedValue(frame);
+    vi.spyOn(ParticleSimulation.prototype, "init").mockImplementation(() => {});
+    vi.spyOn(ParticleSimulation.prototype, "resize").mockImplementation(
+      () => {},
+    );
+    vi.spyOn(ParticleSimulation.prototype, "render").mockImplementation(
+      () => {},
+    );
+    vi.spyOn(ParticleSimulation.prototype, "destroy").mockImplementation(
+      () => {},
+    );
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("stops playback and reports an error when the next frame cannot load", async () => {
-    vi.useFakeTimers();
-    const failure = new Error("decode failed");
-    const cached = vi
-      .spyOn(VectorLayer.prototype, "isFrameCached")
-      .mockReturnValue(false);
-    const prefetch = vi
-      .spyOn(VectorLayer.prototype, "prefetchTime")
-      .mockRejectedValue(failure);
+  async function setup() {
+    const { gl } = geoVideoTestGl();
+    Object.assign(gl, { canvas: { width: 800, height: 600 } });
+    const map = {
+      on: vi.fn(),
+      off: vi.fn(),
+      triggerRepaint: vi.fn(),
+      getLayer: vi.fn(),
+      getSource: vi.fn(),
+      getProjection: () => ({ type: "globe" }),
+      getZoom: () => 2,
+      getCenter: () => ({ lng: 0, lat: 0 }),
+      getBounds: () => ({
+        getWest: () => -180,
+        getEast: () => 180,
+        getSouth: () => -80,
+        getNorth: () => 80,
+      }),
+    };
     const layer = new CatalogRenderLayer({
       ...options(video),
       entry: vectorEntry,
-      time: Date.parse(times[0]),
-      geoVideoManifest: manifest,
+      time: times[0],
+      geoVideoManifest: vectorManifest,
+      geoVideoLoop: false,
       geoVideoStepsPerSecond: 2,
+      geoVideoTimeRange: [times[0], times[2]],
     });
-    const events: Array<[string, unknown]> = [];
-    layer.on("playbackChange", (playing) => events.push(["playing", playing]));
-    layer.on("error", (error) => events.push(["error", error]));
+    const events = {
+      timeChange: vi.fn(),
+      playbackChange: vi.fn(),
+      playbackEnd: vi.fn(),
+      error: vi.fn(),
+      loaded: vi.fn(),
+    };
+    for (const [name, fn] of Object.entries(events)) {
+      layer.on(name as keyof typeof events, fn);
+    }
+    await layer.onAdd(map as never, gl);
+    await flushFrames();
+    const render = async (now: number) => {
+      vi.spyOn(performance, "now").mockReturnValue(now);
+      layer.render(gl, {
+        modelViewProjectionMatrix: new Float32Array(16),
+        defaultProjectionData: { clippingPlane: [0, 0, 1, 0] },
+      } as never);
+      await flushFrames();
+    };
+    return { layer, events, render };
+  }
 
-    void layer.play();
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(events).toEqual([
-      ["playing", true],
-      ["playing", false],
-      ["error", failure],
+  it("advances on renders and sends physical pairs and fractions to the simulation", async () => {
+    const { layer, events, render } = await setup();
+    const setTime = vi.spyOn(VectorLayer.prototype, "setTime");
+    await layer.play();
+    await render(0);
+    await render(250);
+    const calls = vi.mocked(ParticleSimulation.prototype.render).mock.calls;
+    expect(calls[calls.length - 1][11]).toEqual({
+      a: {
+        unit: 1,
+        min: [-2, -2],
+        max: [2, 2],
+        physical: true,
+        northToSouth: true,
+      },
+      b: {
+        unit: 4,
+        min: [-2, -2],
+        max: [2, 2],
+        physical: true,
+        northToSouth: true,
+      },
+      mix: 0.5,
+    });
+    await render(500);
+    await render(750);
+    await render(1000);
+    await render(1500);
+    expect(events.timeChange.mock.calls).toEqual([
+      [times[0]],
+      [times[1]],
+      [times[2]],
     ]);
-    expect(vi.getTimerCount()).toBe(0);
-    cached.mockRestore();
-    prefetch.mockRestore();
-    vi.useRealTimers();
+    expect(events.playbackChange.mock.calls).toEqual([[true], [false]]);
+    expect(events.playbackEnd).toHaveBeenCalledOnce();
+    expect(setTime).not.toHaveBeenCalled();
+    layer.onRemove();
+  });
+
+  it("pauses on an exact step and resumes at the changed cadence", async () => {
+    const { layer, render } = await setup();
+    await layer.play();
+    await render(0);
+    await render(250);
+    layer.pause();
+    await flushFrames();
+    await render(300);
+    let calls = vi.mocked(ParticleSimulation.prototype.render).mock.calls;
+    expect(calls[calls.length - 1][11]?.mix).toBe(0);
+    layer.setStepsPerSecond(1);
+    await layer.play();
+    await render(1000);
+    await render(1250);
+    calls = vi.mocked(ParticleSimulation.prototype.render).mock.calls;
+    expect(calls[calls.length - 1][11]?.mix).toBe(0.25);
+    layer.onRemove();
+  });
+
+  it("stops and reports a decode failure while retaining the displayed pair", async () => {
+    const { layer, events, render } = await setup();
+    const failure = new Error("decode failed");
+    vi.mocked(GeoVideoVectorSource.prototype.frame).mockRejectedValue(failure);
+    await layer.play();
+    await render(0);
+    await render(500);
+    expect(events.playbackChange.mock.calls).toEqual([[true], [false]]);
+    expect(events.error).toHaveBeenCalledWith(failure);
+    expect(ParticleSimulation.prototype.render).toHaveBeenCalled();
+    layer.onRemove();
+  });
+
+  it("preloads and replaces a chunk in place, preserving playing state and the next-preload signal", async () => {
+    const { layer, events, render } = await setup();
+    const next = {
+      ...vectorManifest,
+      media: { ...vectorManifest.media, url: "next.mp4" },
+    };
+    expect(layer.preloadGeoVideoManifest(next, { time: times[3] })).toBe(true);
+    await flushFrames();
+    await layer.play();
+    await render(0);
+    await render(1500);
+    expect(events.playbackEnd).toHaveBeenCalledOnce();
+    expect(events.playbackChange.mock.calls).toEqual([[true]]);
+    expect(
+      layer.replaceGeoVideoManifest(next, {
+        time: times[3],
+        stepsPerSecond: 1,
+      }),
+    ).toBe(true);
+    await flushFrames();
+    await render(2000);
+    await render(2250);
+    expect(events.loaded).toHaveBeenCalledTimes(2);
+    expect(events.playbackChange.mock.calls).toEqual([[true], [true]]);
+    const calls = vi.mocked(ParticleSimulation.prototype.render).mock.calls;
+    expect(calls[calls.length - 1][11]?.mix).toBe(0.25);
+    layer.onRemove();
   });
 });

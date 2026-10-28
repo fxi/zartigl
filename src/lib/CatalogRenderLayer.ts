@@ -23,9 +23,7 @@ import type {
 import type { RenderMode } from "./ParticleSimulation";
 import type { ZartiglStatus } from "./load-status";
 import { GeoVideoLayer } from "./GeoVideoLayer";
-import { GeoVideoVectorSource } from "./GeoVideoVectorSource";
-import { geoVideoTimelineValues, type GeoVideoManifest } from "./geovideo";
-import { SteppedPlayback } from "./stepped-playback";
+import { type GeoVideoManifest } from "./geovideo";
 import type {
   GeoVideoLayerDebugInfo,
   GeoVideoReplaceOptions,
@@ -63,10 +61,6 @@ export type CatalogRenderLayerDebugInfo = {
 
 function toIsoTime(time: string | number): string {
   return typeof time === "string" ? time : new Date(time).toISOString();
-}
-
-function toMs(time: string | number): number {
-  return typeof time === "number" ? time : new Date(time).getTime();
 }
 
 function encodeParam(value: string | number): string {
@@ -192,17 +186,6 @@ export function selectCatalogRenderLayerBackend(
   return options.entry.kind === "vector" ? "vector-zarr" : "scalar-zarr";
 }
 
-/** Artifact time steps inside the active time range. */
-function playbackValues(
-  manifest: GeoVideoManifest,
-  range?: [number, number],
-): number[] {
-  const values = geoVideoTimelineValues(manifest);
-  return range
-    ? values.filter((value) => value >= range[0] && value <= range[1])
-    : values;
-}
-
 function scalarLayerVariable(source: CatalogZarrSource): string {
   return source.variables.kind === "scalar" ? source.variables.value : "scalar";
 }
@@ -234,9 +217,6 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   private readonly options: CatalogRenderLayerOptions;
   private readonly backend: CatalogRenderLayerBackend;
   private delegate: ScalarLayer | VectorLayer | GeoVideoLayer | null = null;
-  private frameSource: GeoVideoVectorSource | null = null;
-  /** Vector GeoVideo playback, which decodes one frame at a time. */
-  private steppedPlayback: SteppedPlayback | null = null;
   private map: MaplibreMap | null = null;
   private rasterSourceId: string;
   private rasterLayerId: string;
@@ -272,42 +252,20 @@ export class CatalogRenderLayer implements CustomLayerInterface {
       if (!options.geoVideoManifest) {
         throw new Error("Vector GeoVideo requires a loaded manifest");
       }
-      this.frameSource = new GeoVideoVectorSource(options.geoVideoManifest);
       this.delegate = new VectorLayer({
         ...options,
         source: options.geoVideoManifest.media.url,
-        zarrSource: this.frameSource,
+        geoVideo: {
+          manifest: options.geoVideoManifest,
+          autoplay: options.geoVideoAutoplay ?? false,
+          loop: options.geoVideoLoop,
+          stepsPerSecond: options.geoVideoStepsPerSecond ?? 1,
+          timeRange: options.geoVideoTimeRange,
+        },
         variableU: "u",
         variableV: "v",
         vectorDerivation: undefined,
         unit: options.unit ?? "",
-      });
-      const vector = this.delegate;
-      this.steppedPlayback = new SteppedPlayback({
-        values: playbackValues(
-          options.geoVideoManifest,
-          options.geoVideoTimeRange,
-        ),
-        time: toMs(this.time),
-        stepsPerSecond: options.geoVideoStepsPerSecond ?? 1,
-        loop: options.geoVideoLoop ?? true,
-        isReady: (time) => vector.isFrameCached(time),
-        // A frame that cannot be loaded stops playback and reports why.
-        prefetch: (time) =>
-          void vector.prefetchTime(time).catch((error: unknown) => {
-            this.steppedPlayback?.pause();
-            this.emit(
-              "error",
-              error instanceof Error ? error : new Error(String(error)),
-            );
-          }),
-        onStep: (time) => {
-          this.time = time;
-          vector.setTime(time);
-          this.emit("timeChange", time);
-        },
-        onChange: (playing) => this.emit("playbackChange", playing),
-        onEnd: () => this.emit("playbackEnd"),
       });
     } else if (this.backend === "scalar-zarr") {
       const sourceConfig = options.sourceConfig as CatalogZarrSource;
@@ -351,6 +309,14 @@ export class CatalogRenderLayer implements CustomLayerInterface {
         vibrance: options.vibrance,
       });
     }
+    if (
+      this.delegate instanceof VectorLayer &&
+      this.backend === "vector-geovideo"
+    ) {
+      this.delegate.on("timeChange", (time) => {
+        this.time = time;
+      });
+    }
   }
 
   getBackend(): CatalogRenderLayerBackend {
@@ -383,9 +349,6 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     this.map = map;
     if (this.delegate) {
       const added = this.delegate.onAdd(map, gl);
-      if (this.options.geoVideoAutoplay) {
-        this.steppedPlayback?.play();
-      }
       return added;
     }
     this.addOrUpdateWmts();
@@ -402,16 +365,13 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   onRemove(): void {
-    this.steppedPlayback?.destroy();
     this.delegate?.onRemove();
-    this.frameSource?.release();
     this.removeWmts();
     this.map = null;
   }
 
   setTime(time: string | number): void {
     this.time = time;
-    this.steppedPlayback?.setTime(toMs(time));
     if (this.suspended) {
       return;
     }
@@ -426,7 +386,6 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   setTimeAndDepth(time: string | number, depth: number): void {
     this.time = time;
     this.depth = depth;
-    this.steppedPlayback?.setTime(toMs(time));
     if (this.suspended) {
       return;
     }
@@ -468,7 +427,6 @@ export class CatalogRenderLayer implements CustomLayerInterface {
       return;
     }
     this.suspended = true;
-    this.steppedPlayback?.halt();
     if (this.delegate) {
       this.delegate.suspend();
       return;
@@ -484,7 +442,6 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     if (this.delegate) {
       this.delegate.setTimeAndDepth(this.time, this.depth);
       this.delegate.resume();
-      this.steppedPlayback?.resume();
       return;
     }
     this.addOrUpdateWmts();
@@ -574,24 +531,30 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   }
 
   async play(): Promise<void> {
-    if (this.delegate instanceof GeoVideoLayer) {
+    if (
+      this.delegate instanceof GeoVideoLayer ||
+      this.delegate instanceof VectorLayer
+    ) {
       await this.delegate.play();
     }
-    this.steppedPlayback?.play();
   }
 
   pause(): void {
-    if (this.delegate instanceof GeoVideoLayer) {
+    if (
+      this.delegate instanceof GeoVideoLayer ||
+      this.delegate instanceof VectorLayer
+    ) {
       this.delegate.pause();
     }
-    this.steppedPlayback?.pause();
   }
 
   setLoop(loop: boolean): void {
-    if (this.delegate instanceof GeoVideoLayer) {
+    if (
+      this.delegate instanceof GeoVideoLayer ||
+      this.delegate instanceof VectorLayer
+    ) {
       this.delegate.setLoop(loop);
     }
-    this.steppedPlayback?.setLoop(loop);
   }
 
   /** Media rate multiplier of a scalar GeoVideo. */
@@ -601,24 +564,24 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     }
   }
 
-  /** Cadence of a vector GeoVideo, which plays frame by frame. */
+  /** Cadence of the continuous vector GeoVideo clock. */
   setStepsPerSecond(stepsPerSecond: number): void {
-    this.steppedPlayback?.setStepsPerSecond(stepsPerSecond);
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setStepsPerSecond(stepsPerSecond);
+    }
   }
 
   setTimeRange(range: [number, number]): void {
-    if (this.delegate instanceof GeoVideoLayer) {
+    if (
+      this.delegate instanceof GeoVideoLayer ||
+      this.delegate instanceof VectorLayer
+    ) {
       this.delegate.setTimeRange(range);
-    }
-    if (this.steppedPlayback && this.options.geoVideoManifest) {
-      this.steppedPlayback.setValues(
-        playbackValues(this.options.geoVideoManifest, range),
-      );
     }
   }
 
   /**
-   * Move a scalar GeoVideo to another artifact, such as the next archive
+   * Move a GeoVideo to another artifact, such as the next archive
    * chunk, without rebuilding the map layer. False when a new layer is needed.
    */
   replaceGeoVideoManifest(
@@ -627,7 +590,10 @@ export class CatalogRenderLayer implements CustomLayerInterface {
   ): boolean {
     if (
       this.suspended ||
-      !(this.delegate instanceof GeoVideoLayer) ||
+      !(
+        this.delegate instanceof GeoVideoLayer ||
+        this.delegate instanceof VectorLayer
+      ) ||
       !this.delegate.replaceManifest(manifest, options)
     ) {
       return false;
@@ -638,14 +604,15 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     return true;
   }
 
-  /** Load the scalar GeoVideo artifact expected next, such as the next archive chunk. */
+  /** Load the GeoVideo artifact expected next, such as the next archive chunk. */
   preloadGeoVideoManifest(
     manifest: GeoVideoManifest,
     options: GeoVideoReplaceOptions,
   ): boolean {
     return (
       !this.suspended &&
-      this.delegate instanceof GeoVideoLayer &&
+      (this.delegate instanceof GeoVideoLayer ||
+        this.delegate instanceof VectorLayer) &&
       this.delegate.preloadManifest(manifest, options)
     );
   }

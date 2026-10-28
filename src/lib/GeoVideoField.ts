@@ -90,6 +90,7 @@ export class GeoVideoField {
   private mask: WebGLTexture | null = null;
   private pair: [WebGLTexture, WebGLTexture, number] | null = null;
   private destroyed = false;
+  private linearFilter = true;
   uploadedFrames = 0;
   lastUploadDurationMs = 0;
 
@@ -184,14 +185,7 @@ export class GeoVideoField {
     }
     for (const i of [index, next, next + 1]) {
       if (i < this.times.length) {
-        void this.request(i).catch((error: unknown) => {
-          if (
-            !(error instanceof Error && error.name === "AbortError") &&
-            !this.destroyed
-          ) {
-            this.options.onError?.(error);
-          }
-        });
+        void this.request(i).catch(() => undefined);
       }
     }
     const a = this.textures.get(index);
@@ -202,6 +196,32 @@ export class GeoVideoField {
     }
     this.evict(index);
     return this.pair;
+  }
+
+  /** Switch spatial filtering without changing the decoded-step cache. */
+  setFilter(linear: boolean): void {
+    if (this.linearFilter === linear) {
+      return;
+    }
+    this.linearFilter = linear;
+    const gl = this.gl;
+    const previous = gl.getParameter(
+      gl.TEXTURE_BINDING_2D,
+    ) as WebGLTexture | null;
+    for (const texture of this.textures.values()) {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MIN_FILTER,
+        linear ? gl.LINEAR : gl.NEAREST,
+      );
+      gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MAG_FILTER,
+        linear ? gl.LINEAR : gl.NEAREST,
+      );
+    }
+    gl.bindTexture(gl.TEXTURE_2D, previous);
   }
 
   get maskTexture(): WebGLTexture | null {
@@ -269,6 +289,16 @@ export class GeoVideoField {
           this.lastUploadDurationMs = performance.now() - started;
           this.options.onReady?.();
         }
+      })
+      .catch((error: unknown) => {
+        if (
+          !this.destroyed &&
+          this.pending.get(index) === job &&
+          !(error instanceof Error && error.name === "AbortError")
+        ) {
+          this.options.onError?.(error);
+        }
+        throw error;
       })
       .finally(() => {
         // A cancelled request can settle after the one that replaced it.
@@ -382,8 +412,16 @@ export class GeoVideoField {
         : gl.CLAMP_TO_EDGE,
     );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MIN_FILTER,
+      this.linearFilter ? gl.LINEAR : gl.NEAREST,
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MAG_FILTER,
+      this.linearFilter ? gl.LINEAR : gl.NEAREST,
+    );
     return texture;
   }
 

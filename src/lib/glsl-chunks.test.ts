@@ -1,7 +1,9 @@
+import velocityBlend from "./shaders/velocity-blend.glsl";
 import { describe, expect, it } from "vitest";
 import {
   COLOR_GRADE_GLSL,
   GEOVIDEO_SCALAR_GLSL,
+  VELOCITY_BLEND_GLSL,
   RANDOM_GLSL,
   VIBRANCE_GLSL,
 } from "./glsl-chunks";
@@ -18,6 +20,7 @@ describe("shared GLSL chunks", () => {
     expect(COLOR_GRADE_GLSL).toBe(colorGrade);
     expect(RANDOM_GLSL).toBe(random);
     expect(GEOVIDEO_SCALAR_GLSL).toBe(geoVideoScalar);
+    expect(VELOCITY_BLEND_GLSL).toBe(velocityBlend);
   });
 
   it("are self-contained, with vibrance once in the color grade", () => {
@@ -26,6 +29,7 @@ describe("shared GLSL chunks", () => {
       COLOR_GRADE_GLSL,
       RANDOM_GLSL,
       GEOVIDEO_SCALAR_GLSL,
+      VELOCITY_BLEND_GLSL,
     ];
     for (const chunk of chunks) {
       expect(chunk).not.toContain("#include");
@@ -37,5 +41,14 @@ describe("shared GLSL chunks", () => {
     expect(GEOVIDEO_SCALAR_GLSL).toContain(
       "float geoVideoScalarValue(float r)",
     );
+  });
+  it("decodes each representation before mixing physical components and validity", () => {
+    expect(VELOCITY_BLEND_GLSL).toContain(
+      "if (physical > 0.5) return texel.xyz",
+    );
+    expect(VELOCITY_BLEND_GLSL).toContain(
+      "vec3(mix(minimum, maximum, texel.rg), texel.a)",
+    );
+    expect(VELOCITY_BLEND_GLSL).toContain("return mix(a, b, fraction)");
   });
 });

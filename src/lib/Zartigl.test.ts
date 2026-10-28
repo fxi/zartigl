@@ -1264,46 +1264,49 @@ describe("Zartigl facade", () => {
       expect(map.layers.get(id)).not.toBe(attached);
     });
 
-    it("preloads the next scalar chunk while playing and swaps it in without a new request", async () => {
-      const map = new FakeMap();
-      const z = await createZartigl(
-        {
-          map: map as never,
-          catalog: archiveCatalog("scalar"),
-          time: "2026-08-10T00:00:00Z",
-        },
-        GEO_ENTRY_ID,
-      );
-      vi.spyOn(z, "play").mockResolvedValue();
-      const preload = vi
-        .spyOn(CatalogRenderLayer.prototype, "preloadGeoVideoManifest")
-        .mockReturnValue(true);
-      const replace = vi
-        .spyOn(CatalogRenderLayer.prototype, "replaceGeoVideoManifest")
-        .mockReturnValue(true);
-      onTestFinished(() => {
-        preload.mockRestore();
-        replace.mockRestore();
-      });
-      const layer = map.layers.get(z.getDebugInfo().id) as unknown as {
-        emit: (event: "playbackChange", playing: boolean) => void;
-      };
-      const septemberRequests = () =>
-        manifestRequests().filter((url) => url.includes("september")).length;
+    it.each(["scalar", "vector"] as const)(
+      "preloads the next %s chunk while playing and swaps it in without a new request",
+      async (kind) => {
+        const map = new FakeMap();
+        const z = await createZartigl(
+          {
+            map: map as never,
+            catalog: archiveCatalog(kind),
+            time: "2026-08-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        vi.spyOn(z, "play").mockResolvedValue();
+        const preload = vi
+          .spyOn(CatalogRenderLayer.prototype, "preloadGeoVideoManifest")
+          .mockReturnValue(true);
+        const replace = vi
+          .spyOn(CatalogRenderLayer.prototype, "replaceGeoVideoManifest")
+          .mockReturnValue(true);
+        onTestFinished(() => {
+          preload.mockRestore();
+          replace.mockRestore();
+        });
+        const layer = map.layers.get(z.getDebugInfo().id) as unknown as {
+          emit: (event: "playbackChange", playing: boolean) => void;
+        };
+        const septemberRequests = () =>
+          manifestRequests().filter((url) => url.includes("september")).length;
 
-      layer.emit("playbackChange", true);
-      await vi.waitFor(() => expect(preload).toHaveBeenCalledOnce());
-      const [preloaded, options] = preload.mock.calls[0];
-      expect(preloaded.timeline).toMatchObject({ values: chunks.september });
-      expect(options.time).toBe(Date.parse(chunks.september[0]));
-      expect(septemberRequests()).toBe(1);
+        layer.emit("playbackChange", true);
+        await vi.waitFor(() => expect(preload).toHaveBeenCalledOnce());
+        const [preloaded, options] = preload.mock.calls[0];
+        expect(preloaded.timeline).toMatchObject({ values: chunks.september });
+        expect(options.time).toBe(Date.parse(chunks.september[0]));
+        expect(septemberRequests()).toBe(1);
 
-      await (
-        z as unknown as { continueArchivePlayback: () => Promise<void> }
-      ).continueArchivePlayback();
-      expect(replace).toHaveBeenCalledWith(preloaded, expect.anything());
-      expect(septemberRequests()).toBe(1);
-    });
+        await (
+          z as unknown as { continueArchivePlayback: () => Promise<void> }
+        ).continueArchivePlayback();
+        expect(replace).toHaveBeenCalledWith(preloaded, expect.anything());
+        expect(septemberRequests()).toBe(1);
+      },
+    );
 
     it("keeps a time requested while a chunk handoff resolves", async () => {
       const map = new FakeMap();

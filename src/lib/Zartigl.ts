@@ -1263,8 +1263,7 @@ export class Zartigl {
         const shownValues = artifactValues.length ? artifactValues : values;
         const swapInPlace =
           this.catalogLayer?.id === catalogLayer.id &&
-          this.catalogSource?.type === "geovideo" &&
-          catalogLayer.kind !== "vector";
+          this.catalogSource?.type === "geovideo";
         const previousPalette = this.settings.palette;
         this.catalogLayer = catalogLayer;
         this.catalogSource = requestedSource;
@@ -2271,7 +2270,7 @@ export class Zartigl {
   }
 
   /**
-   * Show another artifact of the same scalar GeoVideo entry, such as the next
+   * Show another artifact of the same GeoVideo entry, such as the next
    * archive chunk, in the attached layer. The last frame stays on screen until
    * the new media is ready, instead of a blank map while a new layer loads.
    */
@@ -2283,7 +2282,7 @@ export class Zartigl {
       !layer ||
       !this.geoVideoManifest ||
       !this.isAttached(layer) ||
-      layer.getBackend() !== "scalar-geovideo"
+      !["scalar-geovideo", "vector-geovideo"].includes(layer.getBackend())
     ) {
       return false;
     }
@@ -2294,6 +2293,10 @@ export class Zartigl {
         timeRange: playback.geoVideoTimeRange,
         loop: playback.geoVideoLoop,
         playbackRate: playback.geoVideoPlaybackRate,
+        stepsPerSecond:
+          this.catalogLayer?.kind === "vector"
+            ? this.appliedStepsPerSecond()
+            : undefined,
       })
     ) {
       return false;
@@ -2587,7 +2590,7 @@ export class Zartigl {
     layer: CatalogRenderLayer,
   ): Promise<void> {
     const current = this.catalogSource;
-    if (this.catalogLayer?.kind === "vector" || !current) {
+    if (!current) {
       return;
     }
     try {

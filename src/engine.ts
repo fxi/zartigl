@@ -62,6 +62,7 @@ export {
 export {
   COLOR_GRADE_GLSL,
   GEOVIDEO_SCALAR_GLSL,
+  VELOCITY_BLEND_GLSL,
   RANDOM_GLSL,
   VIBRANCE_GLSL,
 } from "./lib/glsl-chunks";
@@ -105,3 +106,14 @@ export type {
   GeoVideoFieldOptions,
   FieldUniforms,
 } from "./lib/GeoVideoField";
+
+export { GeoVideoPlayback } from "./lib/GeoVideoPlayback";
+export type {
+  GeoVideoPlaybackOptions,
+  GeoVideoPlaybackReplaceOptions,
+  GeoVideoPlaybackEvents,
+} from "./lib/GeoVideoPlayback";
+export type {
+  VelocityTextureField,
+  VelocityTexturePair,
+} from "./lib/velocity-pair";

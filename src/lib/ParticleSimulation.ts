@@ -1,4 +1,9 @@
 import {
+  VELOCITY_PAIR_UNIFORMS,
+  setVelocityPairUniforms,
+  type VelocityTexturePair,
+} from "./velocity-pair";
+import {
   createProgram,
   createTexture,
   createTextureFormat,
@@ -251,6 +256,7 @@ export class ParticleSimulation {
     // Cache uniform locations
     this.updateLocs = this.getUniforms(this.updateProgram, [
       "u_particles",
+      ...VELOCITY_PAIR_UNIFORMS,
       "u_velocity",
       "u_velocity_min",
       "u_velocity_max",
@@ -267,6 +273,7 @@ export class ParticleSimulation {
     this.drawLocs = this.getUniforms(this.drawProgram, [
       "u_particles",
       "u_prev_particles",
+      ...VELOCITY_PAIR_UNIFORMS,
       "u_velocity",
       "u_velocity_min",
       "u_velocity_max",
@@ -295,6 +302,7 @@ export class ParticleSimulation {
       "u_grade",
     ]);
     this.gridLocs = this.getUniforms(this.gridProgram, [
+      ...VELOCITY_PAIR_UNIFORMS,
       "u_field",
       "u_color_ramp",
       "u_matrix",
@@ -314,6 +322,7 @@ export class ParticleSimulation {
       "u_solid",
     ]);
     this.gridGlobeLocs = this.getUniforms(this.gridGlobeProgram, [
+      ...VELOCITY_PAIR_UNIFORMS,
       "u_field",
       "u_color_ramp",
       "u_matrix",
@@ -520,7 +529,10 @@ export class ParticleSimulation {
     isGlobe = false,
     globeCenter: [number, number, number] = [0, 0, 1],
     clippingPlane?: [number, number, number, number],
+    velocityPair?: VelocityTexturePair,
   ): void {
+    const first = { unit: velocityTexUnit, min: velocityMin, max: velocityMax };
+    const pair = velocityPair ?? { a: first, b: first, mix: 0 };
     const gl = this.gl;
 
     if (this.screenWidth === 0 || this.screenHeight === 0) {
@@ -559,17 +571,10 @@ export class ParticleSimulation {
       bindTexture(gl, this.particleStateTextures[0], 0);
       gl.uniform1i(this.updateLocs["u_particles"], 0);
 
-      gl.uniform1i(this.updateLocs["u_velocity"], velocityTexUnit);
-      gl.uniform2f(
-        this.updateLocs["u_velocity_min"],
-        velocityMin[0],
-        velocityMin[1],
-      );
-      gl.uniform2f(
-        this.updateLocs["u_velocity_max"],
-        velocityMax[0],
-        velocityMax[1],
-      );
+      setVelocityPairUniforms(gl, this.updateLocs, pair);
+      gl.uniform1i(this.updateLocs["u_velocity"], pair.a.unit);
+      gl.uniform2f(this.updateLocs["u_velocity_min"], ...pair.a.min);
+      gl.uniform2f(this.updateLocs["u_velocity_max"], ...pair.a.max);
       gl.uniform1f(this.updateLocs["u_speed"], this.params.speed);
       gl.uniform1f(this.updateLocs["u_world_size"], worldSize);
       gl.uniform1ui(this.updateLocs["u_frame"], this.frame);
@@ -669,6 +674,7 @@ export class ParticleSimulation {
           clippingPlane,
           1,
           solid,
+          pair,
         );
       } else if (!isGlobe) {
         this.renderGrid(
@@ -681,6 +687,7 @@ export class ParticleSimulation {
           geoBounds,
           1,
           solid,
+          pair,
         );
       }
     };
@@ -706,17 +713,10 @@ export class ParticleSimulation {
       bindTexture(gl, this.particleStateTextures[0], 3);
       gl.uniform1i(this.drawLocs["u_prev_particles"], 3);
 
-      gl.uniform1i(this.drawLocs["u_velocity"], velocityTexUnit);
-      gl.uniform2f(
-        this.drawLocs["u_velocity_min"],
-        velocityMin[0],
-        velocityMin[1],
-      );
-      gl.uniform2f(
-        this.drawLocs["u_velocity_max"],
-        velocityMax[0],
-        velocityMax[1],
-      );
+      setVelocityPairUniforms(gl, this.drawLocs, pair);
+      gl.uniform1i(this.drawLocs["u_velocity"], pair.a.unit);
+      gl.uniform2f(this.drawLocs["u_velocity_min"], ...pair.a.min);
+      gl.uniform2f(this.drawLocs["u_velocity_max"], ...pair.a.max);
       if (geoBounds) {
         gl.uniform4f(
           this.drawLocs["u_geo_bounds"],
@@ -825,6 +825,7 @@ export class ParticleSimulation {
     geoBounds: { west: number; south: number; east: number; north: number },
     opacityScale = 1,
     solid: Vec4 = NO_SOLID,
+    velocityPair?: VelocityTexturePair,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridProgram);
@@ -839,6 +840,7 @@ export class ParticleSimulation {
       velocityMax,
       opacityScale,
       solid,
+      velocityPair,
     );
     gl.uniformMatrix4fv(
       this.gridLocs["u_matrix"],
@@ -881,6 +883,7 @@ export class ParticleSimulation {
     clippingPlane: [number, number, number, number],
     opacityScale = 1,
     solid: Vec4 = NO_SOLID,
+    velocityPair?: VelocityTexturePair,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridGlobeProgram);
@@ -895,6 +898,7 @@ export class ParticleSimulation {
       velocityMax,
       opacityScale,
       solid,
+      velocityPair,
     );
     gl.uniformMatrix4fv(
       this.gridGlobeLocs["u_matrix"],
@@ -938,9 +942,13 @@ export class ParticleSimulation {
     velocityMax: [number, number],
     opacityScale: number,
     solid: Vec4,
+    velocityPair?: VelocityTexturePair,
   ): void {
     const gl = this.gl;
-    gl.uniform1i(locs["u_field"], velocityTexUnit);
+    const first = { unit: velocityTexUnit, min: velocityMin, max: velocityMax };
+    const pair = velocityPair ?? { a: first, b: first, mix: 0 };
+    setVelocityPairUniforms(gl, locs, pair);
+    gl.uniform1i(locs["u_field"], pair.a.unit);
     gl.uniform4f(locs["u_solid"], ...solid);
 
     bindTexture(gl, this.colorRampTexture, 2);
@@ -952,10 +960,10 @@ export class ParticleSimulation {
     );
     gl.uniform1f(locs["u_field_min"], 0.0);
     gl.uniform1f(locs["u_field_max"], maxSpeed > 0 ? maxSpeed : 1.0);
-    gl.uniform1f(locs["u_u_min"], velocityMin[0]);
-    gl.uniform1f(locs["u_u_max"], velocityMax[0]);
-    gl.uniform1f(locs["u_v_min"], velocityMin[1]);
-    gl.uniform1f(locs["u_v_max"], velocityMax[1]);
+    gl.uniform1f(locs["u_u_min"], pair.a.min[0]);
+    gl.uniform1f(locs["u_u_max"], pair.a.max[0]);
+    gl.uniform1f(locs["u_v_min"], pair.a.min[1]);
+    gl.uniform1f(locs["u_v_max"], pair.a.max[1]);
     gl.uniform1f(locs["u_opacity"], this.params.opacity * opacityScale);
     gl.uniform1f(locs["u_log_scale"], this.params.logScale ? 1.0 : 0.0);
     gl.uniform1f(locs["u_vibrance"], this.params.vibrance);

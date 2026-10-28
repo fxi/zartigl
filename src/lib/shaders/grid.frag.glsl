@@ -18,12 +18,18 @@ varying vec2 v_geo_uv;            // field texture UV [0,1]
 
 #include ./vibrance.glsl;
 
+#include ./velocity-pair.glsl;
+
 void main() {
     if (v_geo_uv.x < 0.0 || v_geo_uv.x > 1.0 || v_geo_uv.y < 0.0 || v_geo_uv.y > 1.0) {
         discard;
     }
 
     vec4 sample = texture2D(u_field, v_geo_uv);
+    if (u_scalar_mode < 0.5) {
+        vec3 velocity = sampleVelocityPair(u_field, v_geo_uv, vec2(u_u_min, u_v_min), vec2(u_u_max, u_v_max));
+        sample = vec4(velocity.xy, 0.0, velocity.z);
+    }
 
     // validity mask (alpha channel)
     if (sample.a < 0.5) {
@@ -41,9 +47,7 @@ void main() {
         t = clamp(sample.r, 0.0, 1.0);
     } else {
         // Vector: decode physical values, compute speed magnitude
-        float u = mix(u_u_min, u_u_max, sample.r);
-        float v = mix(u_v_min, u_v_max, sample.g);
-        float speed = length(vec2(u, v));
+        float speed = length(sample.rg);
         t = clamp((speed - u_field_min) / (u_field_max - u_field_min), 0.0, 1.0);
     }
 

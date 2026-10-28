@@ -1,3 +1,10 @@
+import {
+  GeoVideoPlayback,
+  type GeoVideoPlaybackEvents,
+  type GeoVideoPlaybackReplaceOptions,
+} from "./GeoVideoPlayback";
+import type { GeoVideoManifest } from "./geovideo";
+import type { VelocityTexturePair } from "./velocity-pair";
 import type {
   Map as MaplibreMap,
   CustomLayerInterface,
@@ -40,7 +47,7 @@ import { fadeToOpacity } from "./trail-fade";
 
 // ── Minimal event emitter ────────────────────────────────────────────
 
-type LayerEventMap = {
+type LayerEventMap = GeoVideoPlaybackEvents & {
   loading: () => void;
   loaded: (meta: FieldMeta) => void;
   error: (err: Error) => void;
@@ -75,9 +82,17 @@ export class VectorLayer implements CustomLayerInterface {
   private map: MaplibreMap | null = null;
   private gl: WebGL2RenderingContext | null = null;
 
+  private readonly playback: GeoVideoPlayback | null;
+  private readonly geoVideoManifest?: GeoVideoManifest;
   private simulation: ParticleSimulation;
   private velocityField: VelocityField;
-  private zarrSource: VectorFieldSource;
+  private readonly zarrSourceValue: VectorFieldSource | null;
+  private get zarrSource(): VectorFieldSource {
+    if (!this.zarrSourceValue) {
+      throw new Error("GeoVideo fields are owned by the playback controller");
+    }
+    return this.zarrSourceValue;
+  }
 
   private variableU: string;
   private variableV: string;
@@ -108,6 +123,41 @@ export class VectorLayer implements CustomLayerInterface {
 
   constructor(options: VectorLayerOptions) {
     this.id = options.id;
+    this.geoVideoManifest = options.geoVideo?.manifest;
+    if (
+      this.geoVideoManifest &&
+      this.geoVideoManifest.encoding.kind !== "vector-luma"
+    ) {
+      throw new Error("Vector GeoVideo requires a vector-luma manifest");
+    }
+    this.playback = options.geoVideo
+      ? new GeoVideoPlayback(
+          { ...options.geoVideo, time: options.time },
+          () => this.map?.triggerRepaint(),
+          (event, ...args) => {
+            if (event === "loaded") {
+              this.initialized = true;
+              const meta = args[0] as FieldMeta;
+              const encoding = this.playback?.field?.manifest.encoding;
+              this.emit("loaded", {
+                ...meta,
+                min: 0,
+                max:
+                  encoding?.kind === "vector-luma"
+                    ? Math.SQRT2 * encoding.valueDomain
+                    : meta.max,
+                unit: this.unit,
+                depth: this.depth,
+              });
+              return;
+            }
+            if (event === "timeChange") {
+              this.time = args[0] as number;
+            }
+            this.emit(event, ...args);
+          },
+        )
+      : null;
 
     this.variableU = options.variableU ?? "uo";
     this.variableV = options.variableV ?? "vo";
@@ -115,7 +165,9 @@ export class VectorLayer implements CustomLayerInterface {
     this.unit = options.unit ?? "m/s";
     this.time = options.time ?? 0;
     this.depth = options.depth ?? 0;
-    this.zarrSource = options.zarrSource ?? new ZarrSource(options.source);
+    this.zarrSourceValue = this.playback
+      ? null
+      : (options.zarrSource ?? new ZarrSource(options.source));
     this.velocityField = new VelocityField();
     this.simulation = new ParticleSimulation({
       particleDensity: options.particleDensity ?? 0.05,
@@ -145,7 +197,22 @@ export class VectorLayer implements CustomLayerInterface {
     this.velocityField.init(gl);
 
     // Load Zarr metadata and initial velocity data
-    this.initAsync();
+    if (this.playback && this.geoVideoManifest) {
+      this.emit("loading");
+      this.emit("status", { phase: "metadata" });
+      void this.playback
+        .load(gl, this.geoVideoManifest)
+        .catch((error: unknown) => {
+          const err = error instanceof Error ? error : new Error(String(error));
+          if (err.name !== "AbortError" && this.map) {
+            this.playback?.pause();
+            this.emit("status", { phase: "error", error: err });
+            this.emit("error", err);
+          }
+        });
+    } else {
+      this.initAsync();
+    }
 
     // Trail history is screen-space. During camera motion, decay it rapidly
     // instead of clearing every frame, preserving short visual continuity.
@@ -221,6 +288,9 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   private reloadIfViewportUncovered(): void {
+    if (this.playback) {
+      return;
+    }
     if (!this.map || !this.initialized) {
       return;
     }
@@ -478,16 +548,63 @@ export class VectorLayer implements CustomLayerInterface {
   ): void {
     const gl = requireWebGL2(context);
     const matrix = options.modelViewProjectionMatrix;
+    if (this.suspended || !this.map) {
+      return;
+    }
+    const textures = this.playback?.sample(performance.now());
+    const field = this.playback?.field;
     if (
-      this.suspended ||
-      !this.initialized ||
-      !this.velocityField.hasData() ||
-      !this.map
+      this.playback
+        ? !textures || !field
+        : !this.initialized || !this.velocityField.hasData()
     ) {
       return;
     }
-
+    field?.setFilter(this.simulation.renderMode !== "raster");
+    const domain =
+      field?.manifest.encoding.kind === "vector-luma"
+        ? field.manifest.encoding.valueDomain
+        : 0;
+    const minimum: [number, number] = field
+      ? [-domain, -domain]
+      : [this.velocityField.uMin, this.velocityField.vMin];
+    const maximum: [number, number] = field
+      ? [domain, domain]
+      : [this.velocityField.uMax, this.velocityField.vMax];
+    const geoBounds = field
+      ? {
+          west: field.bounds[0],
+          south: field.bounds[1],
+          east: field.bounds[2],
+          north: field.bounds[3],
+        }
+      : this.velocityField.geoBounds;
+    const pair: VelocityTexturePair | undefined = textures
+      ? {
+          a: {
+            unit: 1,
+            min: minimum,
+            max: maximum,
+            physical: true,
+            northToSouth: true,
+          },
+          b: {
+            unit: 4,
+            min: minimum,
+            max: maximum,
+            physical: true,
+            northToSouth: true,
+          },
+          mix: textures[2],
+        }
+      : undefined;
     const saved = saveGLState(gl);
+    const textureBindings = textures
+      ? [1, 4].map((unit) => {
+          gl.activeTexture(gl.TEXTURE0 + unit);
+          return gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
+        })
+      : [];
 
     try {
       const canvas = gl.canvas as HTMLCanvasElement;
@@ -497,7 +614,14 @@ export class VectorLayer implements CustomLayerInterface {
       gl.bindFramebuffer(gl.FRAMEBUFFER, saved.framebuffer);
 
       // Bind velocity texture
-      this.velocityField.bind(this.velocityTexUnit);
+      if (textures) {
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+        gl.activeTexture(gl.TEXTURE4);
+        gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+      } else {
+        this.velocityField.bind(this.velocityTexUnit);
+      }
 
       // MapLibre's matrix maps [0, worldSize] Mercator → clip space.
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
@@ -516,18 +640,23 @@ export class VectorLayer implements CustomLayerInterface {
       const center = this.map.getCenter();
       this.simulation.render(
         this.velocityTexUnit,
-        [this.velocityField.uMin, this.velocityField.vMin],
-        [this.velocityField.uMax, this.velocityField.vMax],
+        minimum,
+        maximum,
         matrix,
         mercBounds,
         worldSize,
         worldCopyOffsets,
-        this.velocityField.geoBounds,
+        geoBounds,
         isGlobe,
         globeCenterVector(center.lng, center.lat),
         options.defaultProjectionData.clippingPlane,
+        ...(pair ? ([pair] as const) : ([] as const)),
       );
     } finally {
+      textureBindings.forEach((texture, index) => {
+        gl.activeTexture(gl.TEXTURE0 + (index === 0 ? 1 : 4));
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+      });
       restoreGLState(gl, saved);
     }
 
@@ -541,6 +670,7 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   onRemove(): void {
+    this.playback?.destroy();
     this.generation++;
     this.requestId++;
     this.pendingReadyTime = null;
@@ -555,7 +685,7 @@ export class VectorLayer implements CustomLayerInterface {
         this.map.off("moveend", this.moveEndHandler);
       }
     }
-    this.zarrSource.cancelAll();
+    this.zarrSourceValue?.cancelAll();
     this.simulation.destroy();
     this.velocityField.destroy();
     this.frameCache.clear();
@@ -567,6 +697,11 @@ export class VectorLayer implements CustomLayerInterface {
   // --- Public setters ---
 
   setTime(time: string | number): void {
+    if (this.playback) {
+      this.time = time;
+      this.playback.setTime(time);
+      return;
+    }
     this.requestId++;
     this.pendingReadyTime = null;
     this.time = time;
@@ -589,6 +724,10 @@ export class VectorLayer implements CustomLayerInterface {
   }
 
   setTimeAndDepth(time: string | number, depth: number): void {
+    if (this.playback) {
+      this.setTime(time);
+      return;
+    }
     this.requestId++;
     this.pendingReadyTime = null;
     const depthChanged = this.depth !== depth;
@@ -627,6 +766,10 @@ export class VectorLayer implements CustomLayerInterface {
    * loaded, so playback can stop instead of waiting for it.
    */
   async prefetchTime(ms: number): Promise<void> {
+    if (this.playback) {
+      await this.playback.field?.prime(ms);
+      return;
+    }
     if (this.suspended || !this.map || !this.initialized) {
       return;
     }
@@ -654,11 +797,17 @@ export class VectorLayer implements CustomLayerInterface {
 
   /** True when the frame for the given time (ms) is already in the cache. */
   isFrameCached(ms: number): boolean {
+    if (this.playback) {
+      return this.playback.field?.ready(ms) ?? false;
+    }
     return this.frameCache.has(ms);
   }
 
   /** Abort all pending Zarr prefetch fetches and clear the inflight set. */
   cancelPrefetches(): void {
+    if (this.playback) {
+      return;
+    }
     this.zarrSource.cancelAll();
     this.inflight.clear();
   }
@@ -668,6 +817,10 @@ export class VectorLayer implements CustomLayerInterface {
       return;
     }
     this.suspended = true;
+    if (this.playback) {
+      this.playback.suspend();
+      return;
+    }
     this.requestId++;
     this.pendingReadyTime = null;
     this.reloadQueued = false;
@@ -681,10 +834,17 @@ export class VectorLayer implements CustomLayerInterface {
       return;
     }
     this.suspended = false;
+    if (this.playback) {
+      this.playback.resume();
+      return;
+    }
     this.loadViewportVelocity({ resetParticles: true });
   }
 
   setDepth(depth: number): void {
+    if (this.playback) {
+      return;
+    }
     this.requestId++;
     this.pendingReadyTime = null;
     this.depth = depth;
@@ -696,6 +856,34 @@ export class VectorLayer implements CustomLayerInterface {
       return;
     }
     this.loadViewportVelocity();
+  }
+
+  async play(): Promise<void> {
+    await this.playback?.play();
+  }
+  pause(): void {
+    this.playback?.pause();
+  }
+  setLoop(loop: boolean): void {
+    this.playback?.setLoop(loop);
+  }
+  setStepsPerSecond(value: number): void {
+    this.playback?.setStepsPerSecond(value);
+  }
+  setTimeRange(range: [number, number]): void {
+    this.playback?.setTimeRange(range);
+  }
+  replaceManifest(
+    manifest: GeoVideoManifest,
+    options: GeoVideoPlaybackReplaceOptions = {},
+  ): boolean {
+    return this.playback?.replaceManifest(manifest, options) ?? false;
+  }
+  preloadManifest(
+    manifest: GeoVideoManifest,
+    options: GeoVideoPlaybackReplaceOptions = {},
+  ): boolean {
+    return this.playback?.preloadManifest(manifest, options) ?? false;
   }
 
   setSpeed(v: number): void {

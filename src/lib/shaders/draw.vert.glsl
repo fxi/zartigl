@@ -21,6 +21,8 @@ uniform vec3 u_globe_center; // visible hemisphere center in unit-sphere coords
 varying float v_speed;
 varying float v_valid;
 
+#include ./velocity-pair.glsl;
+
 const float PI = 3.141592653589793;
 
 float mercToLng(float x) {
@@ -85,7 +87,7 @@ vec2 geoUvFromPosition(vec2 p) {
 
 float dataValidityAtPosition(vec2 p) {
     vec2 geoUV = geoUvFromPosition(p);
-    return texture2D(u_velocity, geoUV).a * geoInData(geoUV);
+    return sampleVelocityPair(u_velocity, geoUV, u_velocity_min, u_velocity_max).z * geoInData(geoUV);
 }
 
 vec3 globeEcef(vec2 p) {
@@ -123,15 +125,15 @@ void main() {
 
     vec2 geoUV = geoUvFromPosition(currPos);
 
-    vec4 velSample = texture2D(u_velocity, geoUV);
-    v_valid = velSample.a * geoInData(geoUV);
+    vec3 velSample = sampleVelocityPair(u_velocity, geoUV, u_velocity_min, u_velocity_max);
+    v_valid = velSample.z * geoInData(geoUV);
     if (v_valid < u_valid_threshold) {
         hideParticle();
         return;
     }
 
     float lat = u_is_globe > 0.5 ? (currPos.y * 180.0 - 90.0) : mercToLat(currPos.y);
-    vec2 velocity = mix(u_velocity_min, u_velocity_max, velSample.rg);
+    vec2 velocity = velSample.xy;
     float speed = length(velocity);
     float maxSpeed = length(max(abs(u_velocity_min), abs(u_velocity_max)));
     v_speed = clamp(speed / max(maxSpeed, 0.001), 0.0, 1.0);

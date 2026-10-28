@@ -1,3 +1,4 @@
+import type { GeoVideoPlaybackOptions } from "./GeoVideoPlayback";
 import type { ZarrSource } from "./ZarrSource";
 import type { ParticleStateMode, RenderMode } from "./ParticleSimulation";
 import type { GeoVideoManifest } from "./geovideo";
@@ -38,6 +39,8 @@ export type VectorFieldSource = Pick<
 };
 
 export interface VectorLayerOptions {
+  /** Decoded GeoVideo playback; omitted for the unchanged Zarr field path. */
+  geoVideo?: GeoVideoPlaybackOptions & { manifest: GeoVideoManifest };
   id: string;
   source: string;
   /** Optional initialized/shared source. When omitted, the layer creates one from `source`. */
