@@ -90,8 +90,10 @@ netCDF short name, a unit factor, and either an int16 `scaleFactor` or
 `dtype: float32`. It also sets the fixed store `grid`, the `start` date and
 `requestDays` (days per ADS request, since data older than 30 days is on tape).
 Each day is snapped onto the store grid, or interpolated if the provider
-changes resolution (the history attribute says so). Days the public ADS
-catalogue does not list yet are never requested.
+changes resolution (the history attribute says so). Days after the end date
+of the public ADS catalogue are never requested, and a day missing from a
+download counts as not published yet: the catalogue lists GFAS's hourly data
+for today before the daily mean is out.
 
 | Product | ADS dataset | Grid, steps | Variables |
 |---|---|---|---|

@@ -22,8 +22,11 @@ base request, the variables and how each one is stored:
 ADS answers with netCDF (GFAS) or zipped netCDF (forecasts), in one of two
 layouts: `valid_time` (analyses) or `forecast_reference_time` × `forecast_period`
 (forecasts). Both become (time, latitude, longitude) with ascending latitude
-and longitude in −180…180. The last available date comes from the public ADS
-catalogue, so a day that is not published yet is never requested.
+and longitude in −180…180. Days after the end date of the public ADS catalogue
+are never requested. That date can run ahead of a product (GFAS lists today's
+hourly data before its daily mean), so a day missing from the download also
+counts as not published yet: the run stops there and resumes the next night.
+A request never starts before the first day the run needs.
 
 The ADS key comes from `ADS_KEY` (the environment or .env) or from ~/.cdsapirc.
 """
@@ -73,12 +76,17 @@ def last_available(dataset: str) -> date:
     return date.fromisoformat(end[:10])
 
 
-def request_range(config: dict[str, Any], day: date, last: date) -> tuple[date, date]:
-    """The block of `requestDays` days, aligned on the store start, that holds `day`, clipped to `last`."""
+def request_range(config: dict[str, Any], day: date, last: date, floor: date | None = None) -> tuple[date, date]:
+    """The block of `requestDays` days, aligned on the store start, that holds `day`.
+
+    It is clipped to `last`, and starts no earlier than `floor` (the first day
+    the run needs), so a nightly run does not fetch days already stored.
+    """
     size = int(config.get("requestDays", 1))
     start = date.fromisoformat(config["start"])
     first = start + timedelta(days=(day - start).days // size * size)
-    return first, min(first + timedelta(days=size - 1), last)
+    end = min(first + timedelta(days=size - 1), last)
+    return (max(first, floor) if floor else first), end
 
 
 def ads_request(config: dict[str, Any], first: date, last: date) -> dict[str, Any]:
@@ -118,6 +126,7 @@ class Fetcher:
     def __init__(self, retrieve: Any = None) -> None:
         self._retrieve = retrieve
         self._last: date | None = None
+        self._floor: date | None = None
         self._lock = threading.Lock()
         self._blocks: dict[tuple[date, date], tuple[threading.Lock, list[Path]]] = {}
 
@@ -136,8 +145,10 @@ class Fetcher:
         last = self.last(config)
         if day > last:
             return None
-        block = request_range(config, day, last)
         with self._lock:
+            # The driver asks for days in order, so the first one asked is the first one pending.
+            self._floor = min(self._floor or day, day)
+            block = request_range(config, day, last, self._floor)
             lock, paths = self._blocks.setdefault(block, (threading.Lock(), []))
         with lock:
             if not paths:
@@ -187,8 +198,12 @@ def on_grid(dataset: xr.Dataset, grid: dict[str, list[float]]) -> tuple[xr.Datas
     return wrapped.interp(latitude=latitude, longitude=longitude, kwargs={"fill_value": None}), True
 
 
-def read_day(config: dict[str, Any], paths: list[Path], day: date) -> xr.Dataset:
-    """One day of the configured variables as (time, latitude, longitude) in store units."""
+def read_day(config: dict[str, Any], paths: list[Path], day: date) -> xr.Dataset | None:
+    """One day of the configured variables as (time, latitude, longitude) in store units.
+
+    None when the download does not hold the day: the catalogue end date can
+    run ahead of a product (GFAS lists today's hourly data before its daily mean).
+    """
     parts = []
     for path in paths:
         with xr.open_dataset(path, engine="netcdf4") as source:
@@ -198,6 +213,8 @@ def read_day(config: dict[str, Any], paths: list[Path], day: date) -> xr.Dataset
     merged = merged.assign_coords(time=merged["time"].values + shift)
     stamp = merged["time"].values.astype("datetime64[D]")
     merged = merged.isel(time=np.flatnonzero(stamp == np.datetime64(day.isoformat()))).sortby("time")
+    if merged.sizes["time"] == 0:
+        return None
     variables = {}
     for name, spec in config["variables"].items():
         if spec["source"] not in merged:

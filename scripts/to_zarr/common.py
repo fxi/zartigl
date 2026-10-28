@@ -153,13 +153,14 @@ class Product:
     `fetch_day(config, day, workdir)` downloads one day and returns a handle, or
     None when the provider has not published it yet; it runs in worker threads.
     `read_day(handle, day)` returns the day as (time, latitude, longitude) in the
-    store layout; `to_store(dataset)` returns it with its store encodings;
+    store layout, or None when the download does not hold it (not published
+    yet); `to_store(dataset)` returns it with its store encodings;
     `release(handle)` frees the downloaded files once the day is stored.
     """
 
     label: str
     fetch_day: Callable[[dict[str, Any], date, Path], Any]
-    read_day: Callable[[Any, date], xr.Dataset]
+    read_day: Callable[[Any, date], xr.Dataset | None]
     to_store: Callable[[xr.Dataset], tuple[xr.Dataset, dict[str, dict[str, Any]]]]
     release: Callable[[Any], None] = lambda _handle: None
 
@@ -196,12 +197,13 @@ def run(args: argparse.Namespace, config: dict[str, Any], product: Product) -> N
                     print(f"Budget reached before {day}", flush=True)
                     break
                 handle = futures.pop(day).result()
-                if handle is None:
+                day_data = None if handle is None else product.read_day(handle, day)
+                if day_data is None:
                     if day >= recent:
                         print(f"{day} not published yet", flush=True)
                         break
                     raise RuntimeError(f"{product.label}: {day} is missing and older than the publication delay")
-                dataset, specs = product.to_store(product.read_day(handle, day))
+                dataset, specs = product.to_store(day_data)
                 append_day(target, config, dataset, specs, first=stored.size == 0 and written == 0)
                 product.release(handle)
                 written += 1

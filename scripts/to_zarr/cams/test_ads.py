@@ -105,11 +105,15 @@ class FakeADS:
     def __init__(self, config: dict, writer, last: date, cache: Path) -> None:
         self.last_day, self.requests, self.cache = last, [], cache
         start = date.fromisoformat(config["start"])
-        for offset in range((last - start).days + 1):
-            first, end = ads.request_range(config, start + timedelta(days=offset), last)
-            path = self.block(first, end)
-            if not path.exists():
-                writer(config, first, end, path)
+        days = [start + timedelta(days=offset) for offset in range((last - start).days + 1)]
+        # Any day a run may start from (the floor), and any later day it may ask for.
+        for floor in days:
+            for day in days:
+                if day >= floor:
+                    first, end = ads.request_range(config, day, last, floor)
+                    path = self.block(first, end)
+                    if not path.exists():
+                        writer(config, first, end, path)
 
     def block(self, first: date, last: date) -> Path:
         return self.cache / f"{first:%Y%m%d}_{last:%Y%m%d}"
@@ -137,6 +141,9 @@ class PureFunctionsTest(unittest.TestCase):
                          (date(2026, 1, 8), date(2026, 1, 14)))
         self.assertEqual(ads.request_range(config, date(2026, 1, 9), date(2026, 1, 10)),
                          (date(2026, 1, 8), date(2026, 1, 10)))
+        # A run whose first pending day is 10 Jan does not fetch 8 and 9 Jan again.
+        self.assertEqual(ads.request_range(config, date(2026, 1, 11), date(2026, 3, 1), date(2026, 1, 10)),
+                         (date(2026, 1, 10), date(2026, 1, 14)))
 
     def test_request_lists_every_variable_and_the_date_range(self):
         config = gfas_config(date(2026, 1, 1))
@@ -219,17 +226,20 @@ class PipelineTest(unittest.TestCase):
         cache.mkdir()
         fake = FakeADS(config, writer, date.fromisoformat(config["start"]) + timedelta(days=days - 1), cache)
         out = Path(tmp) / "out"
+        start = date.fromisoformat(config["start"])
         run(args(out, max_days=3), config, ads.product(config, "test", fake.fetcher()))
+        first_run, fake.requests = fake.requests, []
         run(args(out), config, ads.product(config, "test", fake.fetcher()))
         target = local_target(out)
         times = stored_times(target, "timeChunked")
         self.assertEqual(times.size, days * per_day)
         self.assertEqual(np.unique(times).size, times.size)
-        # Only aligned blocks are requested, each at most once per run.
-        day_list = [date.fromisoformat(config["start"]) + timedelta(days=n) for n in range(days)]
-        blocks = {ads.request_range(config, day, fake.last_day) for day in day_list}
-        self.assertEqual(set(fake.requests), blocks)
-        self.assertLessEqual(len(fake.requests), len(blocks) + 1)
+        # Each run asks only from its first pending day, in blocks that end where aligned blocks end.
+        self.assertEqual(min(first for first, _ in first_run), start)
+        self.assertEqual(min(first for first, _ in fake.requests), start + timedelta(days=3))
+        for first, last in first_run + fake.requests:
+            self.assertEqual(ads.request_range(config, first, fake.last_day)[1], last)
+        self.assertEqual(len(fake.requests), len(set(fake.requests)))
         sync_geo(args(out, force=True), config)
         xr.testing.assert_identical(open_store(target, "timeChunked").load(),
                                     open_store(target, "geoChunked").load())
@@ -244,6 +254,33 @@ class PipelineTest(unittest.TestCase):
         raw = open_store(target, "timeChunked", decode=False)
         self.assertEqual(raw["frpfire"].dtype, np.float32)
         self.assertEqual(raw["apt"].dtype, np.int16)
+
+    def test_a_day_missing_from_the_download_waits_for_the_next_run(self):
+        # The catalogue lists a day whose daily mean is not out yet (GFAS, 28 Oct 2026).
+        start = date.today() - timedelta(days=3)
+        config = gfas_config(start)
+        listed = start + timedelta(days=2)
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "early").mkdir()
+        (tmp / "late").mkdir()
+
+        def published_until(day):
+            def writer(config, first, last, path):
+                # A block holding no published day is never requested in this scenario.
+                if first <= day:
+                    write_gfas(config, first, min(last, day), path)
+            return writer
+
+        early = FakeADS(config, published_until(listed - timedelta(days=1)), listed, tmp / "early")
+        run(args(tmp / "out"), config, ads.product(config, "test", early.fetcher()))
+        target = local_target(tmp / "out")
+        self.assertEqual(stored_times(target, "timeChunked").size, 2)
+
+        late = FakeADS(config, write_gfas, listed, tmp / "late")
+        run(args(tmp / "out"), config, ads.product(config, "test", late.fetcher()))
+        self.assertEqual(stored_times(target, "timeChunked").size, 3)
+        self.assertEqual(late.requests, [(listed, listed)])
 
     def test_forecast_appends_eight_steps_a_day(self):
         start = date.today() - timedelta(days=4)
