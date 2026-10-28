@@ -1,3 +1,4 @@
+import { timeBracket } from "./time-bracket";
 import {
   geoVideoTimelineValues,
   loadGeoVideoManifest,
@@ -203,31 +204,6 @@ interface OpenedChunk<TFrame> {
   source: GeoVideoFrameReader<TFrame>;
 }
 
-/** Step at or before `time` (clamped) and the fraction toward the next. */
-function bracket(
-  times: Float64Array,
-  time: number,
-): { step: number; fraction: number } {
-  const last = times.length - 1;
-  if (time <= times[0]) {
-    return { step: 0, fraction: 0 };
-  }
-  if (time >= times[last]) {
-    return { step: last, fraction: 0 };
-  }
-  let lo = 0;
-  let hi = last;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (times[mid] <= time) {
-      lo = mid;
-    } else {
-      hi = mid;
-    }
-  }
-  return { step: lo, fraction: (time - times[lo]) / (times[hi] - times[lo]) };
-}
-
 /** A controller aborted with `signal`, which can also be aborted alone. */
 function linkedController(signal: AbortSignal | undefined): {
   controller: AbortController;
@@ -350,7 +326,7 @@ export class GeoVideoArchiveSource<TFrame = GeoVideoFrameData> {
       const { times } = first;
       let pair: [OpenChunk<TFrame>, number, OpenChunk<TFrame>, number, number];
       if (time <= times[times.length - 1]) {
-        const { step, fraction } = bracket(times, time);
+        const { index: step, fraction } = timeBracket(times, time);
         pair =
           mode === "discrete" || fraction === 0
             ? [a, step, a, step, 0]

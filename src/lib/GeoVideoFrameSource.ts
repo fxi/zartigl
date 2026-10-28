@@ -397,6 +397,14 @@ export abstract class GeoVideoFrameSource<TFrame> {
         { once: true },
       );
     });
+    if (
+      video.videoWidth !== this.manifest.media.width ||
+      video.videoHeight !== this.manifest.media.height
+    ) {
+      throw new Error(
+        `GeoVideo media dimensions ${video.videoWidth}x${video.videoHeight} do not match manifest ${this.manifest.media.width}x${this.manifest.media.height}`,
+      );
+    }
   }
 
   /** Seek to a frame and wait until it is presented. */
@@ -455,7 +463,10 @@ export abstract class GeoVideoFrameSource<TFrame> {
     if (signal.aborted || !video || !mask) {
       throw abortError();
     }
-    const seconds = geoVideoSecondsForTime(this.manifest, this.times[index]);
+    const seconds =
+      this.manifest.timeline.kind === "snapshot-loop"
+        ? index / this.manifest.media.fps
+        : geoVideoSecondsForTime(this.manifest, this.times[index]);
     await this.presentFrame(video, seconds);
     if (signal.aborted || video !== this.video) {
       throw abortError();

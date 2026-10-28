@@ -97,3 +97,11 @@ export {
   timeRangeBounds,
 } from "./lib/time-range";
 export type { TimeRange } from "./lib/time-range";
+export { timeBracket, timeStep, stepTime } from "./lib/time-bracket";
+export { GeoVideoClock } from "./lib/GeoVideoClock";
+export { GeoVideoField, velocityTexels } from "./lib/GeoVideoField";
+export type {
+  GeoVideoProgram,
+  GeoVideoFieldOptions,
+  FieldUniforms,
+} from "./lib/GeoVideoField";

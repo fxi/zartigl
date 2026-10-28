@@ -1,6 +1,8 @@
 precision mediump float;
 
 uniform sampler2D u_color;
+uniform sampler2D u_color_next;
+uniform float u_mix;
 uniform sampler2D u_mask;
 uniform sampler2D u_color_ramp;
 uniform float u_opacity;
@@ -25,7 +27,9 @@ void main() {
     if (alpha <= u_mask_threshold) discard;
     vec3 color = media;
     if (u_scalar_luma > 0.5) {
-        float value = geoVideoScalarValue(media.r);
+        float value0 = geoVideoScalarValue(media.r);
+        float value1 = geoVideoScalarValue(texture2D(u_color_next, uv).r);
+        float value = mix(value0, value1, u_mix);
         float t = clamp((value - u_color_domain.x) / (u_color_domain.y - u_color_domain.x), 0.0, 1.0);
         t = mix(t, log(1.0 + t * 9.0) / log(10.0), u_log_scale);
         // Palettes with transparent stops fade low values out.

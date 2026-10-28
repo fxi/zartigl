@@ -241,3 +241,52 @@ describe("abortable", () => {
     expect(await shared).toBe(1);
   });
 });
+
+describe("GeoVideoFrameSource media dimensions", () => {
+  it("rejects a video whose decoded dimensions differ from its manifest", async () => {
+    const video = Object.assign(new EventTarget(), {
+      videoWidth: 4,
+      videoHeight: 1,
+    });
+    vi.stubGlobal("document", { createElement: () => video });
+    try {
+      const source = new GeoVideoScalarSource(manifest);
+      const loaded = (
+        source as unknown as { loadVideo(): Promise<void> }
+      ).loadVideo();
+      video.dispatchEvent(new Event("loadedmetadata"));
+      await expect(loaded).rejects.toThrow(
+        "dimensions 4x1 do not match manifest 2x1",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("GeoVideoFrameSource snapshot frames", () => {
+  it("seeks physical media frames of a snapshot without inventing sample dates", async () => {
+    const source = new GeoVideoScalarSource({
+      ...manifest,
+      timeline: { kind: "snapshot-loop", date: "2026-09-01T00:00:00Z" },
+    });
+    const video = {} as HTMLVideoElement;
+    const bitmap = {} as ImageBitmap;
+    const internals = source as unknown as {
+      video: HTMLVideoElement;
+      maskCodes: Uint8Array;
+      presentFrame(video: HTMLVideoElement, seconds: number): Promise<void>;
+      capture(): Promise<ImageBitmap>;
+      decode(index: number, signal: AbortSignal): Promise<ImageBitmap>;
+    };
+    internals.video = video;
+    internals.maskCodes = new Uint8Array([255, 255]);
+    vi.spyOn(source, "init").mockResolvedValue();
+    const present = vi.spyOn(internals, "presentFrame").mockResolvedValue();
+    vi.spyOn(internals, "capture").mockResolvedValue(bitmap);
+    expect(await internals.decode(3, new AbortController().signal)).toBe(
+      bitmap,
+    );
+    expect(present).toHaveBeenCalledWith(video, 3 / 24);
+  });
+});

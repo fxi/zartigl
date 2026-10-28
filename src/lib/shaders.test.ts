@@ -19,6 +19,15 @@ describe("particle shader invalid-state guards", () => {
     expect(geoVideoFrag).toContain("u_value_range");
     // The shared scalar decoder (GEOVIDEO_SCALAR_GLSL) reads the red channel.
     expect(geoVideoFrag).toContain("geoVideoScalarValue(media.r)");
+    expect(geoVideoFrag).toContain("uniform sampler2D u_color_next");
+    expect(geoVideoFrag).toContain(
+      "geoVideoScalarValue(texture2D(u_color_next, uv).r)",
+    );
+    expect(geoVideoFrag).toContain("float value = mix(value0, value1, u_mix)");
+    expect(geoVideoFrag).toContain("u_scalar_transfer");
+    expect(geoVideoFrag.indexOf("mix(value0, value1, u_mix)")).toBeLessThan(
+      geoVideoFrag.indexOf("float t = clamp((value"),
+    );
     expect(geoVideoFrag).toContain("u_color_domain");
     expect(geoVideoFrag).toContain("texture2D(u_color_ramp");
     expect(geoVideoFrag).toContain("alpha *= ramp.a");
