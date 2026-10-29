@@ -37,6 +37,7 @@ import {
   type ColorGrade,
 } from "./color-grade";
 import { BACKDROP_OFF, backdropVec4, resolveBackdrop } from "./backdrop";
+import { GLOW_GAIN, GLOW_SCALE } from "./glsl-chunks";
 import type { BackdropStyle } from "../catalog/style";
 
 type Vec4 = [number, number, number, number];
@@ -95,13 +96,6 @@ const REDISTRIB_MAX_DROP = 0.1; // ceiling on effective drop rate during the tra
 // mask marks valid data. Near hard no-data edges, bilinear alpha becomes
 // fractional and can create visible fringe trails unless particles reject it.
 const PARTICLE_VALID_THRESHOLD = 0.98;
-/** Trail texels per glow texel along each axis, as in glow.glsl. */
-const GLOW_SCALE = 4;
-/**
- * Glow gain at glow = 1. A thin trail covers about a quarter of its glow
- * texel, so this keeps the halo faint even over dense trails.
- */
-const GLOW_GAIN = 1.2;
 
 function float32ToFloat16(value: number): number {
   if (Number.isNaN(value)) {

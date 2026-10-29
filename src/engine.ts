@@ -65,6 +65,9 @@ export {
   VELOCITY_BLEND_GLSL,
   RANDOM_GLSL,
   VIBRANCE_GLSL,
+  GLOW_GLSL,
+  GLOW_SCALE,
+  GLOW_GAIN,
 } from "./lib/glsl-chunks";
 export type {
   AlphaFade,

@@ -6,11 +6,15 @@ import {
   VELOCITY_BLEND_GLSL,
   RANDOM_GLSL,
   VIBRANCE_GLSL,
+  GLOW_GLSL,
+  GLOW_SCALE,
+  GLOW_GAIN,
 } from "./glsl-chunks";
 import colorGrade from "./shaders/color-grade.glsl";
 import geoVideoScalar from "./shaders/geovideo-scalar.glsl";
 import random from "./shaders/random.glsl";
 import vibrance from "./shaders/vibrance.glsl";
+import glow from "./shaders/glow.glsl";
 
 const count = (text: string, part: string) => text.split(part).length - 1;
 
@@ -50,5 +54,23 @@ describe("shared GLSL chunks", () => {
       "vec3(mix(minimum, maximum, texel.rg), texel.a)",
     );
     expect(VELOCITY_BLEND_GLSL).toContain("return mix(a, b, fraction)");
+  });
+});
+
+describe("glow chunk", () => {
+  it("is the source the zartigl glow and composite shaders include", () => {
+    expect(GLOW_GLSL).toBe(glow);
+    expect(GLOW_GLSL).not.toContain("#include");
+    expect(GLOW_GLSL).toContain(
+      "vec4 glowGather(sampler2D trails, ivec2 texel)",
+    );
+    expect(GLOW_GLSL).toContain(
+      "vec4 addGlow(vec4 trail, sampler2D glowTex, vec2 uv, float gain)",
+    );
+  });
+
+  it("states the scale the shader gathers at", () => {
+    expect(GLOW_GLSL).toContain(`#define GLOW_SCALE ${GLOW_SCALE}`);
+    expect(GLOW_GAIN).toBeGreaterThan(0);
   });
 });

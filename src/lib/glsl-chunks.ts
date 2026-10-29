@@ -3,6 +3,7 @@ import colorGradeGlsl from "./shaders/color-grade.glsl";
 import geoVideoScalarGlsl from "./shaders/geovideo-scalar.glsl";
 import randomGlsl from "./shaders/random.glsl";
 import vibranceGlsl from "./shaders/vibrance.glsl";
+import glowGlsl from "./shaders/glow.glsl";
 
 // Shared GLSL chunks as strings, for renderers outside this build (which
 // cannot `#include` these files): the same sources the zartigl shaders
@@ -30,3 +31,20 @@ export const GEOVIDEO_SCALAR_GLSL: string = geoVideoScalarGlsl;
 
 /** Physical velocity/validity decoding and temporal blending; GLSL ES 1.0 and 3.0. */
 export const VELOCITY_BLEND_GLSL: string = velocityBlendGlsl;
+
+/**
+ * Particle glow, `vec4 glowGather(sampler2D trails, ivec2 texel)` and
+ * `vec4 addGlow(vec4 trail, sampler2D glowTex, vec2 uv, float gain)`; GLSL
+ * ES 3.0. Gather the trails into a texture GLOW_SCALE× smaller, then add it
+ * under them at GLOW_GAIN × the style's glow.
+ */
+export const GLOW_GLSL: string = glowGlsl;
+
+/** Trail texels per glow texel along each axis: the chunk's GLOW_SCALE. */
+export const GLOW_SCALE = 4;
+
+/**
+ * Glow gain at glow = 1. A thin trail covers about a quarter of its glow
+ * texel, so this keeps the halo faint even over dense trails.
+ */
+export const GLOW_GAIN = 1.2;
