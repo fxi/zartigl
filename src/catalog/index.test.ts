@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   catalog,
+  entryHeader,
   findCatalogEntries,
   getCatalogEntry,
   pickPreferredSource,
@@ -248,5 +249,54 @@ describe("pickPreferredSource", () => {
       defaults: { sourceId: zarr.id },
     };
     expect(pickPreferredSource(entry).id).toBe("s-geovideo");
+  });
+});
+
+describe("entryHeader", () => {
+  it("names the layer, its provider and its description", () => {
+    const entry = searchCatalog("ocean-current-velocity")[0];
+    expect(entryHeader(entry)).toEqual({
+      title: entry.title,
+      subtitle: { en: "Copernicus Marine Service" },
+      description: entry.description,
+    });
+  });
+
+  it("names providers outside Copernicus Marine", () => {
+    const entry = catalog.layers.find((layer) =>
+      layer.sources.some(
+        (source) => source.provenance?.provider === "noaa-coral-reef-watch",
+      ),
+    )!;
+    expect(entryHeader(entry).subtitle).toEqual({
+      en: "NOAA Coral Reef Watch",
+    });
+  });
+
+  it("keeps an unknown provider slug and skips what is missing", () => {
+    const wmts = {
+      type: "wmts" as const,
+      title: { en: "WMTS" },
+      capabilitiesUrl: "https://example.org",
+      layer: "l",
+    };
+    const entry: CatalogEntry = {
+      id: "x",
+      title: { en: "Custom" },
+      category: "ocean",
+      kind: "scalar",
+      sources: [
+        { ...wmts, id: "s" },
+        { ...wmts, id: "t", provenance: { provider: "acme" } },
+      ],
+      defaults: { sourceId: "s" },
+    };
+    expect(entryHeader(entry)).toEqual({
+      title: { en: "Custom" },
+      subtitle: { en: "acme" },
+    });
+    expect(entryHeader({ ...entry, sources: [entry.sources[0]] })).toEqual({
+      title: { en: "Custom" },
+    });
   });
 });

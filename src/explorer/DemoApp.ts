@@ -21,6 +21,7 @@ import type {
 } from "../lib";
 import {
   diffStyle,
+  entryHeader,
   formatTime,
   formatVertical,
   mergeStyles,
@@ -1632,6 +1633,11 @@ export class DemoApp {
     }
     const snippet = buildMapxWidgetSnippet({
       ...this.currentSnippetOptions(),
+      ...entryHeader(
+        this.currentLayer,
+        this.currentSourceId || undefined,
+        this.cat.defaultLocale,
+      ),
       entry: this.exportParams.embedEntry ? this.currentLayer : undefined,
     });
 

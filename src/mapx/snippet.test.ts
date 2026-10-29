@@ -136,6 +136,25 @@ describe("buildMapxWidgetSnippet", () => {
     expect(snippet).not.toContain("style:");
   });
 
+  it("writes the legend header only when given", () => {
+    const base = { layerId: "wind", layerKind: "vector" as const };
+    const bare = buildMapxWidgetSnippet(base);
+    expect(bare).not.toContain("title:");
+    expect(bare).not.toContain("subtitle:");
+    expect(bare).not.toContain("description:");
+    const snippet = buildMapxWidgetSnippet({
+      ...base,
+      title: { en: "Surface Wind" },
+      subtitle: "Copernicus Marine Service",
+      description: { en: "Hourly sea surface wind." },
+    });
+    expect(snippet).toContain(
+      '        title: {\n            "en": "Surface Wind"\n          },',
+    );
+    expect(snippet).toContain('        subtitle: "Copernicus Marine Service",');
+    expect(snippet).toContain('"en": "Hourly sea surface wind."');
+  });
+
   it("embeds the layer definition only when given", () => {
     const entry = {
       id: "c495a019-0bc8-4ee7-a9de-b1422751e31f",

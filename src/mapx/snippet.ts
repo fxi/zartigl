@@ -3,7 +3,7 @@ import type {
   TimeRange,
   ZartiglSettings,
 } from "../lib/Zartigl";
-import type { CatalogEntry } from "../catalog/types";
+import type { CatalogEntry, LocalizedText } from "../catalog/types";
 import {
   diffStyle,
   resolveEntryStyle,
@@ -17,6 +17,11 @@ type SnippetSourceType = "zarr" | "geovideo" | "wmts";
 export interface MapxWidgetSnippetOptions {
   layerId: string;
   layerKind: CatalogEntry["kind"];
+  /** Legend header (MapX widget only); MapX derives it from the layer when unset. */
+  title?: LocalizedText | string;
+  subtitle?: LocalizedText | string;
+  /** Shown as the legend title's tooltip. */
+  description?: LocalizedText | string;
   /**
    * The layer's own style, the catalog `defaults`: only override keys that
    * differ from it are written. Unknown, the whole override is written.
@@ -177,6 +182,12 @@ export function buildMapxWidgetSnippet(
     `        layer: ${codeString(options.layerId)},`,
     `        source: ${codeString(source)},`,
   ];
+
+  for (const key of ["title", "subtitle", "description"] as const) {
+    if (options[key] != null) {
+      optionLines.push(`        ${key}: ${indentedValue(options[key], 10)},`);
+    }
+  }
 
   if (options.entry) {
     optionLines.push(`        entry: ${indentedValue(options.entry, 10)},`);

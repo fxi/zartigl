@@ -73,6 +73,47 @@ export function resolveLocalizedText(
   );
 }
 
+/** Display names of the `provenance.provider` slugs. */
+export const PROVIDER_LABELS: Record<string, string> = {
+  "copernicus-marine": "Copernicus Marine Service",
+  "copernicus-atmosphere": "Copernicus Atmosphere Monitoring Service",
+  "noaa-coral-reef-watch": "NOAA Coral Reef Watch",
+};
+
+/** A provider's display name; an unknown slug is returned as is. */
+export function providerLabel(provider: string): string {
+  return PROVIDER_LABELS[provider] ?? provider;
+}
+
+/** What a legend shows for a layer: its title, provider and description. */
+export interface LegendHeader {
+  title: LocalizedText;
+  subtitle?: LocalizedText;
+  description?: LocalizedText;
+}
+
+/**
+ * The legend header of a layer: its title, the provider of the source
+ * `sourceId` (else of the first source naming one) and its description.
+ */
+export function entryHeader(
+  entry: CatalogEntry,
+  sourceId: string = entry.defaults.sourceId,
+  defaultLocale = catalog.defaultLocale,
+): LegendHeader {
+  const provider = (
+    entry.sources.find((source) => source.id === sourceId)?.provenance ??
+    entry.sources.find((source) => source.provenance)?.provenance
+  )?.provider;
+  return {
+    title: entry.title,
+    ...(provider
+      ? { subtitle: { [defaultLocale]: providerLabel(provider) } }
+      : {}),
+    ...(entry.description ? { description: entry.description } : {}),
+  };
+}
+
 export function getCatalogEntry(
   id: string,
   data: Catalog = catalog,

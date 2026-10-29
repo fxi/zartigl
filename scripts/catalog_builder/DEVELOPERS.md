@@ -12,7 +12,7 @@ Sources are discriminated and independently renderable:
 - `wmts`: GetCapabilities URL, native layer identifier, and optional service overrides.
 - `geovideo`: a version 3 `manifestUrl` for one artifact, or an `indexUrl` for an incremental archive whose policy lives in `scripts/geovideo/archive.json` (see `scripts/geovideo/README.md`).
 
-Every source has its own UUID and localized title. Put provider-native names under `provenance.provider` and `provenance.identifiers`; Copernicus uses `product` and `dataset`. Put discovery-only cadence and coverage mode under `temporal`. Live source metadata remains authoritative.
+Every source has its own UUID and localized title. Put provider-native names under `provenance.provider` and `provenance.identifiers`; Copernicus uses `product` and `dataset`. A new provider slug also needs its display name in `PROVIDER_LABELS` (`src/catalog/index.ts`): MapX legends show it as the subtitle. Put discovery-only cadence and coverage mode under `temporal`. Live source metadata remains authoritative.
 
 For Copernicus scalar entries, the default WMTS JSON legend is the authoritative visualization contract: palette, color domain, scale, clamp behavior, units, and extent. Deterministic locally derived univariate statistics are the fallback when upstream statistics are unavailable. They also replace a legend range computed on a single time slice that misrepresents the record, such as a seasonally sign-changing flux (`med-co2-flux`, which then uses a diverging palette). Zarr `valid_min`/`valid_max` are validity bounds and are used only as the final range fallback.
 
