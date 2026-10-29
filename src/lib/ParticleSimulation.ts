@@ -24,6 +24,7 @@ import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 import compositeFrag from "./shaders/composite.frag.glsl";
+import glowFrag from "./shaders/glow.frag.glsl";
 import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridFrag from "./shaders/grid.frag.glsl";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
@@ -64,6 +65,7 @@ export interface ParticleSimulationDebugInfo {
   vibrance: number;
   colorGrade: ColorGrade;
   backdrop: BackdropStyle;
+  glow: number;
   scalarMode: boolean;
   devicePixelRatio?: number;
   webgl: WebGLRendererInfo | null;
@@ -93,6 +95,13 @@ const REDISTRIB_MAX_DROP = 0.1; // ceiling on effective drop rate during the tra
 // mask marks valid data. Near hard no-data edges, bilinear alpha becomes
 // fractional and can create visible fringe trails unless particles reject it.
 const PARTICLE_VALID_THRESHOLD = 0.98;
+/** Trail texels per glow texel along each axis, as in glow.glsl. */
+const GLOW_SCALE = 4;
+/**
+ * Glow gain at glow = 1. A thin trail covers about a quarter of its glow
+ * texel, so this keeps the halo faint even over dense trails.
+ */
+const GLOW_GAIN = 1.2;
 
 function float32ToFloat16(value: number): number {
   if (Number.isNaN(value)) {
@@ -138,6 +147,8 @@ export interface SimulationParams {
   colorGrade: ColorGrade;
   /** Solid color under the trails, on valid cells; off by default. */
   backdrop: BackdropStyle;
+  /** Halo of the trails' color, [0, 1]; 0 (default) skips its pass. */
+  glow: number;
   scalarMode: boolean;
   particleState: ParticleStateMode;
   rgba8MaxParticleZoom: number;
@@ -154,6 +165,7 @@ const DEFAULTS: SimulationParams = {
   vibrance: 0.0,
   colorGrade: COLOR_GRADE_OFF,
   backdrop: BACKDROP_OFF,
+  glow: 0,
   scalarMode: false,
   particleState: "auto",
   rgba8MaxParticleZoom: 4,
@@ -168,6 +180,7 @@ export class ParticleSimulation {
   private drawProgram!: WebGLProgram;
   private fadeProgram!: WebGLProgram;
   private compositeProgram!: WebGLProgram;
+  private glowProgram!: WebGLProgram;
   private gridProgram!: WebGLProgram;
   private gridGlobeProgram!: WebGLProgram;
 
@@ -204,6 +217,9 @@ export class ParticleSimulation {
   private screenFramebuffers!: [WebGLFramebuffer, WebGLFramebuffer];
   private screenWidth = 0;
   private screenHeight = 0;
+  // Glow texture, GLOW_SCALE× smaller than the trails; made on first use.
+  private glowTexture: WebGLTexture | null = null;
+  private glowFramebuffer: WebGLFramebuffer | null = null;
 
   // Shared geometry
   private quadBuffer!: WebGLBuffer;
@@ -220,6 +236,7 @@ export class ParticleSimulation {
   private drawLocs!: Record<string, WebGLUniformLocation | null>;
   private fadeLocs!: Record<string, WebGLUniformLocation | null>;
   private compositeLocs!: Record<string, WebGLUniformLocation | null>;
+  private glowLocs!: Record<string, WebGLUniformLocation | null>;
   private gridLocs!: Record<string, WebGLUniformLocation | null>;
   private gridGlobeLocs!: Record<string, WebGLUniformLocation | null>;
 
@@ -250,6 +267,7 @@ export class ParticleSimulation {
     this.drawProgram = createProgram(gl, stateDefine + drawVert, drawFrag);
     this.fadeProgram = createProgram(gl, quadVert, fadeFrag);
     this.compositeProgram = createProgram(gl, quadVert, compositeFrag);
+    this.glowProgram = createProgram(gl, quadVert, glowFrag);
     this.gridProgram = createProgram(gl, gridMercatorVert, gridFrag);
     this.gridGlobeProgram = createProgram(gl, gridGlobeVert, gridGlobeFrag);
 
@@ -298,9 +316,12 @@ export class ParticleSimulation {
     ]);
     this.compositeLocs = this.getUniforms(this.compositeProgram, [
       "u_screen",
+      "u_glow_tex",
+      "u_glow",
       "u_grade_on",
       "u_grade",
     ]);
+    this.glowLocs = this.getUniforms(this.glowProgram, ["u_screen"]);
     this.gridLocs = this.getUniforms(this.gridProgram, [
       ...VELOCITY_PAIR_UNIFORMS,
       "u_field",
@@ -502,6 +523,7 @@ export class ParticleSimulation {
       gl.deleteFramebuffer(this.screenFramebuffers[0]);
       gl.deleteFramebuffer(this.screenFramebuffers[1]);
     }
+    this.deleteGlowTarget();
 
     const emptyPixels = new Uint8Array(width * height * 4);
     const tex0 = createTexture(gl, gl.NEAREST, emptyPixels, width, height);
@@ -795,10 +817,18 @@ export class ParticleSimulation {
     if (backdrop[3] > 0) {
       drawGrid(backdrop);
     }
+    const glow = this.params.glow > 0 ? this.renderGlow(mapFramebuffer) : null;
     const grade = this.params.colorGrade;
     gl.useProgram(this.compositeProgram);
     bindTexture(gl, this.screenTextures[1], 0);
     gl.uniform1i(this.compositeLocs["u_screen"], 0);
+    // Off, the sampler still needs a 2D float texture on its unit.
+    bindTexture(gl, glow ?? this.screenTextures[1], 1);
+    gl.uniform1i(this.compositeLocs["u_glow_tex"], 1);
+    gl.uniform1f(
+      this.compositeLocs["u_glow"],
+      glow ? GLOW_GAIN * this.params.glow : 0,
+    );
     gl.uniform1f(this.compositeLocs["u_grade_on"], grade.enabled ? 1 : 0);
     gl.uniform4f(this.compositeLocs["u_grade"], ...colorGradeVec4(grade));
     gl.enable(gl.BLEND);
@@ -813,6 +843,39 @@ export class ParticleSimulation {
     }
     this.screenTextures.reverse();
     this.screenFramebuffers.reverse();
+  }
+
+  /**
+   * Reduce the latest trails into the glow texture (glow.glsl), then rebind
+   * `framebuffer` with the full viewport.
+   */
+  private renderGlow(framebuffer: WebGLFramebuffer | null): WebGLTexture {
+    const gl = this.gl;
+    const width = Math.ceil(this.screenWidth / GLOW_SCALE);
+    const height = Math.ceil(this.screenHeight / GLOW_SCALE);
+    if (!this.glowTexture) {
+      this.glowTexture = createTexture(gl, gl.LINEAR, null, width, height);
+      this.glowFramebuffer = createFramebuffer(gl, this.glowTexture);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.glowFramebuffer);
+    gl.viewport(0, 0, width, height);
+    gl.disable(gl.BLEND);
+    gl.useProgram(this.glowProgram);
+    bindTexture(gl, this.screenTextures[1], 0);
+    gl.uniform1i(this.glowLocs["u_screen"], 0);
+    this.drawQuad();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.viewport(0, 0, this.screenWidth, this.screenHeight);
+    return this.glowTexture;
+  }
+
+  private deleteGlowTarget(): void {
+    if (this.glowTexture) {
+      this.gl.deleteTexture(this.glowTexture);
+      this.gl.deleteFramebuffer(this.glowFramebuffer);
+      this.glowTexture = null;
+      this.glowFramebuffer = null;
+    }
   }
 
   renderGrid(
@@ -1077,6 +1140,14 @@ export class ParticleSimulation {
     this.params.backdrop = resolveBackdrop(backdrop);
   }
 
+  /** Halo strength, clamped to [0, 1]; 0 frees the glow texture. */
+  setGlow(v: number): void {
+    this.params.glow = Math.min(1, Math.max(0, v));
+    if (this.params.glow === 0 && this.gl) {
+      this.deleteGlowTarget();
+    }
+  }
+
   setScalarMode(v: boolean): void {
     this.params.scalarMode = v;
   }
@@ -1149,6 +1220,7 @@ export class ParticleSimulation {
       vibrance: this.params.vibrance,
       colorGrade: { ...this.params.colorGrade },
       backdrop: { ...this.params.backdrop },
+      glow: this.params.glow,
       scalarMode: this.params.scalarMode,
       devicePixelRatio:
         typeof window !== "undefined" ? window.devicePixelRatio : undefined,
@@ -1162,6 +1234,8 @@ export class ParticleSimulation {
     gl.deleteProgram(this.drawProgram);
     gl.deleteProgram(this.fadeProgram);
     gl.deleteProgram(this.compositeProgram);
+    gl.deleteProgram(this.glowProgram);
+    this.deleteGlowTarget();
     gl.deleteProgram(this.gridProgram);
     gl.deleteProgram(this.gridGlobeProgram);
     for (const t of this.particleStateTextures) {

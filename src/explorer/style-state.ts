@@ -24,6 +24,7 @@ export interface StyleParams {
   backdropEnabled: boolean;
   backdropColor: string;
   backdropOpacity: number;
+  glow: number;
   opacity: number;
   logScale: boolean;
   alphaFadeLow: number;
@@ -48,6 +49,7 @@ export function styleParams(style: LayerStyle): StyleParams {
     backdropEnabled: particles.backdrop.enabled,
     backdropColor: particles.backdrop.color,
     backdropOpacity: particles.backdrop.opacity,
+    glow: particles.glow,
     opacity: raster.opacity,
     logScale: raster.logScale,
     alphaFadeLow: raster.alphaFadeLow,

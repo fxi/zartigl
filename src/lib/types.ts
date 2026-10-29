@@ -76,6 +76,8 @@ export interface VectorLayerOptions {
   colorGrade?: Partial<ColorGrade>;
   /** Solid color under the trails, on valid cells. Omitted: off. */
   backdrop?: Partial<BackdropStyle>;
+  /** Halo of the trails' color, [0, 1]. Default 0 (off). */
+  glow?: number;
   unit?: string;
 }
 

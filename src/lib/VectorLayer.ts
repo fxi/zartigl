@@ -179,6 +179,7 @@ export class VectorLayer implements CustomLayerInterface {
       vibrance: options.vibrance ?? 0.0,
       colorGrade: resolveColorGrade(options.colorGrade),
       backdrop: resolveBackdrop(options.backdrop),
+      glow: options.glow ?? 0,
       particleState: options.particleState ?? "auto",
       rgba8MaxParticleZoom: options.rgba8MaxParticleZoom ?? 4,
     });
@@ -933,6 +934,10 @@ export class VectorLayer implements CustomLayerInterface {
 
   setBackdrop(backdrop: Partial<BackdropStyle>): void {
     this.simulation.setBackdrop(backdrop);
+  }
+
+  setGlow(v: number): void {
+    this.simulation.setGlow(v);
   }
 
   getDebugInfo(): VectorLayerDebugInfo {

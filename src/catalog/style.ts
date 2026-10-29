@@ -35,6 +35,8 @@ export interface ParticleStyle {
   grade: ParticleGrade;
   /** Solid color under the trails; replaced as a whole, not merged. */
   backdrop: BackdropStyle;
+  /** Halo of the trails' own color, [0, 1]; 0 is off. */
+  glow: number;
 }
 
 /** Partial particle style; a partial backdrop takes the defaults' keys. */
@@ -103,6 +105,7 @@ export const LAYER_STYLE_DEFAULTS: Readonly<LayerStyle> = Object.freeze({
     fade: 0.7,
     grade: "off",
     backdrop: BACKDROP_OFF,
+    glow: 0,
   }),
   raster: Object.freeze({
     opacity: 1,
@@ -335,6 +338,7 @@ const PARTICLE_CHECKS: Record<keyof ParticleStyle, [Check, string]> = {
   density: [inRange(0, 0.2, true), "a number in (0, 0.2]"],
   speed: [inRange(0, 10, true), "a number in (0, 10]"],
   fade: [inRange(0, 1), "a number in [0, 1]"],
+  glow: [inRange(0, 1), "a number in [0, 1]"],
   grade: [
     (v) => GRADES.includes(v as ParticleGrade) || isGradeTuning(v),
     `"off", "vibrant" or an object of ${Object.keys(COLOR_GRADE_RANGES).join(", ")} in range`,

@@ -3,6 +3,7 @@ import drawVert from "./shaders/draw.vert.glsl";
 import drawFrag from "./shaders/draw.frag.glsl";
 import fadeFrag from "./shaders/fade.frag.glsl";
 import compositeFrag from "./shaders/composite.frag.glsl";
+import glowFrag from "./shaders/glow.frag.glsl";
 import updateFrag from "./shaders/update.frag.glsl";
 import gridFrag from "./shaders/grid.frag.glsl";
 import gridGlobeFrag from "./shaders/grid_globe.frag.glsl";
@@ -175,6 +176,7 @@ describe("particle shader invalid-state guards", () => {
       gridGlobeFrag,
       geoVideoFrag,
       compositeFrag,
+      glowFrag,
     ];
     for (const shader of shaders) {
       expect(shader).not.toContain("#include");
@@ -202,5 +204,18 @@ describe("particle shader invalid-state guards", () => {
     );
     // Same alpha handling as the fade pass at opacity 1.
     expect(compositeFrag).toContain("step(1.0 / 255.0, alpha)");
+  });
+
+  it("adds the glow under the trails only when on, before the grade", () => {
+    expect(glowFrag).toContain(
+      "vec4 glowGather(sampler2D trails, ivec2 texel)",
+    );
+    const glow = compositeFrag.indexOf("if (u_glow > 0.0)");
+    const grade = compositeFrag.indexOf("u_grade_on > 0.5 ?");
+    expect(glow).toBeGreaterThan(-1);
+    expect(grade).toBeGreaterThan(glow);
+    expect(compositeFrag).toContain(
+      "addGlow(color, u_glow_tex, v_tex_coord, u_glow)",
+    );
   });
 });

@@ -32,6 +32,7 @@ describe("resolveLayerStyle", () => {
       density: 0.004,
       speed: 2,
       fade: 0.9,
+      glow: 0,
       grade: "off",
       backdrop: LAYER_STYLE_DEFAULTS.particles.backdrop,
     });
@@ -252,6 +253,7 @@ describe("parseLayerStyle", () => {
     [{ particles: { density: 0.5 } }, `${path}.particles.density must be`],
     [{ particles: { speed: -1 } }, `${path}.particles.speed must be`],
     [{ particles: { fade: 2 } }, `${path}.particles.fade must be`],
+    [{ particles: { glow: -0.1 } }, `${path}.particles.glow must be`],
     [{ particles: { grade: "loud" } }, `${path}.particles.grade must be`],
     [{ particles: { size: 1 } }, `${path}.particles.size is not a style key`],
     [{ raster: { colorDomain: [5, 0] } }, `${path}.raster.colorDomain must be`],

@@ -521,6 +521,13 @@ export class CatalogRenderLayer implements CustomLayerInterface {
     }
   }
 
+  /** Particle trails only; rasters ignore it. */
+  setGlow(v: number): void {
+    if (this.delegate instanceof VectorLayer) {
+      this.delegate.setGlow(v);
+    }
+  }
+
   setColorDomain(domain: [number, number] | null): void {
     if (this.delegate instanceof ScalarLayer) {
       this.delegate.setColorDomain(domain);

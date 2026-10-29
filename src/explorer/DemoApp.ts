@@ -1291,6 +1291,15 @@ export class DemoApp {
         }),
       );
 
+    this.vectorFolder
+      .addBinding(this.params, "glow", {
+        min: 0,
+        max: 1,
+        step: 0.01,
+        label: "glow",
+      })
+      .on("change", (ev) => this.patchStyle({ particles: { glow: ev.value } }));
+
     // The backdrop is replaced as a whole: each control sends all of it.
     const patchBackdrop = () =>
       this.patchStyle({ particles: { backdrop: backdropOf(this.params) } });

@@ -87,6 +87,8 @@ export interface ZartiglSettings {
   colorGrade: Partial<ColorGrade>;
   /** Solid color under particle trails, on valid cells; off by default. */
   backdrop: Partial<BackdropStyle>;
+  /** Halo of the particle trails' color, [0, 1]; 0 by default. */
+  glow: number;
   /** Fixed physical-value domain for scalar colors. Null uses frame extrema. */
   colorDomain: [number, number] | null;
   /** Transparent ends of the color range, as in RasterStyle. */
@@ -550,6 +552,7 @@ function styleToSettings(style: LayerStyleInput): Partial<ZartiglSettings> {
     particleDensity: particles.density,
     speed: particles.speed,
     fade: particles.fade,
+    glow: particles.glow,
     colorGrade:
       particles.grade === undefined
         ? undefined
@@ -2194,6 +2197,7 @@ export class Zartigl {
       vibrance: this.settings.vibrance,
       colorGrade: this.settings.colorGrade,
       backdrop: this.settings.backdrop,
+      glow: this.settings.glow,
       colorDomain: this.settings.colorDomain,
       geoVideoManifest: this.geoVideoManifest ?? undefined,
       geoVideoAutoplay: this.autoplay && this.autoplayPending,
@@ -2386,6 +2390,9 @@ export class Zartigl {
     }
     if (settings.backdrop != null) {
       layer.setBackdrop(settings.backdrop);
+    }
+    if (settings.glow != null) {
+      layer.setGlow(settings.glow);
     }
     if (settings.colorDomain !== undefined) {
       layer.setColorDomain(settings.colorDomain);

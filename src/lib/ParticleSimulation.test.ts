@@ -105,6 +105,15 @@ describe("ParticleSimulation camera trail fade", () => {
     });
   });
 
+  it("keeps the glow off by default and clamps it to [0, 1]", () => {
+    const simulation = new ParticleSimulation();
+    expect(simulation.getDebugInfo().glow).toBe(0);
+    simulation.setGlow(2);
+    expect(simulation.getDebugInfo().glow).toBe(1);
+    simulation.setGlow(-1);
+    expect(simulation.getDebugInfo().glow).toBe(0);
+  });
+
   it("suppresses RGBA8 particles only above the configured max zoom", () => {
     const simulation = new ParticleSimulation({
       particleState: "rgba8",
