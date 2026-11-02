@@ -14,11 +14,22 @@ describe("parseMp4VideoTrack", () => {
     const { samples } = parseMp4VideoTrack(fixture());
     expect(samples.map((s) => s.frame)).toEqual([0, 4, 2, 1, 3, 6, 5]);
     expect(samples.map((s) => s.key)).toEqual([
-      true, false, false, false, false, false, false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
     ]);
     expect(samples.map((s) => [s.offset, s.size])).toEqual([
-      [956, 1309], [2265, 12], [2277, 12], [2289, 12],
-      [2301, 12], [2313, 15], [2328, 12],
+      [956, 1309],
+      [2265, 12],
+      [2277, 12],
+      [2289, 12],
+      [2301, 12],
+      [2313, 15],
+      [2328, 12],
     ]);
   });
 

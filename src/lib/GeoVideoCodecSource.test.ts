@@ -4,10 +4,7 @@ import { GeoVideoScalarSource } from "./GeoVideoScalarSource";
 import type { GeoVideoManifest } from "./geovideo";
 import { mp4Fixture } from "./mp4.fixture";
 
-const days = Array.from(
-  { length: 7 },
-  (_, i) => `2026-09-0${i + 1}T00:00:00Z`,
-);
+const days = Array.from({ length: 7 }, (_, i) => `2026-09-0${i + 1}T00:00:00Z`);
 
 /** The 32x16, seven-frame fixture as a daily scalar chunk. */
 const manifest = {

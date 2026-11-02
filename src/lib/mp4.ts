@@ -67,7 +67,9 @@ function child(view: DataView, parent: Box, type: string): Box {
 }
 
 function optional(view: DataView, parent: Box, type: string): Box | null {
-  return boxes(view, parent.start, parent.end).find((b) => b.type === type) ?? null;
+  return (
+    boxes(view, parent.start, parent.end).find((b) => b.type === type) ?? null
+  );
 }
 
 /** Full-box entries: version/flags, a count, then the entries. */
@@ -141,8 +143,9 @@ export function parseMp4VideoTrack(buffer: ArrayBuffer): Mp4VideoTrack {
   const stsz = child(view, stbl, "stsz");
   const fixedSize = view.getUint32(stsz.start + 4);
   const count = view.getUint32(stsz.start + 8);
-  const sizes = Array.from({ length: count }, (_, i) =>
-    fixedSize || view.getUint32(stsz.start + 12 + i * 4),
+  const sizes = Array.from(
+    { length: count },
+    (_, i) => fixedSize || view.getUint32(stsz.start + 12 + i * 4),
   );
 
   // Offsets: chunk offsets spread over samples by stsc.

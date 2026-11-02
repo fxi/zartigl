@@ -81,7 +81,9 @@ export class GeoVideoCodecScalarSource extends GeoVideoScalarSource {
       return super.loadMedia();
     }
     this.sampleOfFrame = [];
-    track.samples.forEach((sample, i) => (this.sampleOfFrame[sample.frame] = i));
+    track.samples.forEach(
+      (sample, i) => (this.sampleOfFrame[sample.frame] = i),
+    );
     this.data = data;
     this.track = track;
   }
