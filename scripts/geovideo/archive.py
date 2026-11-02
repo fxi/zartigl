@@ -37,7 +37,7 @@ from pathlib import Path
 import shutil
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -263,6 +263,8 @@ def merge_chunk(index: dict[str, Any], chunk: dict[str, Any], now: np.datetime64
         "start": samples[0],
         "end": samples[-1],
         "samples": len(samples),
+        # The encoded samples: the browser builds the archive's timeline from them.
+        "times": list(samples),
         "key": chunk["key"],
         "manifestUrl": f"{chunk['key']}/manifest.json",
         "provisional": chunk["revision"] is not None,
@@ -277,6 +279,23 @@ def merge_chunk(index: dict[str, Any], chunk: dict[str, Any], now: np.datetime64
     chunks.append(entry)
     chunks.sort(key=lambda item: item["period"]["start"])
     return {**index, "updatedAt": iso(now), "chunks": chunks, "superseded": superseded}
+
+
+def backfill_times(
+    index: dict[str, Any], read_manifest: Callable[[str], dict[str, Any]],
+) -> tuple[dict[str, Any], bool]:
+    """Chunks indexed before `times` existed gain their manifest's samples, and
+    whether any did. Keys and other fields are kept."""
+    chunks, changed = [], False
+    for chunk in index["chunks"]:
+        if "times" not in chunk:
+            times = read_manifest(chunk["manifestUrl"])["timeline"]["values"]
+            if len(times) != chunk["samples"] or times[0] != chunk["start"] or times[-1] != chunk["end"]:
+                raise RuntimeError(f"Manifest samples of {chunk['key']} do not match its index entry")
+            chunk = {**chunk, "times": list(times)}
+            changed = True
+        chunks.append(chunk)
+    return ({**index, "chunks": chunks} if changed else index), changed
 
 
 def expired_superseded(index: dict[str, Any], now: np.datetime64) -> tuple[list[str], dict[str, Any]]:
@@ -553,9 +572,14 @@ def command_run(args: argparse.Namespace) -> int:
     for archive in selected_archives(data, args.source):
         try:
             now = utc_now()
-            layer, chunks = resolve(archive, now)
             prefix = object_prefix(upload, archive)
             index = read_index(client, bucket, f"{prefix}/index.json", archive)
+            # Before the upstream store is read: an index migrates even when it cannot be.
+            index, backfilled = backfill_times(index, lambda url: json.loads(client.get_object(
+                Bucket=bucket, Key=f"{prefix}/{url}")["Body"].read()))
+            if backfilled:
+                write_index(client, bucket, f"{prefix}/index.json", index)
+            layer, chunks = resolve(archive, now)
             expired, index = expired_superseded(index, now)
             for key in expired:
                 delete_chunk_objects(client, bucket, prefix, key)

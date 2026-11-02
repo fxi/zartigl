@@ -13,6 +13,8 @@ export interface GeoVideoIndexChunk {
   start: string;
   end: string;
   samples: number;
+  /** Every encoded sample; absent from chunks indexed before it existed. */
+  times?: string[];
   key: string;
   /** Relative to the index URL. */
   manifestUrl: string;
@@ -49,6 +51,28 @@ function isoDate(value: unknown): value is string {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
 
+/** Sample times that agree with the chunk's count and bounds, in order. */
+function validTimes(chunk: GeoVideoIndexChunk): boolean {
+  const times = chunk.times;
+  if (
+    !Array.isArray(times) ||
+    times.length !== chunk.samples ||
+    times[0] !== chunk.start ||
+    times[times.length - 1] !== chunk.end
+  ) {
+    return false;
+  }
+  let previous = -Infinity;
+  for (const time of times) {
+    const ms = isoDate(time) ? Date.parse(time) : NaN;
+    if (!(ms > previous)) {
+      return false;
+    }
+    previous = ms;
+  }
+  return true;
+}
+
 export function validateGeoVideoIndex(value: unknown): GeoVideoIndex {
   const index = value as GeoVideoIndex;
   if (
@@ -64,7 +88,8 @@ export function validateGeoVideoIndex(value: unknown): GeoVideoIndex {
       !isoDate(chunk?.start) ||
       !isoDate(chunk.end) ||
       Date.parse(chunk.end) < Date.parse(chunk.start) ||
-      typeof chunk.manifestUrl !== "string"
+      typeof chunk.manifestUrl !== "string" ||
+      (chunk.times !== undefined && !validTimes(chunk))
     ) {
       throw new Error("Invalid GeoVideo index chunk");
     }
@@ -107,6 +132,7 @@ export function geoVideoIndexChunks(
     start: Date.parse(chunk.start),
     end: Date.parse(chunk.end),
     samples: chunk.samples,
+    ...(chunk.times ? { times: chunk.times.map(Date.parse) } : {}),
     ...(chunk.provisional ? { provisional: true } : {}),
   }));
 }

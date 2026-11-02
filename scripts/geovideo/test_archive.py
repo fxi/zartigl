@@ -5,6 +5,7 @@ from unittest import mock
 import numpy as np
 
 from archive import (
+    backfill_times,
     chunk_key,
     chunk_period,
     covered_times,
@@ -233,6 +234,25 @@ class IndexTest(unittest.TestCase):
         self.assertEqual((expired, len(kept["superseded"])), ([], 1))
         expired, kept = expired_superseded(index, ns("2026-10-09"))
         self.assertEqual((expired, kept["superseded"]), (["aaa"], []))
+
+    def test_records_the_encoded_sample_times(self):
+        entry = merge_chunk(empty_index(ARCHIVE), self.chunk("aaa"), ns("2026-10-08"))["chunks"][0]
+        self.assertEqual(entry["times"], ["2026-09-01T00:00:00Z", "2026-09-30T23:00:00Z"])
+
+    def test_backfills_times_from_manifests_once(self):
+        index = merge_chunk(empty_index(ARCHIVE), self.chunk("aaa"), ns("2026-10-08"))
+        legacy = {**index, "chunks": [{k: v for k, v in index["chunks"][0].items() if k != "times"}]}
+        manifests = {"aaa/manifest.json": {"timeline": {"values": ["2026-09-01T00:00:00Z", "2026-09-30T23:00:00Z"]}}}
+        filled, changed = backfill_times(legacy, manifests.__getitem__)
+        self.assertTrue(changed)
+        self.assertEqual(filled, index)
+        self.assertEqual(backfill_times(filled, self.fail), (filled, False))
+
+    def test_backfill_rejects_a_manifest_that_disagrees(self):
+        index = merge_chunk(empty_index(ARCHIVE), self.chunk("aaa"), ns("2026-10-08"))
+        legacy = {**index, "chunks": [{k: v for k, v in index["chunks"][0].items() if k != "times"}]}
+        with self.assertRaisesRegex(RuntimeError, "do not match"):
+            backfill_times(legacy, lambda _url: {"timeline": {"values": ["2026-09-01T00:00:00Z"]}})
 
     def test_chunks_stay_sorted_by_period(self):
         index = empty_index(ARCHIVE)

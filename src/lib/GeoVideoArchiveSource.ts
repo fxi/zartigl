@@ -37,6 +37,8 @@ export interface GeoVideoArchiveChunk extends GeoVideoChunkSpan {
   manifestUrl: string;
   /** Encoded samples, when the index lists them. */
   samples?: number;
+  /** Time of each encoded sample, UTC milliseconds, when the index lists them. */
+  times?: number[];
   provisional?: boolean;
 }
 
