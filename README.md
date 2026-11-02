@@ -83,10 +83,12 @@ Pass `layer` and `source` together when both should switch atomically.
 
 `source` takes a source id or a preference:
 
-- `"geovideo"`: fast; surface level and GeoVideo dates only.
-- `"zarr"`: all dates and depths; heavier on the client.
-- `"auto"`: GeoVideo, falling back to Zarr for other dates and depths; the
-  layer style always applies. WMTS only when the entry has neither.
+- `"geovideo"`: fast; the surface level, over its archive's whole timeline.
+- `"zarr"`: all native dates and depths; heavier on the client, for analysis.
+- `"auto"`: the entry's default mode, GeoVideo when it has one. No date ever
+  switches sources: a date outside the archive snaps to its nearest sample.
+  Until GeoVideo renders depths, a level below the surface shows Zarr, and
+  the surface GeoVideo again. WMTS only when the entry has neither.
 - `"wmts"`: rendered by the server, palette and legend included; no
   particles, and the layer style has no effect.
 

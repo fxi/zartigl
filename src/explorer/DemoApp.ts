@@ -99,16 +99,25 @@ const SOURCE_LABELS: Record<CatalogSource["type"], string> = {
   geovideo: "GeoVideo",
 };
 
-/** Whether a source preference applies to a catalog entry. */
+/** Explicit modes, in the order the menu offers them and the default picks. */
+const MODES: CatalogSource["type"][] = ["geovideo", "wmts", "zarr"];
+
+/** Whether a source preference applies to a catalog entry; "auto" never does. */
 function appliesTo(
   entry: CatalogEntry,
   preference: CatalogSourcePreference,
 ): boolean {
+  return entry.sources.some(
+    (source) => source.type === preference || source.id === preference,
+  );
+}
+
+/** The first mode the entry offers: GeoVideo, else WMTS, else Zarr. */
+function defaultMode(entry: CatalogEntry): CatalogSourcePreference {
   return (
-    preference === "auto" ||
-    entry.sources.some(
-      (source) => source.type === preference || source.id === preference,
-    )
+    MODES.find((mode) =>
+      entry.sources.some((source) => source.type === mode),
+    ) ?? entry.sources[0].type
   );
 }
 
@@ -430,10 +439,10 @@ export class DemoApp {
   private exportParams = { embedEntry: false };
   private currentLayer: CatalogEntry;
   private currentBackend: "zarr" | "geovideo" | "wmts" = "zarr";
-  /** Active source, which "auto" or a type preference may move. */
+  /** Active source; an archive moves it between its chunks. */
   private currentSourceId = "";
-  /** Requested source: "auto", a source type, or a source id. */
-  private sourcePreference: CatalogSourcePreference = "auto";
+  /** Requested mode (a source type), or a pinned source id. */
+  private sourcePreference: CatalogSourcePreference = "geovideo";
   private readonly locale = navigator.language || "en";
   private currentProjection: "mercator" | "globe" = "globe";
   private activePopup: maplibregl.Popup | null = null;
@@ -521,7 +530,7 @@ export class DemoApp {
       [hashState?.s, this.sourcePreference].find(
         (preference): preference is CatalogSourcePreference =>
           preference != null && appliesTo(layer, preference),
-      ) ?? "auto";
+      ) ?? defaultMode(layer);
 
     const sharedTimeRange = normalizeSharedTimeRange(hashState?.tr);
 
@@ -774,7 +783,7 @@ export class DemoApp {
     }
     this.currentSourceId = source.id;
     this.currentBackend = source.type;
-    // The menu keeps the preference; "auto" names the source it shows.
+    // The menu keeps the preference.
     this.renderSourceSelect();
     // Leaves the time slider alone, which may be mid-drag; zartigl keeps the
     // selected depth across sources.
@@ -1864,9 +1873,10 @@ export class DemoApp {
       return;
     }
     const sources = this.currentLayer.sources;
-    const types = [...new Set(sources.map((source) => source.type))];
+    const types = MODES.filter((mode) =>
+      sources.some((source) => source.type === mode),
+    );
     const options = [
-      new Option(`auto (${SOURCE_LABELS[this.currentBackend]})`, "auto"),
       ...types.flatMap((type) => {
         const ofType = sources.filter((source) => source.type === type);
         // Several sources of one type (artifacts): each can be pinned too.

@@ -55,3 +55,34 @@ export function pairChunk<T extends CatalogSource>(
     pairChunkSpan(chunkSpan(chunk), candidates.map(chunkSpan))?.source ?? null
   );
 }
+
+/**
+ * The chunk of one archive showing `request`: the one holding its time, else
+ * the nearest, among chunks with samples inside its window. Without a time,
+ * the latest. Undefined when the window holds no chunk. Archives never leave
+ * their chunks for another source: a time between or beyond them snaps.
+ */
+export function archiveChunkAt<T extends CatalogSource>(
+  chunks: readonly T[],
+  request: { time?: number; start?: number; end?: number } = {},
+): T | undefined {
+  const low = request.start ?? -Infinity;
+  const high = request.end ?? Infinity;
+  const spans = chunks
+    .map(chunkSpan)
+    .filter((span) => span.end >= low && span.start <= high)
+    .sort((a, b) => a.start - b.start);
+  if (spans.length === 0) {
+    return undefined;
+  }
+  if (request.time == null) {
+    return spans[spans.length - 1].source;
+  }
+  const time = Math.min(high, Math.max(low, request.time));
+  const distance = (span: { start: number; end: number }) =>
+    time < span.start ? span.start - time : Math.max(0, time - span.end);
+  // Ties go to the later chunk, as a boundary sample starts the next period.
+  return spans.reduce((best, span) =>
+    distance(span) <= distance(best) ? span : best,
+  ).source;
+}

@@ -2,6 +2,8 @@ import type { Map as MaplibreMap } from "maplibre-gl";
 import type {
   Catalog,
   CatalogEntry,
+  CatalogGeoVideoArchiveSource,
+  CatalogGeoVideoSource,
   CatalogSource,
   CatalogSourcePreference,
   CatalogWmtsSource,
@@ -48,7 +50,7 @@ import {
   gradeToColorGrade,
   type ColorGrade,
 } from "./color-grade";
-import { nextChunk } from "./archive-timeline";
+import { archiveChunkAt, nextChunk } from "./archive-timeline";
 import { parseTime, timeRangeBounds, type TimeRange } from "./time-range";
 import {
   ZartiglFrameUnavailableError,
@@ -63,6 +65,7 @@ import {
 } from "./geovideo";
 import {
   geoVideoChunkSources,
+  geoVideoIndexChunks,
   isGeoVideoArchiveSource,
   isSameSource,
   loadGeoVideoIndex,
@@ -420,7 +423,10 @@ function applyTimeRange(
   const [min, max] = resolved;
   const values = meta.values.filter((value) => value >= min && value <= max);
   if (values.length === 0) {
-    throw new Error("Time range does not contain any available timestamps");
+    // A RangeError: the request is wrong, not the source.
+    throw new RangeError(
+      "Time range does not contain any available timestamps",
+    );
   }
   return {
     ...meta,
@@ -458,21 +464,21 @@ function variableNames(source: CatalogZarrSource): string[] {
   return [source.variables.u ?? "uo", source.variables.v ?? "vo"];
 }
 
-/** A preference naming one source id, rather than "auto" or a source type. */
-function isPinnedSource(
+/**
+ * The archive a preference shows: the one pinned by id, or for "geovideo"
+ * and "auto", the entry's archive. Its chunks follow the time; nothing else
+ * does.
+ */
+function archiveFor(
   entry: CatalogEntry,
   preference: CatalogSourcePreference,
-): boolean {
-  return entry.sources.some((source) => source.id === preference);
-}
-
-/** Pinned to an archive: its covering chunk, else Zarr, follow the time. */
-function isPinnedArchive(
-  entry: CatalogEntry,
-  preference: CatalogSourcePreference,
-): boolean {
-  return entry.sources.some(
-    (source) => source.id === preference && isGeoVideoArchiveSource(source),
+): CatalogGeoVideoArchiveSource | undefined {
+  const archives = entry.sources.filter(isGeoVideoArchiveSource);
+  return (
+    archives.find((source) => source.id === preference) ??
+    (preference === "geovideo" || preference === "auto"
+      ? archives[0]
+      : undefined)
   );
 }
 
@@ -530,23 +536,15 @@ function validateGeoVideoSpeed(options?: GeoVideoOptions): void {
   }
 }
 
-/** Union of the artifact samples and the Zarr time axis. */
-function mergeTimeAxes(
-  geoVideo: ZarrTimeDimension,
-  zarr: ZarrTimeDimension | null,
-): ZarrTimeDimension {
-  if (!zarr || zarr.values.length === 0) {
-    return geoVideo;
-  }
-  const values = [...new Set([...zarr.values, ...geoVideo.values])].sort(
-    (a, b) => a - b,
-  );
+/** A time axis over sample times, epoch milliseconds. */
+function sampleTimeMeta(times: readonly number[]): ZarrTimeDimension {
+  const values = [...new Set(times)].sort((a, b) => a - b);
   return {
     min: values[0],
     max: values[values.length - 1],
-    step: values.length === zarr.values.length ? zarr.step : undefined,
+    step: uniformStep(values),
     size: values.length,
-    units: geoVideo.units,
+    units: "milliseconds since 1970-01-01T00:00:00Z",
     values,
   };
 }
@@ -554,6 +552,8 @@ function mergeTimeAxes(
 /** Archive indexes are mutable: revalidate them, and retry failures sooner. */
 const ARCHIVE_INDEX_TTL_MS = 5 * 60_000;
 const ARCHIVE_INDEX_RETRY_MS = 60_000;
+/** Chunk manifests read at once for an index that does not list their samples. */
+const ARCHIVE_MANIFEST_READS = 6;
 
 /** Flat settings of a style; keys the style leaves out stay out. */
 function styleToSettings(style: LayerStyleInput): Partial<ZartiglSettings> {
@@ -827,6 +827,8 @@ export class Zartigl {
     string,
     { chunks: Promise<CatalogSource[]>; expires: number }
   >();
+  /** Samples of each archive chunk the index lists them for, by manifest URL. */
+  private chunkTimes = new Map<string, number[]>();
   /** Manifest of the archive chunk expected next, requested ahead of it. */
   private nextChunkManifest: {
     url: string;
@@ -1236,18 +1238,15 @@ export class Zartigl {
             `GeoVideo manifest identity does not match catalog entry/source: ${requestedSource.id}`,
           );
         }
-        // Where the source can switch to Zarr, time and depth controls span
-        // the Zarr axes: a time outside the artifact (auto or a pinned
-        // archive) or a deeper level (auto) then switches source instead of
-        // being unreachable. Fixed artifacts keep their own timeline.
-        const switchesTime =
-          preference === "auto" || isPinnedArchive(catalogLayer, preference);
-        const zarrAxes = switchesTime
-          ? await this.zarrAxes(catalogLayer)
-          : { time: null, vertical: null };
-        if (preference !== "auto") {
-          zarrAxes.vertical = null;
-        }
+        // An archive's timeline spans all its chunks: a time moves between
+        // them, never to another source. A fixed artifact keeps its own.
+        const archiveTimes = archiveFor(catalogLayer, requestedSource.id)
+          ? await this.archiveTimes(catalogLayer, requestedSource.id)
+          : null;
+        // Transitional, "auto" only: the depth control spans the Zarr levels,
+        // a deeper one showing Zarr, until GeoVideo renders depths.
+        const vertical =
+          preference === "auto" ? await this.zarrVertical(catalogLayer) : null;
         if (generation !== this.switchGeneration) {
           throw new DOMException(
             "Layer selection was superseded",
@@ -1255,15 +1254,7 @@ export class Zartigl {
           );
         }
         const values = geoVideoTimelineValues(manifest);
-        const geoVideoTimeMeta = {
-          min: values[0],
-          max: values[values.length - 1],
-          step: values.length > 1 ? values[1] - values[0] : undefined,
-          size: values.length,
-          units: "milliseconds since 1970-01-01T00:00:00Z",
-          values,
-        };
-        const axisTimeMeta = mergeTimeAxes(geoVideoTimeMeta, zarrAxes.time);
+        const axisTimeMeta = sampleTimeMeta(archiveTimes ?? values);
         const resolvedTimeRange = resolveTimeRange(
           axisTimeMeta,
           requestedTimeRange,
@@ -1272,10 +1263,11 @@ export class Zartigl {
           axisTimeMeta,
           requestedTimeRange,
         );
-        const artifactValues = applyTimeRange(
-          geoVideoTimeMeta,
-          requestedTimeRange,
-        ).values;
+        // The chunk's own samples inside the window, else all of them.
+        const artifactValues = values.filter(
+          (value) =>
+            value >= filteredTimeMeta.min && value <= filteredTimeMeta.max,
+        );
         const shownValues = artifactValues.length ? artifactValues : values;
         const swapInPlace =
           this.catalogLayer?.id === catalogLayer.id &&
@@ -1291,7 +1283,7 @@ export class Zartigl {
         this.fullTimeMeta = axisTimeMeta;
         this.resolvedTimeRange = resolvedTimeRange;
         this.timeMeta = filteredTimeMeta;
-        this.verticalMeta = zarrAxes.vertical;
+        this.verticalMeta = vertical;
         this.variableUnit = manifest.style.unit ?? "";
         this.variableStandardName = manifest.provenance.variables[0];
         this.time =
@@ -1300,7 +1292,7 @@ export class Zartigl {
             : nearestValue(shownValues, this.pendingTime);
         this.pendingTime = null;
         // In "auto", GeoVideo was selected for a surface depth.
-        this.depth = resolveDepth(zarrAxes.vertical, target.depth);
+        this.depth = resolveDepth(vertical, target.depth);
         const overriddenColorDomain = requestedSettings.colorDomain;
         this.settings = { ...layerDefaults, ...requestedSettings };
         this.colorDomainOverridden = requestedColorDomainOverride;
@@ -1326,11 +1318,13 @@ export class Zartigl {
         const url = requestedSource.manifestUrl;
         if (
           err.name !== "AbortError" &&
+          !(err instanceof RangeError) &&
           preference === "auto" &&
           url &&
           !this.failedGeoVideo.has(url)
         ) {
-          // "auto" leaves an unreadable GeoVideo for another source.
+          // "auto" leaves an unreadable GeoVideo for another source; an
+          // empty time range is the request's fault, not the source's.
           console.warn("[zartigl] GeoVideo unavailable, falling back:", err);
           this.failedGeoVideo.add(url);
           return this.loadSource(id, preference, context, generation);
@@ -1500,11 +1494,10 @@ export class Zartigl {
   }
 
   /**
-   * Source switch after init: leave the current GeoVideo when it cannot show
-   * the requested time, window, or depth and another source can. A time
-   * change alone never switches back, so scrubbing a Zarr timeline does not
-   * flip sources; in "auto", selecting the surface depth, alone or with a
-   * date GeoVideo covers, returns to GeoVideo.
+   * Source switch after init. An archive moves between its own chunks with
+   * the time or window; no time ever switches to another source. In "auto"
+   * only, until GeoVideo renders depths, a deeper level shows Zarr and the
+   * surface level GeoVideo again.
    */
   private async needsSourceSwitch(
     range: TimeRange | undefined,
@@ -1517,37 +1510,24 @@ export class Zartigl {
       return false;
     }
     if (
-      current.type !== "geovideo" &&
       this.sourcePreference === "auto" &&
       target.depth != null &&
-      !timeRangeChanged
+      (await this.geoVideoServesDepth(entry, target.depth)) !==
+        (current.type === "geovideo")
     ) {
-      if (!(await this.geoVideoServesDepth(entry, target.depth))) {
-        return false;
-      }
       const next = await this.selectSource(entry, "auto", range, {
         time: target.time ?? this.time,
         depth: target.depth,
       });
-      return next.type === "geovideo";
+      return !isSameSource(next, current);
     }
-    // A pinned archive moves between its chunks and Zarr in both directions.
-    const pinnedArchive = isPinnedArchive(entry, this.sourcePreference);
-    if (
-      (current.type !== "geovideo" && !pinnedArchive) ||
-      (isPinnedSource(entry, this.sourcePreference) && !pinnedArchive)
-    ) {
+    if (!this.isArchiveChunk(current)) {
       return false;
     }
     const coversTime =
       (target.time == null && !timeRangeChanged) ||
-      (current.type === "geovideo" &&
-        sourceCoversTime(current, this.sourceTimeRequest(range, target.time)));
-    const servesDepth =
-      target.depth == null ||
-      this.sourcePreference !== "auto" ||
-      (await this.geoVideoServesDepth(entry, target.depth));
-    if (coversTime && servesDepth) {
+      sourceCoversTime(current, this.sourceTimeRequest(range, target.time));
+    if (coversTime) {
       return false;
     }
     const next = await this.selectSource(
@@ -2474,8 +2454,11 @@ export class Zartigl {
   }
 
   /**
-   * Source for a preference and target. In "auto", a GeoVideo that cannot show
-   * the requested depth (it renders the surface level) yields to Zarr.
+   * Source for a preference and target. An archive (pinned, or the
+   * GeoVideo of "geovideo" and "auto") shows its chunk for the time; an
+   * archive that cannot load fails a pinned or "geovideo" preference, and
+   * "auto" moves on to Zarr. Regional artifacts show only when pinned. In
+   * "auto", a level deeper than the surface GeoVideo renders shows Zarr.
    */
   private async selectSource(
     entry: CatalogEntry,
@@ -2484,33 +2467,47 @@ export class Zartigl {
     target: SourceTarget = {},
   ): Promise<CatalogSource> {
     const request = this.sourceTimeRequest(range, target.time);
-    if (isPinnedArchive(entry, preference)) {
+    const archive = archiveFor(entry, preference);
+    if (archive) {
       const resolved = await this.resolveArchives(entry);
-      const covering = resolved.sources.filter(
-        (source) =>
-          source.id === preference && sourceCoversTime(source, request),
+      const chunks = resolved.sources.filter(
+        (source) => source.id === archive.id,
       );
-      const selected = covering.length
-        ? pickSourceByPriority(
-            { ...resolved, sources: covering },
-            ["geovideo"],
-            request,
-          )
-        : pickSourceByPriority(resolved, ["zarr"], request);
-      if (!selected) {
-        throw new Error(`Catalog entry ${entry.id} has no Zarr fallback`);
+      const deep =
+        preference === "auto" &&
+        target.depth != null &&
+        !(await this.geoVideoServesDepth(entry, target.depth));
+      if (chunks.length && !deep) {
+        // The chunk holding the sample shown; one that failed is not
+        // replaced by another period.
+        const time = await this.archiveSample(
+          entry,
+          archive.id,
+          range,
+          target.time,
+        );
+        const chunk = archiveChunkAt(chunks, { time });
+        if (chunk && !this.isFailedGeoVideo(chunk)) {
+          return chunk;
+        }
+        if (preference !== "auto") {
+          throw new Error(
+            `GeoVideo chunk unavailable: ${chunk?.type === "geovideo" ? chunk.manifestUrl : archive.id}`,
+          );
+        }
+      } else if (preference !== "auto") {
+        throw new Error(`GeoVideo archive unavailable: ${archive.id}`);
       }
-      return selected;
-    }
-    if (entry.sources.some(isGeoVideoArchiveSource)) {
-      entry = await this.resolveArchives(entry);
-      // An unavailable archive must not fail a GeoVideo type preference.
-      if (
-        preference === "geovideo" &&
-        !entry.sources.some((source) => source.type === "geovideo")
-      ) {
-        preference = "auto";
+      const zarr = pickSourceByPriority(resolved, ["zarr"], request);
+      if (zarr) {
+        return zarr;
       }
+      entry = {
+        ...resolved,
+        sources: resolved.sources.filter(
+          (source) => source.type !== "geovideo",
+        ),
+      };
     }
     if (
       preference === "auto" &&
@@ -2701,28 +2698,88 @@ export class Zartigl {
     return { zarr, source };
   }
 
-  /** Zarr time and vertical axes; unavailable metadata leaves the artifact's own timeline. */
-  private async zarrAxes(entry: CatalogEntry): Promise<{
-    time: ZarrTimeDimension | null;
-    vertical: ZarrVerticalDimension | null;
-  }> {
+  /** Zarr vertical axis; unavailable metadata leaves GeoVideo without one. */
+  private async zarrVertical(
+    entry: CatalogEntry,
+  ): Promise<ZarrVerticalDimension | null> {
     try {
       const field = await this.entryFieldZarr(entry);
       return field
-        ? {
-            time: coveredTimeDimension(
-              field.zarr,
-              field.source.getTimeDimension(),
-            ),
-            vertical:
-              field.source.getVerticalDimension(variableNames(field.zarr)[0]) ??
-              null,
-          }
-        : { time: null, vertical: null };
+        ? (field.source.getVerticalDimension(variableNames(field.zarr)[0]) ??
+            null)
+        : null;
     } catch (error) {
-      console.warn("[zartigl] Zarr axes unavailable for GeoVideo:", error);
-      return { time: null, vertical: null };
+      console.warn("[zartigl] Zarr depth unavailable for GeoVideo:", error);
+      return null;
     }
+  }
+
+  /**
+   * Every sample of an archive's chunks, sorted, from its index. Chunks
+   * indexed before the index listed them read their manifest once, a few at
+   * a time; one that cannot be read only leaves its samples out.
+   */
+  private async archiveTimes(
+    entry: CatalogEntry,
+    archiveId: string,
+  ): Promise<number[]> {
+    const urls = (await this.resolveArchives(entry)).sources.flatMap(
+      (source) =>
+        source.id === archiveId &&
+        source.type === "geovideo" &&
+        source.manifestUrl
+          ? [source.manifestUrl]
+          : [],
+    );
+    const missing = urls.filter((url) => !this.chunkTimes.has(url));
+    for (let i = 0; i < missing.length; i += ARCHIVE_MANIFEST_READS) {
+      const batch = missing.slice(i, i + ARCHIVE_MANIFEST_READS);
+      const read = await Promise.allSettled(
+        batch.map((url) => this.loadChunkManifest(url)),
+      );
+      read.forEach((result, j) => {
+        if (result.status === "fulfilled") {
+          this.chunkTimes.set(batch[j], geoVideoTimelineValues(result.value));
+        } else {
+          console.warn(
+            "[zartigl] GeoVideo chunk samples unavailable:",
+            result.reason,
+          );
+        }
+      });
+    }
+    return [
+      ...new Set(urls.flatMap((url) => this.chunkTimes.get(url) ?? [])),
+    ].sort((a, b) => a - b);
+  }
+
+  /**
+   * The archive sample a request shows: the one nearest its time inside its
+   * window (a trailing window counts back from the archive's last sample),
+   * the latest without a time. Snapping once, here, keeps the chunk loaded
+   * and the time shown in agreement.
+   */
+  private async archiveSample(
+    entry: CatalogEntry,
+    archiveId: string,
+    range: TimeRange | undefined,
+    requestedTime?: Date | string | number,
+  ): Promise<number> {
+    const times = await this.archiveTimes(entry, archiveId);
+    const [low, high] =
+      range && times.length
+        ? timeRangeBounds(range, [times[0], times[times.length - 1]])
+        : [-Infinity, Infinity];
+    const inRange = times.filter((time) => time >= low && time <= high);
+    if (inRange.length === 0) {
+      throw new RangeError(
+        "Time range does not contain any available timestamps",
+      );
+    }
+    const time = this.sourceTimeRequest(undefined, requestedTime).time;
+    return time == null
+      ? inRange[inRange.length - 1]
+      : nearestValue(inRange, time);
   }
 
   /**
@@ -2743,7 +2800,15 @@ export class Zartigl {
         const cacheEntry = {
           expires: Date.now() + ARCHIVE_INDEX_TTL_MS,
           chunks: loadGeoVideoIndex(source.indexUrl)
-            .then((index) => geoVideoChunkSources(source, index, entry))
+            .then((index) => {
+              const chunks = geoVideoChunkSources(source, index, entry);
+              for (const chunk of geoVideoIndexChunks(index, source.indexUrl)) {
+                if (chunk.times) {
+                  this.chunkTimes.set(chunk.manifestUrl, chunk.times);
+                }
+              }
+              return chunks;
+            })
             .catch((error: unknown) => {
               console.warn("[zartigl] GeoVideo archive unavailable:", error);
               cacheEntry.expires = Date.now() + ARCHIVE_INDEX_RETRY_MS;

@@ -179,11 +179,12 @@ before writing the manifest; `--upload` requires the bucket CORS rule to exist
 and never rewrites it.
 
 A catalog entry may list several GeoVideo sources, each with
-`temporal.mode: "fixed"` and its `start`/`end`. With `source: "auto"`, zartigl
-picks the GeoVideo covering the requested time or time range (the latest
-period when several do), and falls back to Zarr otherwise. A regional artifact
-is meant to be referenced explicitly by source id, as the story does for Chido.
-Point queries always use Zarr.
+`temporal.mode: "fixed"` and its `start`/`end`. An archive (`source:
+"geovideo"`, `"auto"`, or its id) spans every sample of its chunks, listed by
+the index (`times`): a date shows the chunk holding it, and a date between or
+beyond chunks snaps to the nearest sample. No date switches to Zarr. A
+regional artifact shows only when referenced by source id, as the story does
+for Chido. Point queries always use Zarr.
 
 `vector_lab.py` measures codec losses and exports the side-by-side browser lab
 (`npm run dev:geovideo-vector`).
@@ -242,7 +243,10 @@ repairs drift after a catalog or upstream change.
 Objects live under `geovideo/<entryId>/<sourceId>/<key>/` with
 `geovideo/<entryId>/<sourceId>/index.json` beside them. Chunks are uploaded
 before the index (short cache lifetime) is rewritten; a replaced chunk is
-deleted one day later so cached indexes stay valid. Runs are round-robin
+deleted one day later so cached indexes stay valid. Each index chunk lists
+its encoded samples (`times`), from which the browser builds the archive's
+timeline; a run first fills them for chunks indexed before, from their
+manifests, even when the upstream store cannot be read. Runs are round-robin
 across archives, newest chunk first, and stop starting chunks when the budget
 is spent; the next run resumes. With `--jobs`, workers render and upload in
 parallel while the main process alone rewrites each index. A dropped

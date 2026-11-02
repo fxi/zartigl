@@ -439,14 +439,12 @@ describe("Zartigl facade", () => {
     );
 
     expect(z.getSource()).toEqual({ id: GEO_VIDEO_ID, type: "geovideo" });
-    // Zarr is read only for its axes, so time and depth controls reach it.
+    // Zarr is read only for its depth axis ("auto" reaches deeper levels
+    // through it); the time control is the artifact's own timeline.
     expect(ZarrSource.prototype.init).toHaveBeenCalledOnce();
     const timeMeta = z.getTimeMeta();
     expect(timeMeta.timelineKind).toBe("sample-sequence");
-    expect(timeMeta.values).toEqual(
-      expect.arrayContaining(manifest.timeline.values.map(Date.parse)),
-    );
-    expect(timeMeta.size).toBeGreaterThan(3);
+    expect(timeMeta.values).toEqual(manifest.timeline.values.map(Date.parse));
     expect(timeMeta.current).toBe(Date.parse("2026-08-01T00:00:00Z"));
     const depthMeta = z.getDepthMeta();
     expect(depthMeta.values.length).toBeGreaterThan(1);
@@ -560,20 +558,17 @@ describe("Zartigl facade", () => {
       return () => vi.unstubAllGlobals();
     });
 
-    it("leaves GeoVideo for Zarr when an update asks for a time outside its period", async () => {
+    it("keeps GeoVideo for a time outside its period, on its nearest sample", async () => {
       const z = await createZartigl(
         { map: new FakeMap() as never, catalog: geoCatalog() },
         GEO_ENTRY_ID,
       );
       expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
 
+      // No time switches sources: Zarr is an explicit choice.
       await z.update({ time: 3_000 });
-      expect(z.getSource()?.type).toBe("zarr");
-      expect(z.getTimeMeta().current).toBe(3_000);
-
-      // One-way: a time inside the period again stays on Zarr.
-      await z.update({ time: inPeriod });
-      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getTimeMeta().current).toBe(z.getTimeMeta().values[0]);
     });
 
     it("honors the time of a layer switch when selecting its source", async () => {
@@ -628,9 +623,9 @@ describe("Zartigl facade", () => {
       );
       expect(z.getSource()?.id).toBe(OLD_VIDEO_ID);
 
+      // Once shown, an artifact keeps its own timeline.
       await z.update({ time: inPeriod });
-      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
-      expect(z.getTimeMeta().current).toBe(inPeriod);
+      expect(z.getSource()?.id).toBe(OLD_VIDEO_ID);
     });
 
     it("keeps a pinned GeoVideo source for any time or depth", async () => {
@@ -772,7 +767,8 @@ describe("Zartigl facade", () => {
       await z.play();
       await z.stepTime(1);
       expect(events.playback).toEqual([true, false, true, false]);
-      expect(z.getTimeMeta().current).toBe(Date.parse("2026-08-01T02:00:00Z"));
+      // Steps follow the artifact's samples, not the hourly Zarr axis.
+      expect(z.getTimeMeta().current).toBe(Date.parse("2026-08-01T03:00:00Z"));
     });
 
     it("stops playback started by an earlier queued request once navigation applies", async () => {
@@ -1014,6 +1010,7 @@ describe("Zartigl facade", () => {
         start,
         end,
         samples: 2,
+        times: [start, end],
         key,
         manifestUrl: `${key}/manifest.json`,
       })),
@@ -1090,7 +1087,7 @@ describe("Zartigl facade", () => {
       expect(z.getLegend()).toMatchObject({ palette: "rdylbu" });
     });
 
-    it("moves to the next chunk, then to Zarr outside the archive", async () => {
+    it("moves between chunks and keeps a time outside the archive on it", async () => {
       const z = await createZartigl(
         {
           map: new FakeMap() as never,
@@ -1106,8 +1103,13 @@ describe("Zartigl facade", () => {
       );
       expect(z.getTimeMeta().current).toBe(Date.parse("2026-09-01T00:00:00Z"));
 
+      // Outside the archive, the time snaps to its nearest sample: no Zarr.
       await z.update({ time: 3_000 });
-      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/august/manifest.json",
+      );
+      expect(z.getTimeMeta().current).toBe(Date.parse(chunks.august[0]));
       expect(
         fetchSpy.mock.calls.filter(([url]) => url === INDEX_URL),
       ).toHaveLength(1);
@@ -1128,14 +1130,172 @@ describe("Zartigl facade", () => {
         "https://example.test/archive/september/manifest.json",
       );
 
-      await z.update({ time: 3_000 });
-      expect(z.getSource()?.type).toBe("zarr");
-
-      await z.update({ time: "2026-08-10T00:00:00Z" });
+      // Between two chunks (after August's last sample): the nearest one.
+      await z.update({ time: "2026-08-31T22:00:00Z" });
       expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
       expect(manifestRequests().slice(-1)[0]).toBe(
         "https://example.test/archive/august/manifest.json",
       );
+      expect(z.getTimeMeta().current).toBe(Date.parse(chunks.august[1]));
+    });
+
+    it("rejects a time range outside the archive and keeps its state", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      await expect(
+        z.update({
+          timeRange: {
+            start: "2027-01-01T00:00:00Z",
+            end: "2027-02-01T00:00:00Z",
+          },
+        }),
+      ).rejects.toThrow("Time range does not contain any available timestamps");
+      // A request error, not a broken artifact: no fallback to Zarr.
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+      expect(z.getTimeMeta().size).toBe(4);
+    });
+
+    it("reads the samples of chunks indexed before the index listed them", async () => {
+      stubFetch({
+        ok: true,
+        body: {
+          ...index,
+          chunks: index.chunks.map(({ times: _times, ...chunk }) => chunk),
+        },
+      });
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getTimeMeta().values).toEqual(
+        [...chunks.august, ...chunks.september].map(Date.parse),
+      );
+      expect(manifestRequests()).toEqual(
+        expect.arrayContaining([
+          "https://example.test/archive/august/manifest.json",
+          "https://example.test/archive/september/manifest.json",
+        ]),
+      );
+      // Samples are read once: moving between chunks reads their media only.
+      const before = manifestRequests().length;
+      await z.update({ time: "2026-09-10T00:00:00Z" });
+      await z.update({ time: "2026-08-10T00:00:00Z" });
+      expect(manifestRequests().length).toBe(before + 2);
+    });
+
+    it("counts a trailing window back from the archive's last sample", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          timeRange: { trailing: "P10D" },
+        },
+        GEO_ENTRY_ID,
+      );
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/september/manifest.json",
+      );
+      expect(z.getTimeMeta().values).toEqual([Date.parse(chunks.september[1])]);
+    });
+
+    it("shows the earlier sample, and its chunk, halfway between two chunks", async () => {
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-09-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      await z.update({ time: "2026-08-31T22:30:00Z" });
+      expect(manifestRequests().slice(-1)[0]).toBe(
+        "https://example.test/archive/august/manifest.json",
+      );
+      expect(z.getTimeMeta().current).toBe(Date.parse(chunks.august[1]));
+    });
+
+    it("never replaces a chunk that failed by another period", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      onTestFinished(() => warn.mockRestore());
+      const fetchOk = fetchSpy as unknown as (url: string) => Promise<unknown>;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) =>
+          url.includes("september")
+            ? { ok: false, status: 500, json: async () => ({}) }
+            : fetchOk(url),
+        ),
+      );
+      const options = {
+        map: new FakeMap() as never,
+        catalog: archiveCatalog(),
+        time: "2026-09-10T00:00:00Z",
+      };
+      // "auto" shows Zarr, not August...
+      const z = await createZartigl(options, GEO_ENTRY_ID);
+      expect(z.getSource()?.type).toBe("zarr");
+      // ...and a pinned archive reports the failure.
+      await expect(
+        createZartigl({ ...options, source: ARCHIVE_ID }, GEO_ENTRY_ID),
+      ).rejects.toThrow();
+    });
+
+    it("leaves GeoVideo for a deep level given with a time range", async () => {
+      const values = [
+        Date.parse("2026-08-10T00:00:00Z"),
+        Date.parse("2026-09-10T00:00:00Z"),
+      ];
+      vi.mocked(ZarrSource.prototype.getTimeDimension).mockReturnValue({
+        min: values[0],
+        max: values[1],
+        size: 2,
+        units: "milliseconds since 1970-01-01T00:00:00Z",
+        values,
+      });
+      const z = await createZartigl(
+        {
+          map: new FakeMap() as never,
+          catalog: archiveCatalog(),
+          time: "2026-08-10T00:00:00Z",
+        },
+        GEO_ENTRY_ID,
+      );
+      await z.update({
+        depth: 20,
+        timeRange: {
+          start: "2026-08-01T00:00:00Z",
+          end: "2026-09-30T21:00:00Z",
+        },
+      });
+      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getDepthMeta().current).toBe(20);
+    });
+
+    it("fails a pinned archive whose index cannot be read", async () => {
+      stubFetch({ ok: false });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      onTestFinished(() => warn.mockRestore());
+      await expect(
+        createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            source: ARCHIVE_ID,
+          },
+          GEO_ENTRY_ID,
+        ),
+      ).rejects.toThrow("GeoVideo archive unavailable");
     });
 
     it("revalidates the index and retries failures", async () => {
@@ -1148,15 +1308,16 @@ describe("Zartigl facade", () => {
         {
           map: new FakeMap() as never,
           catalog: archiveCatalog(),
-          source: ARCHIVE_ID,
         },
         GEO_ENTRY_ID,
       );
+      // "auto" shows Zarr while the archive cannot be read...
       expect(z.getSource()?.type).toBe("zarr");
 
+      // ...and its GeoVideo once asked again after the retry delay.
       stubFetch({ ok: true, body: index });
       now.mockReturnValue(1_000_000 + 61_000);
-      await z.update({ time: "2026-09-10T00:00:00Z" });
+      await z.update({ source: "auto", time: "2026-09-10T00:00:00Z" });
       expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
 
       const indexRequests = () =>
@@ -1168,7 +1329,7 @@ describe("Zartigl facade", () => {
       expect(indexRequests()).toBe(2);
     });
 
-    it("spans the Zarr time and depth axes while a chunk is shown", async () => {
+    it("spans the archive's samples and the Zarr depth axis while a chunk is shown", async () => {
       const z = await createZartigl(
         {
           map: new FakeMap() as never,
@@ -1179,7 +1340,7 @@ describe("Zartigl facade", () => {
       );
       const timeMeta = z.getTimeMeta();
       expect(timeMeta.values).toEqual(
-        expect.arrayContaining([...chunks.august.map(Date.parse), 0]),
+        [...chunks.august, ...chunks.september].map(Date.parse),
       );
       expect(timeMeta.current).toBe(Date.parse(chunks.august[0]));
       expect(z.getDepthMeta().values.length).toBeGreaterThan(1);

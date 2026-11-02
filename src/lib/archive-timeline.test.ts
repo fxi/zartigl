@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogGeoVideoSource } from "../catalog/types";
-import { nextChunk, pairChunk } from "./archive-timeline";
+import { archiveChunkAt, nextChunk, pairChunk } from "./archive-timeline";
 
 const chunk = (
   start: string,
@@ -68,5 +68,45 @@ describe("pairChunk", () => {
     const currents = chunk("2026-09-01T00:00:00Z", "2026-09-30T18:00:00Z");
     const august = chunk("2026-08-01T12:00:00Z", "2026-08-31T12:00:00Z");
     expect(pairChunk(currents, [august])).toBeNull();
+  });
+});
+
+describe("archiveChunkAt", () => {
+  const november = chunk("2024-11-01T00:00:00Z", "2024-11-30T21:00:00Z");
+  const december = chunk("2024-12-01T00:00:00Z", "2024-12-31T21:00:00Z");
+  const chunks = [december, november];
+
+  it("picks the chunk holding the time", () => {
+    expect(archiveChunkAt(chunks, { time: ms("2024-12-21T16:00:00Z") })).toBe(
+      december,
+    );
+  });
+
+  it("snaps a time between or beyond chunks to the nearest one", () => {
+    // After the last sample of a month, before the next month's first.
+    expect(archiveChunkAt(chunks, { time: ms("2024-11-30T22:00:00Z") })).toBe(
+      november,
+    );
+    expect(archiveChunkAt(chunks, { time: ms("2024-11-30T23:00:00Z") })).toBe(
+      december,
+    );
+    expect(archiveChunkAt(chunks, { time: ms("2020-07-01T00:00:00Z") })).toBe(
+      november,
+    );
+  });
+
+  it("stays inside a window, the latest chunk without a time", () => {
+    expect(archiveChunkAt(chunks)).toBe(december);
+    const window = {
+      start: ms("2024-11-10T00:00:00Z"),
+      end: ms("2024-11-20T00:00:00Z"),
+    };
+    expect(archiveChunkAt(chunks, window)).toBe(november);
+    expect(
+      archiveChunkAt(chunks, { ...window, time: ms("2024-12-21T00:00:00Z") }),
+    ).toBe(november);
+    expect(
+      archiveChunkAt(chunks, { start: ms("2025-01-05T00:00:00Z") }),
+    ).toBeUndefined();
   });
 });
