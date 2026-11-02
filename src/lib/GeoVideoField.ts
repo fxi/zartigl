@@ -141,6 +141,11 @@ export class GeoVideoField {
     await this.request(index);
   }
 
+  /** The uploaded texture of the step at `ms`, or null. */
+  texture(ms: number): WebGLTexture | null {
+    return this.textures.get(timeBracket(this.times, ms).index) ?? null;
+  }
+
   /** True once the frames interpolated at `ms` are uploaded. */
   ready(ms: number): boolean {
     const { index, fraction } = timeBracket(this.times, ms);

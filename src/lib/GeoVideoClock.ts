@@ -13,6 +13,10 @@ export class GeoVideoClock {
     this.time = value;
     this.endFraction = 0;
   }
+  /** Progress through the final sample's held step, 0 elsewhere. */
+  get holdFraction(): number {
+    return this.endFraction;
+  }
   /** Playback held, e.g. while a timeline thumb is held. */
   held = false;
   private playingValue: boolean;

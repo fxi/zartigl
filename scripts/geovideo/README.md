@@ -65,18 +65,22 @@ recorded field-error budget passes (p99 at most eight codes and maximum at most
 16). This field budget is separate from the stricter two-code browser criterion
 for stable ramps.
 
-If a render fails the field-error budget on a visually busy or high-variance
-dataset, try raising `output.maxBitrate` before lowering `crf`. A lower CRF
-asks for more bits than a fixed bitrate ceiling allows, so on a hard frame it
-can starve the encoder further and increase the max error rather than
-reduce it; giving the encoder more headroom at the standard CRF fixes this
-class of failure. `sst-anomaly.json`'s `maxBitrate: "24M"` is a resolved
-instance of this.
+The VBV buffer is one second at `output.maxBitrate`: a larger one would raise
+the declared H.264 level (48M stays at 4.1, 96M at 5.0), and published media
+must be High profile at level 5.0 at most. When a render fails the
+field-error budget, it is re-encoded from the frames already computed (the
+source is not read again, but `frames.rgb` holds every raw frame meanwhile)
+along a fixed ladder: the configured encoding, its ceiling doubled up to 96M,
+then CRF lowered by two and four at that ceiling, never to lossless CRF 0.
+Headroom comes before a lower CRF, which asks for more bits than a ceiling
+allows and can starve the encoder on a hard frame. `report.json` records the
+encoding used and the failed attempts under `encoding`; the ladder does not
+change the chunk key.
 
 Set `output.tune: "psnr"` for archives: it disables x264's psychovisual
 tuning, which trades numeric fidelity for perceived quality. Exact daily SST
 anomaly fields failed the budget (max 17–20) at CRF 10–12 whatever the
-ceiling, because the 16M VBV buffer starves low CRF; CRF 8 with a 48M ceiling
+ceiling, because the former fixed 16M VBV buffer starved low CRF; CRF 8 with a 48M ceiling
 and `tune: psnr` passes with margin (max ≈ 11) at about 6 MB per month.
 Mixed layer depth and primary swell period are busier still: at 48M they fail
 (max 18–28) whatever the CRF, and pass with a 96M ceiling (max ≈ 10, about
@@ -109,6 +113,11 @@ npm run geovideo:calibrate
 Outputs are written below `artifacts/geovideo-calibration/` and are ignored by
 Git. These statistics cover FFmpeg decoding; browser canvas/WebGL calibration is
 still required before adopting scalar-encoded video as a public format.
+
+Browsers with WebCodecs decode scalar artifacts in decode order
+(`GeoVideoCodecScalarSource`): playback feeds one sample per step instead of
+seeking, which redecodes from the previous keyframe each time. Others seek a
+video element. Both give the same pixels.
 
 GeoVideo is a visualization transport. Point clicks, time series, and depth
 profiles always query the catalog's authoritative Zarr store; decoded video

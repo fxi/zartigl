@@ -75,6 +75,35 @@ describe("shared GeoVideo vector playback", () => {
     playback.destroy();
   });
 
+  it("blends the final step into a preloaded next chunk", async () => {
+    const { playback, emit } = await setup({ loop: false });
+    const next = {
+      ...vectorManifest,
+      media: { ...vectorManifest.media, url: "https://example.test/next.mp4" },
+    };
+    expect(playback.preloadManifest(next, { time: times[0] })).toBe(true);
+    await flushFrames();
+    await playback.play();
+    const last = (times.length - 1) * 1000;
+    playback.sample(0);
+    for (let ms = 1000; ms <= last; ms += 1000) {
+      playback.sample(ms);
+      await flushFrames();
+    }
+    const held = playback.sample(last)!;
+    expect(held[2]).toBe(0);
+    const blending = playback.sample(last + 500)!;
+    expect(blending[0]).toBe(held[0]);
+    expect(blending[1]).not.toBe(held[0]);
+    expect(blending[2]).toBeCloseTo(0.5);
+    const waiting = playback.sample(last + 1000)!;
+    expect(emit).toHaveBeenCalledWith("playbackEnd");
+    // Awaiting the swap: the next chunk's first frame stays shown.
+    expect(waiting[1]).toBe(blending[1]);
+    expect(waiting[2]).toBe(1);
+    playback.destroy();
+  });
+
   it("keeps a complete pair when its next texture is still decoding", async () => {
     const { playback } = await setup();
     await playback.play();

@@ -49,6 +49,7 @@ export {
   geoVideoScalarUniforms,
 } from "./lib/GeoVideoScalarSource";
 export type { GeoVideoScalarFrame } from "./lib/GeoVideoScalarSource";
+export { GeoVideoCodecScalarSource } from "./lib/GeoVideoCodecSource";
 export { GeoVideoVectorSource } from "./lib/GeoVideoVectorSource";
 export type { GeoVideoVectorFrame } from "./lib/GeoVideoVectorSource";
 export {

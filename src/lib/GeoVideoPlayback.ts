@@ -128,12 +128,32 @@ export class GeoVideoPlayback {
     if (!this.field) {
       return null;
     }
-    return this.pendingField || this.seeking
-      ? this.field.currentPair
-      : this.field.sample(
-          this.clock.advancing ? this.clock.ms : this.exactTime,
-          this.clock.advancing && !this.awaitingNext,
-        );
+    const pair =
+      this.pendingField || this.seeking
+        ? this.field.currentPair
+        : this.field.sample(
+            this.clock.advancing ? this.clock.ms : this.exactTime,
+            this.clock.advancing && !this.awaitingNext,
+          );
+    return this.handoff(pair) ?? pair;
+  }
+
+  /**
+   * Through the final step of a chunk followed by a decoded one, the last
+   * frame blends into the next chunk's first, as steps do within a chunk:
+   * the chunk swap then lands on the frame already shown.
+   */
+  private handoff(
+    pair: readonly [WebGLTexture, WebGLTexture, number] | null,
+  ): readonly [WebGLTexture, WebGLTexture, number] | null {
+    const fraction = this.clock.holdFraction;
+    const next = this.pendingField ?? this.standby?.field;
+    const time = this.pendingField ? this.requestedTime : this.standby?.time;
+    if (!pair || fraction <= 0 || !next || time == null) {
+      return null;
+    }
+    const first = next.texture(time);
+    return first ? [pair[0], first, Math.min(1, fraction)] : null;
   }
 
   get time(): number {
@@ -339,6 +359,8 @@ export class GeoVideoPlayback {
     }
     const standby = this.standby!;
     standby.time = time;
+    // Its second step too: the first one blends on into it after the swap.
+    standby.field.focus(time);
     void standby.field.prime(time).catch(() => {
       if (this.standby === standby) {
         this.discardStandby();

@@ -252,8 +252,8 @@ describe("GeoVideoFrameSource media dimensions", () => {
     try {
       const source = new GeoVideoScalarSource(manifest);
       const loaded = (
-        source as unknown as { loadVideo(): Promise<void> }
-      ).loadVideo();
+        source as unknown as { loadMedia(): Promise<void> }
+      ).loadMedia();
       video.dispatchEvent(new Event("loadedmetadata"));
       await expect(loaded).rejects.toThrow(
         "dimensions 4x1 do not match manifest 2x1",

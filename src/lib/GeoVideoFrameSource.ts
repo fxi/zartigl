@@ -346,7 +346,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
   }
 
   private async load(): Promise<void> {
-    const [mask] = await Promise.all([this.loadMask(), this.loadVideo()]);
+    const [mask] = await Promise.all([this.loadMask(), this.loadMedia()]);
     this.maskCodes = mask;
   }
 
@@ -373,7 +373,8 @@ export abstract class GeoVideoFrameSource<TFrame> {
     return mask;
   }
 
-  private async loadVideo(): Promise<void> {
+  /** Open the media; the default reads frames by seeking a video element. */
+  protected async loadMedia(): Promise<void> {
     const video = document.createElement("video");
     video.crossOrigin = "anonymous";
     video.muted = true;
@@ -449,6 +450,13 @@ export abstract class GeoVideoFrameSource<TFrame> {
     this.presented = false;
   }
 
+  /** Media time inside the video frame showing step `index`. */
+  protected stepSeconds(index: number): number {
+    return this.manifest.timeline.kind === "snapshot-loop"
+      ? index / this.manifest.media.fps
+      : geoVideoSecondsForTime(this.manifest, this.times[index]);
+  }
+
   /**
    * Seek and capture one step. `signal` aborts it between steps; a seek
    * already started completes first, keeping the queue serial.
@@ -463,10 +471,7 @@ export abstract class GeoVideoFrameSource<TFrame> {
     if (signal.aborted || !video || !mask) {
       throw abortError();
     }
-    const seconds =
-      this.manifest.timeline.kind === "snapshot-loop"
-        ? index / this.manifest.media.fps
-        : geoVideoSecondsForTime(this.manifest, this.times[index]);
+    const seconds = this.stepSeconds(index);
     await this.presentFrame(video, seconds);
     if (signal.aborted || video !== this.video) {
       throw abortError();

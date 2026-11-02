@@ -14,6 +14,7 @@ import {
   GeoVideoScalarSource,
   type GeoVideoScalarFrame,
 } from "./GeoVideoScalarSource";
+import { GeoVideoCodecScalarSource } from "./GeoVideoCodecSource";
 import {
   GeoVideoVectorSource,
   type GeoVideoVectorFrame,
@@ -117,14 +118,17 @@ export interface GeoVideoFrameReader<TFrame> {
   release(): void;
 }
 
-/** The frame source decoding `manifest`: scalar or vector by its encoding. */
+/**
+ * The frame source decoding `manifest`: scalar or vector by its encoding.
+ * Scalar frames decode through WebCodecs where the browser supports it.
+ */
 export function createGeoVideoFrameSource(
   manifest: GeoVideoManifest,
   options: { cacheSize?: number } = {},
 ): GeoVideoScalarSource | GeoVideoVectorSource {
   return manifest.encoding.kind === "vector-luma"
     ? new GeoVideoVectorSource(manifest, options)
-    : new GeoVideoScalarSource(manifest, options);
+    : new GeoVideoCodecScalarSource(manifest, options);
 }
 
 /** One decoded time step of an archive. */
