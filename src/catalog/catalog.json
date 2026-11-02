@@ -789,27 +789,6 @@
           }
         },
         {
-          "id": "f65db382-5a6e-442b-a7e1-f79898487ec9",
-          "type": "geovideo",
-          "title": {
-            "en": "Monthly bottom oxygen, Sep 1993–Sep 2025"
-          },
-          "provenance": {
-            "provider": "copernicus-marine",
-            "identifiers": {
-              "product": "BALTICSEA_MULTIYEAR_BGC_003_012",
-              "dataset": "cmems_mod_bal_bgc_my_P1M-m"
-            }
-          },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/0b53441dac16/manifest.json",
-          "temporal": {
-            "mode": "fixed",
-            "cadence": "P1M",
-            "start": "1993-09-01T00:00:00Z",
-            "end": "2025-09-01T00:00:00Z"
-          }
-        },
-        {
           "id": "c67b6ca4-3924-456e-b197-16dc85daff25",
           "type": "geovideo",
           "title": {
@@ -1179,27 +1158,6 @@
           }
         },
         {
-          "id": "f5b31e02-ff0f-4310-a046-a781bd2b1c38",
-          "type": "geovideo",
-          "title": {
-            "en": "Arctic thickness animation (June 2022–August 2026)"
-          },
-          "provenance": {
-            "provider": "copernicus-marine",
-            "identifiers": {
-              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
-              "dataset": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m"
-            }
-          },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/d4ca59b665c4/manifest.json",
-          "temporal": {
-            "mode": "fixed",
-            "cadence": "P1D",
-            "start": "2022-06-01T00:00:00Z",
-            "end": "2026-08-27T00:00:00Z"
-          }
-        },
-        {
           "id": "2d53f9dd-cd8d-4031-9826-09f40ad0f959",
           "type": "geovideo",
           "title": {
@@ -1400,27 +1358,6 @@
           "layer": "GLOBAL_ANALYSISFORECAST_PHY_001_024/cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m_202411/sea_surface_temperature_anomaly",
           "tileMatrixSet": "EPSG:3857",
           "format": "image/png"
-        },
-        {
-          "id": "e260c26f-8374-4c65-a076-5cd181ed5091",
-          "type": "geovideo",
-          "title": {
-            "en": "Six-month scalar-luma animation (February–August 2026)"
-          },
-          "provenance": {
-            "provider": "copernicus-marine",
-            "identifiers": {
-              "product": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
-              "dataset": "cmems_mod_glo_phy_anfc_0.083deg-sst-anomaly_P1D-m"
-            }
-          },
-          "manifestUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/a4ba031cf7f3/manifest.json",
-          "temporal": {
-            "mode": "fixed",
-            "cadence": "P1D",
-            "start": "2026-02-01T00:00:00Z",
-            "end": "2026-08-01T00:00:00Z"
-          }
         },
         {
           "id": "5250b6f9-d877-4e9e-a11a-f63205688b61",

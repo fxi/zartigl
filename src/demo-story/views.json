@@ -51,8 +51,7 @@
         },
         "overlays": [
           "arctic-measurement"
-        ],
-        "sourceId": "f5b31e02-ff0f-4310-a046-a781bd2b1c38"
+        ]
       }
     },
     {
@@ -85,8 +84,7 @@
         },
         "overlays": [
           "enso-regions"
-        ],
-        "sourceId": "e260c26f-8374-4c65-a076-5cd181ed5091"
+        ]
       }
     },
     {
@@ -116,8 +114,7 @@
             "vibrance": 0.1,
             "colorDomain": null
           }
-        },
-        "sourceId": "f65db382-5a6e-442b-a7e1-f79898487ec9"
+        }
       }
     },
     {
