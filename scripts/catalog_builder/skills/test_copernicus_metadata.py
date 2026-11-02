@@ -1,6 +1,6 @@
 import unittest
 
-from copernicus_metadata import parse_wmts_visualization
+from copernicus_metadata import arco_store, parse_wmts_visualization, stac_url, valid_start, zarr_valid_start
 from query_dataset import parse_vector_pair, select_kind_and_variable
 
 
@@ -78,6 +78,56 @@ class CopernicusMetadataTest(unittest.TestCase):
         invalid = {"continuous": {**LEGEND["continuous"], "valueMin": 10, "valueMax": 10}}
         with self.assertRaisesRegex(ValueError, "invalid value range"):
             parse_wmts_visualization(CAPABILITIES, "o2b", lambda _url: invalid)
+
+
+
+WIND_FIELD = (
+    "https://s3.waw3-1.cloudferro.com/mdl-arco-time-050/arco/WIND_GLO_PHY_L4_NRT_012_004/"
+    "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/timeChunked.zarr"
+)
+# Excerpt of the wind dataset STAC: the axis starts in 2020, its data in 2024.
+WIND_STAC = {
+    "properties": {
+        "cube:dimensions": {"time": {"extent": ["2020-07-01T00:00:00Z", "2026-11-01T23:00:00Z"]}},
+        "admp_valid_start_date": "2024-06-13T04:00:00.000000000Z",
+    },
+    "assets": {
+        "timeChunked": {"viewDims": {"time": {"validStartDate": "2024-06-13T04:00:00.000000000Z"}}},
+        "geoChunked": {"viewDims": {"time": {"validStartDate": "2024-06-14T00:00:00.000000000Z"}}},
+    },
+}
+
+
+class ValidStartTest(unittest.TestCase):
+    def test_reads_the_producer_valid_start(self):
+        self.assertEqual(valid_start(WIND_STAC, "timeChunked"), "2024-06-13T04:00:00Z")
+
+    def test_falls_back_to_the_dataset_valid_start(self):
+        self.assertEqual(valid_start({"properties": WIND_STAC["properties"]}, "timeChunked"), "2024-06-13T04:00:00Z")
+
+    def test_none_without_a_declared_start(self):
+        self.assertIsNone(valid_start({"properties": {}}, "timeChunked"))
+
+    def test_locates_the_stac_of_an_arco_store(self):
+        product, tag, asset = arco_store(WIND_FIELD)
+        self.assertEqual(asset, "timeChunked")
+        self.assertEqual(
+            stac_url(product, tag),
+            "https://stac.marine.copernicus.eu/metadata/WIND_GLO_PHY_L4_NRT_012_004/"
+            "cmems_obs-wind_glo_phy_nrt_l4_0.125deg_PT1H_202207/dataset.stac.json",
+        )
+
+    def test_source_start_is_the_later_of_its_stores(self):
+        source = {
+            "type": "zarr",
+            "provenance": {"provider": "copernicus-marine"},
+            "endpoints": {"field": WIND_FIELD, "pointSeries": WIND_FIELD.replace("timeChunked", "geoChunked")},
+        }
+        self.assertEqual(zarr_valid_start(source, lambda _url: WIND_STAC), "2024-06-14T00:00:00Z")
+
+    def test_ignores_stores_outside_copernicus(self):
+        source = {"type": "zarr", "provenance": {"provider": "noaa"}, "endpoints": {"field": WIND_FIELD}}
+        self.assertIsNone(zarr_valid_start(source, lambda _url: self.fail("no STAC read")))
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@
       "title": "Surface Wind",
       "windows": [
         {
-          "start": "2024-06-01T00:00:00Z"
+          "full": true
         }
       ],
       "step": "PT3H",

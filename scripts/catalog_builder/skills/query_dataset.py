@@ -21,7 +21,7 @@ import re
 import sys
 from urllib.parse import urlparse
 
-from copernicus_metadata import discover_wmts_visualization, palette_id
+from copernicus_metadata import discover_wmts_visualization, palette_id, zarr_valid_start
 
 
 def select_geo_service(part):
@@ -219,16 +219,26 @@ def main():
             "v": suggested_variable_v,
         }
 
+    candidate_endpoints = {"field": svc_geo.uri, **({"pointSeries": svc_time.uri} if svc_time else {})}
+    try:
+        valid_start = zarr_valid_start({
+            "type": "zarr", "provenance": {"provider": "copernicus-marine"}, "endpoints": candidate_endpoints,
+        })
+    except Exception as exc:
+        valid_start = f"unavailable: {exc}"
+
     result = {
         "dataset_id": dataset_id,
         "product_id": prod.product_id,
+        # First step holding data (producer STAC); publish_catalog.py writes it, not the entry.
+        "valid_start": valid_start,
         "title": getattr(prod, "title", None) or getattr(ds, "title", None) or dataset_id,
         "source_candidate": {
             "type": "zarr",
             "title": {"en": "Copernicus Marine ARCO Zarr"},
             "provenance": {"provider": "copernicus-marine", "identifiers": {"product": prod.product_id, "dataset": dataset_id}},
             "temporal": temporal,
-            "endpoints": {"field": svc_geo.uri, **({"pointSeries": svc_time.uri} if svc_time else {})},
+            "endpoints": candidate_endpoints,
             "variables": variables_meta,
         },
         "wmts_source_candidate": ({

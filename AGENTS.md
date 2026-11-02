@@ -57,6 +57,10 @@ scale, unit, extent), deterministic local statistics from
 `valid_min`/`valid_max` only as a final fallback. Never select the first scalar
 variable implicitly.
 
+A Copernicus Zarr source's real start is the producer's STAC `validStartDate`,
+not its store time axis. `publish_catalog.py` resolves it into the live catalog
+at each publish (and nightly). Never hand-write it in `catalog.json`.
+
 Do not write one-off analysis programs when maintained scripts can answer the
 question. If a deterministic operation is missing, extend an existing helper
 or add a tested reusable helper and document it here before continuing.

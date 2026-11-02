@@ -6,9 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import re
 
-from copernicus_metadata import discover_wmts_visualization, palette_id
+from copernicus_metadata import arco_store, discover_wmts_visualization, palette_id
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -16,10 +15,10 @@ CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
 
 
 def derived_capabilities_url(field_url: str) -> str | None:
-    match = re.search(r"/arco/([^/]+)/([^/]+)/(?:timeChunked|geoChunked)\.zarr/?$", field_url)
-    if not match:
+    store = arco_store(field_url)
+    if not store:
         return None
-    product, dataset_tag = match.groups()
+    product, dataset_tag, _asset = store
     return (
         f"https://wmts.marine.copernicus.eu/teroWmts/{product}/{dataset_tag}"
         "?service=WMTS&request=GetCapabilities"

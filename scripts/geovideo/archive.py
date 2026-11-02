@@ -42,6 +42,8 @@ from typing import Any
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "catalog_builder" / "skills"))
+from copernicus_metadata import zarr_valid_start  # noqa: E402
 import render  # noqa: E402
 import render_vector  # noqa: E402
 
@@ -467,12 +469,20 @@ def render_and_publish(archive: dict[str, Any], layer: dict[str, Any], chunk: di
     raise AssertionError("unreachable")
 
 
+def covered_times(times: np.ndarray, layer: dict[str, Any]) -> np.ndarray:
+    """The store's timestamps from the start its producer declares: an axis can
+    begin with empty years (the NRT wind store from 2020, its data from mid-2024).
+    A STAC that cannot be read fails the archive rather than render empty chunks."""
+    start = zarr_valid_start(render.zarr_source(layer))
+    return times[times >= np.datetime64(start.rstrip("Z"), "ns")] if start else times
+
+
 def resolve(archive: dict[str, Any], now: np.datetime64) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     layer = catalog_layer(archive["catalogEntryId"])
     if layer["kind"] == "vector" and not (archive.get("output") or {}).get("valueDomain"):
         raise ValueError(f"{archive['sourceId']}: vector archives pin output.valueDomain (see `archive.py domain`)")
     dataset = open_source(layer)
-    times = np.asarray(dataset["time"].values).astype("datetime64[ns]")
+    times = covered_times(np.asarray(dataset["time"].values).astype("datetime64[ns]"), layer)
     step = render_vector.parse_step(archive.get("step"))
     chunks = plan_chunks(times, archive["windows"], chunk_period(archive, layer), now, step,
                          revision_horizon(archive, layer))
@@ -610,7 +620,7 @@ def command_domain(args: argparse.Namespace) -> int:
         raise ValueError("domain applies to vector archives")
     dataset = open_source(layer)
     now = utc_now()
-    times = np.asarray(dataset["time"].values).astype("datetime64[ns]")
+    times = covered_times(np.asarray(dataset["time"].values).astype("datetime64[ns]"), layer)
     chunks = plan_chunks(times, archive["windows"], chunk_period(archive, layer), now,
                          render_vector.parse_step(archive.get("step")))
     samples = sorted({sample for chunk in chunks for sample in chunk["samples"]})

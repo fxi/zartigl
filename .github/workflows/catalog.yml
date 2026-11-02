@@ -12,7 +12,12 @@ on:
       - package.json
       - scripts/catalog_builder/publish_catalog.py
       - scripts/catalog_builder/skills/validate_catalog.py
+      - scripts/catalog_builder/skills/copernicus_metadata.py
       - .github/workflows/catalog.yml
+  # Nightly, before the GeoVideo archive: refresh the producer-declared start
+  # of Copernicus sources (rolling NRT archives); a failure is the alert.
+  schedule:
+    - cron: "47 1 * * *"
   workflow_dispatch:
 
 permissions:

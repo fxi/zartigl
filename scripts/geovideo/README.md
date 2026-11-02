@@ -210,8 +210,10 @@ Policies live in `archive.json`, keyed by an archive `sourceId`:
   `{ "start": … }` (up to now), or `{ "start": …, "end": … }`. A window
   selects every calendar chunk it touches, and a chunk holds all source
   timestamps of its period up to now, so "ten days in March 2025" publishes
-  March 2025. Forecast steps are excluded. Use `start` where a store's time
-  axis precedes its data, such as the NRT wind product, empty before mid-2024.
+  March 2025. Forecast steps are excluded. Timestamps before the start a
+  Copernicus producer declares (STAC `validStartDate`) are dropped first: a
+  store axis can precede its data, such as the NRT wind product, empty before
+  2024-06-13. An unreadable STAC fails the archive instead.
 - `chunk`: optional; by default live sources use monthly chunks (a growing
   chunk is re-rendered at each new timestamp) and final historical data uses
   monthly (hourly), yearly (daily), or decade (monthly) chunks.

@@ -1,11 +1,13 @@
 import copy
 import unittest
+from unittest import mock
 
 import numpy as np
 
 from archive import (
     chunk_key,
     chunk_period,
+    covered_times,
     encoding_profile,
     expired_superseded,
     empty_index,
@@ -182,6 +184,21 @@ class ScheduleTest(unittest.TestCase):
         threaded = {**ARCHIVE, "output": {"threads": 2}}
         self.assertEqual(chunk_key(encoding_profile(threaded, layer()), chunk),
                          chunk_key(encoding_profile(ARCHIVE, layer()), chunk))
+
+
+class CoverageTest(unittest.TestCase):
+    LAYER = {"sources": [{"type": "zarr", "endpoints": {"field": "https://example.test/a.zarr"}}]}
+
+    def test_drops_steps_before_the_declared_start(self):
+        times = np.array([ns("2020-07-01"), ns("2024-06-13T03:00"), ns("2024-06-13T04:00"), ns("2024-07-01")])
+        with mock.patch("archive.zarr_valid_start", return_value="2024-06-13T04:00:00Z"):
+            kept = covered_times(times, self.LAYER)
+        self.assertEqual(list(kept), [ns("2024-06-13T04:00"), ns("2024-07-01")])
+
+    def test_keeps_the_axis_without_a_declared_start(self):
+        times = np.array([ns("2020-07-01"), ns("2024-07-01")])
+        with mock.patch("archive.zarr_valid_start", return_value=None):
+            self.assertEqual(len(covered_times(times, self.LAYER)), 2)
 
 
 class GapTest(unittest.TestCase):

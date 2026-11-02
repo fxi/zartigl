@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
+import re
 from typing import Any, Callable
 from urllib.parse import unquote
 from urllib.request import Request, urlopen
@@ -101,6 +103,58 @@ def parse_wmts_visualization(
 
 def discover_wmts_visualization(capabilities_url: str, variable: str) -> dict[str, Any]:
     return parse_wmts_visualization(fetch_bytes(capabilities_url), variable)
+
+
+ARCO_STORE = re.compile(r"/arco/([^/]+)/([^/]+)/(timeChunked|geoChunked)\.zarr/?$")
+STAC_BASE = "https://stac.marine.copernicus.eu/metadata"
+
+
+def arco_store(url: str) -> tuple[str, str, str] | None:
+    """(product, dataset version tag, STAC asset) of a Copernicus Marine ARCO store URL."""
+    match = ARCO_STORE.search(url)
+    return match.groups() if match else None  # type: ignore[return-value]
+
+
+def stac_url(product: str, dataset_tag: str) -> str:
+    return f"{STAC_BASE}/{product}/{dataset_tag}/dataset.stac.json"
+
+
+def valid_start(stac: dict[str, Any], asset: str) -> str | None:
+    """
+    First time step holding data, as the producer declares it. A store's time
+    axis can begin earlier (empty steps); the Copernicus Marine Toolbox reads
+    the same field for its coordinate minimum.
+    """
+    dims = ((stac.get("assets") or {}).get(asset) or {}).get("viewDims") or {}
+    value = (dims.get("time") or {}).get("validStartDate") or (stac.get("properties") or {}).get(
+        "admp_valid_start_date"
+    )
+    if not value:
+        return None
+    # Nanosecond STAC timestamps, as catalog second precision.
+    parsed = datetime.fromisoformat(re.sub(r"\.\d+", "", str(value)).replace("Z", "+00:00"))
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def zarr_valid_start(
+    source: dict[str, Any], fetch: Callable[[str], Any] = fetch_json,
+) -> str | None:
+    """
+    Producer-declared start of a Copernicus Zarr source: the later of its
+    field and point-series stores. None for other stores, whose axis lists
+    published steps only.
+    """
+    if source.get("type") != "zarr" or (source.get("provenance") or {}).get("provider") != "copernicus-marine":
+        return None
+    starts = []
+    for url in (source.get("endpoints") or {}).values():
+        store = arco_store(url)
+        if store:
+            product, tag, asset = store
+            start = valid_start(fetch(stac_url(product, tag)), asset)
+            if start:
+                starts.append(start)
+    return max(starts) if starts else None
 
 
 def palette_id(style: str | None, discovered: str | None) -> str | None:
