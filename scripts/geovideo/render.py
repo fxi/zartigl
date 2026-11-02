@@ -48,6 +48,10 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
 P99_CODE_ERROR_LIMIT = 8
 MAX_CODE_ERROR_LIMIT = 16
+# H.264 level 5.0 (ffprobe reports 50), which phones decode in hardware: its
+# High profile allows 168.75 Mbit/s and as large a buffer.
+MAX_H264_LEVEL = 50
+MAX_BITRATE_CEILING = 96_000_000
 
 
 def required(config: dict[str, Any], key: str) -> Any:
@@ -230,6 +234,45 @@ def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) ->
         result["dateStart"] = start
         result["dateEnd"] = end
     return result
+
+
+class CodeErrorBudgetError(RuntimeError):
+    """Decoded codes exceed the scalar-luma error budget; a richer encoding may pass."""
+
+    def __init__(self, report: dict[str, Any]):
+        super().__init__(f"Scalar-luma artifact exceeds its code error budget: {report}")
+        self.report = report
+
+
+def bitrate_bits(value: str) -> int:
+    """'48M' or '800k' as bits per second."""
+    units = {"k": 1_000, "M": 1_000_000}
+    if value[-1:] in units:
+        return int(float(value[:-1]) * units[value[-1]])
+    return int(value)
+
+
+def format_bitrate(bits: int) -> str:
+    return f"{bits // 1_000_000}M" if bits % 1_000_000 == 0 else f"{bits // 1_000}k"
+
+
+def encoding_ladder(output: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Encodings tried in order until one passes the error budget: the configured
+    one, its bitrate ceiling doubled (at most 96M), then lower CRF at that
+    ceiling. A low CRF needs headroom first, or the VBV starves it.
+    """
+    crf = int(output["crf"])
+    configured = bitrate_bits(output["maxBitrate"])
+    ceiling = format_bitrate(max(configured, min(MAX_BITRATE_CEILING, 2 * configured)))
+    ladder = [
+        {"crf": crf, "maxBitrate": output["maxBitrate"]},
+        {"crf": crf, "maxBitrate": ceiling},
+        # CRF 0 is lossless: High 4:4:4 Predictive, without VBV.
+        {"crf": max(1, crf - 2), "maxBitrate": ceiling},
+        {"crf": max(1, crf - 4), "maxBitrate": ceiling},
+    ]
+    return [step for i, step in enumerate(ladder) if step not in ladder[:i]]
 
 
 class EmptySamplesError(RuntimeError):
@@ -532,21 +575,28 @@ def write_mask_png(path: Path, valid: np.ndarray) -> None:
     path.write_bytes(png)
 
 
-def ffmpeg_command(config: dict[str, Any], output: Path) -> list[str]:
+def ffmpeg_command(
+    config: dict[str, Any], output: Path, source: str = "-", encoding: dict[str, Any] | None = None,
+) -> list[str]:
+    """`source` holds raw rgb24 frames (stdin by default); `encoding` overrides crf and maxBitrate."""
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         raise RuntimeError("ffmpeg is required but was not found in PATH")
     width = config["output"]["width"]
     height = config["output"]["height"]
     fps = config["output"]["fps"]
+    encoding = encoding or config["output"]
+    max_bitrate = encoding["maxBitrate"]
     return [
         ffmpeg, "-y", "-hide_banner", "-loglevel", "warning", "-stats",
         "-f", "rawvideo", "-pix_fmt", "rgb24",
-        "-s", f"{width}x{height}", "-r", str(fps), "-i", "-", "-an",
-        "-c:v", "libx264", "-preset", config["output"]["preset"], "-crf", str(config["output"]["crf"]),
+        "-s", f"{width}x{height}", "-r", str(fps), "-i", source, "-an",
+        "-c:v", "libx264", "-preset", config["output"]["preset"], "-crf", str(encoding["crf"]),
         *(["-tune", config["output"]["tune"]] if config["output"].get("tune") else []),
         *(["-threads", str(int(config["output"]["threads"]))] if config["output"].get("threads") else []),
-        "-maxrate", config["output"]["maxBitrate"], "-bufsize", "16M",
+        # One second at the ceiling: a small fixed buffer starved low CRF on hard
+        # frames, and a larger one would raise the declared level (48M stays 4.1).
+        "-maxrate", max_bitrate, "-bufsize", max_bitrate,
         "-g", str(max(1, round(fps * 2))), "-pix_fmt", "yuv420p",
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
         "-color_range", "tv",
@@ -561,7 +611,7 @@ def probe_media(path: Path, config: dict[str, Any], expected_duration: float) ->
     completed = subprocess.run(
         [
             ffprobe, "-v", "error", "-show_entries",
-            "format=duration,size:stream=codec_name,pix_fmt,width,height,r_frame_rate",
+            "format=duration,size:stream=codec_name,profile,level,pix_fmt,width,height,r_frame_rate",
             "-of", "json", str(path),
         ],
         check=True,
@@ -573,6 +623,10 @@ def probe_media(path: Path, config: dict[str, Any], expected_duration: float) ->
     expected = (config["output"]["width"], config["output"]["height"])
     if stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p":
         raise RuntimeError("GeoVideo output must be H.264 yuv420p")
+    if stream.get("profile") != "High" or int(stream.get("level", 0)) > MAX_H264_LEVEL:
+        raise RuntimeError(
+            f"GeoVideo output must be H.264 High at level 5.0 at most: {stream.get('profile')} {stream.get('level')}"
+        )
     if (stream.get("width"), stream.get("height")) != expected:
         raise RuntimeError(f"Unexpected GeoVideo dimensions: {stream.get('width')}x{stream.get('height')}")
     numerator, denominator = map(float, stream.get("r_frame_rate", "0/1").split("/"))
@@ -649,7 +703,7 @@ def validate_encoded_values(
         report["p99AbsoluteCodeError"] > P99_CODE_ERROR_LIMIT or
         report["maxAbsoluteCodeError"] > MAX_CODE_ERROR_LIMIT
     ):
-        raise RuntimeError(f"Scalar-luma artifact exceeds its code error budget: {report}")
+        raise CodeErrorBudgetError(report)
     return report
 
 
@@ -829,6 +883,36 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str, object_pr
     raise RuntimeError("Published objects are not browser-readable: " + "; ".join(errors))
 
 
+def encode_within_budget(
+    config: dict[str, Any], video_path: Path, raw_path: Path,
+    expected_samples: list[tuple[np.ndarray, np.ndarray]], frame_count: int,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """
+    Validate the video already encoded at the configured settings, re-encoding
+    `raw_path` along encoding_ladder() while the error budget fails. Returns
+    the encoding used (with the failed attempts), the probe, and the validation.
+    """
+    failed: list[dict[str, Any]] = []
+    ladder = encoding_ladder(config["output"])
+    for step, encoding in enumerate(ladder):
+        if step:
+            print(f"Error budget exceeded, re-encoding at crf {encoding['crf']} / {encoding['maxBitrate']}",
+                  file=sys.stderr, flush=True)
+            subprocess.run(ffmpeg_command(config, video_path, str(raw_path), encoding), check=True)
+        probe = probe_media(video_path, config, frame_count / config["output"]["fps"])
+        try:
+            validation = validate_encoded_values(
+                video_path, expected_samples, config["output"]["width"], config["output"]["height"],
+            )
+        except CodeErrorBudgetError as exc:
+            failed.append({**encoding, "valueValidation": exc.report})
+            if step == len(ladder) - 1:
+                raise
+            continue
+        return {**encoding, "failedAttempts": failed}, probe, validation
+    raise AssertionError("encoding ladder is never empty")
+
+
 def render_artifact(
     config: dict[str, Any], layer: dict[str, Any], directory: Path, frame_count: int, summary: dict[str, Any],
 ) -> dict[str, Any]:
@@ -838,8 +922,8 @@ def render_artifact(
     mask_path = directory / "mask.png"
     frames = ScalarFrames(layer, config)
     config["style"]["unit"] = frames.unit
-    command = ffmpeg_command(config, video_path)
-    process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    # Frames as encoded, kept to retry a richer encoding without reading the source again.
+    raw_path = directory / "frames.rgb"
     empty_samples: list[str] = []
     static_mask: np.ndarray | None = None
     union_mask: np.ndarray | None = None
@@ -853,61 +937,67 @@ def render_artifact(
     y_stride = max(1, config["output"]["height"] // 32)
     x_stride = max(1, config["output"]["width"] // 64)
     try:
-        assert process.stdin is not None
-        for index in range(frame_count):
-            values = frames.frame(index, frame_count)
-            valid = np.isfinite(values)
-            if frames.samples is not None and not valid.any():
-                empty = sample_iso(frames.samples[index // config["sampling"]["framesPerSample"]])
-                if empty not in empty_samples:
-                    empty_samples.append(empty)
-                continue
-            finite = values[valid]
-            if finite.size:
-                source_minimum = min(source_minimum, float(finite.min()))
-                source_maximum = max(source_maximum, float(finite.max()))
-                below_domain += int(np.count_nonzero(finite < domain_minimum))
-                above_domain += int(np.count_nonzero(finite > domain_maximum))
-                finite_values += int(finite.size)
-            if static_mask is None:
-                static_mask = valid.copy()
-                union_mask = valid.copy()
-            else:
-                static_mask &= valid
-                assert union_mask is not None
-                union_mask |= valid
-            encoded = render_scalar_luma(values, config)
-            expected_samples.append((
-                encoded[::y_stride, ::x_stride, 0].copy(),
-                valid[::y_stride, ::x_stride].copy(),
-            ))
-            process.stdin.write(encoded.tobytes())
-            if index == 0 or (index + 1) % max(1, round(config["output"]["fps"])) == 0:
-                print(f"Rendered {index + 1}/{frame_count} frames", file=sys.stderr)
-        process.stdin.close()
-        return_code = process.wait()
+        with raw_path.open("wb") as raw:
+            process = subprocess.Popen(ffmpeg_command(config, video_path), stdin=subprocess.PIPE)
+            try:
+                assert process.stdin is not None
+                for index in range(frame_count):
+                    values = frames.frame(index, frame_count)
+                    valid = np.isfinite(values)
+                    if frames.samples is not None and not valid.any():
+                        empty = sample_iso(frames.samples[index // config["sampling"]["framesPerSample"]])
+                        if empty not in empty_samples:
+                            empty_samples.append(empty)
+                        continue
+                    finite = values[valid]
+                    if finite.size:
+                        source_minimum = min(source_minimum, float(finite.min()))
+                        source_maximum = max(source_maximum, float(finite.max()))
+                        below_domain += int(np.count_nonzero(finite < domain_minimum))
+                        above_domain += int(np.count_nonzero(finite > domain_maximum))
+                        finite_values += int(finite.size)
+                    if static_mask is None:
+                        static_mask = valid.copy()
+                        union_mask = valid.copy()
+                    else:
+                        static_mask &= valid
+                        assert union_mask is not None
+                        union_mask |= valid
+                    encoded = render_scalar_luma(values, config)
+                    expected_samples.append((
+                        encoded[::y_stride, ::x_stride, 0].copy(),
+                        valid[::y_stride, ::x_stride].copy(),
+                    ))
+                    process.stdin.write(encoded.tobytes())
+                    raw.write(encoded.tobytes())
+                    if index == 0 or (index + 1) % max(1, round(config["output"]["fps"])) == 0:
+                        print(f"Rendered {index + 1}/{frame_count} frames", file=sys.stderr)
+                process.stdin.close()
+                return_code = process.wait()
+            except BaseException:
+                process.kill()
+                process.wait()
+                raise
         if return_code:
             raise RuntimeError(f"ffmpeg exited with status {return_code}")
-    except Exception:
-        process.kill()
-        raise
-    if empty_samples:
-        raise EmptySamplesError(empty_samples)
+        if empty_samples:
+            raise EmptySamplesError(empty_samples)
 
-    assert static_mask is not None and union_mask is not None
-    write_mask_png(mask_path, static_mask)
-    sampled_static_mask = static_mask[::y_stride, ::x_stride]
-    expected_samples = [(expected, sampled_static_mask) for expected, _valid in expected_samples]
-    mask_report = {
-        "strategy": "intersection",
-        "validPixels": int(np.count_nonzero(static_mask)),
-        "varyingPixelsExcluded": int(np.count_nonzero(union_mask != static_mask)),
-        "totalPixels": int(static_mask.size),
-    }
-    probe = probe_media(video_path, config, frame_count / config["output"]["fps"])
-    value_validation = validate_encoded_values(
-        video_path, expected_samples, config["output"]["width"], config["output"]["height"],
-    )
+        assert static_mask is not None and union_mask is not None
+        write_mask_png(mask_path, static_mask)
+        sampled_static_mask = static_mask[::y_stride, ::x_stride]
+        expected_samples = [(expected, sampled_static_mask) for expected, _valid in expected_samples]
+        mask_report = {
+            "strategy": "intersection",
+            "validPixels": int(np.count_nonzero(static_mask)),
+            "varyingPixelsExcluded": int(np.count_nonzero(union_mask != static_mask)),
+            "totalPixels": int(static_mask.size),
+        }
+        encoding, probe, value_validation = encode_within_budget(
+            config, video_path, raw_path, expected_samples, frame_count,
+        )
+    finally:
+        raw_path.unlink(missing_ok=True)
     manifest = create_manifest(config, layer, "video.mp4", "mask.png", frames.samples)
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     report = {
@@ -923,6 +1013,7 @@ def render_artifact(
             "aboveProviderDomain": above_domain,
             "domainAuthority": "catalog defaults discovered from provider metadata",
         },
+        "encoding": encoding,
         "valueValidation": value_validation,
         "probe": probe,
         "manifest": manifest,

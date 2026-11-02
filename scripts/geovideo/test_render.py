@@ -1,11 +1,19 @@
+import json
 import unittest
+from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import xarray as xr
 
 from render import (
+    CodeErrorBudgetError,
     ScalarFrames,
     create_manifest,
+    encode_within_budget,
+    encoding_ladder,
+    ffmpeg_command,
+    probe_media,
     render_scalar_luma,
     require_bucket_cors,
     scalar_transfer,
@@ -194,6 +202,78 @@ class FakeCorsClient:
 
     def put_bucket_cors(self, **kwargs):
         raise AssertionError("publish must not rewrite bucket CORS")
+
+
+class EncodingLadderTest(unittest.TestCase):
+    OUTPUT = {"width": 64, "height": 32, "fps": 24, "crf": 8, "maxBitrate": "48M", "preset": "fast"}
+
+    def test_raises_the_ceiling_before_lowering_crf(self):
+        self.assertEqual(encoding_ladder(self.OUTPUT), [
+            {"crf": 8, "maxBitrate": "48M"},
+            {"crf": 8, "maxBitrate": "96M"},
+            {"crf": 6, "maxBitrate": "96M"},
+            {"crf": 4, "maxBitrate": "96M"},
+        ])
+
+    def test_never_exceeds_the_level_ceiling(self):
+        ladder = encoding_ladder({**self.OUTPUT, "maxBitrate": "96M"})
+        self.assertEqual([step["maxBitrate"] for step in ladder], ["96M", "96M", "96M"])
+        self.assertEqual([step["crf"] for step in ladder], [8, 6, 4])
+
+    def test_never_retries_lossless(self):
+        ladder = encoding_ladder({**self.OUTPUT, "crf": 2, "maxBitrate": "96M"})
+        self.assertEqual([step["crf"] for step in ladder], [2, 1])
+
+    def test_rejects_profiles_and_levels_phones_may_not_decode(self):
+        for profile, level in (("High 4:4:4 Predictive", 41), ("High", 51)):
+            stream = {"codec_name": "h264", "pix_fmt": "yuv420p", "profile": profile, "level": level}
+            completed = mock.Mock(stdout=json.dumps({"streams": [stream], "format": {}}))
+            with mock.patch("render.shutil.which", return_value="ffprobe"), \
+                    mock.patch("render.subprocess.run", return_value=completed):
+                with self.assertRaisesRegex(RuntimeError, "High at level 5.0"):
+                    probe_media(Path("video.mp4"), {"output": self.OUTPUT}, 1)
+
+    def test_buffer_follows_the_ceiling(self):
+        with mock.patch("render.shutil.which", return_value="ffmpeg"):
+            command = ffmpeg_command({"output": self.OUTPUT}, Path("video.mp4"), "frames.rgb",
+                                     {"crf": 6, "maxBitrate": "96M"})
+        self.assertEqual(command[command.index("-bufsize") + 1], "96M")
+        self.assertEqual(command[command.index("-crf") + 1], "6")
+        self.assertEqual(command[command.index("-i") + 1], "frames.rgb")
+
+    def test_retries_from_raw_frames_until_the_budget_passes(self):
+        config = {"output": self.OUTPUT}
+        failure = {"p99AbsoluteCodeError": 5, "maxAbsoluteCodeError": 17}
+        results = [CodeErrorBudgetError(failure), {"maxAbsoluteCodeError": 11}]
+
+        def validate(*_args):
+            result = results.pop(0)
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+        with mock.patch("render.shutil.which", return_value="ffmpeg"), \
+                mock.patch("render.subprocess.run") as run, \
+                mock.patch("render.probe_media", return_value={}), \
+                mock.patch("render.validate_encoded_values", side_effect=validate):
+            encoding, _probe, validation = encode_within_budget(
+                config, Path("video.mp4"), Path("frames.rgb"), [], 2,
+            )
+        self.assertEqual(run.call_count, 1)
+        command = run.call_args.args[0]
+        self.assertEqual(command[command.index("-maxrate") + 1], "96M")
+        self.assertEqual(encoding["maxBitrate"], "96M")
+        self.assertEqual(encoding["failedAttempts"][0]["valueValidation"], failure)
+        self.assertEqual(validation, {"maxAbsoluteCodeError": 11})
+
+    def test_fails_once_the_ladder_is_exhausted(self):
+        config = {"output": {**self.OUTPUT, "maxBitrate": "96M", "crf": 2}}
+        with mock.patch("render.shutil.which", return_value="ffmpeg"), \
+                mock.patch("render.subprocess.run"), \
+                mock.patch("render.probe_media", return_value={}), \
+                mock.patch("render.validate_encoded_values", side_effect=CodeErrorBudgetError({})):
+            with self.assertRaises(CodeErrorBudgetError):
+                encode_within_budget(config, Path("video.mp4"), Path("frames.rgb"), [], 2)
 
 
 class BucketCorsTest(unittest.TestCase):
