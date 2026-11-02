@@ -135,7 +135,7 @@ describe("pickPreferredSource", () => {
   };
   const at = (iso: string) => Date.parse(iso);
 
-  it("bounds only fixed-period sources by their declared period", () => {
+  it("bounds sources by their declared period", () => {
     expect(
       sourceCoversTime(fixedVideo, { time: at("2026-08-14T00:00:00Z") }),
     ).toBe(true);
@@ -155,6 +155,17 @@ describe("pickPreferredSource", () => {
       }),
     ).toBe(true);
     expect(sourceCoversTime(fixedVideo)).toBe(true);
+    // A live store whose data begins after its axis does.
+    const covered = {
+      ...zarr,
+      temporal: { mode: "near-real-time", start: "2024-06-13T04:00:00Z" },
+    } as typeof zarr;
+    expect(
+      sourceCoversTime(covered, { time: at("2020-07-01T00:00:00Z") }),
+    ).toBe(false);
+    expect(
+      sourceCoversTime(covered, { time: at("2026-08-14T00:00:00Z") }),
+    ).toBe(true);
     expect(sourceCoversTime(zarr, { time: at("1990-01-01T00:00:00Z") })).toBe(
       true,
     );

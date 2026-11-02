@@ -150,8 +150,9 @@ export interface SourceTimeRequest {
 }
 
 /**
- * Whether a source can show the requested time. Only fixed-period sources
- * (rendered artifacts such as GeoVideo) declare hard bounds; live sources are
+ * Whether a source can show the requested time. Fixed-period sources
+ * (rendered artifacts such as GeoVideo) declare hard bounds, and the live
+ * catalog declares where a store's data begins; other live sources are
  * assumed to cover any request and are bounded by their own metadata.
  */
 export function sourceCoversTime(
@@ -159,7 +160,7 @@ export function sourceCoversTime(
   request: SourceTimeRequest = {},
 ): boolean {
   const temporal = source.temporal;
-  if (temporal?.mode !== "fixed") {
+  if (!temporal?.start && !temporal?.end) {
     return true;
   }
   const start = temporal.start ? Date.parse(temporal.start) : -Infinity;

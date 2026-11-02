@@ -432,6 +432,19 @@ function applyTimeRange(
   };
 }
 
+/**
+ * The store's time axis within the source's declared coverage: a store axis
+ * can begin with empty years, which the live catalog's producer-declared
+ * `temporal.start` excludes.
+ */
+function coveredTimeDimension(
+  source: CatalogZarrSource,
+  meta: ZarrTimeDimension,
+): ZarrTimeDimension {
+  const { start, end } = source.temporal ?? {};
+  return start || end ? applyTimeRange(meta, { start, end }) : meta;
+}
+
 function variableNames(source: CatalogZarrSource): string[] {
   if (source.variables.kind === "scalar") {
     return [source.variables.value];
@@ -1406,7 +1419,10 @@ export class Zartigl {
           );
         }
       }
-      fullTimeMeta = source.getTimeDimension();
+      fullTimeMeta = coveredTimeDimension(
+        requestedSource,
+        source.getTimeDimension(),
+      );
       if (fullTimeMeta.values.length === 0) {
         throw new Error("Zarr time coordinate is empty");
       }
@@ -2092,7 +2108,11 @@ export class Zartigl {
     const source = this.getQuerySource(queryConfig.endpoints.pointSeries!);
     await source.init();
     const queryTimes = source.getTimeDimension().values;
-    if (!this.timeRange) {
+    const covered = coveredTimeDimension(
+      queryConfig,
+      source.getTimeDimension(),
+    );
+    if (!this.timeRange && covered.size === queryTimes.length) {
       const stride = Math.max(1, Math.ceil(queryTimes.length / maxPoints));
       return source.sampleTimeSeries({
         variables: variableNames(queryConfig),
@@ -2103,12 +2123,19 @@ export class Zartigl {
         stopAfterMissingSamples: 12,
       });
     }
-    const min =
-      this.resolvedTimeRange?.[0] ?? this.timeMeta?.min ?? queryTimes[0];
-    const max =
-      this.resolvedTimeRange?.[1] ??
-      this.timeMeta?.max ??
-      queryTimes[queryTimes.length - 1];
+    // Indices address the store's own axis; its covered part bounds them.
+    const min = this.timeRange
+      ? Math.max(
+          covered.min,
+          this.resolvedTimeRange?.[0] ?? this.timeMeta?.min ?? covered.min,
+        )
+      : covered.min;
+    const max = this.timeRange
+      ? Math.min(
+          covered.max,
+          this.resolvedTimeRange?.[1] ?? this.timeMeta?.max ?? covered.max,
+        )
+      : covered.max;
     const startIndex = queryTimes.findIndex((value) => value >= min);
     let endIndex = queryTimes.length - 1;
     while (endIndex >= 0 && queryTimes[endIndex] > max) {
@@ -2683,7 +2710,10 @@ export class Zartigl {
       const field = await this.entryFieldZarr(entry);
       return field
         ? {
-            time: field.source.getTimeDimension(),
+            time: coveredTimeDimension(
+              field.zarr,
+              field.source.getTimeDimension(),
+            ),
             vertical:
               field.source.getVerticalDimension(variableNames(field.zarr)[0]) ??
               null,

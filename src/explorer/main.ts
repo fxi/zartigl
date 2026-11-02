@@ -1,5 +1,5 @@
 import maplibregl from "maplibre-gl";
-import { catalog } from "../catalog";
+import { catalog as bundled, loadCatalog } from "../catalog";
 import { DemoApp } from "./DemoApp";
 
 const map = new maplibregl.Map({
@@ -12,7 +12,15 @@ const map = new maplibregl.Map({
   maxZoom: 8,
 });
 
+// The deployed explorer reads the live catalog, as MapX does: it carries the
+// producer-declared coverage of each store. Development shows local edits.
+const catalog = import.meta.env.DEV
+  ? Promise.resolve(bundled)
+  : loadCatalog().then((loaded) => loaded.catalog);
+
 map.on("load", () => {
-  const app = new DemoApp(map, catalog);
-  (window as Window & { app?: DemoApp }).app = app;
+  void catalog.then((loaded) => {
+    const app = new DemoApp(map, loaded);
+    (window as Window & { app?: DemoApp }).app = app;
+  });
 });

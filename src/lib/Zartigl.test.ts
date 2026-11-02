@@ -133,6 +133,7 @@ function scalarLayer(extra: Record<string, any> = {}): CatalogEntry {
       kind: "scalar" as const,
       value: "temperature",
     },
+    ...(extra.zarrTemporal ? { temporal: extra.zarrTemporal } : {}),
   };
   const wmts = {
     id: "wmts",
@@ -1509,6 +1510,31 @@ describe("Zartigl facade", () => {
       values,
     });
     vi.mocked(Date.now).mockRestore();
+  });
+
+  it("offers no time before the start a Zarr source declares", async () => {
+    // The store axis runs 0–9 s; its data begins at 4 s.
+    const layer = scalarLayer({
+      zarrTemporal: {
+        mode: "near-real-time",
+        start: new Date(4_000).toISOString(),
+      },
+    });
+    const z = await createZartigl(
+      { source: "zarr", map: new FakeMap() as never, catalog: catalog(layer) },
+      "scalar",
+    );
+    expect(z.getTimeMeta()).toMatchObject({ min: 4_000, max: 9_000 });
+    expect(z.getTimeMeta().values[0]).toBe(4_000);
+
+    // Point series index the raw store axis, from the declared start.
+    const series = vi
+      .spyOn(ZarrSource.prototype, "sampleTimeSeries")
+      .mockResolvedValue({ longitude: 0, latitude: 0, points: [] });
+    await z.queryTimeSeries({ longitude: 1, latitude: 2 });
+    expect(series).toHaveBeenCalledWith(
+      expect.objectContaining({ timeStartIndex: 4, timeEndIndex: 9 }),
+    );
   });
 
   it("reports metadata loading and metadata failures through status events", async () => {
