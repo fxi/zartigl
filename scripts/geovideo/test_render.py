@@ -17,7 +17,11 @@ from render import (
     render_scalar_luma,
     require_bucket_cors,
     scalar_transfer,
+    depth_levels,
+    select_level,
     surface_index,
+    validation_positions,
+    vertical_axis,
     validate_config,
     validate_monthly_samples,
 )
@@ -204,6 +208,98 @@ class FakeCorsClient:
         raise AssertionError("publish must not rewrite bucket CORS")
 
 
+# Copernicus global physics (GLORYS-like) depths, metres, positive down.
+GLOBAL_DEPTHS = [
+    0.494, 1.541, 2.646, 3.819, 5.078, 6.441, 7.93, 9.573, 11.405, 13.467, 15.81, 18.496,
+    21.599, 25.211, 29.445, 34.434, 40.344, 47.374, 55.764, 65.807, 77.854, 92.326, 109.729,
+    130.666, 155.851, 186.126, 222.475, 266.04, 318.127, 380.213, 453.938, 541.089, 643.567,
+    763.333, 902.339, 1062.44, 1245.291, 1452.251, 1684.284, 1941.893, 2225.078, 2533.336,
+    2865.703, 3220.82, 3597.032, 3992.484, 4405.224, 4833.291, 5274.784, 5727.917,
+]
+
+
+class DepthLevelTest(unittest.TestCase):
+    def test_spaces_levels_geometrically_from_the_surface(self):
+        levels = depth_levels(GLOBAL_DEPTHS, 10)
+        self.assertEqual(len(levels), 10)
+        self.assertEqual((levels[0], levels[-1]), (0.494, 5727.917))
+        self.assertTrue(set(levels) <= set(GLOBAL_DEPTHS))
+        self.assertEqual(levels, sorted(levels))
+        # Dense near the surface: half the levels sit above 50 m.
+        self.assertGreaterEqual(sum(level < 50 for level in levels), 5)
+
+    def test_keeps_the_sign_of_elevation_axes(self):
+        levels = depth_levels([-value for value in GLOBAL_DEPTHS], 10)
+        self.assertEqual((levels[0], levels[-1]), (-0.494, -5727.917))
+
+    def test_a_zero_surface_takes_one_slot(self):
+        levels = depth_levels([0.0, 10.0, 100.0, 1000.0], 3)
+        self.assertEqual(levels, [0.0, 10.0, 1000.0])
+
+    def test_short_axes_and_single_levels(self):
+        self.assertEqual(depth_levels([5.0, 1.0, 2.0], 10), [1.0, 2.0, 5.0])
+        self.assertEqual(depth_levels([3.0], 10), [3.0])
+        self.assertEqual(depth_levels(GLOBAL_DEPTHS, 1), [0.494])
+
+    def test_identifies_the_shared_vertical_coordinate(self):
+        dataset = xr.Dataset(
+            {name: (("time", "depth", "latitude", "longitude"), np.zeros((1, 3, 1, 1))) for name in ("uo", "vo")},
+            coords={"depth": ("depth", [0.5, 10.0, 100.0], {"units": "m", "positive": "down"})},
+        )
+        axis = vertical_axis(dataset, ["uo", "vo"])
+        self.assertEqual(axis, {"name": "depth", "values": [0.5, 10.0, 100.0], "units": "m", "positive": "down"})
+        flat = xr.Dataset({"sst": (("time", "latitude", "longitude"), np.zeros((1, 1, 1)))})
+        self.assertIsNone(vertical_axis(flat, ["sst"]))
+
+    def test_refuses_pressure_levels(self):
+        dataset = xr.Dataset(
+            {"t": (("time", "level", "latitude", "longitude"), np.zeros((1, 2, 1, 1)))},
+            coords={"level": ("level", [1000.0, 500.0], {"units": "hPa"})},
+        )
+        with self.assertRaisesRegex(ValueError, "Unsupported vertical"):
+            vertical_axis(dataset, ["t"])
+
+
+class SelectLevelTest(unittest.TestCase):
+    def dataset(self, units="m"):
+        values = np.arange(3 * 2).reshape(1, 3, 1, 2).astype(float)
+        return xr.Dataset(
+            {"thetao": (("time", "elevation", "latitude", "longitude"), values)},
+            coords={"elevation": ("elevation", [-0.5, -10.0, -100.0], {"units": units, "positive": "up"})},
+        )
+
+    DEPTH = {"name": "elevation", "units": "m", "positive": "up", "value": -10.0}
+
+    def test_selects_the_recorded_level_else_the_surface(self):
+        dataset = self.dataset()
+        self.assertEqual(select_level(dataset["thetao"], dataset, self.DEPTH).values.ravel().tolist(), [2.0, 3.0])
+        self.assertEqual(select_level(dataset["thetao"], dataset, None).values.ravel().tolist(), [0.0, 1.0])
+
+    def test_refuses_a_level_the_store_no_longer_holds(self):
+        dataset = self.dataset()
+        for depth, message in (({**self.DEPTH, "value": -11.0}, "not found"),
+                               ({**self.DEPTH, "name": "depth"}, "not found"),
+                               ({**self.DEPTH, "units": "km"}, "units changed")):
+            with self.assertRaisesRegex(ValueError, message):
+                select_level(dataset["thetao"], dataset, depth)
+
+
+class ValidationPositionTest(unittest.TestCase):
+    def test_validates_the_grid_cells_inside_the_mask(self):
+        mask = np.zeros((64, 128), bool)
+        mask[:, :64] = True
+        positions = validation_positions(mask)
+        self.assertTrue(mask.ravel()[positions].all())
+        self.assertEqual(positions.size, 32 * 32)
+
+    def test_spreads_over_a_basin_the_grid_misses(self):
+        mask = np.zeros((1024, 2048), bool)
+        mask[1:9, 1:9] = True  # between grid points every 32 rows and columns
+        positions = validation_positions(mask)
+        self.assertEqual(positions.size, 64)
+        self.assertTrue(mask.ravel()[positions].all())
+
+
 class EncodingLadderTest(unittest.TestCase):
     OUTPUT = {"width": 64, "height": 32, "fps": 24, "crf": 8, "maxBitrate": "48M", "preset": "fast"}
 
@@ -257,7 +353,7 @@ class EncodingLadderTest(unittest.TestCase):
                 mock.patch("render.probe_media", return_value={}), \
                 mock.patch("render.validate_encoded_values", side_effect=validate):
             encoding, _probe, validation = encode_within_budget(
-                config, Path("video.mp4"), Path("frames.rgb"), [], 2,
+                config, Path("video.mp4"), Path("frames.rgb"), np.arange(4), 2,
             )
         self.assertEqual(run.call_count, 1)
         command = run.call_args.args[0]
@@ -273,7 +369,7 @@ class EncodingLadderTest(unittest.TestCase):
                 mock.patch("render.probe_media", return_value={}), \
                 mock.patch("render.validate_encoded_values", side_effect=CodeErrorBudgetError({})):
             with self.assertRaises(CodeErrorBudgetError):
-                encode_within_budget(config, Path("video.mp4"), Path("frames.rgb"), [], 2)
+                encode_within_budget(config, Path("video.mp4"), Path("frames.rgb"), np.arange(4), 2)
 
 
 class BucketCorsTest(unittest.TestCase):

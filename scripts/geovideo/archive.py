@@ -23,6 +23,7 @@ Usage:
   uv run scripts/geovideo/archive.py plan [--source <uuid>] [--summary]
   uv run scripts/geovideo/archive.py run [--source <uuid>] [--budget 5h] [--max-chunks N]
   uv run scripts/geovideo/archive.py domain --source <uuid>
+  uv run scripts/geovideo/archive.py depths [--source <uuid>] [--levels 10]
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ import argparse
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from datetime import datetime, timezone
 import hashlib
+from itertools import chain
 import json
 import os
 from pathlib import Path
@@ -88,7 +90,45 @@ def load_archives(path: Path = ARCHIVE_PATH) -> dict[str, Any]:
             window_interval(window, np.datetime64("2000-01-01", "ns"))
         if archive.get("chunk") is not None and archive["chunk"] not in CHUNK_PERIODS:
             raise ValueError(f"{archive['sourceId']}: chunk must be one of {sorted(CHUNK_PERIODS)}")
+        validate_depths(archive)
     return data
+
+
+def validate_depths(archive: dict[str, Any]) -> None:
+    """`depths`: the levels rendered besides the surface, as `archive.py depths` prints them."""
+    depths = archive.get("depths")
+    if depths is None:
+        return
+    values = depths.get("values") if isinstance(depths, dict) else None
+    if (not isinstance(depths.get("name"), str) or not isinstance(values, list) or not values
+            or not all(isinstance(value, (int, float)) and np.isfinite(value) for value in values)
+            or len(set(values)) != len(values)):
+        raise ValueError(f"{archive['sourceId']}: depths needs a name and distinct finite values")
+
+
+def depth_id(depth: dict[str, Any]) -> str:
+    """Path segment of a depth: stable for its coordinate identity and exact value."""
+    material = json.dumps({key: depth.get(key) for key in ("name", "value", "units", "positive")},
+                          sort_keys=True)
+    return "d" + hashlib.sha256(material.encode()).hexdigest()[:10]
+
+
+def depth_archives(archive: dict[str, Any]) -> list[dict[str, Any]]:
+    """The archive's surface, then one sub-archive per configured depth, shallow to deep.
+    A sub-archive keeps the archive's policy and records its level as `depth`."""
+    depths = archive.get("depths")
+    if not depths:
+        return [archive]
+    identity = {key: depths.get(key, "") for key in ("name", "units", "positive")}
+    levels = sorted(depths["values"], key=abs)
+    return [archive] + [{**archive, "depth": {**identity, "value": value}} for value in levels]
+
+
+def root_depths(entries: list[tuple[dict[str, Any], dict[str, Any]]]) -> list[dict[str, Any]]:
+    """The root index's `depths`: each (depth, index) with a playable chunk, shallow to deep."""
+    return [{**depth, "indexUrl": f"depths/{depth_id(depth)}/index.json"}
+            for depth, index in sorted(entries, key=lambda item: abs(item[0]["value"]))
+            if index["chunks"]]
 
 
 def catalog_layer(entry_id: str) -> dict[str, Any]:
@@ -228,6 +268,9 @@ def encoding_profile(archive: dict[str, Any], layer: dict[str, Any]) -> dict[str
         profile["framesPerSample"] = archive.get("framesPerSample", 1)
     else:
         profile["format"] = "geovideo-v3-vector-luma-stacked-uv"
+    # Only a depth enters the key: surface archives keep theirs.
+    if archive.get("depth"):
+        profile["vertical"] = archive["depth"]
     return profile
 
 
@@ -252,6 +295,7 @@ def empty_index(archive: dict[str, Any]) -> dict[str, Any]:
         "updatedAt": None,
         "chunks": [],
         "superseded": [],
+        **({"vertical": archive["depth"]} if archive.get("depth") else {}),
     }
 
 
@@ -338,7 +382,9 @@ def scalar_size(dataset: Any, bounds: list[float]) -> tuple[int, int]:
 # ── rendering and publication ───────────────────────────────────────────
 
 def object_prefix(upload: dict[str, Any], archive: dict[str, Any]) -> str:
-    return f"{upload.get('prefix', 'geovideo').strip('/')}/{archive['catalogEntryId']}/{archive['sourceId']}"
+    """Where an archive's index and chunks live; a depth's beside its own index."""
+    prefix = f"{upload.get('prefix', 'geovideo').strip('/')}/{archive['catalogEntryId']}/{archive['sourceId']}"
+    return f"{prefix}/depths/{depth_id(archive['depth'])}" if archive.get("depth") else prefix
 
 
 def chunk_directory(archive: dict[str, Any], key: str) -> Path:
@@ -389,6 +435,7 @@ def render_samples(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[s
             },
             "bounds": bounds,
             "output": output,
+            **({"depth": archive["depth"]} if archive.get("depth") else {}),
         }, layer)
         frame_count = round(config["durationSeconds"] * config["output"]["fps"])
         summary = {"artifactId": chunk["key"], "directory": str(directory), "frames": frame_count}
@@ -402,6 +449,7 @@ def render_samples(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[s
             "times": chunk["samples"],
             **({"bounds": archive["bounds"]} if archive.get("bounds") else {}),
             "output": output,
+            **({"depth": archive["depth"]} if archive.get("depth") else {}),
         }, layer)
         render_vector.render(config, layer, directory, None)
     return directory
@@ -534,18 +582,22 @@ def command_plan(args: argparse.Namespace) -> int:
     client, env = render.s3_client()
     now = utc_now()
     results = []
-    for archive in selected_archives(data, args.source):
+    archives = [archive for base in selected_archives(data, args.source) for archive in depth_archives(base)]
+    for archive in archives:
+        depth = archive.get("depth")
+        title = archive.get("title", "") + (f" @ {depth['name']}={depth['value']}" if depth else "")
         try:
             _layer, chunks = resolve(archive, now)
             prefix = object_prefix(data.get("upload", {}), archive)
             index = read_index(client, env["S3_BUCKET"], f"{prefix}/index.json", archive)
         except Exception as exc:
-            results.append({"sourceId": archive["sourceId"], "title": archive.get("title"), "error": str(exc)})
+            results.append({"sourceId": archive["sourceId"], "title": title, "error": str(exc)})
             continue
         pending = pending_chunks(chunks, index)
         results.append({
             "sourceId": archive["sourceId"],
-            "title": archive.get("title"),
+            **({"depth": depth} if depth else {}),
+            "title": title,
             "required": len(chunks),
             "present": len(chunks) - len(pending),
             "pending": [{"period": chunk["period"]["start"], "samples": len(chunk["samples"]),
@@ -554,6 +606,26 @@ def command_plan(args: argparse.Namespace) -> int:
         })
     print(summarize_plan(results) if args.summary else json.dumps(results, indent=2))
     return 1 if any("error" in result for result in results) else 0
+
+
+def archive_label(archive: dict[str, Any]) -> str:
+    depth = archive.get("depth")
+    return f"{archive['sourceId']} @ {depth['name']}={depth['value']}" if depth else archive["sourceId"]
+
+
+def refresh_root_depths(root: dict[str, Any], client: Any, bucket: str) -> None:
+    """Rewrite the surface index's `depths` from its depth queues, only when it changes.
+    The main process alone writes it, so no stale copy overwrites another."""
+    depths = root_depths([(queue["archive"]["depth"], queue["index"]) for queue in root["depthQueues"]])
+    # A depth whose index could not be read this run keeps its published entry.
+    kept = [entry for entry in root["index"].get("depths", [])
+            if entry["indexUrl"].split("/")[1] in root["unread"]]
+    depths = sorted(depths + kept, key=lambda entry: abs(entry["value"]))
+    if root["index"].get("depths", []) == depths:
+        return
+    index = {**root["index"], "depths": depths}
+    write_index(client, bucket, f"{root['prefix']}/index.json", index)
+    root["index"] = index
 
 
 def command_run(args: argparse.Namespace) -> int:
@@ -568,31 +640,54 @@ def command_run(args: argparse.Namespace) -> int:
     render.require_bucket_cors(client, bucket)
     deadline = time.monotonic() + args.budget
     failures: list[str] = []
-    queues = []
-    for archive in selected_archives(data, args.source):
-        try:
-            now = utc_now()
+    surface_queues: list[dict[str, Any]] = []
+    depth_queues: list[dict[str, Any]] = []
+    for base in selected_archives(data, args.source):
+        root: dict[str, Any] | None = None
+        for archive in depth_archives(base):
+            label = archive_label(archive)
             prefix = object_prefix(upload, archive)
-            index = read_index(client, bucket, f"{prefix}/index.json", archive)
-            # Before the upstream store is read: an index migrates even when it cannot be.
-            index, backfilled = backfill_times(index, lambda url: json.loads(client.get_object(
-                Bucket=bucket, Key=f"{prefix}/{url}")["Body"].read()))
-            if backfilled:
-                write_index(client, bucket, f"{prefix}/index.json", index)
-            layer, chunks = resolve(archive, now)
-            expired, index = expired_superseded(index, now)
-            for key in expired:
-                delete_chunk_objects(client, bucket, prefix, key)
-            if expired:
-                write_index(client, bucket, f"{prefix}/index.json", index)
-        except Exception as exc:
-            failures.append(f"{archive['sourceId']}: {exc}")
-            print(f"Skipping {archive['sourceId']}: {exc}", file=sys.stderr, flush=True)
-            continue
-        queues.append({"archive": archive, "layer": layer, "prefix": prefix,
-                       "index": index, "pending": pending_chunks(chunks, index)})
+            queue: dict[str, Any] = {"archive": archive, "label": label, "prefix": prefix, "pending": []}
+            try:
+                now = utc_now()
+                index = read_index(client, bucket, f"{prefix}/index.json", archive)
+                # Before the upstream store is read: an index migrates even when it cannot be.
+                index, backfilled = backfill_times(index, lambda url, prefix=prefix: json.loads(
+                    client.get_object(Bucket=bucket, Key=f"{prefix}/{url}")["Body"].read()))
+                if backfilled:
+                    write_index(client, bucket, f"{prefix}/index.json", index)
+                queue["index"] = index
+                layer, chunks = resolve(archive, now)
+                expired, index = expired_superseded(index, now)
+                for key in expired:
+                    delete_chunk_objects(client, bucket, prefix, key)
+                if expired:
+                    write_index(client, bucket, f"{prefix}/index.json", index)
+                queue.update(index=index, layer=layer, pending=pending_chunks(chunks, index))
+            except Exception as exc:
+                failures.append(f"{label}: {exc}")
+                print(f"Skipping {label}: {exc}", file=sys.stderr, flush=True)
+                queue["failed"] = True
+            if archive.get("depth"):
+                if root is not None and "index" in queue:
+                    root["depthQueues"].append(queue)
+                    queue["root"] = root
+                elif root is not None:
+                    root["unread"].add(depth_id(archive["depth"]))
+                depth_queues.append(queue)
+            elif "index" in queue:
+                root = {**queue, "depthQueues": [], "unread": set()}
+                surface_queues.append(root)
+        if root is not None:
+            try:
+                refresh_root_depths(root, client, bucket)
+            except Exception as exc:
+                failures.append(f"{root['label']} depths: {exc}")
+    queues = surface_queues + depth_queues
     threads = max(1, (os.cpu_count() or 1) // args.jobs)
-    tasks = iter(interleave(queues))
+    # Surface updates first; depths take the budget left.
+    tasks = chain(interleave([q for q in surface_queues if not q.get("failed")]),
+                  interleave([q for q in depth_queues if not q.get("failed")]))
     running: dict[Future, dict[str, Any]] = {}
     submitted = 0
     with ProcessPoolExecutor(max_workers=args.jobs) as pool:
@@ -603,7 +698,7 @@ def command_run(args: argparse.Namespace) -> int:
                 if task is None:
                     break
                 queue, chunk = task
-                print(f"Rendering {queue['archive']['sourceId']} {chunk['period']['start']} "
+                print(f"Rendering {queue['label']} {chunk['period']['start']} "
                       f"({len(chunk['samples'])} samples) -> {chunk['key']}", file=sys.stderr, flush=True)
                 future = pool.submit(render_and_publish, queue["archive"], queue["layer"], chunk, upload,
                                      queue["prefix"], threads)
@@ -616,12 +711,19 @@ def command_run(args: argparse.Namespace) -> int:
                 queue = running.pop(future)
                 try:
                     chunk = future.result()
-                    queue["index"] = merge_chunk(queue["index"], chunk, utc_now())
-                    write_index(client, bucket, f"{queue['prefix']}/index.json", queue["index"])
-                    print(f"Published {queue['archive']['sourceId']} {chunk['period']['start']}",
+                    # Published, then kept: the root only lists indexes that were written.
+                    index = merge_chunk(queue["index"], chunk, utc_now())
+                    write_index(client, bucket, f"{queue['prefix']}/index.json", index)
+                    queue["index"] = index
+                    if queue.get("root"):
+                        try:
+                            refresh_root_depths(queue["root"], client, bucket)
+                        except Exception as exc:  # the next completion or run retries it
+                            failures.append(f"{queue['root']['label']} depths: {exc}")
+                    print(f"Published {queue['label']} {chunk['period']['start']}",
                           file=sys.stderr, flush=True)
                 except Exception as exc:
-                    failures.append(f"{queue['archive']['sourceId']}: {exc}")
+                    failures.append(f"{queue['label']}: {exc}")
                     print(f"Chunk failed, archive paused for this run: {exc}", file=sys.stderr, flush=True)
                     queue["failed"] = True
     if time.monotonic() >= deadline:
@@ -633,6 +735,65 @@ def report_failures(failures: list[str]) -> int:
     for failure in failures:
         print(f"FAILED {failure}", file=sys.stderr)
     return 1 if failures else 0
+
+
+def prefix_bytes(client: Any, bucket: str, prefix: str) -> tuple[int, int]:
+    """Bytes stored under an archive prefix: its surface, and its `depths/` subtree."""
+    surface, depths, token = 0, 0, None
+    while True:
+        page = client.list_objects_v2(Bucket=bucket, Prefix=f"{prefix}/",
+                                      **({"ContinuationToken": token} if token else {}))
+        for item in page.get("Contents", []):
+            if item["Key"].startswith(f"{prefix}/depths/"):
+                depths += item["Size"]
+            else:
+                surface += item["Size"]
+        token = page.get("NextContinuationToken")
+        if not token:
+            return surface, depths
+
+
+def command_depths(args: argparse.Namespace) -> int:
+    """Inventory for depth archives: each archive's vertical coordinate, the levels
+    `depth_levels` suggests, and the bytes its surface takes in the bucket, times those
+    levels as an upper bound (deeper levels hold less ocean)."""
+    data = load_archives()
+    upload = data.get("upload", {})
+    try:
+        client, env = render.s3_client()
+    except RuntimeError:
+        client, env = None, {}
+    results = []
+    for archive in selected_archives(data, args.source):
+        layer = catalog_layer(archive["catalogEntryId"])
+        result: dict[str, Any] = {"sourceId": archive["sourceId"], "title": archive.get("title")}
+        try:
+            axis = render.vertical_axis(open_source(layer), render.source_variables(render.zarr_source(layer)))
+        except Exception as exc:
+            results.append({**result, "error": str(exc)})
+            continue
+        levels = render.depth_levels(axis["values"], args.levels) if axis else []
+        surface, published_depths = (prefix_bytes(client, env["S3_BUCKET"], object_prefix(upload, archive))
+                                     if client else (None, None))
+        if axis:
+            values = axis["values"]
+            result["vertical"] = {"name": axis["name"], "units": axis["units"], "positive": axis["positive"],
+                                  "count": len(values), "range": [values[0], values[-1]]}
+            # Ready for archive.json: the levels besides the surface, which is the archive itself.
+            result["depths"] = {"name": axis["name"], "units": axis["units"], "positive": axis["positive"],
+                                "values": levels[1:]}
+        result["surfaceBytes"] = surface
+        result["depthBytes"] = published_depths
+        result["estimatedBytes"] = None if surface is None else surface * max(1, len(levels))
+        results.append(result)
+    known = [item for item in results if item.get("surfaceBytes") is not None]
+    print(json.dumps({
+        "archives": results,
+        "withDepth": sum("vertical" in item for item in results),
+        "surfaceBytes": sum(item["surfaceBytes"] for item in known) if known else None,
+        "estimatedBytes": sum(item["estimatedBytes"] for item in known) if known else None,
+    }, indent=2))
+    return 1 if any("error" in item for item in results) else 0
 
 
 def command_domain(args: argparse.Namespace) -> int:
@@ -676,8 +837,12 @@ def main() -> int:
     run.add_argument("--jobs", type=int, default=1, help="Chunks rendered in parallel")
     domain = commands.add_parser("domain", help="Suggest a pinned vector valueDomain")
     domain.add_argument("--source", required=True)
+    depths = commands.add_parser("depths", help="Vertical axes, suggested depth levels and bucket estimate")
+    depths.add_argument("--source")
+    depths.add_argument("--levels", type=int, default=10)
     args = parser.parse_args()
-    return {"plan": command_plan, "run": command_run, "domain": command_domain}[args.command](args)
+    return {"plan": command_plan, "run": command_run, "domain": command_domain,
+            "depths": command_depths}[args.command](args)
 
 
 if __name__ == "__main__":

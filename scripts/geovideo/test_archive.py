@@ -5,6 +5,13 @@ from unittest import mock
 import numpy as np
 
 from archive import (
+    depth_archives,
+    refresh_root_depths,
+    depth_id,
+    object_prefix,
+    prefix_bytes,
+    root_depths,
+    validate_depths,
     backfill_times,
     chunk_key,
     chunk_period,
@@ -200,6 +207,109 @@ class CoverageTest(unittest.TestCase):
         times = np.array([ns("2020-07-01"), ns("2024-07-01")])
         with mock.patch("archive.zarr_valid_start", return_value=None):
             self.assertEqual(len(covered_times(times, self.LAYER)), 2)
+
+
+DEPTHS = {"name": "elevation", "units": "m", "positive": "up", "values": [-92.326, -1.541, -763.333]}
+
+
+class DepthArchiveTest(unittest.TestCase):
+    def test_expands_the_surface_then_depths_shallow_to_deep(self):
+        archives = depth_archives({**ARCHIVE, "depths": DEPTHS})
+        self.assertNotIn("depth", archives[0])
+        self.assertEqual([item["depth"]["value"] for item in archives[1:]], [-1.541, -92.326, -763.333])
+        self.assertEqual(archives[1]["depth"], {"name": "elevation", "units": "m", "positive": "up",
+                                                "value": -1.541})
+        self.assertEqual(depth_archives(ARCHIVE), [ARCHIVE])
+
+    def test_a_depth_lives_beside_its_own_index(self):
+        surface, deep = depth_archives({**ARCHIVE, "depths": DEPTHS})[:2]
+        base = f"geovideo/{ENTRY}/{SOURCE}"
+        self.assertEqual(object_prefix({}, surface), base)
+        self.assertEqual(object_prefix({}, deep), f"{base}/depths/{depth_id(deep['depth'])}")
+        self.assertRegex(depth_id(deep["depth"]), r"^d[0-9a-f]{10}$")
+        self.assertEqual(depth_id(dict(deep["depth"])), depth_id(deep["depth"]))
+
+    def test_only_a_depth_enters_the_key(self):
+        layer = {"id": ENTRY, "kind": "vector", "sources": [{"type": "zarr", "endpoints": {"field": "f"},
+                                                             "variables": {"kind": "vector"}}]}
+        surface, deep = depth_archives({**ARCHIVE, "depths": DEPTHS})[:2]
+        self.assertEqual(encoding_profile(surface, layer), encoding_profile(ARCHIVE, layer))
+        self.assertNotIn("vertical", encoding_profile(surface, layer))
+        self.assertEqual(encoding_profile(deep, layer)["vertical"], deep["depth"])
+
+    def test_root_lists_playable_depths_only(self):
+        deep = depth_archives({**ARCHIVE, "depths": DEPTHS})
+        played = merge_chunk(empty_index(deep[2]), {"period": {"start": "2026-09-01T00:00:00Z",
+                                                               "end": "2026-10-01T00:00:00Z"},
+                                                    "samples": ["2026-09-01T00:00:00Z", "2026-09-02T00:00:00Z"],
+                                                    "revision": None, "key": "k"}, ns("2026-10-08"))
+        entries = root_depths([(deep[2]["depth"], played), (deep[1]["depth"], empty_index(deep[1]))])
+        self.assertEqual(entries, [{**deep[2]["depth"],
+                                    "indexUrl": f"depths/{depth_id(deep[2]['depth'])}/index.json"}])
+        self.assertEqual(empty_index(deep[2])["vertical"], deep[2]["depth"])
+
+    def test_rejects_malformed_depths(self):
+        for depths in ({"values": [-1.0]}, {**DEPTHS, "values": []}, {**DEPTHS, "values": [-1.0, -1.0]}):
+            with self.assertRaises(ValueError):
+                validate_depths({**ARCHIVE, "depths": depths})
+        validate_depths({**ARCHIVE, "depths": DEPTHS})
+
+
+class FakeBucket:
+    def __init__(self, fail=False):
+        self.fail, self.puts = fail, []
+
+    def put_object(self, **kwargs):
+        if self.fail:
+            raise OSError("bucket unavailable")
+        self.puts.append(kwargs["Key"])
+
+
+class ListingBucket:
+    def list_objects_v2(self, **kwargs):
+        return {"Contents": [{"Key": "p/k/video.mp4", "Size": 10}, {"Key": "p/index.json", "Size": 1},
+                             {"Key": "p/depths/d1/k/video.mp4", "Size": 7}]}
+
+
+class InventoryTest(unittest.TestCase):
+    def test_separates_surface_and_depth_storage(self):
+        self.assertEqual(prefix_bytes(ListingBucket(), "b", "p"), (11, 7))
+
+
+class RootDepthsTest(unittest.TestCase):
+    def queues(self):
+        surface, deep = depth_archives({**ARCHIVE, "depths": DEPTHS})[:2]
+        chunk = {"period": {"start": "2026-09-01T00:00:00Z", "end": "2026-10-01T00:00:00Z"},
+                 "samples": ["2026-09-01T00:00:00Z", "2026-09-02T00:00:00Z"], "revision": None, "key": "k"}
+        child = {"archive": deep, "index": merge_chunk(empty_index(deep), chunk, ns("2026-10-08"))}
+        root = {"archive": surface, "label": "root", "prefix": "p", "index": empty_index(surface),
+                "depthQueues": [child], "unread": set()}
+        return root, deep
+
+    def test_lists_a_published_depth_once(self):
+        root, deep = self.queues()
+        bucket = FakeBucket()
+        refresh_root_depths(root, bucket, "b")
+        refresh_root_depths(root, bucket, "b")
+        self.assertEqual(bucket.puts, ["p/index.json"])
+        self.assertEqual([entry["value"] for entry in root["index"]["depths"]], [deep["depth"]["value"]])
+
+    def test_a_failed_write_leaves_the_root_to_retry(self):
+        root, _deep = self.queues()
+        with self.assertRaises(OSError):
+            refresh_root_depths(root, FakeBucket(fail=True), "b")
+        self.assertNotIn("depths", root["index"])
+        bucket = FakeBucket()
+        refresh_root_depths(root, bucket, "b")
+        self.assertEqual(bucket.puts, ["p/index.json"])
+
+    def test_keeps_a_depth_whose_index_was_not_read(self):
+        root, deep = self.queues()
+        refresh_root_depths(root, FakeBucket(), "b")
+        published = root["index"]["depths"]
+        root["depthQueues"], root["unread"] = [], {depth_id(deep["depth"])}
+        refresh_root_depths(root, FakeBucket(), "b")
+        self.assertEqual(root["index"]["depths"], published)
 
 
 class GapTest(unittest.TestCase):

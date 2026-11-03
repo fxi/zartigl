@@ -48,7 +48,7 @@ from render import (  # noqa: E402
     publish,
     required,
     sample_iso,
-    surface_index,
+    select_level,
     uuid4,
     write_mask_png,
     zarr_source,
@@ -271,9 +271,7 @@ class VectorFrames:
         self.variables = source["variables"]
         self.factor = config["output"]["factor"]
         dataset = open_arco_zarr(source["endpoints"]["field"])
-        for dim in list(dataset.dims):
-            if dim not in {"time", "latitude", "longitude"}:
-                dataset = dataset.isel({dim: surface_index(dataset, dim)})
+        dataset = select_level(dataset, dataset, config.get("depth"))
         if config.get("bounds"):
             dataset = crop(dataset, config["bounds"], self.factor)
         self.dataset = dataset
@@ -351,7 +349,8 @@ class VectorFrames:
         return block_mean(u, self.factor), block_mean(v, self.factor)
 
 
-def value_domain(frames: VectorFrames, percentile: float = 99.9) -> tuple[float, np.ndarray]:
+def value_domain(frames: VectorFrames, percentile: float = 99.9,
+                 pinned: float | None = None) -> tuple[float, np.ndarray]:
     """Percentile of |u|,|v| over a spread sample of frames, rounded up to 2 significant digits,
     plus the static validity mask (cells valid in any sampled frame). Use 100 when rare extremes
     (a cyclone eye) are the subject; the sqrt transfer keeps slow flows precise either way."""
@@ -366,6 +365,9 @@ def value_domain(frames: VectorFrames, percentile: float = 99.9) -> tuple[float,
     if values.size == 0:
         raise ValueError(f"No valid upstream data in the {len(positions)} frames sampled from "
                          f"{frames.times[0]} to {frames.times[-1]}")
+    if pinned is not None:
+        # A pinned domain also holds a calm field, such as deep, still water.
+        return pinned, valid
     raw = float(np.percentile(values, percentile))
     if not math.isfinite(raw) or raw <= 0:
         raise ValueError("Cannot derive a positive vector value domain")
@@ -401,6 +403,7 @@ def create_manifest(config: dict[str, Any], layer: dict[str, Any], frames: Vecto
             "variables": frames.source_variables(),
             "generatedAt": np.datetime_as_string(np.datetime64("now", "s"), timezone="UTC"),
         },
+        **({"vertical": config["depth"]} if config.get("depth") else {}),
         # Particle shaders normalize speed by |(d, d)| for a fixed domain d.
         "style": {"palette": layer["defaults"]["palette"], "colorDomain": [0, domain * math.sqrt(2)],
                   "unit": frames.unit},
@@ -413,9 +416,9 @@ def render(config: dict[str, Any], layer: dict[str, Any], directory: Path, max_f
         frames.indices, frames.times = frames.indices[:max_frames], frames.times[:max_frames]
     count = len(frames.times)
     print(f"{count} frames {frames.times[0]} -> {frames.times[-1]}, grid {frames.width}x{frames.height}", flush=True)
-    domain, static_valid = value_domain(frames, float(config["output"].get("domainPercentile", 99.9)))
-    if config["output"].get("valueDomain") is not None:
-        domain = float(config["output"]["valueDomain"])
+    pinned = config["output"].get("valueDomain")
+    domain, static_valid = value_domain(frames, float(config["output"].get("domainPercentile", 99.9)),
+                                        None if pinned is None else float(pinned))
     transfer = config["output"]["transfer"]
     print(f"value domain ±{domain} {frames.unit}", flush=True)
     directory.mkdir(parents=True, exist_ok=True)

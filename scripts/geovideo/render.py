@@ -48,6 +48,8 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
 P99_CODE_ERROR_LIMIT = 8
 MAX_CODE_ERROR_LIMIT = 16
+# Fewer valid grid cells than this (a sparse deep mask) validates spread valid pixels instead.
+MIN_VALIDATION_PIXELS = 256
 # H.264 level 5.0 (ffprobe reports 50), which phones decode in hardware: its
 # High profile allows 168.75 Mbit/s and as large a buffer.
 MAX_H264_LEVEL = 50
@@ -358,6 +360,108 @@ def surface_index(dataset: Any, dimension: str) -> int:
     return int(np.argmin(np.abs(np.asarray(dataset[dimension].values, dtype=np.float64))))
 
 
+def source_variables(source: dict[str, Any]) -> list[str]:
+    """Store variables a catalog Zarr source reads."""
+    variables = source["variables"]
+    if variables["kind"] == "scalar":
+        return [variables["value"]]
+    derivation = variables.get("derivation")
+    if derivation:
+        return [derivation["direction_variable"], derivation["magnitude_variable"]]
+    return [variables.get("u", "uo"), variables.get("v", "vo")]
+
+
+def vertical_axis(dataset: Any, variables: list[str]) -> dict[str, Any] | None:
+    """
+    The vertical coordinate the variables share: name, native values, units
+    and CF `positive`, the identity a depth artifact records. None for a
+    surface-only field. Pressure or several extra dimensions are refused.
+    """
+    extra = {
+        tuple(dim for dim in dataset[variable].dims if dim not in {"time", "latitude", "longitude"})
+        for variable in variables
+    }
+    if extra == {()}:
+        return None
+    if len(extra) != 1 or len(next(iter(extra))) != 1:
+        raise ValueError(f"Variables {variables} do not share one vertical dimension: {sorted(extra)}")
+    name = next(iter(extra))[0]
+    if name not in dataset.coords:
+        raise ValueError(f"Vertical dimension {name} has no coordinate")
+    coord = dataset[name]
+    units = str(coord.attrs.get("units", ""))
+    if units.lower() in {"pa", "hpa", "dbar", "1"} or "sigma" in str(coord.attrs.get("standard_name", "")):
+        raise ValueError(f"Unsupported vertical coordinate {name} ({units})")
+    values = np.asarray(coord.values, dtype=np.float64)
+    if values.size > 1 and np.any(values > 0) and np.any(values < 0):
+        raise ValueError(f"Vertical coordinate {name} mixes signs")
+    return {
+        "name": name,
+        "values": values.tolist(),
+        "units": units,
+        "positive": str(coord.attrs.get("positive", "")),
+    }
+
+
+def depth_levels(values: list[float], n: int = 10) -> list[float]:
+    """
+    Up to `n` native levels: the surface (smallest magnitude) first, then
+    levels geometrically spaced in magnitude down to the deepest one, each the
+    native level nearest its target in log space. Deterministic for an axis,
+    so a frozen list keeps its chunk keys.
+    """
+    axis = np.asarray([value for value in values if np.isfinite(value)], dtype=np.float64)
+    if axis.size == 0:
+        raise ValueError("Vertical axis has no finite level")
+    order = np.argsort(np.abs(axis), kind="stable")
+    levels = axis[order]
+    magnitudes = np.abs(levels)
+    picked = [0]
+    deeper = np.nonzero(magnitudes > 0)[0]
+    slots = n - 1 if magnitudes[0] == 0 else n
+    if n > 1 and deeper.size:
+        low, high = magnitudes[deeper[0]], magnitudes[deeper[-1]]
+        targets = [low] if slots <= 1 or low == high else (
+            low * (high / low) ** (np.arange(slots) / (slots - 1)))
+        logs = np.log(magnitudes[deeper])
+        for target in targets:
+            index = int(deeper[np.argmin(np.abs(logs - np.log(target)))])
+            if index not in picked:
+                picked.append(index)
+    return [float(levels[index]) for index in sorted(picked)][:max(1, n)]
+
+
+def level_index(dataset: Any, depth: dict[str, Any]) -> int:
+    """Index of a recorded vertical level, which the store must still hold exactly:
+    a moved axis fails rather than render another level under the same key."""
+    values = np.asarray(dataset[depth["name"]].values, dtype=np.float64)
+    hits = np.flatnonzero(values == float(depth["value"]))
+    if hits.size != 1:
+        raise ValueError(f"Vertical level {depth['name']}={depth['value']} not found in the store")
+    return int(hits[0])
+
+
+def select_level(data: Any, dataset: Any, depth: dict[str, Any] | None) -> Any:
+    """The recorded level of `depth` on its dimension, the surface on any other extra one.
+    The recorded coordinate identity must still hold: a dimension gone, renamed, or with other
+    units or direction fails rather than label surface data with a depth."""
+    if depth:
+        if depth["name"] not in data.dims or depth["name"] not in dataset.coords:
+            raise ValueError(f"Vertical dimension {depth['name']} not found in the store")
+        attrs = dataset[depth["name"]].attrs
+        for key in ("units", "positive"):
+            if depth.get(key) and str(attrs.get(key, "")) != depth[key]:
+                raise ValueError(f"Vertical coordinate {depth['name']} {key} changed: "
+                                 f"{attrs.get(key)!r}, recorded {depth[key]!r}")
+    for dimension in list(data.dims):
+        if dimension in {"time", "latitude", "longitude"}:
+            continue
+        index = (level_index(dataset, depth) if depth and dimension == depth["name"]
+                 else surface_index(dataset, dimension))
+        data = data.isel({dimension: index})
+    return data
+
+
 class ScalarFrames:
     def __init__(self, layer: dict[str, Any], config: dict[str, Any]):
         self.layer = layer
@@ -370,9 +474,7 @@ class ScalarFrames:
             raise ValueError(f"Variable not found in store: {self.variable}")
         self.data = self.dataset[self.variable]
         self.unit = str(self.data.attrs.get("units", ""))
-        for dimension in list(self.data.dims):
-            if dimension not in {"time", "latitude", "longitude"}:
-                self.data = self.data.isel({dimension: surface_index(self.dataset, dimension)})
+        self.data = select_level(self.data, self.dataset, config.get("depth"))
         self.data = self.data.transpose("time", "latitude", "longitude")
         self.times = normalize_times(np.asarray(self.dataset["time"].values))
         self.samples = self._resolve_sample_times()
@@ -643,15 +745,36 @@ def probe_media(path: Path, config: dict[str, Any], expected_duration: float) ->
     return probe
 
 
+def validation_positions(mask: np.ndarray) -> np.ndarray:
+    """
+    Flat pixel indices whose codes are checked: the valid cells of a fixed
+    32x64 grid, or, when a sparse mask leaves fewer than MIN_VALIDATION_PIXELS
+    of them (a deep basin between grid points), up to 2048 valid pixels
+    spread evenly. Deterministic for a mask.
+    """
+    height, width = mask.shape
+    grid = np.zeros_like(mask, dtype=bool)
+    grid[::max(1, height // 32), ::max(1, width // 64)] = True
+    positions = np.flatnonzero(grid & mask)
+    if positions.size >= MIN_VALIDATION_PIXELS:
+        return positions
+    valid = np.flatnonzero(mask)
+    return valid[::max(1, math.ceil(valid.size / 2048))]
+
+
 def validate_encoded_values(
     path: Path,
-    expected_samples: list[tuple[np.ndarray, np.ndarray]],
+    raw_path: Path,
+    positions: np.ndarray,
     width: int,
     height: int,
 ) -> dict[str, Any]:
-    """Decode the artifact and enforce a sampled scalar-code error budget."""
+    """Decode the artifact and enforce the code error budget at `positions`
+    against the frames as encoded (`raw_path`, rgb24)."""
     ffmpeg = shutil.which("ffmpeg")
     assert ffmpeg is not None
+    if positions.size == 0:
+        raise RuntimeError("Scalar-luma validation found no valid samples")
     process = subprocess.Popen(
         [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(path),
          "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
@@ -659,33 +782,33 @@ def validate_encoded_values(
     )
     assert process.stdout is not None
     frame_bytes = width * height * 3
-    y_stride = max(1, height // 32)
-    x_stride = max(1, width // 64)
+    expected_count = raw_path.stat().st_size // frame_bytes
     errors: list[np.ndarray] = []
     decoded_count = 0
-    while True:
-        payload = process.stdout.read(frame_bytes)
-        if not payload:
-            break
-        if len(payload) != frame_bytes:
-            process.kill()
-            raise RuntimeError("Truncated frame while validating scalar-luma video")
-        if decoded_count >= len(expected_samples):
-            process.kill()
-            raise RuntimeError("Scalar-luma video contains more frames than expected")
-        rgb = np.frombuffer(payload, dtype=np.uint8).reshape(height, width, 3)
-        decoded = np.clip(np.rint(
-            rgb[:, :, 0].astype(np.float32) * .2126
-            + rgb[:, :, 1].astype(np.float32) * .7152
-            + rgb[:, :, 2].astype(np.float32) * .0722
-        ), 0, 255).astype(np.uint8)[::y_stride, ::x_stride]
-        expected, valid = expected_samples[decoded_count]
-        errors.append(np.abs(decoded.astype(np.int16) - expected.astype(np.int16))[valid])
-        decoded_count += 1
+    with raw_path.open("rb") as raw:
+        while True:
+            payload = process.stdout.read(frame_bytes)
+            if not payload:
+                break
+            if len(payload) != frame_bytes:
+                process.kill()
+                raise RuntimeError("Truncated frame while validating scalar-luma video")
+            if decoded_count >= expected_count:
+                process.kill()
+                raise RuntimeError("Scalar-luma video contains more frames than expected")
+            rgb = np.frombuffer(payload, dtype=np.uint8).reshape(height * width, 3)[positions]
+            decoded = np.clip(np.rint(
+                rgb[:, 0].astype(np.float32) * .2126
+                + rgb[:, 1].astype(np.float32) * .7152
+                + rgb[:, 2].astype(np.float32) * .0722
+            ), 0, 255).astype(np.int16)
+            expected = np.frombuffer(raw.read(frame_bytes), dtype=np.uint8).reshape(height * width, 3)
+            errors.append(np.abs(decoded - expected[positions, 0].astype(np.int16)))
+            decoded_count += 1
     if process.wait() != 0:
         raise RuntimeError("FFmpeg failed while validating scalar-luma video")
-    if decoded_count != len(expected_samples):
-        raise RuntimeError(f"Expected {len(expected_samples)} decoded frames, received {decoded_count}")
+    if decoded_count != expected_count:
+        raise RuntimeError(f"Expected {expected_count} decoded frames, received {decoded_count}")
     combined = np.concatenate(errors) if errors else np.empty(0, dtype=np.int16)
     if combined.size == 0:
         raise RuntimeError("Scalar-luma validation found no valid samples")
@@ -795,6 +918,7 @@ def create_manifest(
             "variables": [zarr_source(layer)["variables"]["value"]],
             "generatedAt": np.datetime_as_string(np.datetime64("now", "s"), timezone="UTC"),
         },
+        **({"vertical": config["depth"]} if config.get("depth") else {}),
         "style": {
             "palette": config["style"]["palette"],
             "colorDomain": config["style"]["colorDomain"],
@@ -885,7 +1009,7 @@ def publish(directory: Path, config: dict[str, Any], artifact_id: str, object_pr
 
 def encode_within_budget(
     config: dict[str, Any], video_path: Path, raw_path: Path,
-    expected_samples: list[tuple[np.ndarray, np.ndarray]], frame_count: int,
+    positions: np.ndarray, frame_count: int,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """
     Validate the video already encoded at the configured settings, re-encoding
@@ -902,7 +1026,7 @@ def encode_within_budget(
         probe = probe_media(video_path, config, frame_count / config["output"]["fps"])
         try:
             validation = validate_encoded_values(
-                video_path, expected_samples, config["output"]["width"], config["output"]["height"],
+                video_path, raw_path, positions, config["output"]["width"], config["output"]["height"],
             )
         except CodeErrorBudgetError as exc:
             failed.append({**encoding, "valueValidation": exc.report})
@@ -927,15 +1051,12 @@ def render_artifact(
     empty_samples: list[str] = []
     static_mask: np.ndarray | None = None
     union_mask: np.ndarray | None = None
-    expected_samples: list[tuple[np.ndarray, np.ndarray]] = []
     source_minimum = math.inf
     source_maximum = -math.inf
     below_domain = 0
     above_domain = 0
     finite_values = 0
     domain_minimum, domain_maximum = config["style"]["colorDomain"]
-    y_stride = max(1, config["output"]["height"] // 32)
-    x_stride = max(1, config["output"]["width"] // 64)
     try:
         with raw_path.open("wb") as raw:
             process = subprocess.Popen(ffmpeg_command(config, video_path), stdin=subprocess.PIPE)
@@ -964,10 +1085,6 @@ def render_artifact(
                         assert union_mask is not None
                         union_mask |= valid
                     encoded = render_scalar_luma(values, config)
-                    expected_samples.append((
-                        encoded[::y_stride, ::x_stride, 0].copy(),
-                        valid[::y_stride, ::x_stride].copy(),
-                    ))
                     process.stdin.write(encoded.tobytes())
                     raw.write(encoded.tobytes())
                     if index == 0 or (index + 1) % max(1, round(config["output"]["fps"])) == 0:
@@ -985,8 +1102,6 @@ def render_artifact(
 
         assert static_mask is not None and union_mask is not None
         write_mask_png(mask_path, static_mask)
-        sampled_static_mask = static_mask[::y_stride, ::x_stride]
-        expected_samples = [(expected, sampled_static_mask) for expected, _valid in expected_samples]
         mask_report = {
             "strategy": "intersection",
             "validPixels": int(np.count_nonzero(static_mask)),
@@ -994,7 +1109,7 @@ def render_artifact(
             "totalPixels": int(static_mask.size),
         }
         encoding, probe, value_validation = encode_within_budget(
-            config, video_path, raw_path, expected_samples, frame_count,
+            config, video_path, raw_path, validation_positions(static_mask), frame_count,
         )
     finally:
         raw_path.unlink(missing_ok=True)
