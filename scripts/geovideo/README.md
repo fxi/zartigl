@@ -229,13 +229,19 @@ Policies live in `archive.json`, keyed by an archive `sourceId`:
   they settle.
 - `depths`: levels rendered besides the surface, as `archive.py depths
   --source <uuid>` prints them: the vertical coordinate's `name`, `units`,
-  CF `positive`, and its exact native `values`. `depth_levels` picks up to ten
+  CF `positive`, the exact native `surface` level, and the exact native
+  `values` below it. `depth_levels` picks up to ten
   levels, the surface then geometrically deeper to the deepest one (dense near
   the surface). Each level is a sub-archive with its own schema-1 index and
   chunks under `<prefix>/depths/<id>/`, `id` a hash of the coordinate identity
   and value; the level enters only that sub-archive's chunk key, so surface
   keys never change. The surface index lists the levels with a playable chunk
-  under `depths` (older runtimes ignore it). A run renders surface chunks
+  under `depths`, and the surface level itself as `surface` (older runtimes
+  ignore both): zartigl offers these levels as the GeoVideo depth axis, a
+  requested depth showing the nearest one and playing on, each level with
+  its own timeline (`axesChange` tells the host); with `surface` but no
+  depths yet, the surface level is shown locked (`getDepthMeta().locked`).
+  A run renders surface chunks
   first; a depth that fails pauses only its own queue. A store whose
   coordinate no longer holds a recorded value fails rather than render another
   level under the same key.

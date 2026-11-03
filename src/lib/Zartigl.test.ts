@@ -439,16 +439,13 @@ describe("Zartigl facade", () => {
     );
 
     expect(z.getSource()).toEqual({ id: GEO_VIDEO_ID, type: "geovideo" });
-    // Zarr is read only for its depth axis ("auto" reaches deeper levels
-    // through it); the time control is the artifact's own timeline.
-    expect(ZarrSource.prototype.init).toHaveBeenCalledOnce();
+    // GeoVideo reads no Zarr: its time control is the artifact's own timeline.
+    expect(ZarrSource.prototype.init).not.toHaveBeenCalled();
     const timeMeta = z.getTimeMeta();
     expect(timeMeta.timelineKind).toBe("sample-sequence");
     expect(timeMeta.values).toEqual(manifest.timeline.values.map(Date.parse));
     expect(timeMeta.current).toBe(Date.parse("2026-08-01T00:00:00Z"));
-    const depthMeta = z.getDepthMeta();
-    expect(depthMeta.values.length).toBeGreaterThan(1);
-    expect(depthMeta.current).toBe(depthMeta.values[0]);
+    expect(z.getDepthMeta().values).toEqual([]);
     expect(z.getLegend()).toMatchObject({ min: 0, max: 2.83, unit: "m/s" });
     const rendered = map.layers.get(z.getDebugInfo().id) as CatalogRenderLayer;
     expect(rendered.getBackend()).toBe("vector-geovideo");
@@ -585,30 +582,23 @@ describe("Zartigl facade", () => {
       expect(z.getTimeMeta().current).toBe(3_000);
     });
 
-    it("keeps GeoVideo for the surface and leaves it for deeper levels", async () => {
+    it("keeps GeoVideo for any depth", async () => {
       const z = await createZartigl(
         { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
         GEO_ENTRY_ID,
       );
-      await z.update({ depth: 2 });
-      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
-
       await z.update({ depth: 18 });
-      expect(z.getSource()?.type).toBe("zarr");
-      expect(z.getDepthMeta().current).toBe(20);
-
-      await z.update({ source: "auto", depth: 2, time: inPeriod });
       expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
-      expect(z.getDepthMeta().current).toBe(0);
+      // An artifact without depths offers no depth control.
+      expect(z.getDepthMeta().values).toEqual([]);
     });
 
-    it("selects Zarr at init for a non-surface depth", async () => {
+    it("keeps GeoVideo at init for a non-surface depth", async () => {
       const z = await createZartigl(
         { map: new FakeMap() as never, catalog: geoCatalog(), depth: 30 },
         GEO_ENTRY_ID,
       );
-      expect(z.getSource()?.type).toBe("zarr");
-      expect(z.getDepthMeta().current).toBe(30);
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
     });
 
     it("picks the covering artifact for a type-level GeoVideo request", async () => {
@@ -665,7 +655,7 @@ describe("Zartigl facade", () => {
       return { playback, sources };
     }
 
-    it("plays GeoVideo only, and stops on a depth change that leaves it", async () => {
+    it("plays on through a depth request, and only on GeoVideo", async () => {
       const z = await createZartigl(
         { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
         GEO_ENTRY_ID,
@@ -674,78 +664,35 @@ describe("Zartigl facade", () => {
       expect(z.getCapabilities().playback).toBe(true);
 
       await z.play();
-      expect(z.getPlaybackState().playing).toBe(true);
-
       await z.update({ depth: 18 });
-      expect(z.getSource()?.type).toBe("zarr");
-      expect(events.playback).toEqual([true, false]);
-      expect(events.sources).toEqual(["zarr"]);
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      expect(z.getPlaybackState().playing).toBe(true);
+      expect(events.playback).toEqual([true]);
+
+      // Zarr is an explicit choice, without playback.
+      await z.update({ source: "zarr" });
       expect(z.getCapabilities()).toMatchObject({
         playback: false,
         depth: true,
       });
-
-      // Inactive on Zarr, even when called directly.
       await z.play();
       expect(z.getPlaybackState()).toMatchObject({
         available: false,
         playing: false,
       });
-      expect(events.playback).toEqual([true, false]);
     });
 
-    it("returns to GeoVideo, paused, when the surface depth is selected again", async () => {
-      zarrCoversPeriod();
+    it("keeps an explicit Zarr choice and its depth for any date", async () => {
       const z = await createZartigl(
         {
           map: new FakeMap() as never,
           catalog: geoCatalog(),
-          time: inPeriod,
-          geoVideo: { autoplay: true },
+          source: "zarr",
+          depth: 20,
         },
         GEO_ENTRY_ID,
       );
-      await z.update({ depth: 20 });
-      expect(z.getSource()?.type).toBe("zarr");
-      const events = watch(z);
-
-      await z.update({ depth: 0 });
-      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
-      expect(z.getTimeMeta().current).toBe(inPeriod);
-      expect(z.getDepthMeta().current).toBe(0);
-      expect(events.sources).toEqual(["geovideo"]);
-      expect(z.getPlaybackState().playing).toBe(false);
-      const layer = (z as unknown as { layer: { options: object } }).layer;
-      expect(layer.options).toMatchObject({ geoVideoAutoplay: false });
-    });
-
-    it("returns to GeoVideo, paused, for a date it covers with the surface depth", async () => {
-      zarrCoversPeriod();
-      const z = await createZartigl(
-        { map: new FakeMap() as never, catalog: geoCatalog(), depth: 20 },
-        GEO_ENTRY_ID,
-      );
-      expect(z.getSource()?.type).toBe("zarr");
-
-      // Outside the artifact period, the surface stays on Zarr.
-      const before = Date.parse(period[GEO_VIDEO_ID][0]) - 3_600_000;
-      await z.update({ time: before, depth: 0 });
-      expect(z.getSource()?.type).toBe("zarr");
-
-      await z.update({ time: inPeriod, depth: 0 });
-      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
-      expect(z.getTimeMeta().current).toBe(inPeriod);
-      expect(z.getDepthMeta().current).toBe(0);
-      expect(z.getPlaybackState().playing).toBe(false);
-    });
-
-    it("does not return to GeoVideo for a surface depth outside its period", async () => {
-      const z = await createZartigl(
-        { map: new FakeMap() as never, catalog: geoCatalog(), time: inPeriod },
-        GEO_ENTRY_ID,
-      );
-      await z.update({ time: 3_000 });
-      await z.update({ depth: 20 });
+      await z.update({ time: inPeriod });
       await z.update({ depth: 0 });
       expect(z.getSource()?.type).toBe("zarr");
       expect(z.getDepthMeta().current).toBe(0);
@@ -817,7 +764,7 @@ describe("Zartigl facade", () => {
         { map: new FakeMap() as never, catalog: geoCatalog(), depth: 20 },
         GEO_ENTRY_ID,
       );
-      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getSource()?.type).toBe("geovideo");
 
       await z.update({ source: GEO_ZARR_ID });
       expect(z.getDepthMeta().current).toBe(20);
@@ -839,6 +786,7 @@ describe("Zartigl facade", () => {
 
       await z.update({ layer: GEO_ENTRY_ID, source: "auto", time: inPeriod });
       expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
+      await z.update({ source: "zarr" });
       expect(z.getDepthMeta().current).toBe(0);
     });
 
@@ -899,31 +847,20 @@ describe("Zartigl facade", () => {
       warn.mockRestore();
     });
 
-    it("falls back to Zarr when an auto GeoVideo fails while rendering", async () => {
-      zarrCoversPeriod();
+    it("reports a GeoVideo that fails while rendering, without switching", async () => {
       const map = new FakeMap();
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const z = await createZartigl(
         { map: map as never, catalog: geoCatalog(), time: inPeriod },
         GEO_ENTRY_ID,
       );
-      z.on("error", () => {});
-      const events = watch(z);
-      await z.play();
+      const errors: Error[] = [];
+      z.on("error", (error) => errors.push(error));
       const layer = map.getLayer(z.getDebugInfo().id) as unknown as {
         emit: (event: "error", error: Error) => void;
       };
-
-      const shown = z.getTimeMeta().current;
       layer.emit("error", new Error("media decode"));
-      await vi.waitFor(() => expect(z.getSource()?.type).toBe("zarr"));
-      expect(events.playback).toEqual([true, false]);
-      expect(z.getTimeMeta().current).toBe(shown);
-
-      // The failed artifact is not selected again.
-      await z.update({ depth: 0 });
-      expect(z.getSource()?.type).toBe("zarr");
-      warn.mockRestore();
+      expect(errors.map((error) => error.message)).toEqual(["media decode"]);
+      expect(z.getSource()?.id).toBe(GEO_VIDEO_ID);
     });
   });
 
@@ -1251,35 +1188,221 @@ describe("Zartigl facade", () => {
       ).rejects.toThrow();
     });
 
-    it("leaves GeoVideo for a deep level given with a time range", async () => {
-      const values = [
-        Date.parse("2026-08-10T00:00:00Z"),
-        Date.parse("2026-09-10T00:00:00Z"),
-      ];
-      vi.mocked(ZarrSource.prototype.getTimeDimension).mockReturnValue({
-        min: values[0],
-        max: values[1],
-        size: 2,
-        units: "milliseconds since 1970-01-01T00:00:00Z",
-        values,
+    describe("at depth", () => {
+      const coordinate = { name: "elevation", units: "m", positive: "up" };
+      const DEPTH_URL = "https://example.test/archive/depths/d100/index.json";
+      const layered = {
+        ...index,
+        surface: { ...coordinate, value: -0.5 },
+        depths: [
+          { ...coordinate, value: -100, indexUrl: "depths/d100/index.json" },
+        ],
+      };
+      // Rolling out: the level below holds September only.
+      const deep = {
+        ...index,
+        vertical: { ...coordinate, value: -100 },
+        chunks: index.chunks.filter((chunk) => chunk.key === "september"),
+      };
+
+      beforeEach(() => {
+        fetchSpy = vi.fn(async (url: string) => {
+          const body =
+            url === INDEX_URL
+              ? layered
+              : url === DEPTH_URL
+                ? deep
+                : {
+                    ...vectorManifest(
+                      ARCHIVE_ID,
+                      chunks[url.includes("august") ? "august" : "september"],
+                    ),
+                    ...(url.includes("/depths/")
+                      ? { vertical: { ...coordinate, value: -100 } }
+                      : {}),
+                  };
+          return { ok: true, status: 200, json: async () => body };
+        });
+        vi.stubGlobal("fetch", fetchSpy);
       });
-      const z = await createZartigl(
-        {
-          map: new FakeMap() as never,
-          catalog: archiveCatalog(),
-          time: "2026-08-10T00:00:00Z",
-        },
-        GEO_ENTRY_ID,
-      );
-      await z.update({
-        depth: 20,
-        timeRange: {
-          start: "2026-08-01T00:00:00Z",
-          end: "2026-09-30T21:00:00Z",
-        },
+
+      it("offers the published levels and moves to one at the nearest sample", async () => {
+        const z = await createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            time: "2026-08-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        expect(z.getDepthMeta()).toMatchObject({
+          values: [-0.5, -100],
+          current: -0.5,
+          label: "elevation",
+        });
+        const axes = vi.fn();
+        z.on("axesChange", axes);
+
+        // "auto" stays on GeoVideo for a published depth.
+        await z.update({ depth: -90 });
+        expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+        expect(manifestRequests().slice(-1)[0]).toBe(
+          "https://example.test/archive/depths/d100/september/manifest.json",
+        );
+        expect(z.getDepthMeta().current).toBe(-100);
+        // The level's own timeline: August is not published there yet.
+        expect(z.getTimeMeta().values).toEqual(
+          chunks.september.map(Date.parse),
+        );
+        expect(z.getTimeMeta().current).toBe(Date.parse(chunks.september[0]));
+        expect(axes).toHaveBeenCalled();
+
+        // Time navigation keeps the level; the surface comes back on request.
+        await z.update({ time: "2026-09-30T21:00:00Z" });
+        expect(z.getDepthMeta().current).toBe(-100);
+        await z.update({ depth: 0 });
+        expect(z.getDepthMeta().current).toBe(-0.5);
+        expect(manifestRequests().slice(-1)[0]).toBe(
+          "https://example.test/archive/september/manifest.json",
+        );
       });
-      expect(z.getSource()?.type).toBe("zarr");
-      expect(z.getDepthMeta().current).toBe(20);
+
+      it("refuses a depth artifact recording another level, and keeps the one shown", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        onTestFinished(() => warn.mockRestore());
+        const respond = fetchSpy;
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (url: string) => {
+            const response = (await (
+              respond as unknown as (url: string) => Promise<{
+                json: () => Promise<Record<string, unknown>>;
+              }>
+            )(url)) as { json: () => Promise<Record<string, unknown>> };
+            if (!url.includes("/depths/d100/september")) {
+              return response;
+            }
+            const { vertical: _vertical, ...manifest } = await response.json();
+            return { ok: true, status: 200, json: async () => manifest };
+          }),
+        );
+        const z = await createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            source: "geovideo",
+            time: "2026-09-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        await expect(z.update({ depth: -100 })).rejects.toThrow(
+          "GeoVideo manifest level does not match its index",
+        );
+        expect(z.getDepthMeta().current).toBe(-0.5);
+        // The refused depth does not come back with the next navigation.
+        await z.update({ time: "2026-08-10T00:00:00Z" });
+        expect(z.getDepthMeta().current).toBe(-0.5);
+        const calls = vi.mocked(globalThis.fetch).mock.calls;
+        expect(String(calls[calls.length - 1][0])).toBe(
+          "https://example.test/archive/august/manifest.json",
+        );
+      });
+
+      it("ignores a depth index that records another level", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        onTestFinished(() => warn.mockRestore());
+        deep.vertical = { ...coordinate, value: -50 };
+        onTestFinished(() => {
+          deep.vertical = { ...coordinate, value: -100 };
+        });
+        const z = await createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            time: "2026-09-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        // The level cannot be shown: refused, the surface stays, on GeoVideo.
+        await expect(z.update({ depth: -100 })).rejects.toThrow(
+          "GeoVideo archive level unavailable",
+        );
+        expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+        expect(z.getDepthMeta().current).toBe(-0.5);
+      });
+
+      it("keeps the level shown when another level's artifact cannot load in auto", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        onTestFinished(() => warn.mockRestore());
+        const respond = fetchSpy as unknown as (
+          url: string,
+        ) => Promise<unknown>;
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (url: string) =>
+            url.includes("/depths/d100/september")
+              ? { ok: false, status: 500, json: async () => ({}) }
+              : respond(url),
+          ),
+        );
+        const z = await createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            time: "2026-09-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        await expect(z.update({ depth: -100 })).rejects.toThrow();
+        expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+        expect(z.getDepthMeta().current).toBe(-0.5);
+      });
+
+      it("plays on at another depth, swapped in like the next chunk", async () => {
+        const z = await createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            time: "2026-09-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        await z.play();
+        await z.update({ depth: -100 });
+        expect(z.getDepthMeta().current).toBe(-100);
+        expect(z.getPlaybackState().playing).toBe(true);
+      });
+
+      it("locks the depth of a field whose depths are not published yet", async () => {
+        const { depths: _depths, ...pending } = layered;
+        const pendingFetch = fetchSpy;
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (url: string) =>
+            url === INDEX_URL
+              ? { ok: true, status: 200, json: async () => pending }
+              : (pendingFetch as unknown as (url: string) => Promise<unknown>)(
+                  url,
+                ),
+          ),
+        );
+        const z = await createZartigl(
+          {
+            map: new FakeMap() as never,
+            catalog: archiveCatalog(),
+            time: "2026-09-10T00:00:00Z",
+          },
+          GEO_ENTRY_ID,
+        );
+        expect(z.getDepthMeta()).toMatchObject({
+          values: [-0.5],
+          current: -0.5,
+          locked: true,
+        });
+        await z.update({ depth: -100 });
+        expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
+        expect(z.getDepthMeta().current).toBe(-0.5);
+      });
     });
 
     it("fails a pinned archive whose index cannot be read", async () => {
@@ -1329,7 +1452,7 @@ describe("Zartigl facade", () => {
       expect(indexRequests()).toBe(2);
     });
 
-    it("spans the archive's samples and the Zarr depth axis while a chunk is shown", async () => {
+    it("spans the archive's samples while a chunk is shown", async () => {
       const z = await createZartigl(
         {
           map: new FakeMap() as never,
@@ -1343,10 +1466,10 @@ describe("Zartigl facade", () => {
         [...chunks.august, ...chunks.september].map(Date.parse),
       );
       expect(timeMeta.current).toBe(Date.parse(chunks.august[0]));
-      expect(z.getDepthMeta().values.length).toBeGreaterThan(1);
-
+      // An archive without depths: no depth control, and no Zarr either.
+      expect(z.getDepthMeta().values).toEqual([]);
       await z.update({ depth: 20 });
-      expect(z.getSource()?.type).toBe("zarr");
+      expect(z.getSource()).toEqual({ id: ARCHIVE_ID, type: "geovideo" });
     });
 
     it("plays on into the next chunk, then loops to the first", async () => {

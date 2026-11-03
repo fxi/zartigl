@@ -580,6 +580,12 @@ export class DemoApp {
         this.syncActiveSource();
       }
     });
+    // Another depth of a GeoVideo archive has its own timeline.
+    activeZartigl.on("axesChange", () => {
+      if (this.z === activeZartigl && seq === this.switchSeq) {
+        this.refreshAxes();
+      }
+    });
     activeZartigl.on("playbackChange", () => {
       if (this.z === activeZartigl && seq === this.switchSeq) {
         this.syncPlaybackControls();
@@ -686,6 +692,17 @@ export class DemoApp {
       this.currentSourceId = active.id;
       this.currentBackend = active.type;
     }
+    this.refreshAxes();
+    this.renderSourceSelect();
+    this.syncColorDomainVisibility();
+    this.syncLegend();
+  }
+
+  /** Time and depth controls from the axes zartigl shows now. */
+  private refreshAxes(): void {
+    if (!this.z) {
+      return;
+    }
     const timeMeta = this.z.getTimeMeta();
     this.params.allowedStart = timeMeta.min;
     this.params.allowedEnd = timeMeta.max;
@@ -696,9 +713,6 @@ export class DemoApp {
     this.params.timeLabel = formatTime(timeMeta.values[this.params.timeIndex]);
     this.params.depth = this.z.getDepthMeta().current ?? 0;
     this.rebuildDataUI();
-    this.renderSourceSelect();
-    this.syncColorDomainVisibility();
-    this.syncLegend();
   }
 
   // ── Data UI (rebuilt per layer) ─────────────────────────────────────
@@ -761,6 +775,8 @@ export class DemoApp {
           void this.z?.update({ depth: ev.value });
           this.syncPlaybackControls();
         }) as BindingApi;
+      // Depths not published in GeoVideo yet: the surface, fixed.
+      depthBinding.disabled = !!depthMeta.locked;
     }
 
     this.dataBindings.push(this.timeSliderBinding, this.timeLabelBinding);

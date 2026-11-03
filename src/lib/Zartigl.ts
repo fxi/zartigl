@@ -64,9 +64,13 @@ import {
   type GeoVideoManifest,
 } from "./geovideo";
 import {
+  depthIndexUrl,
   geoVideoChunkSources,
   geoVideoIndexChunks,
   isGeoVideoArchiveSource,
+  sameVerticalLevel,
+  type GeoVideoIndexDepth,
+  type GeoVideoVerticalLevel,
   isSameSource,
   loadGeoVideoIndex,
 } from "./geovideo-index";
@@ -227,6 +231,11 @@ export interface DepthMeta {
   label: "depth" | "pressure" | string;
   units?: string;
   current?: number;
+  /**
+   * The field has depths the source cannot show yet: a GeoVideo archive
+   * that publishes none, shown at its surface. A depth control stays fixed.
+   */
+  locked?: boolean;
 }
 
 export interface VariableMeta {
@@ -276,6 +285,11 @@ type ZartiglEventMap = {
   sourceChange: (source: { id: string; type: CatalogSource["type"] }) => void;
   /** The render layer was added to the map, e.g. for the host to order it. */
   layerAttach: (id: string) => void;
+  /**
+   * The time or vertical axis changed without a source change, e.g. on
+   * another depth of a GeoVideo archive: read getTimeMeta and getDepthMeta.
+   */
+  axesChange: () => void;
 };
 
 /** GeoVideo playback speeds, in time steps per second. */
@@ -534,6 +548,50 @@ function validateGeoVideoSpeed(options?: GeoVideoOptions): void {
       throw new Error(`${label} must be positive`);
     }
   }
+}
+
+/** An archive's published levels: the surface, and those below it. */
+interface ArchiveLevels {
+  surface?: GeoVideoVerticalLevel;
+  depths: GeoVideoIndexDepth[];
+}
+
+/** The published level nearest `depth`: null for the surface. */
+function nearestLevel(levels: ArchiveLevels, depth: number): number | null {
+  const surface = levels.surface?.value ?? 0;
+  const nearest = nearestValue(
+    [surface, ...levels.depths.map((level) => level.value)],
+    depth,
+  );
+  return nearest === surface ? null : nearest;
+}
+
+/** The vertical axis of an archive's published levels, surface first. */
+function levelAxis(levels: ArchiveLevels): ZarrVerticalDimension {
+  const coordinate = levels.surface ?? levels.depths[0];
+  return {
+    name: coordinate.name,
+    label:
+      coordinate.positive === "up" || coordinate.name === "elevation"
+        ? "elevation"
+        : "depth",
+    units: coordinate.units || undefined,
+    values: [
+      levels.surface?.value ?? 0,
+      ...levels.depths.map((level) => level.value),
+    ],
+  };
+}
+
+/** Signature of the time and vertical axes, to notice a change. */
+function axesSignature(
+  time: ZarrTimeDimension | null,
+  vertical: ZarrVerticalDimension | null,
+): string {
+  return JSON.stringify([
+    time?.values ?? null,
+    vertical ? [vertical.name, vertical.units, vertical.values] : null,
+  ]);
 }
 
 /** A time axis over sample times, epoch milliseconds. */
@@ -829,6 +887,14 @@ export class Zartigl {
   >();
   /** Samples of each archive chunk the index lists them for, by manifest URL. */
   private chunkTimes = new Map<string, number[]>();
+  /** Published levels of each archive, by surface index URL. */
+  private archiveRoots = new Map<string, ArchiveLevels>();
+  /** Level of the archive chunk shown: null for the surface. */
+  private archiveLevel: number | null = null;
+  /** A field with depths shown at its surface only, until GeoVideo publishes them. */
+  private depthLocked = false;
+  /** Level of each archive chunk, by manifest URL: null for the surface. */
+  private chunkLevels = new Map<string, GeoVideoIndexDepth | null>();
   /** Manifest of the archive chunk expected next, requested ahead of it. */
   private nextChunkManifest: {
     url: string;
@@ -956,9 +1022,10 @@ export class Zartigl {
         parseLayerStyle(style, "style");
       }
     }
-    // Choosing a date or a depth is navigation: it stops playback now, and
-    // again once applied if an earlier queued request started it meanwhile.
-    if (change.time != null || change.depth != null) {
+    // Choosing a date is navigation: it stops playback now, and again once
+    // applied if an earlier queued request started it meanwhile. Another
+    // depth plays on, swapped in like the next chunk.
+    if (change.time != null) {
       this.pause();
     }
     return this.enqueue(change, ++this.requestSeq);
@@ -980,6 +1047,9 @@ export class Zartigl {
     }
     if (change.depth != null) {
       this.depthRequest = change.depth;
+      // Navigation without a pause: a chunk handoff of the level left must
+      // not move or pause the one shown.
+      this.playbackIntent += 1;
     } else if (otherLayer) {
       this.depthRequest = null;
     }
@@ -994,6 +1064,16 @@ export class Zartigl {
         ? this.applyUpdate(change, generation, seq)
         : this.updateQueue.then(() => this.applyUpdate(change, undefined, seq));
     this.updateQueue = operation.catch(() => undefined);
+    if (change.depth != null) {
+      // A depth that could not be shown leaves the one shown, unless a
+      // newer request replaced it meanwhile.
+      const requested = change.depth;
+      operation.catch(() => {
+        if (this.depthRequest === requested) {
+          this.depthRequest = this.depth;
+        }
+      });
+    }
     return operation;
   }
 
@@ -1007,7 +1087,7 @@ export class Zartigl {
     // earlier queued request, such as autoplay, yields to the navigation.
     if (
       seq != null &&
-      (change.time != null || change.depth != null) &&
+      change.time != null &&
       this.playSeq !== 0 &&
       this.playSeq < seq
     ) {
@@ -1085,7 +1165,15 @@ export class Zartigl {
       if (changesSource || reselectsAuto) {
         await this.changeSource(change.source!, range, target);
       } else if (await this.needsSourceSwitch(range, target, hasTimeRange)) {
+        // Another level of the archive while it plays: swapped in like the
+        // next chunk, and playing on.
+        const playsOn =
+          this.playing && change.time == null && change.depth != null;
+        const intent = this.playbackIntent;
         await this.changeSource(this.sourcePreference, range, target);
+        if (playsOn && intent === this.playbackIntent && !this.destroyed) {
+          await this.play();
+        }
       } else if (hasTimeRange) {
         this.applyTimeRange(change.timeRange ?? null);
       }
@@ -1171,6 +1259,7 @@ export class Zartigl {
     requestedGeneration?: number,
   ): Promise<void> {
     const previous = this.getSource();
+    const previousAxes = axesSignature(this.timeMeta, this.verticalMeta);
     await this.loadSource(id, preference, context, requestedGeneration);
     const current = this.getSource();
     if (
@@ -1178,6 +1267,10 @@ export class Zartigl {
       (current.id !== previous?.id || current.type !== previous?.type)
     ) {
       this.emit("sourceChange", current);
+    } else if (
+      axesSignature(this.timeMeta, this.verticalMeta) !== previousAxes
+    ) {
+      this.emit("axesChange");
     }
   }
 
@@ -1238,15 +1331,42 @@ export class Zartigl {
             `GeoVideo manifest identity does not match catalog entry/source: ${requestedSource.id}`,
           );
         }
-        // An archive's timeline spans all its chunks: a time moves between
-        // them, never to another source. A fixed artifact keeps its own.
-        const archiveTimes = archiveFor(catalogLayer, requestedSource.id)
-          ? await this.archiveTimes(catalogLayer, requestedSource.id)
+        // An archive's timeline spans all its chunks at the level shown: a
+        // time moves between them, never to another source. A fixed
+        // artifact keeps its own.
+        const archive = archiveFor(catalogLayer, requestedSource.id);
+        // The level of the index the chunk came from, which its manifest
+        // must record: an artifact never shows under another level.
+        const expected = archive
+          ? (this.chunkLevels.get(requestedSource.manifestUrl) ?? null)
           : null;
-        // Transitional, "auto" only: the depth control spans the Zarr levels,
-        // a deeper one showing Zarr, until GeoVideo renders depths.
-        const vertical =
-          preference === "auto" ? await this.zarrVertical(catalogLayer) : null;
+        const recorded = (
+          manifest as GeoVideoManifest & { vertical?: GeoVideoVerticalLevel }
+        ).vertical;
+        if (
+          archive &&
+          (expected
+            ? !sameVerticalLevel(recorded, expected)
+            : recorded !== undefined)
+        ) {
+          throw new Error(
+            `GeoVideo manifest level does not match its index: ${requestedSource.manifestUrl}`,
+          );
+        }
+        const level = expected?.value ?? null;
+        const archiveTimes = archive
+          ? await this.archiveTimes(catalogLayer, requestedSource.id, level)
+          : null;
+        const levels = archive
+          ? await this.archiveLevels(catalogLayer, archive)
+          : null;
+        const layered = !!levels?.depths.length;
+        // An archive with depths offers its published levels. One whose
+        // depths are configured but not published yet records its surface
+        // level: it shows that level, locked. GeoVideo never leaves for Zarr,
+        // nor reads it.
+        const locked = !layered && !!levels?.surface;
+        const vertical = layered || locked ? levelAxis(levels!) : null;
         if (generation !== this.switchGeneration) {
           throw new DOMException(
             "Layer selection was superseded",
@@ -1291,8 +1411,16 @@ export class Zartigl {
             ? shownValues[0]
             : nearestValue(shownValues, this.pendingTime);
         this.pendingTime = null;
-        // In "auto", GeoVideo was selected for a surface depth.
-        this.depth = resolveDepth(vertical, target.depth);
+        // An archive with depths shows the level it was asked, which later
+        // requests start from.
+        this.depthLocked = locked;
+        this.archiveLevel = level;
+        this.depth = layered
+          ? (level ?? levels!.surface?.value ?? 0)
+          : resolveDepth(vertical, target.depth);
+        if (layered) {
+          this.depthRequest = this.depth;
+        }
         const overriddenColorDomain = requestedSettings.colorDomain;
         this.settings = { ...layerDefaults, ...requestedSettings };
         this.colorDomainOverridden = requestedColorDomainOverride;
@@ -1321,9 +1449,11 @@ export class Zartigl {
           !(err instanceof RangeError) &&
           preference === "auto" &&
           url &&
-          !this.failedGeoVideo.has(url)
+          !this.failedGeoVideo.has(url) &&
+          this.catalogSource?.id !== requestedSource.id
         ) {
-          // "auto" leaves an unreadable GeoVideo for another source; an
+          // Only when first selected, "auto" leaves an unreadable GeoVideo
+          // for another source; a GeoVideo shown never switches, and an
           // empty time range is the request's fault, not the source's.
           console.warn("[zartigl] GeoVideo unavailable, falling back:", err);
           this.failedGeoVideo.add(url);
@@ -1372,6 +1502,8 @@ export class Zartigl {
         );
         this.timeMeta = timeMeta;
         this.verticalMeta = metadata.vertical;
+        this.archiveLevel = null;
+        this.depthLocked = false;
         this.variableUnit = "";
         this.variableStandardName = requestedSource.layer;
         this.time =
@@ -1449,6 +1581,8 @@ export class Zartigl {
     this.resolvedTimeRange = resolvedTimeRange;
     this.timeMeta = timeMeta;
     this.verticalMeta = verticalMeta;
+    this.archiveLevel = null;
+    this.depthLocked = false;
     this.variableUnit =
       typeof unitAttrs.units === "string" ? unitAttrs.units : "";
     this.variableStandardName =
@@ -1495,9 +1629,8 @@ export class Zartigl {
 
   /**
    * Source switch after init. An archive moves between its own chunks with
-   * the time or window; no time ever switches to another source. In "auto"
-   * only, until GeoVideo renders depths, a deeper level shows Zarr and the
-   * surface level GeoVideo again.
+   * the time, the window, or the depth (its published levels); no time or
+   * depth ever switches to another source.
    */
   private async needsSourceSwitch(
     range: TimeRange | undefined,
@@ -1509,25 +1642,21 @@ export class Zartigl {
     if (!entry || !current) {
       return false;
     }
-    if (
-      this.sourcePreference === "auto" &&
-      target.depth != null &&
-      (await this.geoVideoServesDepth(entry, target.depth)) !==
-        (current.type === "geovideo")
-    ) {
-      const next = await this.selectSource(entry, "auto", range, {
-        time: target.time ?? this.time,
-        depth: target.depth,
-      });
-      return !isSameSource(next, current);
-    }
     if (!this.isArchiveChunk(current)) {
       return false;
     }
+    const archive = archiveFor(entry, this.sourcePreference);
+    const levels = archive ? await this.archiveLevels(entry, archive) : null;
+    const layered = !!levels?.depths.length;
+    // Another level of the archive, or a time its chunk does not hold.
+    const levelChanges =
+      layered &&
+      target.depth != null &&
+      nearestLevel(levels!, target.depth) !== this.archiveLevel;
     const coversTime =
       (target.time == null && !timeRangeChanged) ||
       sourceCoversTime(current, this.sourceTimeRequest(range, target.time));
-    if (coversTime) {
+    if (coversTime && !levelChanges) {
       return false;
     }
     const next = await this.selectSource(
@@ -1811,6 +1940,7 @@ export class Zartigl {
       label: dim.label,
       units: dim.units,
       current: this.depth,
+      ...(this.depthLocked ? { locked: true } : {}),
     };
   }
 
@@ -2226,10 +2356,7 @@ export class Zartigl {
       this.lastMeta = meta;
       this.emit("loaded", meta);
     });
-    layer.on("error", (err) => {
-      this.emit("error", err);
-      this.fallBackFromGeoVideo(layer, err);
-    });
+    layer.on("error", (err) => this.emit("error", err));
     layer.on("status", (status) => this.emit("status", status));
     layer.on("frameBuffered", (ms) => this.emit("frameBuffered", ms));
     layer.on("cacheInvalidated", () => this.emit("cacheInvalidated"));
@@ -2339,34 +2466,6 @@ export class Zartigl {
    * In "auto", a GeoVideo that fails while it renders (media, mask) yields
    * to another source, paused, keeping the date and depth.
    */
-  private fallBackFromGeoVideo(layer: CatalogRenderLayer, error: Error): void {
-    const source = this.catalogSource;
-    if (
-      this.destroyed ||
-      layer !== this.layer ||
-      this.sourcePreference !== "auto" ||
-      source?.type !== "geovideo" ||
-      !source.manifestUrl ||
-      this.failedGeoVideo.has(source.manifestUrl) ||
-      error instanceof ZartiglFrameUnavailableError
-    ) {
-      return;
-    }
-    console.warn("[zartigl] GeoVideo failed, falling back:", error);
-    this.failedGeoVideo.add(source.manifestUrl);
-    this.pause();
-    const operation = this.updateQueue.then(() => {
-      if (!this.destroyed && this.catalogSource === source) {
-        return this.changeSource("auto");
-      }
-    });
-    this.updateQueue = operation.catch((err) => {
-      if (err?.name !== "AbortError") {
-        console.warn("[zartigl] GeoVideo fallback failed:", err);
-      }
-    });
-  }
-
   private applyMutableSettings(
     layer: CatalogRenderLayer,
     settings: Partial<ZartiglSettings>,
@@ -2469,15 +2568,22 @@ export class Zartigl {
     const request = this.sourceTimeRequest(range, target.time);
     const archive = archiveFor(entry, preference);
     if (archive) {
-      const resolved = await this.resolveArchives(entry);
+      const levels = await this.archiveLevels(entry, archive);
+      const layered = levels.depths.length > 0;
+      // A requested depth picks the nearest published level; navigation in
+      // time keeps the level shown.
+      const level =
+        layered && target.depth != null
+          ? nearestLevel(levels, target.depth)
+          : this.catalogLayer?.id === entry.id &&
+              this.catalogSource?.id === archive.id
+            ? this.archiveLevel
+            : null;
+      const resolved = await this.resolveArchives(entry, level);
       const chunks = resolved.sources.filter(
         (source) => source.id === archive.id,
       );
-      const deep =
-        preference === "auto" &&
-        target.depth != null &&
-        !(await this.geoVideoServesDepth(entry, target.depth));
-      if (chunks.length && !deep) {
+      if (chunks.length) {
         // The chunk holding the sample shown; one that failed is not
         // replaced by another period.
         const time = await this.archiveSample(
@@ -2485,16 +2591,20 @@ export class Zartigl {
           archive.id,
           range,
           target.time,
+          level,
         );
         const chunk = archiveChunkAt(chunks, { time });
         if (chunk && !this.isFailedGeoVideo(chunk)) {
           return chunk;
         }
-        if (preference !== "auto") {
+        if (preference !== "auto" || this.catalogSource?.id === archive.id) {
           throw new Error(
             `GeoVideo chunk unavailable: ${chunk?.type === "geovideo" ? chunk.manifestUrl : archive.id}`,
           );
         }
+      } else if (level != null) {
+        // A level that cannot be read is refused: the level shown stays.
+        throw new Error(`GeoVideo archive level unavailable: ${level}`);
       } else if (preference !== "auto") {
         throw new Error(`GeoVideo archive unavailable: ${archive.id}`);
       }
@@ -2523,16 +2633,7 @@ export class Zartigl {
         )
       );
     }
-    const selected = this.resolveSource(entry, preference, request);
-    if (
-      selected.type !== "geovideo" ||
-      preference !== "auto" ||
-      target.depth == null ||
-      (await this.geoVideoServesDepth(entry, target.depth))
-    ) {
-      return selected;
-    }
-    return pickSourceByPriority(entry, ["zarr"], request) ?? selected;
+    return this.resolveSource(entry, preference, request);
   }
 
   private isFailedGeoVideo(source: CatalogSource): boolean {
@@ -2549,32 +2650,6 @@ export class Zartigl {
       ...entry,
       sources: entry.sources.filter((source) => !this.isFailedGeoVideo(source)),
     };
-  }
-
-  /** Whether `depth` resolves to the surface level that GeoVideo renders. */
-  private async geoVideoServesDepth(
-    entry: CatalogEntry,
-    depth: number,
-  ): Promise<boolean> {
-    let field: Awaited<ReturnType<Zartigl["entryFieldZarr"]>>;
-    try {
-      field = await this.entryFieldZarr(entry);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.emit("status", { phase: "error", error: err });
-      this.emit("error", err);
-      throw err;
-    }
-    if (!field) {
-      return true;
-    }
-    const values =
-      field.source.getVerticalDimension(variableNames(field.zarr)[0])?.values ??
-      [];
-    return (
-      values.length === 0 ||
-      nearestValue(values, depth) === sortedDepthValues(values)[0]
-    );
   }
 
   private isArchiveChunk(source: CatalogSource): boolean {
@@ -2600,10 +2675,15 @@ export class Zartigl {
     if (!entry || !current || !this.isArchiveChunk(current)) {
       return null;
     }
-    return nextChunk((await this.resolveArchives(entry)).sources, current, {
-      range: this.resolvedTimeRange,
-      loop: this.loop,
-    });
+    const level = this.archiveLevel;
+    return nextChunk(
+      (await this.resolveArchives(entry, level)).sources,
+      current,
+      {
+        range: this.resolvedTimeRange,
+        loop: this.loop,
+      },
+    );
   }
 
   /** A chunk manifest, reusing the one requested ahead for the next chunk. */
@@ -2633,7 +2713,14 @@ export class Zartigl {
       if (this.nextChunkManifest?.url !== url) {
         this.nextChunkManifest = { url, manifest: loadGeoVideoManifest(url) };
       }
-      const manifest = await this.nextChunkManifest.manifest;
+      const request = this.nextChunkManifest;
+      const manifest = await request.manifest.catch((error: unknown) => {
+        // Clear the slot only while it still holds this request.
+        if (this.nextChunkManifest === request) {
+          this.nextChunkManifest = null;
+        }
+        throw error;
+      });
       if (
         this.destroyed ||
         layer !== this.layer ||
@@ -2646,7 +2733,6 @@ export class Zartigl {
         timeRange: this.geoVideoPlayback().geoVideoTimeRange,
       });
     } catch (error) {
-      this.nextChunkManifest = null;
       console.warn("[zartigl] GeoVideo chunk preload failed:", error);
     }
   }
@@ -2698,22 +2784,6 @@ export class Zartigl {
     return { zarr, source };
   }
 
-  /** Zarr vertical axis; unavailable metadata leaves GeoVideo without one. */
-  private async zarrVertical(
-    entry: CatalogEntry,
-  ): Promise<ZarrVerticalDimension | null> {
-    try {
-      const field = await this.entryFieldZarr(entry);
-      return field
-        ? (field.source.getVerticalDimension(variableNames(field.zarr)[0]) ??
-            null)
-        : null;
-    } catch (error) {
-      console.warn("[zartigl] Zarr depth unavailable for GeoVideo:", error);
-      return null;
-    }
-  }
-
   /**
    * Every sample of an archive's chunks, sorted, from its index. Chunks
    * indexed before the index listed them read their manifest once, a few at
@@ -2722,8 +2792,9 @@ export class Zartigl {
   private async archiveTimes(
     entry: CatalogEntry,
     archiveId: string,
+    level: number | null = null,
   ): Promise<number[]> {
-    const urls = (await this.resolveArchives(entry)).sources.flatMap(
+    const urls = (await this.resolveArchives(entry, level)).sources.flatMap(
       (source) =>
         source.id === archiveId &&
         source.type === "geovideo" &&
@@ -2764,8 +2835,9 @@ export class Zartigl {
     archiveId: string,
     range: TimeRange | undefined,
     requestedTime?: Date | string | number,
+    level: number | null = null,
   ): Promise<number> {
-    const times = await this.archiveTimes(entry, archiveId);
+    const times = await this.archiveTimes(entry, archiveId, level);
     const [low, high] =
       range && times.length
         ? timeRangeBounds(range, [times[0], times[times.length - 1]])
@@ -2784,42 +2856,109 @@ export class Zartigl {
 
   /**
    * Entry whose archive sources are replaced by one fixed-period source per
-   * published chunk. An unreachable index drops the archive, so selection
+   * published chunk at `level` (null: the surface). An unreachable index, or
+   * a level the archive does not publish, drops the archive, so selection
    * falls back to the entry's other sources.
    */
-  private async resolveArchives(entry: CatalogEntry): Promise<CatalogEntry> {
+  private async resolveArchives(
+    entry: CatalogEntry,
+    level: number | null = null,
+  ): Promise<CatalogEntry> {
     const sources = await Promise.all(
-      entry.sources.map((source) => {
+      entry.sources.map(async (source) => {
         if (!isGeoVideoArchiveSource(source)) {
           return [source];
         }
-        const cached = this.archiveChunks.get(source.indexUrl);
-        if (cached && cached.expires > Date.now()) {
-          return cached.chunks;
+        const surface = await this.archiveChunksAt(
+          entry,
+          source,
+          source.indexUrl,
+          null,
+        );
+        if (level == null) {
+          return surface;
         }
-        const cacheEntry = {
-          expires: Date.now() + ARCHIVE_INDEX_TTL_MS,
-          chunks: loadGeoVideoIndex(source.indexUrl)
-            .then((index) => {
-              const chunks = geoVideoChunkSources(source, index, entry);
-              for (const chunk of geoVideoIndexChunks(index, source.indexUrl)) {
-                if (chunk.times) {
-                  this.chunkTimes.set(chunk.manifestUrl, chunk.times);
-                }
-              }
-              return chunks;
-            })
-            .catch((error: unknown) => {
-              console.warn("[zartigl] GeoVideo archive unavailable:", error);
-              cacheEntry.expires = Date.now() + ARCHIVE_INDEX_RETRY_MS;
-              return [];
-            }),
-        };
-        this.archiveChunks.set(source.indexUrl, cacheEntry);
-        return cacheEntry.chunks;
+        const depth = this.archiveRoots
+          .get(source.indexUrl)
+          ?.depths.find((item) => item.value === level);
+        return depth
+          ? this.archiveChunksAt(
+              entry,
+              source,
+              depthIndexUrl(depth, source.indexUrl),
+              depth,
+            )
+          : [];
       }),
     );
     return { ...entry, sources: sources.flat() };
+  }
+
+  /** The published levels of an archive, read from its surface index. */
+  private async archiveLevels(
+    entry: CatalogEntry,
+    archive: CatalogGeoVideoArchiveSource,
+  ): Promise<ArchiveLevels> {
+    await this.archiveChunksAt(entry, archive, archive.indexUrl, null);
+    return this.archiveRoots.get(archive.indexUrl) ?? { depths: [] };
+  }
+
+  /**
+   * Chunks of one index of an archive: its surface index (`level` null),
+   * which also lists the levels below, or a depth's, which must record that
+   * level. Revalidated like any archive index.
+   */
+  private archiveChunksAt(
+    entry: CatalogEntry,
+    source: CatalogGeoVideoArchiveSource,
+    indexUrl: string,
+    level: GeoVideoIndexDepth | null,
+  ): Promise<CatalogSource[]> {
+    const cached = this.archiveChunks.get(indexUrl);
+    if (cached && cached.expires > Date.now()) {
+      return cached.chunks;
+    }
+    const cacheEntry = {
+      expires: Date.now() + ARCHIVE_INDEX_TTL_MS,
+      chunks: loadGeoVideoIndex(indexUrl)
+        .then((index) => {
+          if (
+            level
+              ? !sameVerticalLevel(index.vertical, level)
+              : index.vertical !== undefined
+          ) {
+            throw new Error(`GeoVideo index level does not match: ${indexUrl}`);
+          }
+          // Levels are adopted once per session, so the depth axis shown
+          // and the levels navigation picks from never disagree; new
+          // chunks of each level are still revalidated.
+          if (!level && !this.archiveRoots.has(source.indexUrl)) {
+            this.archiveRoots.set(source.indexUrl, {
+              surface: index.surface,
+              depths: index.depths ?? [],
+            });
+          }
+          const chunks = geoVideoChunkSources(
+            { ...source, indexUrl },
+            index,
+            entry,
+          );
+          for (const chunk of geoVideoIndexChunks(index, indexUrl)) {
+            this.chunkLevels.set(chunk.manifestUrl, level);
+            if (chunk.times) {
+              this.chunkTimes.set(chunk.manifestUrl, chunk.times);
+            }
+          }
+          return chunks;
+        })
+        .catch((error: unknown) => {
+          console.warn("[zartigl] GeoVideo archive unavailable:", error);
+          cacheEntry.expires = Date.now() + ARCHIVE_INDEX_RETRY_MS;
+          return [] as CatalogSource[];
+        }),
+    };
+    this.archiveChunks.set(indexUrl, cacheEntry);
+    return cacheEntry.chunks;
   }
 
   private resolveSource(

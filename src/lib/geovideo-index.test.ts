@@ -4,6 +4,7 @@ import type {
   CatalogGeoVideoArchiveSource,
 } from "../catalog/types";
 import {
+  depthIndexUrl,
   geoVideoChunkSources,
   isGeoVideoArchiveSource,
   isSameSource,
@@ -91,6 +92,36 @@ describe("GeoVideo archive index", () => {
     expect(() => validateGeoVideoIndex(index([{ start: "soon" }]))).toThrow(
       /chunk/,
     );
+  });
+
+  it("validates the levels a surface index lists", () => {
+    const coordinate = { name: "elevation", units: "m", positive: "up" };
+    const surface = { ...coordinate, value: -0.5 };
+    const depth = {
+      ...coordinate,
+      value: -100,
+      indexUrl: "depths/d/index.json",
+    };
+    expect(
+      validateGeoVideoIndex({ ...index(), surface, depths: [depth] }).depths,
+    ).toEqual([depth]);
+    // Without a recorded surface level: tolerated.
+    expect(
+      validateGeoVideoIndex({ ...index(), depths: [depth] }).depths,
+    ).toEqual([depth]);
+    for (const levels of [
+      { surface, depths: [{ ...depth, units: "km" }] },
+      { surface, depths: [depth, depth] },
+      { surface, depths: [{ ...depth, value: -0.5 }] },
+      { surface, depths: [{ ...depth, indexUrl: undefined }] },
+    ]) {
+      expect(() => validateGeoVideoIndex({ ...index(), ...levels })).toThrow(
+        /levels/,
+      );
+    }
+    expect(
+      depthIndexUrl(depth, "https://example.test/archive/index.json"),
+    ).toBe("https://example.test/archive/depths/d/index.json");
   });
 
   it("tells chunks of one archive apart by manifest", () => {

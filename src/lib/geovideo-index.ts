@@ -21,6 +21,21 @@ export interface GeoVideoIndexChunk {
   provisional?: boolean;
 }
 
+/** A native vertical level: the store coordinate's identity and exact value. */
+export interface GeoVideoVerticalLevel {
+  name: string;
+  units: string;
+  /** CF `positive`: "up" for elevation, "down" for depth. */
+  positive: string;
+  value: number;
+}
+
+/** A level besides the surface, with the index of its own chunks. */
+export interface GeoVideoIndexDepth extends GeoVideoVerticalLevel {
+  /** Relative to the surface index URL. */
+  indexUrl: string;
+}
+
 /** Mutable listing of an archive's published chunks, written by the renderer. */
 export interface GeoVideoIndex {
   schemaVersion: 1;
@@ -29,6 +44,63 @@ export interface GeoVideoIndex {
   sourceId: string;
   updatedAt: string | null;
   chunks: GeoVideoIndexChunk[];
+  /** On a surface index: the levels below it with playable chunks, shallow to deep. */
+  depths?: GeoVideoIndexDepth[];
+  /** On a surface index with depths: the surface level. */
+  surface?: GeoVideoVerticalLevel;
+  /** On a depth index: its level. */
+  vertical?: GeoVideoVerticalLevel;
+}
+
+/** Same coordinate and value. */
+export function sameVerticalLevel(
+  a: GeoVideoVerticalLevel | undefined,
+  b: GeoVideoVerticalLevel | undefined,
+): boolean {
+  return (
+    !!a &&
+    !!b &&
+    a.name === b.name &&
+    a.units === b.units &&
+    a.positive === b.positive &&
+    a.value === b.value
+  );
+}
+
+function isVerticalLevel(value: unknown): value is GeoVideoVerticalLevel {
+  const level = value as GeoVideoVerticalLevel;
+  return (
+    !!level &&
+    typeof level.name === "string" &&
+    typeof level.units === "string" &&
+    typeof level.positive === "string" &&
+    Number.isFinite(level.value)
+  );
+}
+
+/** Levels of one coordinate, each once, the surface not among the depths. */
+function validDepths(index: GeoVideoIndex): boolean {
+  const depths = index.depths;
+  if (depths === undefined) {
+    return index.surface === undefined || isVerticalLevel(index.surface);
+  }
+  // A surface level is recorded with the depths; tolerated without it.
+  const surface = index.surface ?? depths?.[0];
+  if (!Array.isArray(depths) || !isVerticalLevel(surface)) {
+    return depths?.length === 0;
+  }
+  const values = new Set<number>(index.surface ? [surface.value] : []);
+  return depths.every((depth) => {
+    const valid =
+      isVerticalLevel(depth) &&
+      typeof depth.indexUrl === "string" &&
+      depth.name === surface.name &&
+      depth.units === surface.units &&
+      depth.positive === surface.positive &&
+      !values.has(depth.value);
+    values.add(depth.value);
+    return valid;
+  });
 }
 
 export function isGeoVideoArchiveSource(
@@ -82,6 +154,12 @@ export function validateGeoVideoIndex(value: unknown): GeoVideoIndex {
     !Array.isArray(index.chunks)
   ) {
     throw new Error("Unsupported GeoVideo index");
+  }
+  if (
+    !validDepths(index) ||
+    (index.vertical !== undefined && !isVerticalLevel(index.vertical))
+  ) {
+    throw new Error("Invalid GeoVideo index levels");
   }
   for (const chunk of index.chunks) {
     if (
@@ -176,4 +254,12 @@ export function geoVideoChunkSources(
       manifestUrl: chunks[i].manifestUrl,
     }),
   );
+}
+
+/** Absolute URL of a depth's index, listed relative to the surface index. */
+export function depthIndexUrl(
+  depth: GeoVideoIndexDepth,
+  surfaceIndexUrl: string,
+): string {
+  return new URL(depth.indexUrl, absoluteUrl(surfaceIndexUrl)).href;
 }
