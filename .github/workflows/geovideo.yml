@@ -10,7 +10,7 @@ on:
         required: false
       budget:
         description: Time after which no new chunk starts, e.g. 90m or 20h
-        default: 5h
+        default: 20h
       jobs:
         description: Chunks rendered in parallel
         default: "4"
@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 1440
     env:
       SOURCE: ${{ inputs.source }}
-      BUDGET: ${{ inputs.budget || '5h' }}
+      BUDGET: ${{ inputs.budget || '20h' }}
       JOBS: ${{ inputs.jobs || '4' }}
       S3_KEY: ${{ secrets.S3_KEY }}
       S3_SECRET: ${{ secrets.S3_SECRET }}
