@@ -100,10 +100,13 @@ def validate_depths(archive: dict[str, Any]) -> None:
     if depths is None:
         return
     values = depths.get("values") if isinstance(depths, dict) else None
+    surface = depths.get("surface") if isinstance(depths, dict) else None
+    finite = lambda value: isinstance(value, (int, float)) and np.isfinite(value)  # noqa: E731
     if (not isinstance(depths.get("name"), str) or not isinstance(values, list) or not values
-            or not all(isinstance(value, (int, float)) and np.isfinite(value) for value in values)
-            or len(set(values)) != len(values)):
-        raise ValueError(f"{archive['sourceId']}: depths needs a name and distinct finite values")
+            or not all(finite(value) for value in values) or len(set(values)) != len(values)
+            or not finite(surface) or surface in values):
+        raise ValueError(f"{archive['sourceId']}: depths needs a name, the surface level and distinct "
+                         "finite values below it")
 
 
 def depth_id(depth: dict[str, Any]) -> str:
@@ -122,6 +125,15 @@ def depth_archives(archive: dict[str, Any]) -> list[dict[str, Any]]:
     identity = {key: depths.get(key, "") for key in ("name", "units", "positive")}
     levels = sorted(depths["values"], key=abs)
     return [archive] + [{**archive, "depth": {**identity, "value": value}} for value in levels]
+
+
+def root_surface(archive: dict[str, Any]) -> dict[str, Any] | None:
+    """The surface level's coordinate, recorded on the root index of an archive with depths:
+    the browser places the surface on the same vertical axis as the depths."""
+    depths = archive.get("depths")
+    if not depths:
+        return None
+    return {**{key: depths.get(key, "") for key in ("name", "units", "positive")}, "value": depths["surface"]}
 
 
 def root_depths(entries: list[tuple[dict[str, Any], dict[str, Any]]]) -> list[dict[str, Any]]:
@@ -621,9 +633,10 @@ def refresh_root_depths(root: dict[str, Any], client: Any, bucket: str) -> None:
     kept = [entry for entry in root["index"].get("depths", [])
             if entry["indexUrl"].split("/")[1] in root["unread"]]
     depths = sorted(depths + kept, key=lambda entry: abs(entry["value"]))
-    if root["index"].get("depths", []) == depths:
+    surface = root_surface(root["archive"])
+    if root["index"].get("depths", []) == depths and root["index"].get("surface") == surface:
         return
-    index = {**root["index"], "depths": depths}
+    index = {**root["index"], "depths": depths, **({"surface": surface} if surface else {})}
     write_index(client, bucket, f"{root['prefix']}/index.json", index)
     root["index"] = index
 
@@ -781,7 +794,7 @@ def command_depths(args: argparse.Namespace) -> int:
                                   "count": len(values), "range": [values[0], values[-1]]}
             # Ready for archive.json: the levels besides the surface, which is the archive itself.
             result["depths"] = {"name": axis["name"], "units": axis["units"], "positive": axis["positive"],
-                                "values": levels[1:]}
+                                "surface": levels[0], "values": levels[1:]}
         result["surfaceBytes"] = surface
         result["depthBytes"] = published_depths
         result["estimatedBytes"] = None if surface is None else surface * max(1, len(levels))

@@ -209,7 +209,8 @@ class CoverageTest(unittest.TestCase):
             self.assertEqual(len(covered_times(times, self.LAYER)), 2)
 
 
-DEPTHS = {"name": "elevation", "units": "m", "positive": "up", "values": [-92.326, -1.541, -763.333]}
+DEPTHS = {"name": "elevation", "units": "m", "positive": "up", "surface": -0.494,
+          "values": [-92.326, -1.541, -763.333]}
 
 
 class DepthArchiveTest(unittest.TestCase):
@@ -249,7 +250,8 @@ class DepthArchiveTest(unittest.TestCase):
         self.assertEqual(empty_index(deep[2])["vertical"], deep[2]["depth"])
 
     def test_rejects_malformed_depths(self):
-        for depths in ({"values": [-1.0]}, {**DEPTHS, "values": []}, {**DEPTHS, "values": [-1.0, -1.0]}):
+        for depths in ({"values": [-1.0]}, {**DEPTHS, "values": []}, {**DEPTHS, "values": [-1.0, -1.0]},
+                       {**DEPTHS, "surface": None}, {**DEPTHS, "surface": -1.541}):
             with self.assertRaises(ValueError):
                 validate_depths({**ARCHIVE, "depths": depths})
         validate_depths({**ARCHIVE, "depths": DEPTHS})
@@ -293,6 +295,8 @@ class RootDepthsTest(unittest.TestCase):
         refresh_root_depths(root, bucket, "b")
         self.assertEqual(bucket.puts, ["p/index.json"])
         self.assertEqual([entry["value"] for entry in root["index"]["depths"]], [deep["depth"]["value"]])
+        self.assertEqual(root["index"]["surface"], {"name": "elevation", "units": "m", "positive": "up",
+                                                    "value": -0.494})
 
     def test_a_failed_write_leaves_the_root_to_retry(self):
         root, _deep = self.queues()
