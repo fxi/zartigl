@@ -403,6 +403,22 @@ def vertical_axis(dataset: Any, variables: list[str]) -> dict[str, Any] | None:
     }
 
 
+def level_has_data(dataset: Any, variables: list[str], name: str, value: float) -> bool:
+    """Whether the level holds a cell valid in every variable at its first, middle or last
+    time step. A store's deepest native level can be empty throughout (Copernicus grids at
+    5728 m); one empty step, such as a forecast tail, does not make a level empty."""
+    index = int(np.flatnonzero(np.asarray(dataset[name].values, dtype=np.float64) == value)[0])
+    count = dataset.sizes["time"]
+    for step in sorted({0, count // 2, count - 1}):
+        valid = None
+        for variable in variables:
+            finite = np.isfinite(np.asarray(dataset[variable].isel({"time": step, name: index}).values))
+            valid = finite if valid is None else valid & finite
+        if valid is not None and valid.any():
+            return True
+    return False
+
+
 def depth_levels(values: list[float], n: int = 10) -> list[float]:
     """
     Up to `n` native levels: the surface (smallest magnitude) first, then

@@ -2,9 +2,16 @@ import copy
 import unittest
 from unittest import mock
 
+import render
+
 import numpy as np
 
 from archive import (
+    failure_kind,
+    record_failure,
+    record_success,
+    run_failed,
+    run_summary,
     depth_archives,
     refresh_root_depths,
     depth_id,
@@ -314,6 +321,58 @@ class RootDepthsTest(unittest.TestCase):
         root["depthQueues"], root["unread"] = [], {depth_id(deep["depth"])}
         refresh_root_depths(root, FakeBucket(), "b")
         self.assertEqual(root["index"]["depths"], published)
+
+
+class RunOutcomeTest(unittest.TestCase):
+    def queue(self, pending=4, depth=None):
+        archive = {**ARCHIVE, "title": "Currents", **({"depth": depth} if depth else {})}
+        return {"archive": archive, "pending": [{}] * pending}
+
+    def test_classifies_failures(self):
+        self.assertEqual(failure_kind(ValueError("No valid upstream data in the 10 frames")), "no-data")
+        self.assertEqual(failure_kind(render.EmptySamplesError(["2026-11-01"])), "no-data")
+        self.assertEqual(failure_kind(RuntimeError("Vector GeoVideo exceeds its code error budget: {}")), "budget")
+        self.assertEqual(failure_kind(ConnectionError("reset")), "network")
+        self.assertEqual(failure_kind(RuntimeError("ffmpeg failed")), "other")
+
+    def test_a_queue_goes_on_until_three_failures_in_a_row(self):
+        queue = self.queue()
+        self.assertFalse(record_failure(queue, RuntimeError("a")))
+        self.assertFalse(record_failure(queue, RuntimeError("b")))
+        record_success(queue)
+        self.assertFalse(record_failure(queue, RuntimeError("c")))
+        self.assertFalse(record_failure(queue, RuntimeError("d")))
+        self.assertTrue(record_failure(queue, RuntimeError("e")))
+        self.assertTrue(queue["failed"])
+        self.assertEqual(queue["stats"]["firstError"], "other: a")
+
+    def test_fails_a_run_beyond_the_floor_and_the_rate(self):
+        ok, broken = self.queue(pending=100), self.queue(pending=100)
+        for _ in range(97):
+            record_success(ok)
+        for _ in range(3):
+            record_failure(broken, RuntimeError("x"))
+            record_success(broken)
+        # 3 failures out of 100 attempts: within the floor of 3.
+        self.assertFalse(run_failed([ok, broken], 3, 0.05))
+        record_failure(broken, RuntimeError("y"))
+        self.assertTrue(run_failed([ok, broken], 3, 0.01))
+        self.assertFalse(run_failed([ok, broken], 3, 0.05))
+        self.assertTrue(run_failed([ok, {**self.queue(), "setupError": "setup: index"}], 3, 0.05))
+        self.assertTrue(run_failed([ok, {**self.queue(), "publishError": "publication: root"}], 3, 0.05))
+
+    def test_summarizes_the_queues_the_run_touched(self):
+        surface, deep, idle = self.queue(), self.queue(depth={"value": -5727.9, "units": "m"}), self.queue()
+        record_success(surface)
+        record_failure(deep, ValueError("No valid upstream data"))
+        table = run_summary([surface, deep, idle]).splitlines()
+        self.assertEqual(len(table), 5)
+        self.assertIn("| Currents | 1 | 0 | 3 | ok |", table[2])
+        # A failed chunk stays to publish.
+        self.assertIn("| Currents @ -5727.9 m | 0 | 1 | 4 | with failures | no-data: No valid upstream data |",
+                      table[3])
+        # Totals count the queue the run did not touch too.
+        self.assertEqual(table[4], "| **Total** | 1 | 1 | 11 | | |")
 
 
 class GapTest(unittest.TestCase):

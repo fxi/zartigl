@@ -620,6 +620,85 @@ def command_plan(args: argparse.Namespace) -> int:
     return 1 if any("error" in result for result in results) else 0
 
 
+# A queue failing this many chunks in a row (an empty level, a broken store) stops for the run.
+PAUSE_AFTER_FAILURES = 3
+
+
+def failure_kind(exc: BaseException) -> str:
+    """Category of a chunk failure for the run summary."""
+    message = str(exc)
+    if is_transient(exc):
+        return "network"
+    if isinstance(exc, render.CodeErrorBudgetError) or "error budget" in message:
+        return "budget"
+    if (isinstance(exc, render.EmptySamplesError) or "No valid upstream data" in message
+            or "fewer than two timestamps" in message):
+        return "no-data"
+    return "other"
+
+
+def queue_stats(queue: dict[str, Any]) -> dict[str, Any]:
+    return queue.setdefault("stats", {"published": 0, "failed": 0, "consecutive": 0, "kinds": {},
+                                      "firstError": None, "paused": False})
+
+
+def record_success(queue: dict[str, Any]) -> None:
+    stats = queue_stats(queue)
+    stats["published"] += 1
+    stats["consecutive"] = 0
+
+
+def record_failure(queue: dict[str, Any], exc: BaseException) -> bool:
+    """Count a failed chunk; the queue goes on unless it failed PAUSE_AFTER_FAILURES in a
+    row. Returns whether it is now paused."""
+    stats = queue_stats(queue)
+    kind = failure_kind(exc)
+    stats["failed"] += 1
+    stats["consecutive"] += 1
+    stats["kinds"][kind] = stats["kinds"].get(kind, 0) + 1
+    stats["firstError"] = stats["firstError"] or f"{kind}: {exc}"
+    if stats["consecutive"] >= PAUSE_AFTER_FAILURES:
+        stats["paused"] = True
+        queue["failed"] = True
+    return stats["paused"]
+
+
+def run_failed(queues: list[dict[str, Any]], max_failures: int, max_failure_rate: float) -> bool:
+    """A run fails on a queue that could not be prepared or published, or on more failed chunks
+    than both the floor and the rate of attempted chunks allow; fewer are only reported."""
+    stats = [queue_stats(queue) for queue in queues]
+    failed = sum(item["failed"] for item in stats)
+    attempted = sum(item["published"] + item["failed"] for item in stats)
+    broken = any(queue.get("setupError") or queue.get("publishError") for queue in queues)
+    return broken or failed > max(max_failures, max_failure_rate * attempted)
+
+
+def run_summary(queues: list[dict[str, Any]]) -> str:
+    """Markdown table of the queues the run touched (published, failed, still unpublished),
+    the totals counting every queue."""
+    lines = ["| Archive | Published | Failed | Remaining | Status | First error |",
+             "|---|---:|---:|---:|---|---|"]
+    totals = [0, 0, 0]
+    for queue in queues:
+        stats = queue_stats(queue)
+        # Still unpublished, failed chunks included: the next run takes them up.
+        remaining = max(0, len(queue.get("pending", [])) - stats["published"])
+        if not (stats["published"] or stats["failed"] or queue.get("setupError") or queue.get("publishError")):
+            totals[2] += remaining
+            continue
+        status = ("setup failed" if queue.get("setupError") else "publication failed" if queue.get("publishError")
+                  else "paused" if stats["paused"] else "with failures" if stats["failed"] else "ok")
+        error = (queue.get("setupError") or queue.get("publishError") or stats["firstError"] or "")
+        error = error.replace("|", "/")[:160]
+        title = queue["archive"].get("title") or queue["archive"]["sourceId"]
+        depth = queue["archive"].get("depth")
+        name = f"{title} @ {depth['value']:g} {depth.get('units', '')}".strip() if depth else title
+        lines.append(f"| {name} | {stats['published']} | {stats['failed']} | {remaining} | {status} | {error} |")
+        totals = [totals[0] + stats["published"], totals[1] + stats["failed"], totals[2] + remaining]
+    lines.append(f"| **Total** | {totals[0]} | {totals[1]} | {totals[2]} | | |")
+    return "\n".join(lines)
+
+
 def archive_label(archive: dict[str, Any]) -> str:
     depth = archive.get("depth")
     return f"{archive['sourceId']} @ {depth['name']}={depth['value']}" if depth else archive["sourceId"]
@@ -652,7 +731,6 @@ def command_run(args: argparse.Namespace) -> int:
     bucket = env["S3_BUCKET"]
     render.require_bucket_cors(client, bucket)
     deadline = time.monotonic() + args.budget
-    failures: list[str] = []
     surface_queues: list[dict[str, Any]] = []
     depth_queues: list[dict[str, Any]] = []
     for base in selected_archives(data, args.source):
@@ -678,9 +756,9 @@ def command_run(args: argparse.Namespace) -> int:
                     write_index(client, bucket, f"{prefix}/index.json", index)
                 queue.update(index=index, layer=layer, pending=pending_chunks(chunks, index))
             except Exception as exc:
-                failures.append(f"{label}: {exc}")
                 print(f"Skipping {label}: {exc}", file=sys.stderr, flush=True)
                 queue["failed"] = True
+                queue["setupError"] = f"setup: {exc}"
             if archive.get("depth"):
                 if root is not None and "index" in queue:
                     root["depthQueues"].append(queue)
@@ -691,12 +769,14 @@ def command_run(args: argparse.Namespace) -> int:
             elif "index" in queue:
                 root = {**queue, "depthQueues": [], "unread": set()}
                 surface_queues.append(root)
+            else:
+                # Kept for the summary and the exit status.
+                surface_queues.append(queue)
         if root is not None:
             try:
                 refresh_root_depths(root, client, bucket)
-            except Exception as exc:
-                failures.append(f"{root['label']} depths: {exc}")
-    queues = surface_queues + depth_queues
+            except Exception as exc:  # retried after each depth chunk, and at the end
+                print(f"Root depths of {root['label']} not written: {exc}", file=sys.stderr, flush=True)
     threads = max(1, (os.cpu_count() or 1) // args.jobs)
     # Surface updates first; depths take the budget left.
     tasks = chain(interleave([q for q in surface_queues if not q.get("failed")]),
@@ -731,23 +811,33 @@ def command_run(args: argparse.Namespace) -> int:
                     if queue.get("root"):
                         try:
                             refresh_root_depths(queue["root"], client, bucket)
-                        except Exception as exc:  # the next completion or run retries it
-                            failures.append(f"{queue['root']['label']} depths: {exc}")
+                        except Exception as exc:  # retried by the next completion, and at the end
+                            print(f"Root depths of {queue['root']['label']} not written: {exc}",
+                                  file=sys.stderr, flush=True)
+                    record_success(queue)
                     print(f"Published {queue['label']} {chunk['period']['start']}",
                           file=sys.stderr, flush=True)
                 except Exception as exc:
-                    failures.append(f"{queue['label']}: {exc}")
-                    print(f"Chunk failed, archive paused for this run: {exc}", file=sys.stderr, flush=True)
-                    queue["failed"] = True
+                    paused = record_failure(queue, exc)
+                    print(f"Chunk failed ({failure_kind(exc)}), "
+                          f"{'queue paused for this run' if paused else 'going on'}: {exc}",
+                          file=sys.stderr, flush=True)
     if time.monotonic() >= deadline:
         print("Budget reached; remaining chunks resume on the next run", file=sys.stderr)
-    return report_failures(failures)
-
-
-def report_failures(failures: list[str]) -> int:
-    for failure in failures:
-        print(f"FAILED {failure}", file=sys.stderr)
-    return 1 if failures else 0
+    queues = surface_queues + depth_queues
+    # A root listing that could not be written is retried once more; one still failing fails the run.
+    for root in surface_queues:
+        if root.get("depthQueues"):
+            try:
+                refresh_root_depths(root, client, bucket)
+            except Exception as exc:
+                root["publishError"] = f"publication: root depths not written: {exc}"
+    summary = run_summary(queues)
+    print(summary, file=sys.stderr)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as handle:
+            handle.write(f"## GeoVideo archive run\n\n{summary}\n")
+    return 1 if run_failed(queues, args.max_failures, args.max_failure_rate) else 0
 
 
 def prefix_bytes(client: Any, bucket: str, prefix: str) -> tuple[int, int]:
@@ -780,12 +870,18 @@ def command_depths(args: argparse.Namespace) -> int:
     for archive in selected_archives(data, args.source):
         layer = catalog_layer(archive["catalogEntryId"])
         result: dict[str, Any] = {"sourceId": archive["sourceId"], "title": archive.get("title")}
+        variables = render.source_variables(render.zarr_source(layer))
         try:
-            axis = render.vertical_axis(open_source(layer), render.source_variables(render.zarr_source(layer)))
+            dataset = open_source(layer)
+            axis = render.vertical_axis(dataset, variables)
+            levels = render.depth_levels(axis["values"], args.levels) if axis else []
+            # Levels without data are left out, not replaced: the others keep their keys.
+            empty = [value for value in levels[1:]
+                     if not render.level_has_data(dataset, variables, axis["name"], value)]
         except Exception as exc:
             results.append({**result, "error": str(exc)})
             continue
-        levels = render.depth_levels(axis["values"], args.levels) if axis else []
+        levels = [value for value in levels if value not in empty]
         surface, published_depths = (prefix_bytes(client, env["S3_BUCKET"], object_prefix(upload, archive))
                                      if client else (None, None))
         if axis:
@@ -795,6 +891,7 @@ def command_depths(args: argparse.Namespace) -> int:
             # Ready for archive.json: the levels besides the surface, which is the archive itself.
             result["depths"] = {"name": axis["name"], "units": axis["units"], "positive": axis["positive"],
                                 "surface": levels[0], "values": levels[1:]}
+            result["emptyLevels"] = empty
         result["surfaceBytes"] = surface
         result["depthBytes"] = published_depths
         result["estimatedBytes"] = None if surface is None else surface * max(1, len(levels))
@@ -848,6 +945,10 @@ def main() -> int:
     run.add_argument("--budget", type=parse_budget, default=parse_budget("5h"))
     run.add_argument("--max-chunks", type=int)
     run.add_argument("--jobs", type=int, default=1, help="Chunks rendered in parallel")
+    run.add_argument("--max-failures", type=int, default=3,
+                     help="Failed chunks a run tolerates, whatever the rate")
+    run.add_argument("--max-failure-rate", type=float, default=0.05,
+                     help="Share of attempted chunks that may fail before the run fails")
     domain = commands.add_parser("domain", help="Suggest a pinned vector valueDomain")
     domain.add_argument("--source", required=True)
     depths = commands.add_parser("depths", help="Vertical axes, suggested depth levels and bucket estimate")

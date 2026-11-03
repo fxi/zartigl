@@ -268,8 +268,15 @@ manifests, even when the upstream store cannot be read. Runs are round-robin
 across archives, newest chunk first, and stop starting chunks when the budget
 is spent; the next run resumes. With `--jobs`, workers render and upload in
 parallel while the main process alone rewrites each index. A dropped
-connection to a store or the bucket retries the chunk after 30 s, then 60 s;
-any other failing chunk pauses only its archive and fails the run.
+connection to a store or the bucket retries the chunk after 30 s, then 60 s.
+A chunk that still fails is counted (`network`, `no-data`, `budget`, `other`)
+and its queue goes on with the next chunk; three failures in a row pause that
+queue for the run. The run ends with a table per queue (published, failed,
+pending, first error), also written to the GitHub job summary, and fails only
+when an archive could not be prepared or when failed chunks exceed both
+`--max-failures` (3) and `--max-failure-rate` (5 %) of those attempted.
+`archive.py depths` leaves out levels without data (a store's deepest native
+level can be empty, such as currents at 5728 m).
 
 To serve an archive, add a GeoVideo source with `indexUrl` (and no
 `manifestUrl`) to the catalog entry once its index exists. zartigl expands it

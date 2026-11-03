@@ -18,6 +18,7 @@ from render import (
     require_bucket_cors,
     scalar_transfer,
     depth_levels,
+    level_has_data,
     select_level,
     surface_index,
     validation_positions,
@@ -282,6 +283,28 @@ class SelectLevelTest(unittest.TestCase):
                                ({**self.DEPTH, "units": "km"}, "units changed")):
             with self.assertRaisesRegex(ValueError, message):
                 select_level(dataset["thetao"], dataset, depth)
+
+
+class LevelDataTest(unittest.TestCase):
+    def test_tells_an_empty_level(self):
+        values = np.full((2, 3, 1, 2), np.nan)
+        values[-1, 0] = 1.0
+        dataset = xr.Dataset({"uo": (("time", "elevation", "latitude", "longitude"), values)},
+                             coords={"elevation": ("elevation", [-0.5, -10.0, -5728.0])})
+        self.assertTrue(level_has_data(dataset, ["uo"], "elevation", -0.5))
+        self.assertFalse(level_has_data(dataset, ["uo"], "elevation", -5728.0))
+
+    def test_an_empty_last_step_or_component_is_not_enough(self):
+        u = np.full((3, 1, 1, 2), np.nan)
+        u[0, 0, 0, 0] = 1.0  # history only, the forecast tail empty
+        v = np.full((3, 1, 1, 2), np.nan)
+        v[0, 0, 0, 1] = 1.0  # valid elsewhere than u
+        dataset = xr.Dataset({"uo": (("time", "elevation", "latitude", "longitude"), u),
+                              "vo": (("time", "elevation", "latitude", "longitude"), v)},
+                             coords={"elevation": ("elevation", [-10.0])})
+        self.assertTrue(level_has_data(dataset, ["uo"], "elevation", -10.0))
+        # A vector needs both components valid in one cell.
+        self.assertFalse(level_has_data(dataset, ["uo", "vo"], "elevation", -10.0))
 
 
 class ValidationPositionTest(unittest.TestCase):
