@@ -6632,6 +6632,270 @@
         },
         "querySourceId": "6fb6d430-19c4-4a25-a940-a75ad7d005d8"
       }
+    },
+    {
+      "id": "88b29912-c10d-4acc-b6b9-0205d3d7833c",
+      "aliases": [
+        "forest-deforested",
+        "congo-deforestation"
+      ],
+      "title": {
+        "en": "Tropical Moist Forest Deforested since 1990, Congo Basin"
+      },
+      "description": {
+        "en": "Share of each 0.005° cell (about 550 m) of tropical moist forest first deforested between 1990 and the year shown, from the EC JRC Tropical Moist Forests maps (v1.2025, Landsat, 30 m). Cumulative: a cell keeps its share once cleared. Box 8–32° E, 6° S–6° N."
+      },
+      "category": "land",
+      "tags": [
+        "forest",
+        "deforestation",
+        "tropical-forest",
+        "land-use",
+        "congo"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "bebbb518-59ad-41a9-ad92-d9fcae8015a1",
+          "type": "zarr",
+          "title": {
+            "en": "JRC TMF v1.2025 Zarr (aggregated)"
+          },
+          "provenance": {
+            "provider": "jrc-tmf",
+            "identifiers": {
+              "product": "TMF v1.2025",
+              "dataset": "DegradationYear, DeforestationYear (Congo Basin, 0.005°)"
+            }
+          },
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1Y",
+            "start": "1990-12-31T00:00:00Z",
+            "end": "2025-12-31T00:00:00Z"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/jrc/tmf-congo/v1.2025/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/jrc/tmf-congo/v1.2025/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "deforested"
+          }
+        },
+        {
+          "id": "3d66ceef-9f6e-4773-be12-7039a8ac3ac7",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "jrc-tmf",
+            "identifiers": {
+              "product": "TMF v1.2025",
+              "dataset": "DegradationYear, DeforestationYear (Congo Basin, 0.005°)"
+            }
+          },
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1Y",
+            "start": "1990-12-31T00:00:00Z",
+            "end": "2025-12-31T00:00:00Z"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88b29912-c10d-4acc-b6b9-0205d3d7833c/3d66ceef-9f6e-4773-be12-7039a8ac3ac7/index.json"
+        }
+      ],
+      "defaults": {
+        "sourceId": "bebbb518-59ad-41a9-ad92-d9fcae8015a1",
+        "palette": "amp",
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0,
+            0.5
+          ],
+          "alphaFadeLow": 0.05,
+          "alphaFadeCurve": "exp"
+        },
+        "querySourceId": "bebbb518-59ad-41a9-ad92-d9fcae8015a1"
+      }
+    },
+    {
+      "id": "1e3abb00-7174-48fa-bcd6-344aad3f5551",
+      "aliases": [
+        "forest-degraded",
+        "congo-degradation"
+      ],
+      "title": {
+        "en": "Tropical Moist Forest Degraded since 1990, Congo Basin"
+      },
+      "description": {
+        "en": "Share of each 0.005° cell (about 550 m) of tropical moist forest first degraded (logging, fire, other disturbance that leaves forest cover) between 1990 and the year shown, from the EC JRC Tropical Moist Forests maps (v1.2025, Landsat, 30 m). Cumulative. Box 8–32° E, 6° S–6° N."
+      },
+      "category": "land",
+      "tags": [
+        "forest",
+        "degradation",
+        "tropical-forest",
+        "land-use",
+        "congo"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "a8229f4e-1d87-41b9-91b1-ef96879b083a",
+          "type": "zarr",
+          "title": {
+            "en": "JRC TMF v1.2025 Zarr (aggregated)"
+          },
+          "provenance": {
+            "provider": "jrc-tmf",
+            "identifiers": {
+              "product": "TMF v1.2025",
+              "dataset": "DegradationYear, DeforestationYear (Congo Basin, 0.005°)"
+            }
+          },
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1Y",
+            "start": "1990-12-31T00:00:00Z",
+            "end": "2025-12-31T00:00:00Z"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/jrc/tmf-congo/v1.2025/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/jrc/tmf-congo/v1.2025/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "degraded"
+          }
+        },
+        {
+          "id": "ec30ecc0-ffdd-4c38-87c6-e4811f4cfdcc",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "jrc-tmf",
+            "identifiers": {
+              "product": "TMF v1.2025",
+              "dataset": "DegradationYear, DeforestationYear (Congo Basin, 0.005°)"
+            }
+          },
+          "temporal": {
+            "mode": "fixed",
+            "cadence": "P1Y",
+            "start": "1990-12-31T00:00:00Z",
+            "end": "2025-12-31T00:00:00Z"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1e3abb00-7174-48fa-bcd6-344aad3f5551/ec30ecc0-ffdd-4c38-87c6-e4811f4cfdcc/index.json"
+        }
+      ],
+      "defaults": {
+        "sourceId": "a8229f4e-1d87-41b9-91b1-ef96879b083a",
+        "palette": "turbid",
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0,
+            0.5
+          ],
+          "alphaFadeLow": 0.05,
+          "alphaFadeCurve": "exp"
+        },
+        "querySourceId": "a8229f4e-1d87-41b9-91b1-ef96879b083a"
+      }
+    },
+    {
+      "id": "92d7a79b-68ba-47f7-b4e4-ef4d5757a966",
+      "aliases": [
+        "coastal-land-male",
+        "male-reclamation"
+      ],
+      "title": {
+        "en": "Land and Water from Landsat, Malé Atoll"
+      },
+      "description": {
+        "en": "Yearly median Landsat SWIR1 surface reflectance around Malé, Maldives (about 30 m): land, sand and buildings are bright, water is dark, so islands reclaimed from the lagoon appear as they are built. Until 2012 each frame pools three years of Landsat 7 scenes; pixels without a clear observation keep the previous year's value."
+      },
+      "category": "coast",
+      "tags": [
+        "coast",
+        "land-reclamation",
+        "sand",
+        "islands",
+        "maldives",
+        "landsat"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "edc205a9-7d12-4bcb-913e-dea569dca9c6",
+          "type": "zarr",
+          "title": {
+            "en": "Landsat yearly composite Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "usgs-landsat",
+            "identifiers": {
+              "product": "Landsat Collection 2 Level-2",
+              "dataset": "landsat-c2-l2 (Planetary Computer), yearly median SWIR1, Malé atoll"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1Y"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/usgs/landsat-mndwi-male/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/usgs/landsat-mndwi-male/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "swir1"
+          }
+        },
+        {
+          "id": "eb34b015-d457-4be8-ab40-dcf0cf93e6f6",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "usgs-landsat",
+            "identifiers": {
+              "product": "Landsat Collection 2 Level-2",
+              "dataset": "landsat-c2-l2 (Planetary Computer), yearly median SWIR1, Malé atoll"
+            }
+          },
+          "temporal": {
+            "mode": "historical",
+            "cadence": "P1Y"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/92d7a79b-68ba-47f7-b4e4-ef4d5757a966/eb34b015-d457-4be8-ab40-dcf0cf93e6f6/index.json"
+        }
+      ],
+      "defaults": {
+        "sourceId": "edc205a9-7d12-4bcb-913e-dea569dca9c6",
+        "palette": "turbid",
+        "raster": {
+          "opacity": 1,
+          "logScale": false,
+          "vibrance": 0.1,
+          "colorDomain": [
+            0.02,
+            0.3
+          ],
+          "alphaFadeLow": 0.08,
+          "alphaFadeCurve": "exp"
+        },
+        "querySourceId": "edc205a9-7d12-4bcb-913e-dea569dca9c6"
+      }
     }
   ]
 }

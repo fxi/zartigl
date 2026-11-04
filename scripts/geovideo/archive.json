@@ -1541,6 +1541,56 @@
         "maxBitrate": "48M",
         "tune": "psnr"
       }
+    },
+    {
+      "sourceId": "3d66ceef-9f6e-4773-be12-7039a8ac3ac7",
+      "catalogEntryId": "88b29912-c10d-4acc-b6b9-0205d3d7833c",
+      "title": "Tropical Moist Forest Deforested, Congo Basin",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P10Y",
+      "output": {
+        "factor": 2,
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "ec30ecc0-ffdd-4c38-87c6-e4811f4cfdcc",
+      "catalogEntryId": "1e3abb00-7174-48fa-bcd6-344aad3f5551",
+      "title": "Tropical Moist Forest Degraded, Congo Basin",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P10Y",
+      "output": {
+        "factor": 2,
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "eb34b015-d457-4be8-ab40-dcf0cf93e6f6",
+      "catalogEntryId": "92d7a79b-68ba-47f7-b4e4-ef4d5757a966",
+      "title": "Land and Water from Landsat, Malé Atoll",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P10Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
     }
   ]
 }
