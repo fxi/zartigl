@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        product: [noaa/crw_dhw, cams/global_forecast, cams/gfas]
+        product: [noaa/crw_dhw, cams/global_forecast, cams/gfas, jrc/tmf, usgs/landsat_mndwi]
     # One writer per store.
     concurrency:
       group: to-zarr-${{ matrix.product }}

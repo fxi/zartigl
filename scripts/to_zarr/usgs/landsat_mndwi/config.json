@@ -1,0 +1,31 @@
+{
+  "product": "Landsat Collection 2 Level-2, yearly median of the SWIR1 surface reflectance and of MNDWI, Malé atoll",
+  "stac": "https://planetarycomputer.microsoft.com/api/stac/v1",
+  "collection": "landsat-c2-l2",
+  "maxCloudCover": 80,
+  "bbox": {
+    "west": 73.38,
+    "south": 4.13,
+    "east": 73.56,
+    "north": 4.27
+  },
+  "cell": 0.00027,
+  "firstYear": 2001,
+  "prefix": "zarr/usgs/landsat-mndwi-male/v1",
+  "stores": {
+    "timeChunked": {
+      "time": 1,
+      "latitude": 519,
+      "longitude": 667
+    },
+    "geoChunked": {
+      "time": 25,
+      "latitude": 100,
+      "longitude": 100
+    }
+  },
+  "pool": {
+    "until": 2012,
+    "years": 3
+  }
+}

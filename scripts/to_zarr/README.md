@@ -166,3 +166,62 @@ the `ADS_KEY` repository secret.
 
 Licence: "Generated using Copernicus Atmosphere Monitoring Service information
 <year>"; the full text travels in the store attributes.
+
+## Yearly products
+
+Two products have one value per year and are written whole rather than day by
+day. They keep the `plan`, `run` and `sync-geo` commands, so the nightly
+workflow runs them like the others: `plan` says what is missing, `run` writes
+it, and both do nothing on the other days. `sync-geo` is a no-op, because
+`run` writes `geoChunked.zarr` together with `timeChunked.zarr`. `--budget`
+and `--force` are accepted and ignored. `run --rebuild` deletes the stores
+and builds them again; use it only on a store nothing reads yet, otherwise
+bump the version. Time stamps are the last day of each year (the state at
+the end of the year). Neither product needs a provider key.
+
+### JRC Tropical Moist Forests, Congo Basin (`jrc/tmf`)
+
+From the JRC maps of the year of first degradation and of first
+deforestation (`DegradationYear`, `DeforestationYear`, v1.2025, 30 m), read
+from the COG mirror on source.coop at overview 0 (60 m, `nearest`, so pixel
+counts are an unbiased sample). Two variables, `degraded` and `deforested`:
+the cumulative share of each 0.005° cell first degraded (or deforested)
+between 1990 and the year, 0–1, int16 at 1e-4. Box 8–32° E, 6° S–6° N,
+36 years. A build reads 16 tiles in about 6 minutes and writes about 850 MB.
+
+`run` builds the stores once; it marks them `completed` last, so an
+interrupted build is redone by the next run. A new JRC release is a new
+store: change `prefix` and `lastYear` in `config.json`.
+
+```bash
+uv run scripts/to_zarr/jrc/tmf/convert.py plan
+uv run scripts/to_zarr/jrc/tmf/convert.py run --local /tmp/tmf
+```
+
+Licence: Copernicus / JRC open data, free of charge without restriction of
+use. Name the JRC as the source ("Source: EC JRC") and cite Vancutsem et al.
+(2021), Science Advances 7(10), eabe1603.
+
+### Landsat land and water, Malé atoll (`usgs/landsat_mndwi`)
+
+Every Landsat 5, 7, 8 and 9 Collection 2 Level-2 scene of the area (Microsoft
+Planetary Computer STAC, no key), warped onto a 0.00027° grid (about 30 m),
+keeping clear pixels (QA_PIXEL) with a positive surface reflectance. Per
+year: the median SWIR1 surface reflectance (`swir1`: land, sand and buildings
+are bright, water is dark), the median MNDWI (`mndwi`, kept for comparison:
+haze and glint bias it towards land over deep water in Landsat 8 and 9) and
+the number of clear observations (`observed`). Until 2012 (Landsat 7 only,
+1–6 scenes a year), each frame pools its year and the two before. A pixel
+without a clear observation keeps the value of the previous year; `observed`
+is 0 there.
+
+`run` builds the stores from 2001 to the last complete year, then appends one
+year each January.
+
+```bash
+uv run scripts/to_zarr/usgs/landsat_mndwi/convert.py plan
+uv run scripts/to_zarr/usgs/landsat_mndwi/convert.py run --local /tmp/male
+```
+
+Licence: Landsat data are in the public domain; credit "Landsat imagery
+courtesy of the U.S. Geological Survey".

@@ -1,0 +1,19 @@
+{
+  "product": "JRC Tropical Moist Forests v1.2025: year of first degradation and of first deforestation",
+  "sourceUrl": "https://data.source.coop/epoch/jrc-tmf/v1_2025/{tile}/{product}.tif",
+  "tiles": ["N10_E0", "N10_E10", "N10_E20", "N10_E30", "N0_E0", "N0_E10", "N0_E20", "N0_E30"],
+  "overviewLevel": 0,
+  "bbox": { "west": 8.0, "south": -6.0, "east": 32.0, "north": 6.0 },
+  "cell": 0.005,
+  "firstYear": 1990,
+  "lastYear": 2025,
+  "variables": {
+    "degraded": "DegradationYear",
+    "deforested": "DeforestationYear"
+  },
+  "prefix": "zarr/jrc/tmf-congo/v1.2025",
+  "stores": {
+    "timeChunked": { "time": 1, "latitude": 600, "longitude": 1200 },
+    "geoChunked": { "time": 36, "latitude": 100, "longitude": 100 }
+  }
+}

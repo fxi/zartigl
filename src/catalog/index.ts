@@ -78,6 +78,8 @@ export const PROVIDER_LABELS: Record<string, string> = {
   "copernicus-marine": "Copernicus Marine Service",
   "copernicus-atmosphere": "Copernicus Atmosphere Monitoring Service",
   "noaa-coral-reef-watch": "NOAA Coral Reef Watch",
+  "jrc-tmf": "EC JRC Tropical Moist Forests",
+  "usgs-landsat": "USGS Landsat",
 };
 
 /** A provider's display name; an unknown slug is returned as is. */
