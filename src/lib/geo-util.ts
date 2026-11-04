@@ -33,6 +33,27 @@ export function normalizeLongitude(lng: number): number {
   return ((((lng + 180) % 360) + 360) % 360) - 180;
 }
 
+interface ProjectionLike {
+  getProjection?: () => { type?: unknown } | undefined;
+}
+
+/**
+ * Whether MapLibre draws the globe in this frame. A globe projection flattens
+ * to Mercator at high zoom (`projectionTransition` 0): custom layers then get
+ * Mercator matrices and must take their Mercator path. Without a transition
+ * value (outside render, older engines), the projection type decides.
+ */
+export function rendersGlobe(
+  map: ProjectionLike,
+  projectionData?: { projectionTransition?: number },
+): boolean {
+  if (map.getProjection?.()?.type !== "globe") {
+    return false;
+  }
+  const transition = projectionData?.projectionTransition;
+  return typeof transition === "number" ? transition > 0 : true;
+}
+
 export function globeCenterVector(
   lng: number,
   lat: number,

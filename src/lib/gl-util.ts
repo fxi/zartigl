@@ -605,3 +605,41 @@ export function restoreGLState(gl: WebGL2RenderingContext, s: GLState): void {
   gl.viewport(s.viewport[0], s.viewport[1], s.viewport[2], s.viewport[3]);
   gl.blendFunc(s.blendFunc[0], s.blendFunc[1]);
 }
+
+/** MapLibre's globe-to-Mercator interpolation for this frame (see grid_globe.vert.glsl). */
+export interface GlobeTransition {
+  /** 1 draws the globe, 0 Mercator; between, MapLibre blends the two. */
+  projectionTransition?: number;
+  /** Projects Mercator coordinates [0, 1] to clip space while the blend runs. */
+  fallbackMatrix?: Iterable<number>;
+}
+
+const IDENTITY = new Float32Array([
+  1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+]);
+
+/** The full globe: no blend. */
+export const FULL_GLOBE: GlobeTransition = {
+  projectionTransition: 1,
+  fallbackMatrix: IDENTITY,
+};
+
+export function setGlobeTransition(
+  gl: WebGL2RenderingContext,
+  locations: Record<string, WebGLUniformLocation | null>,
+  transition: GlobeTransition,
+): void {
+  gl.uniform1f(
+    locations["u_projection_transition"],
+    transition.projectionTransition ?? 1,
+  );
+  gl.uniformMatrix4fv(
+    locations["u_fallback_matrix"],
+    false,
+    !transition.fallbackMatrix
+      ? IDENTITY
+      : transition.fallbackMatrix instanceof Float32Array
+        ? transition.fallbackMatrix
+        : new Float32Array(Array.from(transition.fallbackMatrix)),
+  );
+}

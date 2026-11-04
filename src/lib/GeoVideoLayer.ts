@@ -10,9 +10,10 @@ import {
   resolveColorRamp,
   restoreGLState,
   saveGLState,
+  setGlobeTransition,
   type ColorRampInput,
 } from "./gl-util";
-import { visibleWorldCopyOffsets } from "./geo-util";
+import { rendersGlobe, visibleWorldCopyOffsets } from "./geo-util";
 import { geoVideoScalarUniforms } from "./GeoVideoScalarSource";
 import gridMercatorVert from "./shaders/grid_mercator.vert.glsl";
 import gridGlobeVert from "./shaders/grid_globe.vert.glsl";
@@ -189,7 +190,8 @@ export class GeoVideoLayer implements CustomLayerInterface {
       return gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
     });
     try {
-      const isGlobe = this.map?.getProjection?.()?.type === "globe";
+      const isGlobe =
+        !!this.map && rendersGlobe(this.map, options.defaultProjectionData);
       const program = isGlobe ? this.globeProgram : this.mercatorProgram;
       if (!program || !this.map) {
         return;
@@ -271,6 +273,20 @@ export class GeoVideoLayer implements CustomLayerInterface {
         gl.uniform4f(
           gl.getUniformLocation(program, "u_clipping_plane"),
           ...plane,
+        );
+        setGlobeTransition(
+          gl,
+          {
+            u_projection_transition: gl.getUniformLocation(
+              program,
+              "u_projection_transition",
+            ),
+            u_fallback_matrix: gl.getUniformLocation(
+              program,
+              "u_fallback_matrix",
+            ),
+          },
+          options.defaultProjectionData,
         );
         gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
       } else {

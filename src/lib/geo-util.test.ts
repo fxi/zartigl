@@ -5,6 +5,7 @@ import {
   normalizeLongitude,
   paddedViewportGeoBounds,
   particleUpdateBounds,
+  rendersGlobe,
   visibleWorldCopyOffsets,
   viewportGeoBounds,
   viewportMercatorBounds,
@@ -124,5 +125,26 @@ describe("geo utilities", () => {
     expect(globeCenterVector(0, 0)).toEqual([0, 0, 1]);
     expect(globeCenterVector(90, 0)[0]).toBeCloseTo(1);
     expect(globeCenterVector(0, 90)[1]).toBeCloseTo(1);
+  });
+});
+
+describe("rendersGlobe", () => {
+  const map = (type: string) => ({ getProjection: () => ({ type }) });
+
+  it("follows MapLibre's transition: a globe flattens to Mercator at high zoom", () => {
+    expect(rendersGlobe(map("globe"), { projectionTransition: 1 })).toBe(true);
+    expect(rendersGlobe(map("globe"), { projectionTransition: 0.4 })).toBe(
+      true,
+    );
+    expect(rendersGlobe(map("globe"), { projectionTransition: 0 })).toBe(false);
+    expect(rendersGlobe(map("mercator"), { projectionTransition: 1 })).toBe(
+      false,
+    );
+  });
+
+  it("falls back on the projection type without a transition value", () => {
+    expect(rendersGlobe(map("globe"))).toBe(true);
+    expect(rendersGlobe(map("globe"), {})).toBe(true);
+    expect(rendersGlobe({})).toBe(false);
   });
 });

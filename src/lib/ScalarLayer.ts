@@ -4,7 +4,7 @@ import type {
   Map as MaplibreMap,
 } from "maplibre-gl";
 import type { ColorRampInput } from "./gl-util";
-import { visibleWorldCopyOffsets } from "./geo-util";
+import { rendersGlobe, visibleWorldCopyOffsets } from "./geo-util";
 import { requireWebGL2, restoreGLState, saveGLState } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { ParticleSimulationDebugInfo } from "./ParticleSimulation";
@@ -155,7 +155,8 @@ export class ScalarLayer implements CustomLayerInterface {
       gl.viewport(0, 0, canvas.width, canvas.height);
 
       const bounds = this.map.getBounds();
-      const isGlobe = this.map.getProjection?.()?.type === "globe";
+      const projection = options.defaultProjectionData;
+      const isGlobe = rendersGlobe(this.map, projection);
       const worldSize = 512 * Math.pow(2, this.map.getZoom());
 
       this.activeField.bind(this.textureUnit);
@@ -166,8 +167,11 @@ export class ScalarLayer implements CustomLayerInterface {
           [this.activeData.uMax, this.activeData.vMax],
           options.modelViewProjectionMatrix,
           this.activeField.geoBounds,
-          options.defaultProjectionData.clippingPlane,
+          projection.clippingPlane,
           1,
+          undefined,
+          undefined,
+          projection,
         );
       } else {
         this.simulation.renderGrid(

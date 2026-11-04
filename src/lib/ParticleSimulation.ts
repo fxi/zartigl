@@ -14,6 +14,9 @@ import {
   bindTexture,
   getWebGLRendererInfo,
   rgba8StateTextureFormat,
+  setGlobeTransition,
+  FULL_GLOBE,
+  type GlobeTransition,
   type StateTextureFormat,
   type WebGLRendererInfo,
 } from "./gl-util";
@@ -343,6 +346,8 @@ export class ParticleSimulation {
       "u_matrix",
       "u_geo_bounds",
       "u_clipping_plane",
+      "u_projection_transition",
+      "u_fallback_matrix",
       "u_field_min",
       "u_field_max",
       "u_u_min",
@@ -941,9 +946,11 @@ export class ParticleSimulation {
     opacityScale = 1,
     solid: Vec4 = NO_SOLID,
     velocityPair?: VelocityTexturePair,
+    transition: GlobeTransition = FULL_GLOBE,
   ): void {
     const gl = this.gl;
     gl.useProgram(this.gridGlobeProgram);
+    setGlobeTransition(gl, this.gridGlobeLocs, transition);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.STENCIL_TEST);
     gl.disable(gl.BLEND);

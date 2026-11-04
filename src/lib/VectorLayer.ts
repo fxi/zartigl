@@ -25,6 +25,7 @@ import {
   globeCenterVector,
   paddedViewportGeoBounds,
   particleUpdateBounds,
+  rendersGlobe,
   visibleWorldCopyOffsets,
   viewportGeoBounds,
 } from "./geo-util";
@@ -105,6 +106,8 @@ export class VectorLayer implements CustomLayerInterface {
   private loading = false;
   private reloadQueued = false;
   private reloadQueuedResetParticles = false;
+  /** Whether the last frame drew the globe; null before the first frame. */
+  private globeRendering: boolean | null = null;
   private generation = 0;
   private requestId = 0;
   private pendingReadyTime: number | null = null;
@@ -323,7 +326,7 @@ export class VectorLayer implements CustomLayerInterface {
     onProgress?: (completed: number, total: number) => void,
   ): Promise<VelocityData> {
     const bounds = this.map!.getBounds();
-    const isGlobe = this.map!.getProjection?.()?.type === "globe";
+    const isGlobe = this.globeRendering ?? rendersGlobe(this.map!);
     const geoBounds = paddedViewportGeoBounds(bounds, 1, isGlobe);
 
     const timeIdx = this.zarrSource.findTimeIndex(time);
@@ -626,7 +629,20 @@ export class VectorLayer implements CustomLayerInterface {
 
       // MapLibre's matrix maps [0, worldSize] Mercator → clip space.
       // The draw shader does: worldPos = (pos + offset) * worldSize, then matrix * worldPos.
-      const isGlobe = this.map.getProjection?.()?.type === "globe";
+      // A globe flattens to Mercator at high zoom: particles then encode Web Mercator,
+      // so a switch reloads the viewport and reseeds them.
+      const isGlobe = rendersGlobe(this.map, options.defaultProjectionData);
+      if (this.globeRendering !== null && this.globeRendering !== isGlobe) {
+        this.globeRendering = isGlobe;
+        if (!this.playback) {
+          // A Zarr field covers the viewport padded for the old projection.
+          this.loadViewportVelocity({ resetParticles: true });
+          return;
+        }
+        // A GeoVideo field is whole: only the particles change encoding.
+        this.simulation.resetParticles();
+      }
+      this.globeRendering = isGlobe;
 
       // In globe mode particle Y encodes latitude linearly; in Mercator mode it's Web Mercator.
       const mapBounds = this.map.getBounds();

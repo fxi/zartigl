@@ -9,7 +9,8 @@ const map = new maplibregl.Map({
   }`,
   center: [0, 20],
   zoom: 2,
-  maxZoom: 8,
+  // Regional stores reach 30 m (Landsat around Malé): zoom 15 is about 5 m per pixel.
+  maxZoom: 15,
 });
 
 // The deployed explorer reads the live catalog, as MapX does: it carries the
