@@ -18,7 +18,9 @@ export default defineConfig({
       fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: [/^maplibre-gl/],
+      // Dependencies stay imports, installed and bundled once by the host;
+      // webpack 4 hosts alias numcodecs/blosc, which only has "exports".
+      external: [/^maplibre-gl/, /^numcodecs(?:\/|$)/, /^pako(?:\/|$)/],
     },
     outDir: "dist",
     emptyOutDir: true,

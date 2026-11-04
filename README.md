@@ -47,6 +47,10 @@ ARCO layers of [MapX](https://app.mapx.org).
 npm install @fxi/zartigl maplibre-gl
 ```
 
+Its dependencies `numcodecs` and `pako` stay imports for the host's bundler.
+A bundler that ignores package `exports`, such as webpack 4, aliases
+`numcodecs/blosc$` to `numcodecs/dist/blosc.js` (as MapX does).
+
 ```ts
 import maplibregl from "maplibre-gl";
 import { Zartigl } from "@fxi/zartigl";
