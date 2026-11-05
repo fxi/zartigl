@@ -664,8 +664,9 @@ input[type="range"]:focus-visible {
     padding: 6px 0;
   }
 
+  /* Header, the cube, the timeline, then the sections and the controls. */
   .side-right {
-    order: 2;
+    order: 3;
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
@@ -679,7 +680,7 @@ input[type="range"]:focus-visible {
   }
 
   .time {
-    order: 4;
+    order: 2;
   }
 
   .time-body {
@@ -697,7 +698,7 @@ input[type="range"]:focus-visible {
   }
 
   .side-left {
-    order: 3;
+    order: 4;
     overflow: visible;
   }
 }

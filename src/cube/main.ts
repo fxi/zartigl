@@ -201,10 +201,10 @@ async function main(): Promise<void> {
   const show: Show & { contours: boolean } = {
     glow: true,
     slices: true,
-    iso: false,
+    iso: true,
     roi: true,
     coast: true,
-    contours: false,
+    contours: true,
   };
   const cursor: Cursor = { lon: 220, lat: 0, depth: 100 };
   let view: View = { ...PRESETS.iso };
