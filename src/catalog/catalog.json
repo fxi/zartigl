@@ -6944,6 +6944,25 @@
             "kind": "scalar",
             "value": "pottmp"
           }
+        },
+        {
+          "id": "dad60818-3a96-40a4-bf21-c231e694fb77",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1a088ef7-b187-4234-b651-1643978aa3b5/dad60818-3a96-40a4-bf21-c231e694fb77/index.json"
         }
       ],
       "defaults": {
@@ -7007,6 +7026,25 @@
             "kind": "scalar",
             "value": "t300"
           }
+        },
+        {
+          "id": "4532dec5-a37e-4263-8f80-fc156f5120d9",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1d4f88ea-5cff-4926-9b1f-39a994f7f503/4532dec5-a37e-4263-8f80-fc156f5120d9/index.json"
         }
       ],
       "defaults": {
@@ -7070,6 +7108,25 @@
             "kind": "scalar",
             "value": "d20"
           }
+        },
+        {
+          "id": "90f55afa-a1d7-449c-a8a7-a6c104652444",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b31b8768-d764-47c0-b12e-967cb59163d7/90f55afa-a1d7-449c-a8a7-a6c104652444/index.json"
         }
       ],
       "defaults": {
