@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cellEdgeBounds,
   coversViewportLatitude,
   globeCenterVector,
   normalizeLongitude,
@@ -146,5 +147,27 @@ describe("rendersGlobe", () => {
     expect(rendersGlobe(map("globe"))).toBe(true);
     expect(rendersGlobe(map("globe"), {})).toBe(true);
     expect(rendersGlobe({})).toBe(false);
+  });
+});
+
+describe("cellEdgeBounds", () => {
+  it("bounds a global 1° grid of cell centres by its edges", () => {
+    const longitude = Array.from({ length: 360 }, (_, i) => -179.5 + i);
+    const latitude = [-74.5, -74.25, -74, -73.75];
+    expect(cellEdgeBounds(longitude, latitude, [0, 359], [0, 3])).toEqual({
+      west: -180,
+      east: 180,
+      south: -74.625,
+      north: -73.625,
+    });
+  });
+
+  it("orders descending latitudes and takes a single cell's step from the axis", () => {
+    expect(cellEdgeBounds([10, 12, 14], [5, 4, 3], [1, 1], [0, 2])).toEqual({
+      west: 11,
+      east: 13,
+      south: 2.5,
+      north: 5.5,
+    });
   });
 });

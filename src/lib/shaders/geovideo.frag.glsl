@@ -11,7 +11,6 @@ uniform float u_log_scale;
 uniform float u_vibrance;
 uniform float u_mask_threshold;
 uniform vec2 u_color_domain;
-uniform vec2 u_texel_size;
 
 varying vec2 v_geo_uv;
 
@@ -19,9 +18,8 @@ varying vec2 v_geo_uv;
 #include ./geovideo-scalar.glsl;
 
 void main() {
-    vec2 sourceUv = vec2(v_geo_uv.x, 1.0 - v_geo_uv.y);
-    vec2 halfTexel = 0.5 * u_texel_size;
-    vec2 uv = mix(halfTexel, vec2(1.0) - halfTexel, sourceUv);
+    // Manifest bounds are the outer pixel edges (render.py), as the mesh's.
+    vec2 uv = vec2(v_geo_uv.x, 1.0 - v_geo_uv.y);
     vec3 media = texture2D(u_color, uv).rgb;
     float alpha = texture2D(u_mask, uv).r;
     if (alpha <= u_mask_threshold) discard;

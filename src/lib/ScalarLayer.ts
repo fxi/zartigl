@@ -4,7 +4,11 @@ import type {
   Map as MaplibreMap,
 } from "maplibre-gl";
 import type { ColorRampInput } from "./gl-util";
-import { rendersGlobe, visibleWorldCopyOffsets } from "./geo-util";
+import {
+  cellEdgeBounds,
+  rendersGlobe,
+  visibleWorldCopyOffsets,
+} from "./geo-util";
 import { requireWebGL2, restoreGLState, saveGLState } from "./gl-util";
 import { ParticleSimulation } from "./ParticleSimulation";
 import type { ParticleSimulationDebugInfo } from "./ParticleSimulation";
@@ -525,12 +529,12 @@ export class ScalarLayer implements CustomLayerInterface {
     const coords = this.zarrSource.getCoords();
     const latLast = Math.min(latPixMax - 1, coords.latitude.length - 1);
     const lonLast = Math.min(lonPixMax - 1, coords.longitude.length - 1);
-    const dataGeoBounds = {
-      west: coords.longitude[lonPixMin],
-      east: coords.longitude[lonLast],
-      south: Math.min(coords.latitude[latPixMin], coords.latitude[latLast]),
-      north: Math.max(coords.latitude[latPixMin], coords.latitude[latLast]),
-    };
+    const dataGeoBounds = cellEdgeBounds(
+      coords.longitude,
+      coords.latitude,
+      [lonPixMin, lonLast],
+      [latPixMin, latLast],
+    );
     const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
     const stitched = stitchVelocityChunks(
       chunksRel,
@@ -588,14 +592,12 @@ export class ScalarLayer implements CustomLayerInterface {
       };
     }
 
-    const sampleLongitude =
-      west >= 0 && east > 180
-        ? ((longitude % 360) + 360) % 360
-        : ((((longitude + 180) % 360) + 360) % 360) - 180;
+    // Bounds are cell edges; longitudes wrap into [west, west + 360), so a
+    // global grid holds every longitude.
+    const sampleLongitude = west + ((((longitude - west) % 360) + 360) % 360);
 
     if (
-      sampleLongitude < west ||
-      sampleLongitude > east ||
+      (sampleLongitude > east && lonSpan < 359) ||
       latitude < south ||
       latitude > north
     ) {
@@ -615,17 +617,17 @@ export class ScalarLayer implements CustomLayerInterface {
       : (latitude - south) / latSpan;
     const col = Math.max(
       0,
-      Math.min(data.width - 1, Math.round(x * (data.width - 1))),
+      Math.min(data.width - 1, Math.floor(x * data.width)),
     );
     const row = Math.max(
       0,
-      Math.min(data.height - 1, Math.round(y * (data.height - 1))),
+      Math.min(data.height - 1, Math.floor(y * data.height)),
     );
     const value = data.u[row * data.width + col] ?? NaN;
-    const gridLongitude = west + (col / Math.max(1, data.width - 1)) * lonSpan;
+    const gridLongitude = west + ((col + 0.5) / data.width) * lonSpan;
     const gridLatitude = data.latDescending
-      ? north - (row / Math.max(1, data.height - 1)) * latSpan
-      : south + (row / Math.max(1, data.height - 1)) * latSpan;
+      ? north - ((row + 0.5) / data.height) * latSpan
+      : south + ((row + 0.5) / data.height) * latSpan;
 
     return {
       longitude: gridLongitude,

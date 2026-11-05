@@ -33,6 +33,35 @@ export function normalizeLongitude(lng: number): number {
   return ((((lng + 180) % 360) + 360) % 360) - 180;
 }
 
+/**
+ * Outer edges of the cells between two indices of each coordinate axis
+ * (cell centres), as GeoVideo and projversor bound their textures: texel i
+ * then covers [edge + i·step, edge + (i+1)·step]. A global grid's edges span
+ * 360°, so it meets itself at the date line. Latitude edges may pass the
+ * poles by half a cell; shaders clamp them.
+ */
+export function cellEdgeBounds(
+  longitude: ArrayLike<number>,
+  latitude: ArrayLike<number>,
+  lon: [number, number],
+  lat: [number, number],
+): GeographicBounds {
+  const halfStep = (axis: ArrayLike<number>, first: number, last: number) => {
+    if (last > first) {
+      return Math.abs(axis[last] - axis[first]) / (last - first) / 2;
+    }
+    return axis.length > 1 ? Math.abs(axis[1] - axis[0]) / 2 : 0;
+  };
+  const halfLon = halfStep(longitude, lon[0], lon[1]);
+  const halfLat = halfStep(latitude, lat[0], lat[1]);
+  return {
+    west: longitude[lon[0]] - halfLon,
+    east: longitude[lon[1]] + halfLon,
+    south: Math.min(latitude[lat[0]], latitude[lat[1]]) - halfLat,
+    north: Math.max(latitude[lat[0]], latitude[lat[1]]) + halfLat,
+  };
+}
+
 interface ProjectionLike {
   getProjection?: () => { type?: unknown } | undefined;
 }

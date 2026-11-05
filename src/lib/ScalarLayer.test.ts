@@ -26,7 +26,8 @@ function scalarData(overrides: Partial<VelocityData> = {}): VelocityData {
     uMax: 22,
     vMin: 0,
     vMax: 0,
-    bounds: { west: 0, east: 2, south: 10, north: 12 },
+    // Cell edges around centres 0, 1, 2 (longitude) and 10, 12 (latitude).
+    bounds: { west: -0.5, east: 2.5, south: 9, north: 13 },
     scalarMode: true,
     ...overrides,
   };
@@ -82,6 +83,25 @@ describe("ScalarLayer point sampling", () => {
     await expect(
       descending.samplePoint({ longitude: 1, latitude: 12 }),
     ).resolves.toMatchObject({ value: 11 });
+  });
+
+  it("samples a global grid across the date line", async () => {
+    // Centres -180, -90, 0, 90: the first cell covers 135° E to 135° W.
+    const layer = layerWithData(
+      scalarData({
+        u: new Float32Array([1, 2, 3, 4]),
+        width: 4,
+        height: 1,
+        bounds: { west: -225, east: 135, south: -10, north: 10 },
+      }),
+    );
+
+    await expect(
+      layer.samplePoint({ longitude: 170, latitude: 0 }),
+    ).resolves.toMatchObject({ value: 1, longitude: -180 });
+    await expect(
+      layer.samplePoint({ longitude: 100, latitude: 0 }),
+    ).resolves.toMatchObject({ value: 4, longitude: 90 });
   });
 
   it("returns nodata outside the displayed frame", async () => {

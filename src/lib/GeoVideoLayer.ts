@@ -246,11 +246,6 @@ export class GeoVideoLayer implements CustomLayerInterface {
         domain[0],
         domain[1],
       );
-      gl.uniform2f(
-        gl.getUniformLocation(program, "u_texel_size"),
-        1 / manifest.media.width,
-        1 / manifest.media.height,
-      );
       gl.uniformMatrix4fv(
         gl.getUniformLocation(program, "u_matrix"),
         false,

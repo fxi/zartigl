@@ -20,8 +20,13 @@ export interface GeoVideoProgram {
 }
 
 export interface GeoVideoFieldOptions {
-  /** Repeat global grids in longitude; false for an inset MapLibre grid. */
+  /**
+   * Repeat global grids in longitude, so a mesh closed to a full turn
+   * blends their last column into the first one; false for an inset grid.
+   */
   repeatLongitude?: boolean;
+  /** Sample the validity mask NEAREST, as zartigl's mask threshold expects. */
+  nearestMask?: boolean;
   /** Play the media frames of a single-date snapshot; times then follow its media cadence. */
   animateSnapshot?: boolean;
   onError?: (error: unknown) => void;
@@ -382,7 +387,7 @@ export class GeoVideoField {
     }
     const gl = this.gl;
     const texture = this.gridTexture();
-    if (this.options.repeatLongitude === false) {
+    if (this.options.nearestMask) {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     }

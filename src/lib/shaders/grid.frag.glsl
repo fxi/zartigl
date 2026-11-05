@@ -21,7 +21,8 @@ varying vec2 v_geo_uv;            // field texture UV [0,1]
 #include ./velocity-pair.glsl;
 
 void main() {
-    if (v_geo_uv.x < 0.0 || v_geo_uv.x > 1.0 || v_geo_uv.y < 0.0 || v_geo_uv.y > 1.0) {
+    // The mesh bounds longitude; a global grid's uv passes 1 across the date line.
+    if (v_geo_uv.y < 0.0 || v_geo_uv.y > 1.0) {
         discard;
     }
 

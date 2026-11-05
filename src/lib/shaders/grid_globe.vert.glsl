@@ -15,8 +15,15 @@ varying vec2 v_geo_uv;
 const float PI = 3.14159265358979323846;
 
 void main() {
-    float lng = mix(u_geo_bounds.x, u_geo_bounds.z, a_grid_uv.x);
-    float lat = mix(u_geo_bounds.y, u_geo_bounds.w, a_grid_uv.y);
+    // A global grid whose east edge stops short of a full turn (GeoVideo
+    // archives bound by cell centres) is closed to 360°; its uv then passes
+    // 1 and the repeating texture blends across the date line (projversor's
+    // meshBounds).
+    float width = u_geo_bounds.z - u_geo_bounds.x;
+    float east = width >= 359.0 ? u_geo_bounds.x + 360.0 : u_geo_bounds.z;
+    float lng = mix(u_geo_bounds.x, east, a_grid_uv.x);
+    // Bounds are cell edges, which may pass the poles by half a cell.
+    float lat = clamp(mix(u_geo_bounds.y, u_geo_bounds.w, a_grid_uv.y), -90.0, 90.0);
     float lngRad = radians(lng);
     float latRad = radians(lat);
     float cosLat = cos(latRad);
@@ -26,7 +33,7 @@ void main() {
         cos(lngRad) * cosLat
     );
 
-    v_geo_uv = a_grid_uv;
+    v_geo_uv = vec2((lng - u_geo_bounds.x) / width, a_grid_uv.y);
     vec4 position = u_matrix * vec4(ecef, 1.0);
     position.z = (1.0 - (dot(ecef, u_clipping_plane.xyz) + u_clipping_plane.w)) * position.w;
     if (u_projection_transition < 0.999) {

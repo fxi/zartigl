@@ -504,7 +504,7 @@ export class GeoVideoPlayback {
 
   private createField(manifest: GeoVideoManifest): GeoVideoField {
     const field = new GeoVideoField(this.gl!, manifest, {
-      repeatLongitude: false,
+      nearestMask: true,
       animateSnapshot: true,
       onError: (error) => {
         if (this.field === field && !this.seeking) {

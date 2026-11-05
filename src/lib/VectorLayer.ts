@@ -22,6 +22,7 @@ import type { BackdropStyle } from "../catalog/style";
 import type { ColorRampInput } from "./gl-util";
 import {
   coversViewportLatitude,
+  cellEdgeBounds,
   globeCenterVector,
   paddedViewportGeoBounds,
   particleUpdateBounds,
@@ -424,12 +425,12 @@ export class VectorLayer implements CustomLayerInterface {
     const coords = this.zarrSource.getCoords();
     const latLast = Math.min(latPixMax - 1, coords.latitude.length - 1);
     const lonLast = Math.min(lonPixMax - 1, coords.longitude.length - 1);
-    const dataGeoBounds = {
-      west: coords.longitude[lonPixMin],
-      east: coords.longitude[lonLast],
-      south: Math.min(coords.latitude[latPixMin], coords.latitude[latLast]),
-      north: Math.max(coords.latitude[latPixMin], coords.latitude[latLast]),
-    };
+    const dataGeoBounds = cellEdgeBounds(
+      coords.longitude,
+      coords.latitude,
+      [lonPixMin, lonLast],
+      [latPixMin, latLast],
+    );
     const latDescending = coords.latitude[latPixMin] > coords.latitude[latLast];
 
     const stitched = stitchVelocityChunks(
