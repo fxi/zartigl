@@ -6896,6 +6896,196 @@
         },
         "querySourceId": "edc205a9-7d12-4bcb-913e-dea569dca9c6"
       }
+    },
+    {
+      "id": "1a088ef7-b187-4234-b651-1643978aa3b5",
+      "aliases": [
+        "godas-temperature",
+        "godas-pottmp"
+      ],
+      "title": {
+        "en": "Ocean Subsurface Temperature (GODAS)"
+      },
+      "description": {
+        "en": "Monthly mean sea water potential temperature from the NCEP Global Ocean Data Assimilation System (GODAS, NOAA PSL), from 1980, on 40 levels from 5 m to 4478 m (1° × 1/3°, 74.5° S–64.5° N). Absolute values, not anomalies; this is not the CPC pentad equatorial Pacific subsurface departures product."
+      },
+      "category": "ocean",
+      "tags": [
+        "temperature",
+        "subsurface",
+        "ocean-heat",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "dd05db0a-ae01-4058-8f1e-b29b67f0c4a2",
+          "type": "zarr",
+          "title": {
+            "en": "NCEP GODAS Zarr"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "pottmp"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "dd05db0a-ae01-4058-8f1e-b29b67f0c4a2",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            -2,
+            30
+          ]
+        },
+        "querySourceId": "dd05db0a-ae01-4058-8f1e-b29b67f0c4a2"
+      }
+    },
+    {
+      "id": "1d4f88ea-5cff-4926-9b1f-39a994f7f503",
+      "aliases": [
+        "godas-t300",
+        "upper-ocean-heat-content"
+      ],
+      "title": {
+        "en": "Upper 300 m Ocean Temperature (GODAS)"
+      },
+      "description": {
+        "en": "Monthly mean potential temperature of the upper 300 m of the ocean, weighted by layer thickness, from NCEP GODAS (NOAA PSL), from 1980: a proxy of the upper-ocean heat content that leads El Niño and La Niña. Blank where the sea is shallower than 300 m. Absolute values, not anomalies; this is not the CPC pentad equatorial Pacific subsurface departures product."
+      },
+      "category": "ocean",
+      "tags": [
+        "temperature",
+        "ocean-heat",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "d1e0cfe0-ac85-457f-b576-0351b7345a4b",
+          "type": "zarr",
+          "title": {
+            "en": "NCEP GODAS Zarr"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "t300"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "d1e0cfe0-ac85-457f-b576-0351b7345a4b",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            0,
+            24
+          ]
+        },
+        "querySourceId": "d1e0cfe0-ac85-457f-b576-0351b7345a4b"
+      }
+    },
+    {
+      "id": "b31b8768-d764-47c0-b12e-967cb59163d7",
+      "aliases": [
+        "godas-d20",
+        "thermocline-depth"
+      ],
+      "title": {
+        "en": "Thermocline Depth, 20 °C Isotherm (GODAS)"
+      },
+      "description": {
+        "en": "Monthly depth of the 20 °C isotherm, which tracks the tropical thermocline, from NCEP GODAS (NOAA PSL), from 1980. It deepens in the eastern equatorial Pacific during El Niño. Blank where the surface is colder than 20 °C. Absolute values, not anomalies; this is not the CPC pentad equatorial Pacific subsurface departures product."
+      },
+      "category": "ocean",
+      "tags": [
+        "thermocline",
+        "ocean-heat",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "260c394d-f8b3-4c84-a4f3-5f270187602e",
+          "type": "zarr",
+          "title": {
+            "en": "NCEP GODAS Zarr"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "d20"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "260c394d-f8b3-4c84-a4f3-5f270187602e",
+        "palette": "deep",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            0,
+            250
+          ]
+        },
+        "querySourceId": "260c394d-f8b3-4c84-a4f3-5f270187602e"
+      }
     }
   ]
 }

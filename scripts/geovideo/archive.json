@@ -1591,6 +1591,71 @@
         "maxBitrate": "48M",
         "tune": "psnr"
       }
+    },
+    {
+      "sourceId": "dad60818-3a96-40a4-bf21-c231e694fb77",
+      "catalogEntryId": "1a088ef7-b187-4234-b651-1643978aa3b5",
+      "title": "Ocean Subsurface Temperature (GODAS)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P1Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      },
+      "depths": {
+        "name": "depth",
+        "units": "m",
+        "positive": "down",
+        "surface": 5,
+        "values": [
+          15,
+          25,
+          45,
+          105,
+          215,
+          459,
+          949,
+          2174,
+          4478
+        ]
+      }
+    },
+    {
+      "sourceId": "4532dec5-a37e-4263-8f80-fc156f5120d9",
+      "catalogEntryId": "1d4f88ea-5cff-4926-9b1f-39a994f7f503",
+      "title": "Upper 300 m Ocean Temperature (GODAS)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P1Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "90f55afa-a1d7-449c-a8a7-a6c104652444",
+      "catalogEntryId": "b31b8768-d764-47c0-b12e-967cb59163d7",
+      "title": "Thermocline Depth, 20 °C Isotherm (GODAS)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P1Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
     }
   ]
 }

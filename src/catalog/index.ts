@@ -78,6 +78,7 @@ export const PROVIDER_LABELS: Record<string, string> = {
   "copernicus-marine": "Copernicus Marine Service",
   "copernicus-atmosphere": "Copernicus Atmosphere Monitoring Service",
   "noaa-coral-reef-watch": "NOAA Coral Reef Watch",
+  "noaa-psl": "NOAA PSL (NCEP GODAS)",
   "jrc-tmf": "EC JRC Tropical Moist Forests",
   "usgs-landsat": "USGS Landsat",
 };
