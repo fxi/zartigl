@@ -24,7 +24,7 @@ ARCO layers of [MapX](https://app.mapx.org).
 | Runtime library | `src/lib/` | `@fxi/zartigl`: the `Zartigl` facade, Zarr/WMTS/GeoVideo layers, shaders, particle simulation, point queries |
 | Catalog | `src/catalog/`, `scripts/catalog_builder/` | `@fxi/zartigl/catalog` presets and the tools that discover, describe, and validate entries |
 | GeoVideo pipeline | `scripts/geovideo/`, `.github/workflows/geovideo.yml` | Single renders and incremental archives published to S3, rendered daily on a self-hosted runner |
-| Demos | `src/explorer/`, `src/demo-story/` | Catalog explorer and narrative story, deployed to GitHub Pages |
+| Demos | `src/explorer/`, `src/demo-story/`, `src/cube/` | Catalog explorer, narrative story and the GODAS thermocline data-cube, deployed to GitHub Pages |
 | MapX integration | `src/mapx/` | Widget and standalone snippet generation for reproducible MapX views |
 
 ## Features
@@ -212,6 +212,22 @@ Run or build the story locally:
 ```bash
 npm run dev:story
 npm run build:story
+```
+
+The Pacific Thermocline Data-Cube (`src/cube/`) explores the monthly GODAS
+ocean temperature of the equatorial Pacific (120° E–80° W, 14.5° S–15° N,
+0–300 m) since 1980 as an interactive cube, at
+[`fxi.io/zartigl/cube`](https://fxi.io/zartigl/cube/). It provides:
+- slice planes and 2D sections;
+- the 20 °C isotherm;
+- a Niño 3.4 timeline.
+
+It reads five-year blocks of the catalog entry's point-series store, about
+42 MB each. `#t=YYYY-MM` opens a month.
+
+```bash
+npm run dev:cube
+npm run build:cube
 ```
 
 The demos read the built-in catalog, which points to public browser-accessible Zarr, WMTS, and GeoVideo sources. No local data download is needed; data is fetched directly from the selected source.

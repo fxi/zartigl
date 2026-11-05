@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Pacific Thermocline Data-Cube — GODAS</title>
+    <meta
+      name="description"
+      content="Monthly ocean potential temperature of the equatorial Pacific since 1980 (NCEP GODAS, NOAA PSL), explored as an interactive data cube: slices, sections and the 20 °C isotherm through time." />
+  </head>
+  <body>
+    <div class="app">
+      <header class="meta frame">
+        <div class="meta-title">
+          <h1 id="entry-title">Ocean Subsurface Temperature (GODAS)</h1>
+          <p>Monthly mean sea water potential temperature</p>
+          <p id="entry-provider">
+            NCEP Global Ocean Data Assimilation System (NOAA PSL)
+          </p>
+        </div>
+        <dl class="meta-dataset" id="dataset"></dl>
+      </header>
+
+      <div class="bar frame">
+        <strong>PACIFIC OCEAN — THERMOCLINE DATA-CUBE (GODAS / pottmp)</strong>
+        <span id="bar-facts"></span>
+      </div>
+
+      <aside class="side-left">
+        <section class="panel">
+          <h2>DATA CUBE</h2>
+          <dl class="facts" id="cube-facts"></dl>
+        </section>
+        <section class="panel">
+          <h2>ROI (NIÑO 3.4)</h2>
+          <label class="check">
+            <input type="checkbox" id="show-roi" checked />
+            <span>ENABLED</span>
+          </label>
+          <dl class="facts">
+            <dt>LON</dt>
+            <dd>170° W – 120° W</dd>
+            <dt>LAT</dt>
+            <dd>5° S – 5° N</dd>
+            <dt>DEPTH</dt>
+            <dd>0 – 300 m</dd>
+          </dl>
+          <p class="note">
+            Niño 3.4 is a surface (SST) index. The upper 300 m carry its heat:
+            the thermocline and the 20 °C isotherm.
+          </p>
+        </section>
+        <section class="panel">
+          <h2>NAVIGATION (CUBE)</h2>
+          <div class="sliders" id="sliders"></div>
+        </section>
+        <section class="panel display">
+          <div>
+            <h2>DISPLAY</h2>
+            <label class="check">
+              <input type="checkbox" id="show-glow" checked />
+              <span>TEMPERATURE GLOW</span>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="show-slices" checked />
+              <span>SLICE PLANES (X/Y/Z)</span>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="show-iso" />
+              <span>ISO-SURFACE 20 °C</span>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="show-contours" />
+              <span>CONTOURS (2D)</span>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="show-coast" checked />
+              <span>COASTLINES</span>
+            </label>
+            <div class="segmented" role="radiogroup" aria-label="Palette">
+              <button type="button" data-palette="turbo" aria-pressed="true">
+                TURBO
+              </button>
+              <button type="button" data-palette="thermal" aria-pressed="false">
+                THERMAL
+              </button>
+            </div>
+          </div>
+          <figure class="legend">
+            <figcaption>COLORMAP (°C)</figcaption>
+            <canvas id="legend"></canvas>
+          </figure>
+        </section>
+      </aside>
+
+      <main class="view frame">
+        <div class="view-head">
+          <span class="tag" id="view-name">3D ISO</span>
+          <div class="presets" role="group" aria-label="View">
+            <button type="button" data-view="iso" aria-pressed="true">
+              ISO
+            </button>
+            <button type="button" data-view="top" aria-pressed="false">
+              TOP
+            </button>
+            <button type="button" data-view="front" aria-pressed="false">
+              FRONT
+            </button>
+            <button type="button" data-view="side" aria-pressed="false">
+              SIDE
+            </button>
+            <button type="button" data-view="cavalier" aria-pressed="false">
+              CAVALIER
+            </button>
+          </div>
+          <span class="month" id="view-month">—</span>
+        </div>
+        <div class="stage" id="stage">
+          <canvas
+            id="cube"
+            role="img"
+            aria-label="Interactive 3D cube of ocean potential temperature in the equatorial Pacific, 120° E to 80° W, 14.5° S to 15° N, surface to 300 m, with movable slice planes and the Niño 3.4 box."></canvas>
+          <div class="hud">
+            <div id="pick">PICK —</div>
+            <div id="scale"></div>
+          </div>
+          <div class="loading" id="loading" hidden></div>
+        </div>
+      </main>
+
+      <aside class="side-right">
+        <section class="panel slice" data-slice="top">
+          <h2 class="slice-title"></h2>
+        </section>
+        <section class="panel slice" data-slice="eq">
+          <h2 class="slice-title"></h2>
+        </section>
+        <section class="panel slice" data-slice="side">
+          <h2 class="slice-title"></h2>
+        </section>
+      </aside>
+
+      <footer class="time frame">
+        <div class="time-head">
+          <h2>TIME — MONTHLY DATA <span id="time-range"></span></h2>
+          <span class="time-legend">
+            <i class="warm"></i>
+            El Niño
+            <i class="cold"></i>
+            La Niña · Niño 3.4 anomaly, GODAS 5 m, base 1991–2020, 3-month mean
+            (not the official ONI)
+          </span>
+        </div>
+        <div class="time-body">
+          <div class="timeline" id="timeline"></div>
+          <div class="transport">
+            <output class="chip" id="time-chip">t = —</output>
+            <button type="button" id="first" aria-label="First month">
+              ⏮
+            </button>
+            <button type="button" id="back" aria-label="Previous month">
+              ⏪
+            </button>
+            <button type="button" id="play" aria-label="Play">▶</button>
+            <button type="button" id="forward" aria-label="Next month">
+              ⏩
+            </button>
+            <button type="button" id="last" aria-label="Last month">⏭</button>
+            <select id="speed" aria-label="Speed">
+              <option value="2">2 mo/s</option>
+              <option value="4" selected>4 mo/s</option>
+              <option value="8">8 mo/s</option>
+              <option value="12">12 mo/s</option>
+            </select>
+          </div>
+        </div>
+        <p class="credit">
+          GODAS data provided by the NOAA PSL, Boulder, Colorado, USA, from
+          their website at https://psl.noaa.gov · zartigl · UNEP/GRID-Geneva
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

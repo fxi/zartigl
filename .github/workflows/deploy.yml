@@ -38,7 +38,11 @@ jobs:
         env:
           MAPTILER_TOKEN: ${{ secrets.MAPTILER_TOKEN }}
 
+      - run: npm run build:cube
+
       - run: mkdir -p dist-demo/story && cp -R dist-story/. dist-demo/story/
+
+      - run: mkdir -p dist-demo/cube && cp -R dist-cube/. dist-demo/cube/
 
       - uses: actions/upload-pages-artifact@v3
         with:
