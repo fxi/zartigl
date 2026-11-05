@@ -12,6 +12,7 @@ publishing to `zarr/<org>/<product>/<version>/` in the bucket:
 ```
 mapx-zartigl/zarr/
   noaa/crw-dhw/v3.1/{timeChunked,geoChunked}.zarr
+  noaa/godas/v1/{timeChunked,geoChunked}.zarr
   cams/global-forecast/v1/{timeChunked,geoChunked}.zarr
   cams/gfas/v1.4.2/{timeChunked,geoChunked}.zarr
 ```
@@ -43,9 +44,12 @@ each published store after its nightly update.
 - Two consolidated Zarr v2 stores: `timeChunked.zarr` (one time step per chunk,
   for maps and GeoVideo) and `geoChunked.zarr` (long time chunks over small
   tiles, for point series). ✓ `geoChunked` holds a prefix of the same time axis.
-- ✓ Dimensions `time, latitude, longitude`; latitude strictly ascending in
+- ✓ Dimensions `time, latitude, longitude`, or `time, depth, latitude,
+  longitude` for variables with levels; latitude strictly ascending in
   −90…90, longitude strictly ascending in −180…180, with `degrees_north` and
-  `degrees_east` units.
+  `degrees_east` units; depth strictly ascending from 0, in `m` with
+  `positive: down`. Variables with and without levels can share a store: the
+  browser offers the depth axis only for the variables that have it.
 - ✓ Time is an integer in `hours since …`: the browser decodes integer arrays
   through float32, so seconds since 1981 would be off by a minute.
 - ✓ The time coordinate is a single chunk, which the browser reads whole.
@@ -127,6 +131,41 @@ and `force-geo`, and repeat until `plan` shows no pending days.
 CRW data are free to use with credit: cite NOAA Coral Reef Watch
 (https://coralreefwatch.noaa.gov/satellite/docs/recommendations_crw_citation.php).
 The licence text travels in the store attributes.
+
+## NCEP GODAS ocean temperature (`noaa/godas`)
+
+The monthly GODAS potential temperature from NOAA PSL (`pottmp.<year>.nc`,
+the bias-corrected files), from 1980 on: 40 levels from 5 m to 4478 m, 1° in
+longitude by 1/3° in latitude, 74.5° S to 64.5° N. One store holds:
+- `pottmp` (time, depth, latitude, longitude), in degC: the source is in
+  Kelvin, and longitudes are rolled from 0…360 to −180…180;
+- two fields derived for the upper-ocean heat content, both
+  (time, latitude, longitude):
+  - `t300`, the thickness-weighted mean temperature of the upper 300 m (fill
+    where the water column is shallower);
+  - `d20`, the depth of the 20 °C isotherm, interpolated between level
+    centres.
+
+All three are int16 (0.002 °C, 0.1 m). Months are stamped at their first day,
+as in the source. These are absolute values, not anomalies, and not the CPC
+pentad equatorial Pacific departures.
+
+PSL rewrites the file of the current year when it adds a month, about two
+weeks after the month ends. `run` reads the year files from the year of the
+last stored month on and appends the months each store lacks, to both stores
+(`sync-geo` is a no-op). A stored month is never rewritten, so a PSL revision
+of past months needs a new store version. Missing files for the current year
+are expected in January; for an earlier year they are an error. A year takes
+about 25 s and adds about 70 MB per store. The 1980–2026 backfill fits in a
+few daily budgets, or in one dispatch with a budget of `2h`.
+
+```bash
+uv run scripts/to_zarr/noaa/godas/convert.py plan
+uv run scripts/to_zarr/noaa/godas/convert.py run --local /tmp/godas --max-years 1
+```
+
+GODAS data are in the public domain; acknowledge "GODAS data provided by the
+NOAA PSL, Boulder, Colorado, USA, from their website at https://psl.noaa.gov".
 
 ## CAMS (Copernicus Atmosphere Data Store)
 

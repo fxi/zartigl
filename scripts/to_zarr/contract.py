@@ -35,6 +35,8 @@ import numpy as np
 import xarray as xr
 
 DIMS = ("time", "latitude", "longitude")
+# Variables with levels (ocean temperature by depth) add one vertical dimension after time.
+DEPTH_DIMS = ("time", "depth", "latitude", "longitude")
 # What a data variable may describe about itself; xarray keeps the encoding (scale, fill) apart.
 VARIABLE_ATTRS = {"long_name", "units", "valid_min", "valid_max", "flag_values", "flag_meanings", "comment"}
 REQUIRED_VARIABLE_ATTRS = {"long_name", "units"}
@@ -46,8 +48,8 @@ def problems(dataset: xr.Dataset) -> list[str]:
     """Contract breaches of a dataset about to be written, or of an opened store."""
     found = []
     for name, variable in dataset.data_vars.items():
-        if variable.dims != DIMS:
-            found.append(f"{name}: dimensions {variable.dims}, expected {DIMS}")
+        if variable.dims not in (DIMS, DEPTH_DIMS):
+            found.append(f"{name}: dimensions {variable.dims}, expected {DIMS} or {DEPTH_DIMS}")
         extra = sorted(set(variable.attrs) - VARIABLE_ATTRS)
         if extra:
             found.append(f"{name}: attributes outside the contract {extra}")
@@ -65,12 +67,28 @@ def problems(dataset: xr.Dataset) -> list[str]:
             found.append(f"{axis} outside {low}…{high}")
         if dataset[axis].attrs.get("units") != f"degrees_{'north' if axis == 'latitude' else 'east'}":
             found.append(f"{axis}: units {dataset[axis].attrs.get('units')!r}")
+    if "depth" in dataset.dims:
+        found += depth_problems(dataset["depth"])
     missing = sorted(REQUIRED_STORE_ATTRS - set(dataset.attrs))
     if missing:
         found.append(f"store attributes missing {missing}")
     leftovers = sorted(key for key in dataset.attrs if key.startswith("GRIB_"))
     if leftovers:
         found.append(f"store attributes from the provider {leftovers}")
+    return found
+
+
+def depth_problems(depth: xr.DataArray) -> list[str]:
+    """Depth is in metres, positive down from the surface and ascending, so the browser labels it a depth."""
+    found = []
+    values = depth.values
+    if values.size > 1 and not np.all(np.diff(values) > 0):
+        found.append("depth is not strictly ascending")
+    if values.size and values.min() < 0:
+        found.append("depth below 0 (depth is positive down)")
+    if depth.attrs.get("units") != "m" or depth.attrs.get("positive") != "down":
+        found.append(f"depth: units {depth.attrs.get('units')!r} and positive {depth.attrs.get('positive')!r}, "
+                     "expected 'm' and 'down'")
     return found
 
 

@@ -46,6 +46,19 @@ class ContractTest(unittest.TestCase):
         self.assertIn("longitude outside -180…180", found)
         self.assertIn("store attributes missing ['license']", found)
 
+    def test_variables_may_have_depth_levels(self):
+        dataset = good()
+        dataset["p"] = (("time", "depth", "latitude", "longitude"), np.ones((1, 2, 2, 3), np.float32),
+                        {"long_name": "P", "units": "degC"})
+        dataset = dataset.assign_coords(depth=("depth", [5.0, 15.0], {"units": "m", "positive": "down"}))
+        self.assertEqual(contract.problems(dataset), [])
+        flipped = dataset.isel(depth=[1, 0])
+        flipped["depth"].attrs = {"units": "m", "positive": "up"}
+        self.assertEqual(contract.problems(flipped), [
+            "depth is not strictly ascending",
+            "depth: units 'm' and positive 'up', expected 'm' and 'down'",
+        ])
+
     def test_time_and_dtypes_must_suit_the_browser(self):
         found = contract.encoding_problems({
             "time": {"units": "seconds since 1981-01-01", "dtype": "float64"},
