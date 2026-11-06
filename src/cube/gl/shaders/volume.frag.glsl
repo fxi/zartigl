@@ -3,8 +3,8 @@ precision highp float;
 precision highp sampler3D;
 
 // One ray per fragment through the month volume, composited front to back:
-// a faint glow of the water column, the three slice planes, and the first
-// crossing of the isotherm as a shaded surface. Volumes hold (T · valid,
+// the three slice planes and the first crossing of the isotherm as a shaded
+// surface, with depth contours. Volumes hold (T · valid,
 // valid), so linear filtering never mixes land into the sea (T = r / g).
 
 in vec3 v_world;
@@ -19,14 +19,17 @@ uniform sampler2D u_lut;
 uniform vec2 u_domain;
 uniform float u_steps_z;       // depth steps of the volume texture
 uniform vec3 u_slice;          // world x, y, z of the slice planes
-uniform vec4 u_show;           // glow, slices, isotherm, -
+uniform vec3 u_show;           // slices, isotherm, depth contours on the isotherm
+uniform float u_bottom;        // depth of the box bottom, metres
 uniform float u_iso;
-uniform float u_density;
 uniform float u_step;          // march step, world units
 
 const vec3 LAND = vec3(0.13, 0.135, 0.14);
 const float SLICE_ALPHA = 0.93;
 const float ISO_ALPHA = 0.9;
+// Depth contours drawn on the isotherm, metres: every MINOR, stronger every MAJOR.
+const float MINOR = 25.0;
+const float MAJOR = 100.0;
 const int MAX_STEPS = 512;
 
 vec3 uvw(vec3 p) {
@@ -96,7 +99,7 @@ void main() {
     float planes[3];
     for (int i = 0; i < 3; i++) {
         float t = abs(d[i]) > 1e-6 ? (u_slice[i] - o[i]) / d[i] : -1.0;
-        planes[i] = (u_show.y > 0.5 && t >= 0.0 && t <= exit) ? t : 1e9;
+        planes[i] = (u_show.x > 0.5 && t >= 0.0 && t <= exit) ? t : 1e9;
     }
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2 - i; j++) {
@@ -114,6 +117,10 @@ void main() {
     int next = 0;
     float before = 0.0;
     bool beforeValid = false;
+    // The first (visible) isotherm hit: its depth, share of the pixel and color.
+    float hitDepth = -1.0;
+    float isoWeight = 0.0;
+    vec3 isoColor = vec3(0.0);
     for (int i = 0; i < MAX_STEPS; i++) {
         if (i >= steps || acc.a > 0.97) {
             break;
@@ -133,7 +140,7 @@ void main() {
         // Which side of the isotherm each sample is on. Half-float temperatures often equal the
         // isotherm exactly, where a sign product of zero would miss the crossing on both sides.
         bool warm = temp >= u_iso;
-        if (u_show.z > 0.5 && valid && beforeValid && warm != (before >= u_iso)) {
+        if (u_show.y > 0.5 && valid && beforeValid && warm != (before >= u_iso)) {
             // Bisect between the two samples, so the surface does not band with the step.
             float a = t0 - 0.5 * dt;
             float b = t0 + 0.5 * dt;
@@ -150,12 +157,13 @@ void main() {
             vec3 n = isoNormal(hit);
             float light = 0.35 + 0.65 * abs(dot(n, normalize(vec3(-0.4, -0.5, 0.75))));
             float rim = pow(1.0 - abs(dot(n, -d)), 2.0);
-            over(acc, ramp(u_iso) * light + vec3(0.35) * rim, ISO_ALPHA);
-        }
-        if (u_show.x > 0.5 && valid) {
-            float x = rampPosition(temp);
-            float a = 1.0 - exp(-u_density * dt * (0.15 + 0.85 * x * x));
-            over(acc, ramp(temp), a);
+            vec3 color = ramp(u_iso) * light + vec3(0.35) * rim;
+            if (hitDepth < 0.0) {
+                hitDepth = (u_half.z - hit.z) / (2.0 * u_half.z) * u_bottom;
+                isoWeight = (1.0 - acc.a) * ISO_ALPHA;
+                isoColor = color;
+            }
+            over(acc, color, ISO_ALPHA);
         }
         before = temp;
         beforeValid = valid;
@@ -166,6 +174,20 @@ void main() {
             slice(acc, o + d * planes[k]);
             next++;
         }
+    }
+    // Depth contours on the isotherm, outside the loop so the derivatives are defined:
+    // under a pixel wide and faint, as the 2D isotherms; faded where the surface is too
+    // steep for them to read.
+    float width = fwidth(hitDepth);
+    if (u_show.z > 0.5 && hitDepth >= 0.0) {
+        float minor = abs(fract(hitDepth / MINOR + 0.5) - 0.5) * MINOR;
+        float major = abs(fract(hitDepth / MAJOR + 0.5) - 0.5) * MAJOR;
+        float line = max(
+            0.2 * (1.0 - smoothstep(0.2 * width, 0.8 * width, minor)),
+            0.42 * (1.0 - smoothstep(0.35 * width, 1.1 * width, major))
+        );
+        line *= 1.0 - smoothstep(4.0, 10.0, width);
+        acc.rgb += isoWeight * line * (vec3(1.0) - isoColor);
     }
     o_color = acc;
 }

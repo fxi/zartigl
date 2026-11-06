@@ -53,7 +53,6 @@ import { Timeline, type BlockStatus } from "./ui/timeline";
 const ENTRY_ID = "1a088ef7-b187-4234-b651-1643978aa3b5";
 const DOMAIN: [number, number] = [10, 30];
 const ISO = 20;
-const DENSITY = 0.9;
 const MOBILE = 760;
 const PRESET_NAMES: Record<Preset, string> = {
   iso: "3D ISO",
@@ -198,8 +197,7 @@ async function main(): Promise<void> {
   let palette: PaletteName = "turbo";
   let ramp = rampBytes(palette);
   renderer.setPalette(ramp);
-  const show: Show & { contours: boolean } = {
-    glow: true,
+  const show: Show = {
     slices: true,
     iso: true,
     roi: true,
@@ -538,7 +536,6 @@ async function main(): Promise<void> {
 
   // Display toggles.
   const toggles: Array<[string, keyof typeof show]> = [
-    ["show-glow", "glow"],
     ["show-slices", "slices"],
     ["show-iso", "iso"],
     ["show-roi", "roi"],
@@ -850,7 +847,7 @@ async function main(): Promise<void> {
           mix,
           domain: DOMAIN,
           iso: ISO,
-          density: DENSITY,
+          bottom: BOTTOM,
           step: width < MOBILE ? 0.012 : 0.006,
         });
         if (labels.update(f, width, height, show)) {

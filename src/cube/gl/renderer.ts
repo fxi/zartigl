@@ -1,6 +1,6 @@
 /**
- * The cube in WebGL2: one raymarch pass over the box's front faces (glow,
- * slices, isotherm), then lines on top: box edges (hidden ones dashed),
+ * The cube in WebGL2: one raymarch pass over the box's front faces (slices,
+ * isotherm and its depth contours), then lines on top: box edges (hidden ones dashed),
  * slice outlines, the ROI box, coastlines on the surface and axis ticks.
  */
 
@@ -12,11 +12,12 @@ import volumeFrag from "./shaders/volume.frag.glsl";
 import volumeVert from "./shaders/volume.vert.glsl";
 
 export interface Show {
-  glow: boolean;
   slices: boolean;
   iso: boolean;
   roi: boolean;
   coast: boolean;
+  /** Depth contours on the isotherm, with the 2D isotherms. */
+  contours: boolean;
 }
 
 export interface RenderState {
@@ -27,7 +28,8 @@ export interface RenderState {
   mix: number;
   domain: [number, number];
   iso: number;
-  density: number;
+  /** Depth of the box bottom, metres. */
+  bottom: number;
   /** Raymarch step, world units: larger on small screens. */
   step: number;
 }
@@ -388,15 +390,14 @@ export class CubeRenderer {
     gl.uniform2fv(u.get("u_domain"), state.domain);
     gl.uniform1f(u.get("u_steps_z"), this.steps);
     gl.uniform3fv(u.get("u_slice"), state.slice);
-    gl.uniform4f(
+    gl.uniform3f(
       u.get("u_show"),
-      state.show.glow ? 1 : 0,
       state.show.slices ? 1 : 0,
       state.show.iso ? 1 : 0,
-      0,
+      state.show.contours ? 1 : 0,
     );
+    gl.uniform1f(u.get("u_bottom"), state.bottom);
     gl.uniform1f(u.get("u_iso"), state.iso);
-    gl.uniform1f(u.get("u_density"), state.density);
     gl.uniform1f(u.get("u_step"), state.step);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_3D, this.volumes[0]);
