@@ -212,6 +212,11 @@ async function main(): Promise<void> {
   let current: Volume | null = null;
   let nextMonth = -1;
   let playing = false;
+  /** The view preset in use, null once the view was turned by hand. */
+  let preset: Preset | null = "iso";
+  /** `#…&capture`: video capture drives the months and their blend (see cubeCapture below). */
+  const capture = /[#&]capture\b/.test(location.hash);
+  let captureMix: number | null = null;
   let speed = 4;
   let dirty = true;
   const requestDraw = () => (dirty = true);
@@ -440,7 +445,21 @@ async function main(): Promise<void> {
     sliceWorld = sliceLines();
     syncSliders();
     drawPanels();
+    writeHash();
     requestDraw();
+  }
+
+  /** The month, cursors and view preset in the URL: #t=YYYY-MM&x=…&y=…&z=…&v=front. */
+  function writeHash(): void {
+    const parts = [
+      `t=${monthText(times[Math.floor(month)])}`,
+      `x=${cursor.lon.toFixed(1)}`,
+      `y=${cursor.lat.toFixed(2)}`,
+      `z=${Math.round(cursor.depth)}`,
+      ...(preset ? [`v=${preset}`] : []),
+      ...(capture ? ["capture"] : []),
+    ];
+    history.replaceState(null, "", `#${parts.join("&")}`);
   }
 
   /** Shows month `m` (integer) once its block is in memory. */
@@ -449,7 +468,7 @@ async function main(): Promise<void> {
     const wanted = Math.floor(month);
     syncSliders();
     timeline.setMonth(month);
-    history.replaceState(null, "", `#t=${monthText(times[wanted])}`);
+    writeHash();
     $("view-month").textContent = monthText(times[wanted]);
     $("time-chip").textContent = `t = ${monthText(times[wanted])}`;
     if (!cache.has(blockOf(wanted))) {
@@ -601,20 +620,24 @@ async function main(): Promise<void> {
   }
 
   // Views.
-  const setPreset = (preset: Preset) => {
-    transition = {
-      from: { ...view },
-      to: { ...PRESETS[preset] },
-      start: performance.now(),
-    };
-    $("view-name").textContent = PRESET_NAMES[preset];
+  const setPreset = (next: Preset, animate = true) => {
+    preset = next;
+    transition = animate
+      ? {
+          from: { ...view },
+          to: { ...PRESETS[next] },
+          start: performance.now(),
+        }
+      : null;
+    if (!animate) {
+      view = { ...PRESETS[next] };
+    }
+    writeHash();
+    $("view-name").textContent = PRESET_NAMES[next];
     for (const button of document.querySelectorAll<HTMLButtonElement>(
       "[data-view]",
     )) {
-      button.setAttribute(
-        "aria-pressed",
-        String(button.dataset.view === preset),
-      );
+      button.setAttribute("aria-pressed", String(button.dataset.view === next));
     }
     requestDraw();
   };
@@ -640,6 +663,10 @@ async function main(): Promise<void> {
   };
   const freeView = () => {
     transition = null;
+    if (preset) {
+      preset = null;
+      writeHash();
+    }
     $("view-name").textContent = "3D FREE";
     for (const button of document.querySelectorAll<HTMLButtonElement>(
       "[data-view]",
@@ -838,9 +865,10 @@ async function main(): Promise<void> {
       if (width > 0 && height > 0) {
         const f = fittedFrame(width, height);
         const mix =
-          playing && nextMonth === Math.floor(month) + 1
+          captureMix ??
+          (playing && nextMonth === Math.floor(month) + 1
             ? month - Math.floor(month)
-            : 0;
+            : 0);
         renderer.render(f, {
           slice: sliceWorld,
           show,
@@ -863,12 +891,55 @@ async function main(): Promise<void> {
   updateBlocks();
   resize();
   requestAnimationFrame(loop);
-  // #t=YYYY-MM opens that month; the last one otherwise.
-  const shared = /t=(\d{4}-\d{2})/.exec(location.hash)?.[1];
+  // #t=YYYY-MM&x=…&y=…&z=…&v=… opens that month, cursors and view; the last month otherwise.
+  const param = (key: string) =>
+    new RegExp(`[#&]${key}=([^&]+)`).exec(location.hash)?.[1];
+  // Read everything first: applying the cursors rewrites the hash.
+  const shared = param("t");
+  const sharedPreset = param("v");
   const sharedMonth = shared
     ? Array.from(times, monthText).indexOf(shared)
     : -1;
+  const sharedCursor: Partial<Cursor> = {};
+  for (const [key, field] of [
+    ["x", "lon"],
+    ["y", "lat"],
+    ["z", "depth"],
+  ] as const) {
+    const value = Number(param(key));
+    if (param(key) !== undefined && Number.isFinite(value)) {
+      sharedCursor[field] = value;
+    }
+  }
+  setCursor(sharedCursor);
+  if (sharedPreset && sharedPreset in PRESETS) {
+    setPreset(sharedPreset as Preset, false);
+  }
   await setMonth(sharedMonth >= 0 ? sharedMonth : lastMonth);
+
+  if (capture) {
+    /**
+     * Shows month `m` of the store's time axis, fractional parts blending into the next
+     * month as in playback, and resolves once that frame is drawn.
+     */
+    const frame = async (m: number) => {
+      const whole = Math.max(0, Math.min(lastMonth, Math.floor(m)));
+      await setMonth(whole);
+      if (whole < lastMonth) {
+        await cache.get(blockOf(whole + 1));
+        prepareNext();
+      }
+      captureMix = nextMonth === whole + 1 ? m - whole : 0;
+      month = m;
+      timeline.setMonth(m);
+      requestDraw();
+      await new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      );
+    };
+    const index = (text: string) => Array.from(times, monthText).indexOf(text);
+    Object.assign(window, { cubeCapture: { frame, index, lastMonth } });
+  }
 }
 
 main().catch((error: unknown) => {
