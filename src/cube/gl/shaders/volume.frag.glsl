@@ -130,19 +130,20 @@ void main() {
         vec2 s = field(p);
         bool valid = s.y > 0.5;
         float temp = temperature(s);
-        if (u_show.z > 0.5 && valid && beforeValid && (before - u_iso) * (temp - u_iso) < 0.0) {
+        // Which side of the isotherm each sample is on. Half-float temperatures often equal the
+        // isotherm exactly, where a sign product of zero would miss the crossing on both sides.
+        bool warm = temp >= u_iso;
+        if (u_show.z > 0.5 && valid && beforeValid && warm != (before >= u_iso)) {
             // Bisect between the two samples, so the surface does not band with the step.
             float a = t0 - 0.5 * dt;
             float b = t0 + 0.5 * dt;
-            float ta = before;
+            bool warmA = before >= u_iso;
             for (int k = 0; k < 5; k++) {
                 float m = 0.5 * (a + b);
-                float tm = temperature(field(o + d * m));
-                if ((ta - u_iso) * (tm - u_iso) <= 0.0) {
-                    b = m;
-                } else {
+                if ((temperature(field(o + d * m)) >= u_iso) == warmA) {
                     a = m;
-                    ta = tm;
+                } else {
+                    b = m;
                 }
             }
             vec3 hit = o + d * (0.5 * (a + b));
