@@ -30,39 +30,24 @@
       </div>
 
       <aside class="side-left">
-        <section class="panel">
-          <h2>DATA CUBE</h2>
-          <dl class="facts" id="cube-facts"></dl>
-        </section>
-        <section class="panel">
-          <h2>ROI (NIÑO 3.4)</h2>
-          <label class="check">
-            <input type="checkbox" id="show-roi" checked />
-            <span>ENABLED</span>
-          </label>
-          <dl class="facts">
-            <dt>LON</dt>
-            <dd>170° W – 120° W</dd>
-            <dt>LAT</dt>
-            <dd>5° S – 5° N</dd>
-            <dt>DEPTH</dt>
-            <dd>0 – 300 m</dd>
-          </dl>
+        <section class="panel roi">
+          <h2>NIÑO 3.4</h2>
           <p class="note">
             Niño 3.4 is a surface (SST) index. The upper 300 m carry its heat:
             the thermocline and the 20 °C isotherm.
           </p>
+          <p class="roi-box">170°&nbsp;W – 120°&nbsp;W · 5°&nbsp;S – 5°&nbsp;N · 0 – 300&nbsp;m</p>
         </section>
         <section class="panel">
           <h2>NAVIGATION (CUBE)</h2>
           <div class="sliders" id="sliders"></div>
         </section>
         <section class="panel display">
-          <div>
-            <h2>DISPLAY</h2>
+          <h2>DISPLAY</h2>
+          <div class="checks">
             <label class="check">
               <input type="checkbox" id="show-slices" checked />
-              <span>SLICE PLANES (X/Y/Z)</span>
+              <span>SLICE PLANES</span>
             </label>
             <label class="check">
               <input type="checkbox" id="show-iso" checked />
@@ -70,12 +55,18 @@
             </label>
             <label class="check">
               <input type="checkbox" id="show-contours" checked />
-              <span>CONTOURS (2D)</span>
+              <span>CONTOURS</span>
             </label>
             <label class="check">
               <input type="checkbox" id="show-coast" checked />
               <span>COASTLINES</span>
             </label>
+            <label class="check">
+              <input type="checkbox" id="show-roi" checked />
+              <span>NIÑO 3.4 BOX</span>
+            </label>
+          </div>
+          <div class="segments">
             <div class="segmented" role="radiogroup" aria-label="Values">
               <button type="button" data-mode="absolute" aria-pressed="true">
                 ABSOLUTE
@@ -93,10 +84,6 @@
               </button>
             </div>
           </div>
-          <figure class="legend">
-            <figcaption id="legend-title">COLORMAP (°C)</figcaption>
-            <canvas id="legend"></canvas>
-          </figure>
         </section>
       </aside>
 
@@ -133,6 +120,10 @@
           </div>
           <div class="loading" id="loading" hidden></div>
         </div>
+        <figure class="legend">
+          <figcaption id="legend-title">COLORMAP (°C)</figcaption>
+          <canvas id="legend"></canvas>
+        </figure>
       </main>
 
       <aside class="side-right">
@@ -161,6 +152,14 @@
         <div class="time-body">
           <div class="timeline" id="timeline"></div>
           <div class="transport">
+            <button
+              type="button"
+              id="data"
+              class="data-button"
+              aria-haspopup="dialog"
+              aria-expanded="false">
+              DATA
+            </button>
             <output class="chip" id="time-chip">t = —</output>
             <button type="button" id="first" aria-label="First month">
               ⏮

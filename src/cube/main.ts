@@ -11,6 +11,7 @@ import "./style.css";
 
 import { requireCatalogEntry, resolveLocalizedText } from "../catalog";
 import { ZarrSource } from "../lib/ZarrSource";
+import { cacheChunkStore } from "../lib/chunkStore";
 import {
   BlockCache,
   POTTMP,
@@ -50,6 +51,7 @@ import { rampBytes, rampColor, type PaletteName } from "./palettes";
 import { coastlines } from "./ui/coast";
 import { Labels } from "./ui/labels";
 import { SlicePanel, type Cursor, type SliceKind } from "./ui/slice2d";
+import { DataManager, type DataBlock } from "./ui/data-manager";
 import { Timeline, type BlockStatus } from "./ui/timeline";
 
 const ENTRY_ID = "1a088ef7-b187-4234-b651-1643978aa3b5";
@@ -122,7 +124,9 @@ async function main(): Promise<void> {
   };
   status("READING METADATA…");
 
-  const source = new ZarrSource(url, 8);
+  // Chunks persist across sessions: the stores only append months (see lib/chunkStore.ts).
+  const chunkStore = cacheChunkStore();
+  const source = new ZarrSource(url, 8, { chunkStore });
   await source.init();
   const coords = source.getCoords();
   const times = source.getTimeDimension().values;
@@ -170,25 +174,25 @@ async function main(): Promise<void> {
     ]);
     $("bar-facts").textContent =
       `VAR: ${variable} | REGION: ${lonLabel(space.west)}–${lonLabel(space.east)}, ${latLabel(-14.5, 1)}–${latLabel(15)} | ROI: NIÑO 3.4 | DEPTH: 0–${BOTTOM} m | TIME: ${range} (MONTHLY)`;
-    facts($("cube-facts"), [
-      ["VARIABLE", variable],
-      ["GRID", "1° × 1/3°"],
-      [
-        "LEVELS",
-        `${box.depth.length} of ${allDepths.length} (${box.depth[0]}–${box.depth[box.depth.length - 1]} m)`,
-      ],
-      ["TIME", range],
-      ["REGION", "Equatorial Pacific"],
-      [
-        "SCALE",
-        `lat ×${LAT_STRETCH} · depth ×${space.exaggeration.toLocaleString("en")}`,
-      ],
-      [
-        "BLOCKS",
-        `${timeChunk} months · ${box.tiles.length * box.depth.length} chunks`,
-      ],
-    ]);
   };
+  /** Facts of the data cube, at the head of the DATA panel. */
+  const cubeFacts = (anomalyMode: boolean): Array<[string, string]> => [
+    [
+      "VARIABLE",
+      anomalyMode ? "pottmp + pottmp_anom (base 1991–2020)" : "pottmp (°C)",
+    ],
+    ["GRID", "1° × 1/3° · equatorial Pacific"],
+    [
+      "LEVELS",
+      `${box.depth.length} of ${allDepths.length} (${box.depth[0]}–${box.depth[box.depth.length - 1]} m)`,
+    ],
+    ["TIME", range],
+    [
+      "BLOCKS",
+      `${timeChunk} months · ${box.tiles.length * box.depth.length} chunks per variable`,
+    ],
+    ["STORE", url.replace(/^https?:\/\//, "")],
+  ];
   describe(false);
   $("time-range").textContent = `(${range})`;
   $("scale").textContent =
@@ -253,6 +257,12 @@ async function main(): Promise<void> {
   const requestDraw = () => (dirty = true);
 
   // Data: one cache per variable; the anomaly is only read in anomaly mode.
+  /** Re-reads what is on disk shortly after blocks were read (see the DATA panel). */
+  let refreshTimer = 0;
+  const refreshDisk = () => {
+    clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(() => void manager.refresh(), 400);
+  };
   const blockCache = (variable: CubeVariable, label: string) => {
     const cache: BlockCache = new BlockCache(
       (index) =>
@@ -276,7 +286,10 @@ async function main(): Promise<void> {
             }
             updateBlocks();
           },
-        ),
+        ).then((block) => {
+          refreshDisk();
+          return block;
+        }),
       3,
     );
     return cache;
@@ -355,13 +368,85 @@ async function main(): Promise<void> {
     (m) => setMonth(m),
   );
   $("timeline").append(timeline.canvas);
+  const blockCount = Math.ceil(times.length / timeChunk);
+  /** Blocks of the current mode complete on disk, as last read by the DATA panel. */
+  let onDisk = new Set<number>();
   const updateBlocks = () => {
-    const blocks = Math.ceil(times.length / timeChunk);
-    const states: BlockStatus[] = Array.from({ length: blocks }, (_, b) =>
-      cache.has(b) ? "loaded" : cache.loading(b) ? "loading" : "missing",
+    const states: BlockStatus[] = Array.from({ length: blockCount }, (_, b) =>
+      cache.has(b)
+        ? "loaded"
+        : cache.loading(b)
+          ? "loading"
+          : onDisk.has(b)
+            ? "cached"
+            : "missing",
     );
     timeline.setStatus(states);
   };
+
+  // DATA panel: the chunks of each block, on disk or to download.
+  const blockLabel = (b: number) => {
+    const first = monthText(times[b * timeChunk]).slice(0, 4);
+    const last = monthText(
+      times[Math.min(lastMonth, (b + 1) * timeChunk - 1)],
+    ).slice(0, 4);
+    return `${first}–${last}`;
+  };
+  const blockChunks = (variable: CubeVariable, b: number) =>
+    Array.from(box.depth, (_, level) => level).flatMap((level) =>
+      box.tiles.map(([tileLat, tileLon]) => {
+        const indices = [b, level, tileLat, tileLon];
+        return {
+          url: source.chunkUrl(variable.name, indices),
+          revision: source.chunkRevision(variable.name, indices),
+        };
+      }),
+    );
+  const modeVariables = () =>
+    anomalyMode() ? [POTTMP, POTTMP_ANOM] : [POTTMP];
+  const manager = new DataManager({
+    button: $<HTMLButtonElement>("data"),
+    store: chunkStore,
+    prefix: url,
+    facts: () => cubeFacts(anomalyMode()),
+    blocks: () =>
+      Array.from(
+        { length: blockCount },
+        (_, b): DataBlock => ({
+          index: b,
+          label: blockLabel(b),
+          chunks: modeVariables().flatMap((variable) =>
+            blockChunks(variable, b),
+          ),
+          all: [POTTMP, POTTMP_ANOM].flatMap((variable) =>
+            blockChunks(variable, b).map((chunk) => chunk.url),
+          ),
+        }),
+      ),
+    // Read through ZarrSource, so the chunks land on disk; the block itself is dropped.
+    download: async (b, onProgress) => {
+      const variables = modeVariables();
+      const perVariable = box.depth.length * box.tiles.length;
+      const total = variables.length * perVariable;
+      for (const [i, variable] of variables.entries()) {
+        await loadBlock(
+          source,
+          variable,
+          box,
+          b,
+          timeChunk,
+          times.length,
+          tile,
+          (progress) => onProgress(i * perVariable + progress.done, total),
+        );
+      }
+    },
+    onChange: (complete) => {
+      onDisk = complete;
+      updateBlocks();
+    },
+  });
+  void manager.refresh();
 
   // Sliders.
   const sliders = $("sliders");
@@ -641,26 +726,35 @@ async function main(): Promise<void> {
     legend.height = Math.round(rect.height * ratio);
     const ctx = legend.getContext("2d")!;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const barTop = 6;
-    const barHeight = rect.height - 12;
-    for (let y = 0; y < barHeight; y++) {
-      const [r, g, b] = rampColor(ramp, 1 - y / barHeight);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    // A horizontal bar, low on the left, ticks and labels under it.
+    const barLeft = 8;
+    const barWidth = Math.max(1, rect.width - 16);
+    const barTop = 2;
+    const barHeight = 10;
+    for (let x = 0; x < barWidth; x++) {
+      const [r, g, b] = rampColor(ramp, x / barWidth);
       ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      ctx.fillRect(4, barTop + y, 16, 1);
+      ctx.fillRect(barLeft + x, barTop, 1, barHeight);
     }
     ctx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
     ctx.fillStyle = "rgba(235, 237, 240, 0.9)";
     ctx.strokeStyle = "rgba(235, 237, 240, 0.9)";
-    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
     for (let t = low; t <= high; t += tick) {
-      const y = barTop + (1 - (t - low) / (high - low)) * barHeight;
+      const x = barLeft + ((t - low) / (high - low)) * barWidth;
       const labelled = t % (2 * tick) === 0;
       ctx.beginPath();
-      ctx.moveTo(22, y);
-      ctx.lineTo(labelled ? 28 : 25, y);
+      ctx.moveTo(x, barTop + barHeight);
+      ctx.lineTo(x, barTop + barHeight + (labelled ? 5 : 3));
       ctx.stroke();
       if (labelled) {
-        ctx.fillText(anomalyMode() && t > 0 ? `+${t}` : String(t), 31, y);
+        ctx.fillText(
+          anomalyMode() && t > 0 ? `+${t}` : String(t),
+          x,
+          barTop + barHeight + 6,
+        );
       }
     }
   };
@@ -699,6 +793,8 @@ async function main(): Promise<void> {
     applyRamp();
     shown = -1;
     nextMonth = -1;
+    // The blocks complete on disk depend on the mode's variables.
+    void manager.refresh();
     void setMonth(Math.floor(month));
   };
   for (const button of modeButtons) {

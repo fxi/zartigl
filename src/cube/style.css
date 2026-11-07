@@ -316,10 +316,22 @@ input[type="range"]:focus-visible {
   white-space: nowrap;
 }
 
-.display {
+.display .checks {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 2px 12px;
+}
+
+.display .segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+
+.roi .roi-box {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .segmented {
@@ -355,22 +367,25 @@ input[type="range"]:focus-visible {
   color: var(--ground) !important;
 }
 
+/* Horizontal color bar under the cube. */
 .legend {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  border-left: 1px solid var(--rule);
-  padding-left: 8px;
+  gap: 12px;
+  border-top: 1px solid var(--rule);
+  padding: 4px 10px 2px;
 }
 
 .legend figcaption {
   font-size: 10.5px;
-  margin-bottom: 4px;
+  white-space: nowrap;
 }
 
 .legend canvas {
-  width: 52px;
-  height: 150px;
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+  height: 30px;
 }
 
 /* 3D view. */
@@ -592,6 +607,104 @@ input[type="range"]:focus-visible {
 
 .transport .chip {
   padding: 6px 8px;
+}
+
+.transport .data-button {
+  width: auto;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* Data manager: a popover over the time bar, a sheet on phones. */
+.data-manager {
+  position: fixed;
+  z-index: 20;
+  width: min(620px, calc(100vw - 16px));
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  background: var(--ground);
+  border: 1px solid var(--ink);
+  padding: 8px 10px 10px;
+  font-size: 11.5px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.data-manager header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.data-manager h2 {
+  margin: 0;
+}
+
+.data-manager .actions {
+  display: flex;
+  gap: 6px;
+}
+
+.data-manager button {
+  border: 1px solid var(--rule);
+  background: none;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.data-manager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.data-manager .facts {
+  margin: 6px 0 8px;
+}
+
+.data-manager .usage {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.data-manager table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-manager th,
+.data-manager td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-manager th {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.data-manager td.num {
+  text-align: right;
+}
+
+.data-manager tr.is-complete td:first-child::before {
+  content: "■ ";
+  color: var(--ink);
+}
+
+.data-manager tr:not(.is-complete) td:first-child::before {
+  content: "□ ";
+  color: var(--muted);
+}
+
+.data-manager .row-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .credit {

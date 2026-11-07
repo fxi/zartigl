@@ -1,8 +1,8 @@
 /**
  * Monthly timeline, 1980 to the last stored month: years, the Niño 3.4
  * anomaly as bars (warm red, cold blue) over shaded El Niño / La Niña
- * episodes, a strip of the five-year data blocks (loaded, loading, not
- * loaded) and the playhead. Drag to scrub.
+ * episodes, a strip of the five-year data blocks (in memory, on disk,
+ * loading, not loaded) and the playhead. Drag to scrub.
  */
 
 import type { Episode } from "../data/nino";
@@ -12,7 +12,8 @@ const RANGE = 2.5;
 const WARM = "rgba(255, 92, 72, 0.9)";
 const COLD = "rgba(72, 150, 255, 0.9)";
 
-export type BlockStatus = "loaded" | "loading" | "missing";
+/** In memory, being read, on disk only (cache), or to download. */
+export type BlockStatus = "loaded" | "loading" | "cached" | "missing";
 
 export class Timeline {
   readonly canvas: HTMLCanvasElement;
@@ -165,7 +166,9 @@ export class Timeline {
           ? "rgba(255, 255, 255, 0.7)"
           : status === "loading"
             ? "rgba(255, 255, 255, 0.3)"
-            : "rgba(255, 255, 255, 0.08)";
+            : status === "cached"
+              ? "rgba(255, 255, 255, 0.45)"
+              : "rgba(255, 255, 255, 0.08)";
       ctx.fillRect(start + 1, strip - 4, end - start - 2, 3);
     });
 
