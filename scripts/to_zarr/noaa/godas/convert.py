@@ -23,7 +23,7 @@ per year (`pottmp.<year>.nc`, the bias-corrected files) and rewrites the file
 of the current year when a month is added, about two weeks after the month
 ends. Months are stamped at their first day, as in the source.
 
-One store holds three variables on the same time axis and grid:
+One store holds six variables on the same time axis and grid:
 
 - `pottmp` (time, depth, latitude, longitude): potential temperature in degC
   (the source is in Kelvin), longitudes rolled from 0…360 to −180…180;
@@ -32,10 +32,21 @@ One store holds three variables on the same time axis and grid:
   reach 300 m. A proxy of the upper-ocean heat content;
 - `d20` (time, latitude, longitude): depth of the 20 degC isotherm (the
   thermocline in the tropics), linearly interpolated between levels; fill
-  where the surface is below 20 degC or the column never cools below it.
+  where the surface is below 20 degC or the column never cools below it;
+- `pottmp_anom`, `t300_anom`, `d20_anom`: the same fields minus their monthly
+  climatology over the `baseline` years of the config (1991–2020, the WMO
+  normal CPC uses for the ONI).
 
-These are absolute values, not anomalies, and this is not the CPC pentad
-"Sub-Surface Temperature Departures in the Equatorial Pacific" product.
+The climatology is the mean of each calendar month over the baseline years,
+fill where fewer than two thirds of them are valid. `climatology` computes it
+once from the year files into `climatology_<first>_<last>.zarr` next to the
+stores, (month, [depth,] latitude, longitude) in float32: an input of the
+pipeline, outside the store contract and the catalog. `run` computes it
+first when it is missing and the stores do not exist yet, so a CI dispatch
+builds a new version on its own.
+
+This is not the CPC pentad "Sub-Surface Temperature Departures in the
+Equatorial Pacific" product.
 
 `run` reads the year files from the year of the last stored month (or
 `firstYear`) on and appends the months each store lacks, to `timeChunked.zarr`
@@ -45,6 +56,7 @@ revisions of past months need a new store version. The nightly workflow
 products, and `run` does nothing until PSL adds a month.
 
 Usage:
+  uv run scripts/to_zarr/noaa/godas/convert.py climatology [--local DIR] [--force]
   uv run scripts/to_zarr/noaa/godas/convert.py plan [--local DIR]
   uv run scripts/to_zarr/noaa/godas/convert.py run [--budget 90m] [--max-years N] [--local DIR]
   uv run scripts/to_zarr/noaa/godas/convert.py sync-geo   # no-op: run writes geoChunked too
@@ -61,12 +73,13 @@ from __future__ import annotations
 import argparse
 from datetime import date, datetime, timezone
 import json
+import math
 from pathlib import Path
 import shutil
 import sys
 import tempfile
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Iterable, Iterator
 
 import numpy as np
 import xarray as xr
@@ -77,7 +90,8 @@ import contract  # noqa: E402
 
 CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 FILL = -32768
-SCALES = {"pottmp": 0.002, "t300": 0.002, "d20": 0.1}
+SCALES = {"pottmp": 0.002, "t300": 0.002, "d20": 0.1, "pottmp_anom": 0.001, "t300_anom": 0.001, "d20_anom": 0.1}
+FIELDS = ("pottmp", "t300", "d20")
 KELVIN = 273.15
 UPPER_DEPTH = 300.0
 ISOTHERM = 20.0
@@ -166,36 +180,186 @@ def isotherm_depth(temperature: np.ndarray, depth: np.ndarray, value: float = IS
     return np.where(found, result, np.nan).astype(np.float32)
 
 
-def history_line(times: np.ndarray) -> str:
+def fields(pottmp: np.ndarray, depth: np.ndarray) -> dict[str, np.ndarray]:
+    """The absolute fields of some months of (time, depth, lat, lon) temperature in degC."""
+    return {"pottmp": pottmp, "t300": upper_mean(pottmp, depth), "d20": isotherm_depth(pottmp, depth)}
+
+
+def climatology_name(config: dict[str, Any]) -> str:
+    first, last = config["baseline"]
+    return f"climatology_{first}_{last}"
+
+
+def calendar_months(times: np.ndarray) -> np.ndarray:
+    """Calendar month index, 0 for January."""
+    return times.astype("datetime64[M]").astype(int) % 12
+
+
+def climatology(years: Iterable[xr.DataArray]) -> xr.Dataset:
+    """Mean of each calendar month of the absolute fields over complete year files, read one at a time.
+
+    Fill where fewer than two thirds of the years are valid (d20 comes and goes at the edge of the warm pool).
+    """
+    sums: dict[str, np.ndarray] = {}
+    counts: dict[str, np.ndarray] = {}
+    seen: list[int] = []
+    grid: xr.DataArray | None = None
+    for year in years:
+        if year.sizes["time"] != 12:
+            raise RuntimeError(f"{str(year['time'].values[0])[:4]} has {year.sizes['time']} months, not 12")
+        grid = grid if grid is not None else year.isel(time=0)
+        for axis in ("depth", "latitude", "longitude"):
+            if not np.array_equal(year[axis].values, grid[axis].values):
+                raise RuntimeError(f"{str(year['time'].values[0])[:4]}: {axis} differs from the first year")
+        seen.append(int(str(year["time"].values[0])[:4]))
+        months = calendar_months(year["time"].values)
+        if sorted(months.tolist()) != list(range(12)):
+            raise RuntimeError(f"{seen[-1]}: months {months + 1} are not January to December")
+        for name, values in fields(year.values, year["depth"].values).items():
+            if name not in sums:
+                shape = (12, *values.shape[1:])
+                sums[name], counts[name] = np.zeros(shape, np.float64), np.zeros(shape, np.int16)
+            valid = np.isfinite(values)
+            sums[name][months] += np.where(valid, values, 0)
+            counts[name][months] += valid
+    if grid is None:
+        raise RuntimeError("no year to average")
+    minimum = math.ceil(len(seen) * 2 / 3)
+    first, last = seen[0], seen[-1]
+    result = xr.Dataset(
+        {name: (("month", *(("depth",) if name == "pottmp" else ()), "latitude", "longitude"),
+                np.where(counts[name] >= minimum, sums[name] / np.maximum(counts[name], 1), np.nan)
+                .astype(np.float32))
+         for name in FIELDS},
+        coords={"month": np.arange(1, 13), "depth": grid["depth"].values,
+                "latitude": grid["latitude"].values, "longitude": grid["longitude"].values},
+    )
+    result.attrs = {"title": f"GODAS monthly climatology {first}–{last}", "baseline": [first, last],
+                    "comment": f"Mean of each calendar month over {first}–{last}, fill where fewer than "
+                               f"{minimum} of {len(seen)} years are valid. Input of the zartigl GODAS "
+                               "anomalies, not a published layer."}
+    return result
+
+
+def anomalies(values: dict[str, np.ndarray], times: np.ndarray, normals: xr.Dataset) -> dict[str, np.ndarray]:
+    """Each field minus the climatology of its calendar month, refused where int16 packing would overflow."""
+    months = calendar_months(times)
+    result = {}
+    for name in FIELDS:
+        anomaly = (values[name] - normals[name].values[months]).astype(np.float32)
+        limit = 32767 * SCALES[f"{name}_anom"]
+        if np.nanmax(np.abs(anomaly), initial=0) >= limit:
+            raise RuntimeError(f"{name}_anom beyond ±{limit:g}: the int16 packing would overflow")
+        result[f"{name}_anom"] = anomaly
+    return result
+
+
+def write_climatology(config: dict[str, Any], target: common.Target, *, fetch: Fetcher | None = None,
+                      force: bool = False) -> xr.Dataset:
+    """Reads the year files of the baseline and writes their climatology next to the stores.
+
+    Refused once the stores exist: their anomalies are departures from the climatology in place, so a new one
+    needs a new store version.
+    """
+    first, last = config["baseline"]
+    if any(common.stored_times(target, name).size for name in common.STORE_NAMES):
+        raise RuntimeError(f"{config['prefix']} already holds anomalies; a new climatology needs a new version")
+    if not force and climatology_exists(config, target):
+        raise RuntimeError(f"{climatology_name(config)}.zarr exists; pass --force to recompute it")
+
+    def years() -> Iterator[xr.DataArray]:
+        for year in range(first, last + 1):
+            workdir = Path(tempfile.mkdtemp(prefix=f"godas-{year}-"))
+            try:
+                path = (fetch or fetch_year)(config, year, workdir)
+                if path is None:
+                    raise RuntimeError(f"pottmp.{year}.nc is missing")
+                data = read_year(path)
+            finally:
+                shutil.rmtree(workdir, ignore_errors=True)
+            print(f"{year}: read", flush=True)
+            yield data
+
+    result = climatology(years())
+    result.to_zarr(target.store(climatology_name(config)), mode="w" if force else "w-",
+                   consolidated=True, zarr_format=2)
+    return result
+
+
+def open_climatology(config: dict[str, Any], target: common.Target) -> xr.Dataset:
+    return xr.open_zarr(target.store(climatology_name(config)), consolidated=True, zarr_format=2)
+
+
+def climatology_exists(config: dict[str, Any], target: common.Target) -> bool:
+    try:
+        open_climatology(config, target)
+    except (FileNotFoundError, KeyError, ValueError):  # as common.stored_times: zarr raises any of them
+        return False
+    return True
+
+
+def load_climatology(config: dict[str, Any], target: common.Target) -> xr.Dataset:
+    """The climatology `climatology` wrote, in memory, or an error telling to compute it."""
+    if not climatology_exists(config, target):
+        raise RuntimeError(f"{climatology_name(config)}.zarr is missing: run `convert.py climatology` first")
+    return open_climatology(config, target).load()
+
+
+def history_line(times: np.ndarray, baseline: list[int]) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     first, last = (str(value)[:7] for value in (times[0], times[-1]))
     return (f"{stamp}: months {first} to {last} from NOAA PSL pottmp.<year>.nc; Kelvin to degC, "
             f"longitude rolled from 0…360 to −180…180; t300 is the thickness-weighted mean over "
             f"0–{UPPER_DEPTH:g} m, d20 the linearly interpolated {ISOTHERM:g} degC isotherm depth; "
+            f"*_anom are departures from the {baseline[0]}–{baseline[1]} monthly climatology; "
             "by zartigl scripts/to_zarr/noaa/godas")
 
 
-def dataset(pottmp: xr.DataArray) -> xr.Dataset:
+def dataset(pottmp: xr.DataArray, normals: xr.Dataset) -> xr.Dataset:
     """The store variables of some months, decoded (degC, metres, NaN as fill), with the store attributes."""
     depth = pottmp["depth"].values
-    values = pottmp.values
+    for axis in ("depth", "latitude", "longitude"):
+        if not np.array_equal(pottmp[axis].values, normals[axis].values):
+            raise RuntimeError(f"{axis} of the months differs from the climatology")
+    values = fields(pottmp.values, depth)
+    departures = anomalies(values, pottmp["time"].values, normals)
+    baseline = [int(year) for year in normals.attrs["baseline"]]
+    reference = f"Departure from the {baseline[0]}–{baseline[1]} monthly climatology of the same calendar month"
     result = xr.Dataset(
         {
-            "pottmp": (contract.DEPTH_DIMS, values, {
+            "pottmp": (contract.DEPTH_DIMS, values["pottmp"], {
                 "long_name": "Sea water potential temperature (GODAS monthly mean)",
                 "units": "degC",
             }),
-            "t300": (contract.DIMS, upper_mean(values, depth), {
+            "t300": (contract.DIMS, values["t300"], {
                 "long_name": f"Mean sea water potential temperature of the upper {UPPER_DEPTH:g} m (GODAS monthly mean)",
                 "units": "degC",
                 "comment": "Thickness-weighted over the GODAS levels; a proxy of the upper-ocean heat content. "
                            "Fill where the water column is shallower than 300 m",
             }),
-            "d20": (contract.DIMS, isotherm_depth(values, depth), {
+            "d20": (contract.DIMS, values["d20"], {
                 "long_name": f"Depth of the {ISOTHERM:g} degC isotherm (GODAS monthly mean)",
                 "units": "m",
                 "comment": "Linearly interpolated between level centres; fill where the surface is below "
                            "20 degC or the water column never cools below it",
+            }),
+            "pottmp_anom": (contract.DEPTH_DIMS, departures["pottmp_anom"], {
+                "long_name": "Sea water potential temperature anomaly (GODAS monthly mean)",
+                "units": "degC",
+                "comment": reference,
+            }),
+            "t300_anom": (contract.DIMS, departures["t300_anom"], {
+                "long_name": f"Anomaly of the mean sea water potential temperature of the upper "
+                             f"{UPPER_DEPTH:g} m (GODAS monthly mean)",
+                "units": "degC",
+                "comment": reference,
+            }),
+            "d20_anom": (contract.DIMS, departures["d20_anom"], {
+                "long_name": f"Depth anomaly of the {ISOTHERM:g} degC isotherm (GODAS monthly mean)",
+                "units": "m",
+                "comment": f"{reference}; positive is deeper. The climatology averages d20 of the monthly mean "
+                           "profiles over the years with a 20 degC crossing only, fill where fewer than two "
+                           "thirds have one: at the edge of the warm pool it leans to warm years",
             }),
         },
         coords={"time": pottmp["time"].values, "depth": depth,
@@ -207,13 +371,14 @@ def dataset(pottmp: xr.DataArray) -> xr.Dataset:
     result["longitude"].attrs = {"standard_name": "longitude", "units": "degrees_east"}
     result.attrs = {
         "title": "GODAS monthly ocean potential temperature, upper 300 m mean temperature "
-                 "and 20 degC isotherm depth",
+                 "and 20 degC isotherm depth, with their anomalies",
         "source": "NCEP Global Ocean Data Assimilation System (GODAS), monthly means, bias-corrected files "
                   "from NOAA PSL (https://psl.noaa.gov/data/gridded/data.godas.html)",
         "license": LICENSE,
-        "history": history_line(pottmp["time"].values),
-        "comment": "Absolute values, not anomalies. Months are stamped at their first day. Not the CPC pentad "
-                   "Sub-Surface Temperature Departures in the Equatorial Pacific product.",
+        "history": history_line(pottmp["time"].values, baseline),
+        "comment": f"Absolute values, and anomalies from the {baseline[0]}–{baseline[1]} monthly climatology. "
+                   "Months are stamped at their first day. Not the CPC pentad Sub-Surface Temperature "
+                   "Departures in the Equatorial Pacific product.",
         "references": "https://www.cpc.ncep.noaa.gov/products/GODAS/",
     }
     return result
@@ -255,7 +420,8 @@ def pending_years(config: dict[str, Any], target: common.Target, today: date | N
     return list(range(first, (today or date.today()).year + 1))
 
 
-def write_months(config: dict[str, Any], target: common.Target, data: xr.DataArray) -> list[str]:
+def write_months(config: dict[str, Any], target: common.Target, data: xr.DataArray,
+                 normals: xr.Dataset) -> list[str]:
     """Appends to each store the months after its last one; the stores keep one time axis, without holes."""
     written = []
     for store, chunks in config["stores"].items():
@@ -268,9 +434,10 @@ def write_months(config: dict[str, Any], target: common.Target, data: xr.DataArr
         expected = np.arange(first, first + np.timedelta64(months.sizes["time"], "M"))
         if not np.array_equal(months["time"].values.astype("datetime64[M]"), expected):
             raise RuntimeError(f"{store}: months {months['time'].values} do not follow {str(start)[:7]} without a hole")
-        part = dataset(months)
+        part = dataset(months, normals)
         if times.size:
-            part.attrs["history"] = history_line(np.concatenate([times[:1], months["time"].values[-1:]]))
+            part.attrs["history"] = history_line(np.concatenate([times[:1], months["time"].values[-1:]]),
+                                                 config["baseline"])
         specs = encodings(list(part.data_vars))
         sizes = {dim: chunks[dim] for dim in ("depth", "latitude", "longitude")}
         steps = common.append_chunks(times.size, part.sizes["time"], chunks["time"])
@@ -284,7 +451,8 @@ def plan(config: dict[str, Any], target: common.Target, today: date | None = Non
     have = ", ".join(f"{name} until {str(value)[:7]}" if value is not None else f"{name} missing"
                      for name, value in lasts.items())
     years = pending_years(config, target, today)
-    return f"{config['prefix']}: {have}; run reads {years[0]}–{years[-1]}"
+    normals = f"{climatology_name(config)} {'ready' if climatology_exists(config, target) else 'missing'}"
+    return f"{config['prefix']}: {have}; {normals}; run reads {years[0]}–{years[-1]}"
 
 
 def run(config: dict[str, Any], target: common.Target, *, today: date | None = None,
@@ -295,6 +463,14 @@ def run(config: dict[str, Any], target: common.Target, *, today: date | None = N
     """
     today = today or date.today()
     deadline = time.monotonic() + budget
+    if climatology_exists(config, target):
+        normals = load_climatology(config, target)
+    elif any(common.stored_times(target, name).size for name in common.STORE_NAMES):
+        raise RuntimeError(f"{climatology_name(config)}.zarr is missing but the stores hold anomalies "
+                           "computed from it; a new climatology needs a new store version")
+    else:
+        print(f"{climatology_name(config)}.zarr missing: computing it first", flush=True)
+        normals = write_climatology(config, target, fetch=fetch)
     years = pending_years(config, target, today)[:max_years]
     for year in years:
         if time.monotonic() > deadline:
@@ -308,7 +484,7 @@ def run(config: dict[str, Any], target: common.Target, *, today: date | None = N
                     print(f"{year} not published yet", flush=True)
                     break
                 raise RuntimeError(f"pottmp.{year}.nc is missing")
-            written = write_months(config, target, read_year(path))
+            written = write_months(config, target, read_year(path), normals)
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
         print(f"{year}: " + ("; ".join(written) or "no new month"), flush=True)
@@ -317,14 +493,16 @@ def run(config: dict[str, Any], target: common.Target, *, today: date | None = N
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, text in (("plan", "show the stored months and the year files to read"),
+    for name, text in (("climatology", "compute the baseline climatology the anomalies need"),
+                       ("plan", "show the stored months and the year files to read"),
                        ("run", "append the new months to both stores"),
                        ("sync-geo", "nothing to do: run writes both stores")):
         command = commands.add_parser(name, help=text)
         command.add_argument("--local", help="use this directory instead of the bucket")
         command.add_argument("--budget", type=common.parse_budget, default="5h",
                              help="time after which no new year file starts")
-        command.add_argument("--force", action="store_true", help="accepted for the shared workflow")
+        command.add_argument("--force", action="store_true",
+                             help="climatology: overwrite it; otherwise accepted for the shared workflow")
         if name == "run":
             command.add_argument("--max-years", type=int, help="stop after this many year files")
     args = parser.parse_args()
@@ -333,7 +511,10 @@ def main() -> None:
         print("geoChunked.zarr is written by run", flush=True)
         return
     target = common.target_from_args(args, config["prefix"])
-    if args.command == "plan":
+    if args.command == "climatology":
+        write_climatology(config, target, force=args.force)
+        print(f"{climatology_name(config)}.zarr written", flush=True)
+    elif args.command == "plan":
         print(plan(config, target), flush=True)
     else:
         run(config, target, budget=args.budget, max_years=args.max_years)

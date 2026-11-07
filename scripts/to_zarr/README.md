@@ -12,7 +12,7 @@ publishing to `zarr/<org>/<product>/<version>/` in the bucket:
 ```
 mapx-zartigl/zarr/
   noaa/crw-dhw/v3.1/{timeChunked,geoChunked}.zarr
-  noaa/godas/v1/{timeChunked,geoChunked}.zarr
+  noaa/godas/v2/{timeChunked,geoChunked}.zarr
   cams/global-forecast/v1/{timeChunked,geoChunked}.zarr
   cams/gfas/v1.4.2/{timeChunked,geoChunked}.zarr
 ```
@@ -146,9 +146,25 @@ longitude by 1/3° in latitude, 74.5° S to 64.5° N. One store holds:
   - `d20`, the depth of the 20 °C isotherm, interpolated between level
     centres.
 
-All three are int16 (0.002 °C, 0.1 m). Months are stamped at their first day,
-as in the source. These are absolute values, not anomalies, and not the CPC
-pentad equatorial Pacific departures.
+- `pottmp_anom`, `t300_anom` and `d20_anom`, the departures of the three
+  fields from their monthly climatology over the `baseline` of the config
+  (1991–2020, the WMO normal CPC uses for the ONI). There is a single
+  baseline: another one would only shift each calendar month by a fixed field.
+
+The absolute fields are int16 at 0.002 °C and 0.1 m, the anomalies at
+0.001 °C and 0.1 m. Months are stamped at their first day, as in the source.
+These are custom GODAS departures, not the CPC pentad equatorial Pacific
+departures.
+
+The climatology (`climatology_<first>_<last>.zarr` next to the stores) is the
+mean of each calendar month over the baseline years, with fill where fewer
+than two thirds of them are valid. For d20 it averages the years with a
+20 °C crossing only, so at the edge of the warm pool it leans toward warm
+years. It is a pipeline input, outside the store contract and the catalog.
+It is computed once, reading 30 year files (about 3 GB) one at a time: by
+`run` before the first month of a new version (so a CI dispatch builds the
+version alone), or locally with `climatology`. Once the stores exist, neither
+recomputes it: a new reference needs a new store version.
 
 PSL rewrites the file of the current year when it adds a month, about two
 weeks after the month ends. `run` reads the year files from the year of the
@@ -160,6 +176,7 @@ about 25 s and adds about 70 MB per store. The 1980–2026 backfill fits in a
 few daily budgets, or in one dispatch with a budget of `2h`.
 
 ```bash
+uv run scripts/to_zarr/noaa/godas/convert.py climatology --local /tmp/godas
 uv run scripts/to_zarr/noaa/godas/convert.py plan
 uv run scripts/to_zarr/noaa/godas/convert.py run --local /tmp/godas --max-years 1
 ```

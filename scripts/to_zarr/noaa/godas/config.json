@@ -2,7 +2,8 @@
   "product": "NCEP GODAS monthly ocean potential temperature (NOAA PSL), with the 0-300 m mean temperature and the 20 degC isotherm depth",
   "sourceUrl": "https://downloads.psl.noaa.gov/Datasets/godas/pottmp.{year}.nc",
   "firstYear": 1980,
-  "prefix": "zarr/noaa/godas/v1",
+  "baseline": [1991, 2020],
+  "prefix": "zarr/noaa/godas/v2",
   "stores": {
     "timeChunked": { "time": 1, "depth": 1, "latitude": 418, "longitude": 360 },
     "geoChunked": { "time": 60, "depth": 1, "latitude": 60, "longitude": 60 }
