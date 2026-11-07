@@ -7143,6 +7143,256 @@
         },
         "querySourceId": "260c394d-f8b3-4c84-a4f3-5f270187602e"
       }
+    },
+    {
+      "id": "638a12a1-a953-48ac-b435-076496cf579a",
+      "aliases": [
+        "godas-pottmp-anom",
+        "godas-temperature-anomaly"
+      ],
+      "title": {
+        "en": "Ocean Subsurface Temperature Anomaly (GODAS)"
+      },
+      "description": {
+        "en": "Monthly departure of sea water potential temperature from its 1991–2020 climatology for the same calendar month, from NCEP GODAS (NOAA PSL), from 1980, on 40 levels from 5 m to 4478 m. Warm subsurface anomalies in the equatorial Pacific precede El Niño. Departures computed by UNEP/GRID-Geneva from GODAS, not an official CPC product; changes in the observing system (XBT, TAO moorings, Argo) affect GODAS over time."
+      },
+      "category": "ocean",
+      "tags": [
+        "temperature",
+        "subsurface",
+        "anomaly",
+        "ocean-heat",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "64790b65-4b36-4ea7-ae12-bff3068e829a",
+          "type": "zarr",
+          "title": {
+            "en": "NCEP GODAS Zarr"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v2/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v2/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "pottmp_anom"
+          }
+        },
+        {
+          "id": "55821345-4ffa-4bdc-82a2-f5fc353d07eb",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/638a12a1-a953-48ac-b435-076496cf579a/55821345-4ffa-4bdc-82a2-f5fc353d07eb/index.json"
+        }
+      ],
+      "defaults": {
+        "sourceId": "64790b65-4b36-4ea7-ae12-bff3068e829a",
+        "palette": "balance",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -5,
+            5
+          ]
+        },
+        "querySourceId": "64790b65-4b36-4ea7-ae12-bff3068e829a"
+      }
+    },
+    {
+      "id": "6db5ec4b-6d2d-4924-840b-e5c349aef627",
+      "aliases": [
+        "godas-t300-anom",
+        "upper-ocean-heat-content-anomaly"
+      ],
+      "title": {
+        "en": "Upper 300 m Ocean Temperature Anomaly (GODAS)"
+      },
+      "description": {
+        "en": "Monthly departure of the mean potential temperature of the upper 300 m from its 1991–2020 climatology for the same calendar month, from NCEP GODAS (NOAA PSL), from 1980: a proxy of the upper-ocean heat content anomaly that leads El Niño and La Niña. Blank where the sea is shallower than 300 m. Departures computed by UNEP/GRID-Geneva from GODAS, not an official CPC product; changes in the observing system (XBT, TAO moorings, Argo) affect GODAS over time."
+      },
+      "category": "ocean",
+      "tags": [
+        "temperature",
+        "anomaly",
+        "ocean-heat",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "90c9a4d4-78f6-425b-8924-3c2a5fd200a0",
+          "type": "zarr",
+          "title": {
+            "en": "NCEP GODAS Zarr"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v2/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v2/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "t300_anom"
+          }
+        },
+        {
+          "id": "09005b4b-0c06-42f6-bb8b-5f8898d35a16",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6db5ec4b-6d2d-4924-840b-e5c349aef627/09005b4b-0c06-42f6-bb8b-5f8898d35a16/index.json"
+        }
+      ],
+      "defaults": {
+        "sourceId": "90c9a4d4-78f6-425b-8924-3c2a5fd200a0",
+        "palette": "balance",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -3,
+            3
+          ]
+        },
+        "querySourceId": "90c9a4d4-78f6-425b-8924-3c2a5fd200a0"
+      }
+    },
+    {
+      "id": "4e55df16-a95e-47b0-ab07-44a69b31ec6f",
+      "aliases": [
+        "godas-d20-anom",
+        "thermocline-depth-anomaly"
+      ],
+      "title": {
+        "en": "Thermocline Depth Anomaly, 20 °C Isotherm (GODAS)"
+      },
+      "description": {
+        "en": "Monthly departure of the depth of the 20 °C isotherm from its 1991–2020 climatology for the same calendar month, from NCEP GODAS (NOAA PSL), from 1980. Positive is deeper: the thermocline deepens in the eastern equatorial Pacific during El Niño and shoals in the west. Blank where the surface is colder than 20 °C, or where fewer than two thirds of the 1991–2020 years have a 20 °C isotherm; near that edge of the warm pool the climatology leans toward warm years. Departures computed by UNEP/GRID-Geneva from GODAS, not an official CPC product; changes in the observing system (XBT, TAO moorings, Argo) affect GODAS over time."
+      },
+      "category": "ocean",
+      "tags": [
+        "thermocline",
+        "anomaly",
+        "ocean-heat",
+        "el-nino",
+        "enso"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "5ea13b45-fea2-4777-9f26-a713439628f1",
+          "type": "zarr",
+          "title": {
+            "en": "NCEP GODAS Zarr"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v2/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/noaa/godas/v2/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "d20_anom"
+          }
+        },
+        {
+          "id": "334ff0b8-0c8a-4966-8fa8-a166971febcc",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "noaa-psl",
+            "identifiers": {
+              "product": "GODAS",
+              "dataset": "pottmp (monthly means, bias-corrected)"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "P1M"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/4e55df16-a95e-47b0-ab07-44a69b31ec6f/334ff0b8-0c8a-4966-8fa8-a166971febcc/index.json"
+        }
+      ],
+      "defaults": {
+        "sourceId": "5ea13b45-fea2-4777-9f26-a713439628f1",
+        "palette": "balance",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.15,
+          "colorDomain": [
+            -60,
+            60
+          ]
+        },
+        "querySourceId": "5ea13b45-fea2-4777-9f26-a713439628f1"
+      }
     }
   ]
 }

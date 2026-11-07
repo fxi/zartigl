@@ -1656,6 +1656,71 @@
         "maxBitrate": "48M",
         "tune": "psnr"
       }
+    },
+    {
+      "sourceId": "55821345-4ffa-4bdc-82a2-f5fc353d07eb",
+      "catalogEntryId": "638a12a1-a953-48ac-b435-076496cf579a",
+      "title": "Ocean Subsurface Temperature Anomaly (GODAS)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P1Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      },
+      "depths": {
+        "name": "depth",
+        "units": "m",
+        "positive": "down",
+        "surface": 5,
+        "values": [
+          15,
+          25,
+          45,
+          105,
+          215,
+          459,
+          949,
+          2174,
+          4478
+        ]
+      }
+    },
+    {
+      "sourceId": "09005b4b-0c06-42f6-bb8b-5f8898d35a16",
+      "catalogEntryId": "6db5ec4b-6d2d-4924-840b-e5c349aef627",
+      "title": "Upper 300 m Ocean Temperature Anomaly (GODAS)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P1Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
+    },
+    {
+      "sourceId": "334ff0b8-0c8a-4966-8fa8-a166971febcc",
+      "catalogEntryId": "4e55df16-a95e-47b0-ab07-44a69b31ec6f",
+      "title": "Thermocline Depth Anomaly, 20 °C Isotherm (GODAS)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "chunk": "P1Y",
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      }
     }
   ]
 }
