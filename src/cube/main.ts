@@ -55,10 +55,7 @@ import { DataManager, type DataBlock } from "./ui/data-manager";
 import { Timeline, type BlockStatus } from "./ui/timeline";
 
 const ENTRY_ID = "1a088ef7-b187-4234-b651-1643978aa3b5";
-/**
- * The anomaly entry: its store (v2) holds pottmp and pottmp_anom on one time axis, so
- * the cube reads both from it. The absolute entry still points at v1 (same pottmp).
- */
+/** The anomaly entry, for its title: both entries read the same store (v2). */
 const ANOMALY_ENTRY_ID = "638a12a1-a953-48ac-b435-076496cf579a";
 const DOMAIN: [number, number] = [10, 30];
 /** The anomaly entry's catalog color domain. */
@@ -110,11 +107,12 @@ function icon(button: HTMLElement, name: string): void {
 async function main(): Promise<void> {
   const entry = requireCatalogEntry(ENTRY_ID);
   const anomalyEntry = requireCatalogEntry(ANOMALY_ENTRY_ID);
-  const zarr = anomalyEntry.sources.find((source) => source.type === "zarr");
+  // One store holds pottmp and pottmp_anom on the same time axis.
+  const zarr = entry.sources.find((source) => source.type === "zarr");
   const url =
     zarr && "endpoints" in zarr ? zarr.endpoints.pointSeries : undefined;
   if (!url) {
-    throw new Error("The GODAS anomaly entry has no point-series store");
+    throw new Error("The GODAS entry has no point-series store");
   }
 
   const loading = $("loading");
