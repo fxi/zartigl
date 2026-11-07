@@ -602,3 +602,63 @@ describe("ZarrSource point sampling", () => {
     expect(result.points.every((p) => Number.isNaN(p.values.u))).toBe(true);
   });
 });
+
+describe("ZarrSource chunk store", () => {
+  /** A ChunkStore in memory that records its revisions. */
+  function memoryStore() {
+    const saved = new Map<string, { bytes: Uint8Array; revision: string }>();
+    return {
+      saved,
+      get: async (url: string, revision = "") => {
+        const entry = saved.get(url);
+        return entry && entry.revision === revision ? entry.bytes : undefined;
+      },
+      put: async (url: string, bytes: Uint8Array, revision = "") => {
+        saved.set(url, { bytes: new Uint8Array(bytes), revision });
+      },
+      entries: async () => [],
+      delete: async () => {},
+      estimate: async () => undefined,
+    };
+  }
+
+  it("keeps chunks for the next session and reads them without the network", async () => {
+    const store = memoryStore();
+    const url = `${root}/u/0.0.0.0`;
+    const first = installFetch(baseRoutes({ [url]: dataChunk(0, 0) }));
+    const source = new ZarrSource(root, 200, { chunkStore: store });
+    await source.init();
+    const fetched = await source.fetchChunkResult("u", [0, 0, 0, 0]);
+    expect(first.mock.calls.filter(([called]) => called === url)).toHaveLength(
+      1,
+    );
+    // Time chunk 0 of 4 never changes: no revision. The last one (3) carries the time length.
+    expect(store.saved.get(url)?.revision).toBe("");
+    expect(source.chunkRevision("u", [3, 0, 0, 0])).toBe("t=4");
+
+    const second = installFetch(baseRoutes());
+    const next = new ZarrSource(root, 200, { chunkStore: store });
+    await next.init();
+    const reread = await next.fetchChunkResult("u", [0, 0, 0, 0]);
+    expect(second.mock.calls.filter(([called]) => called === url)).toHaveLength(
+      0,
+    );
+    expect(Array.from(reread.data)).toEqual(Array.from(fetched.data));
+    expect(reread.missing).toBe(false);
+  });
+
+  it("reads a chunk of the last time chunk again once the time axis grew", async () => {
+    const store = memoryStore();
+    const url = `${root}/u/3.0.0.0`;
+    await store.put(url, new Uint8Array(chunk(new Array(12).fill(7))), "t=3");
+    const fetchMock = installFetch(baseRoutes({ [url]: dataChunk(3, 0) }));
+    const source = new ZarrSource(root, 200, { chunkStore: store });
+    await source.init();
+    const result = await source.fetchChunkResult("u", [3, 0, 0, 0]);
+    expect(
+      fetchMock.mock.calls.filter(([called]) => called === url),
+    ).toHaveLength(1);
+    expect(result.data[0]).toBe(dataValue(3, 0, 0, 0));
+    expect(store.saved.get(url)?.revision).toBe("t=4");
+  });
+});

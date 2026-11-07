@@ -1,6 +1,7 @@
 import { inflate } from "pako";
 import Blosc from "numcodecs/blosc";
 import type { Codec } from "numcodecs";
+import { chunkRevision, type ChunkStore } from "./chunkStore";
 import type {
   ZarrConsolidatedMeta,
   ZarrArrayMeta,
@@ -54,10 +55,35 @@ export class ZarrSource {
   private maxCacheSize: number;
   private abortControllers = new Map<string, AbortController>();
   private bloscCodecCache = new Map<string, Codec>();
+  private chunkStore: ChunkStore | undefined;
 
-  constructor(root: string, maxCacheSize = 200) {
+  /**
+   * `options.chunkStore` keeps the compressed chunks across sessions (see
+   * chunkStore.ts); without it, chunks are only kept in memory.
+   */
+  constructor(
+    root: string,
+    maxCacheSize = 200,
+    options: { chunkStore?: ChunkStore } = {},
+  ) {
     this.root = root.replace(/\/$/, "");
     this.maxCacheSize = maxCacheSize;
+    this.chunkStore = options.chunkStore;
+  }
+
+  /** The URL of a chunk, as fetched and as stored. */
+  chunkUrl(variable: string, indices: number[]): string {
+    return `${this.root}/${variable}/${indices.join(this.getDimensionSeparator(variable))}`;
+  }
+
+  /** The revision a stored chunk must carry to be current (see chunkRevision). */
+  chunkRevision(variable: string, indices: number[]): string {
+    return chunkRevision(
+      this.getDimensions(variable),
+      this.getShape(variable),
+      this.getChunkShape(variable),
+      indices,
+    );
   }
 
   async init(): Promise<void> {
@@ -676,7 +702,18 @@ export class ZarrSource {
     this.abortControllers.set(cacheKey, controller);
 
     const meta = this.getArrayMeta(variable);
+    const revision = this.chunkStore
+      ? this.chunkRevision(variable, indices)
+      : "";
     try {
+      const stored = await this.chunkStore?.get(url, revision);
+      if (stored) {
+        const decompressed = toFloat32Array(
+          await this.decompress(stored, meta, variable),
+        );
+        this.cacheChunk(cacheKey, decompressed);
+        return { data: decompressed, missing: false, url };
+      }
       const resp = await fetch(url, { signal: controller.signal });
       if (!resp.ok) {
         if (resp.status === 403 || resp.status === 404) {
@@ -691,6 +728,8 @@ export class ZarrSource {
       }
 
       const raw = new Uint8Array(await resp.arrayBuffer());
+      // Stored as received, before decompression may reuse the buffer.
+      void this.chunkStore?.put(url, raw, revision);
       const decompressed = toFloat32Array(
         await this.decompress(raw, meta, variable),
       );
