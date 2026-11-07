@@ -25,6 +25,8 @@ export interface Cursor {
 export interface SliceStyle {
   ramp: Uint8Array;
   domain: [number, number];
+  /** Shade the anomaly and keep only the 20 °C isotherm of the temperature. */
+  anomaly: boolean;
   contours: boolean;
   roi: boolean;
   coast: boolean;
@@ -168,8 +170,11 @@ export class SlicePanel {
     );
   }
 
-  /** The section as a row-major grid (first row at the top) and its size. */
-  private grid(): {
+  /**
+   * The section as a row-major grid (first row at the top) and its size: of the
+   * temperature, or of the anomaly when `field` asks for it and the volume has one.
+   */
+  private grid(field: "temperature" | "anomaly" = "temperature"): {
     values: Float32Array;
     width: number;
     height: number;
@@ -178,7 +183,9 @@ export class SlicePanel {
     if (!volume) {
       return null;
     }
-    const { cols, rows, steps, values } = volume;
+    const { cols, rows, steps } = volume;
+    const values =
+      field === "anomaly" && volume.anomaly ? volume.anomaly : volume.values;
     const { space, cursor } = this;
     const plane = cols * rows;
     if (this.kind === "top") {
@@ -222,6 +229,10 @@ export class SlicePanel {
     const title = this.title();
     const point = this.hover ? this.toData(...this.hover) : null;
     const grid = point ? this.grid() : null;
+    const departures =
+      point && this.style?.anomaly && this.volume?.anomaly
+        ? this.grid("anomaly")
+        : null;
     if (!point || !grid) {
       this.readout.textContent = title;
       return;
@@ -248,7 +259,13 @@ export class SlicePanel {
         : this.kind === "eq"
           ? `${lonLabel(point[0], 1)} ${Math.round(point[1])} m`
           : `${latLabel(point[0], 1)} ${Math.round(point[1])} m`;
-    this.readout.textContent = `${title} · ${where} · ${Number.isNaN(value) ? "—" : `${value.toFixed(2)} °C`}`;
+    const departure = departures?.values[row * grid.width + col];
+    const text = Number.isNaN(value)
+      ? "—"
+      : departure === undefined || Number.isNaN(departure)
+        ? `${value.toFixed(2)} °C`
+        : `${departure >= 0 ? "+" : ""}${departure.toFixed(2)} °C (${value.toFixed(2)} °C)`;
+    this.readout.textContent = `${title} · ${where} · ${text}`;
   }
 
   title(): string {
@@ -286,14 +303,16 @@ export class SlicePanel {
     const plot = this.plot();
     const grid = this.grid();
     const style = this.style;
-    if (grid && style) {
+    const shaded = style?.anomaly ? this.grid("anomaly") : grid;
+    if (grid && shaded && style) {
       this.image.width = grid.width;
       this.image.height = grid.height;
       const image = this.image.getContext("2d")!;
       const pixels = image.createImageData(grid.width, grid.height);
       const [low, high] = style.domain;
-      grid.values.forEach((value, i) => {
-        if (Number.isNaN(value)) {
+      shaded.values.forEach((value, i) => {
+        // Land and sea floor follow the temperature, as in 3D.
+        if (Number.isNaN(grid.values[i]) || Number.isNaN(value)) {
           pixels.data.set([33, 34, 36, 255], i * 4);
           return;
         }
@@ -304,7 +323,7 @@ export class SlicePanel {
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(this.image, plot.x, plot.y, plot.w, plot.h);
       if (style.contours) {
-        this.drawContours(ctx, grid, plot);
+        this.drawContours(ctx, grid, plot, style.anomaly);
       }
     }
     ctx.save();
@@ -339,13 +358,17 @@ export class SlicePanel {
     ctx: CanvasRenderingContext2D,
     grid: { values: Float32Array; width: number; height: number },
     plot: { x: number; y: number; w: number; h: number },
+    mainOnly = false,
   ): void {
     const filled = Array.from(grid.values, (value) =>
       Number.isNaN(value) ? -1e3 : value,
     );
+    // Over the anomaly, only the 20 °C isotherm: the thermocline on the departures.
     const thresholds: number[] = [];
     for (let t = 2; t <= 32; t += ISO_STEP) {
-      thresholds.push(t);
+      if (!mainOnly || t === ISO_MAIN) {
+        thresholds.push(t);
+      }
     }
     const sx = plot.w / grid.width;
     const sy = plot.h / grid.height;

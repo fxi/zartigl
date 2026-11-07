@@ -27,6 +27,8 @@ export interface RenderState {
   /** Blend of the next month, 0–1. */
   mix: number;
   domain: [number, number];
+  /** Color the slices by the anomaly and draw the isotherm neutral. */
+  anomaly: boolean;
   iso: number;
   /** Depth of the box bottom, metres. */
   bottom: number;
@@ -276,28 +278,34 @@ export class CubeRenderer {
     gl.texImage3D(
       gl.TEXTURE_3D,
       0,
-      gl.RG16F,
+      gl.RGBA16F,
       1,
       1,
       1,
       0,
-      gl.RG,
+      gl.RGBA,
       gl.FLOAT,
-      new Float32Array(2),
+      new Float32Array(4),
     );
     return texture;
   }
 
-  /** Uploads a month into slot 0 (current) or 1 (next). */
+  /**
+   * Uploads a month into slot 0 (current) or 1 (next), as (T · valid, valid, A · valid, 0):
+   * the anomaly A is 0 when the volume has none.
+   */
   setVolume(slot: 0 | 1, volume: Volume): void {
     const gl = this.gl;
-    const { values } = volume;
-    const pairs = new Float32Array(values.length * 2);
+    const { values, anomaly } = volume;
+    const texels = new Float32Array(values.length * 4);
     for (let i = 0; i < values.length; i++) {
       const value = values[i];
       if (!Number.isNaN(value)) {
-        pairs[i * 2] = value;
-        pairs[i * 2 + 1] = 1;
+        // Validity follows T, so the isotherm keeps its shape in both modes.
+        const departure = anomaly ? anomaly[i] : 0;
+        texels[i * 4] = value;
+        texels[i * 4 + 1] = 1;
+        texels[i * 4 + 2] = Number.isNaN(departure) ? 0 : departure;
       }
     }
     this.steps = volume.steps;
@@ -306,14 +314,14 @@ export class CubeRenderer {
     gl.texImage3D(
       gl.TEXTURE_3D,
       0,
-      gl.RG16F,
+      gl.RGBA16F,
       volume.cols,
       volume.rows,
       volume.steps,
       0,
-      gl.RG,
+      gl.RGBA,
       gl.FLOAT,
-      pairs,
+      texels,
     );
   }
 
@@ -388,6 +396,7 @@ export class CubeRenderer {
     gl.uniform3fv(u.get("u_ray"), frame.ray);
     gl.uniform1f(u.get("u_mix"), state.mix);
     gl.uniform2fv(u.get("u_domain"), state.domain);
+    gl.uniform1f(u.get("u_anomaly"), state.anomaly ? 1 : 0);
     gl.uniform1f(u.get("u_steps_z"), this.steps);
     gl.uniform3fv(u.get("u_slice"), state.slice);
     gl.uniform3f(

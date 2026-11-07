@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { createBox, latLabel, lonLabel, unwrap, within } from "./box";
 import {
   BlockCache,
-  CODE_SCALE,
   MISSING,
+  POTTMP,
+  POTTMP_ANOM,
   loadBlock,
   monthVolume,
 } from "./blocks";
@@ -95,7 +96,7 @@ describe("blocks", () => {
         return { data, missing: false, url: "" };
       },
     };
-    const block = await loadBlock(reader, box, 2, 60, 130, TILE);
+    const block = await loadBlock(reader, POTTMP, box, 2, 60, 130, TILE);
     expect(block.start).toBe(120);
     expect(block.months).toBe(10);
     expect(requested).toHaveLength(3 * 6);
@@ -107,15 +108,52 @@ describe("blocks", () => {
     const land = monthVolume(block, box, 1, 3, 25);
     // Row 0 (lat −14.5, tile 3) and column 0 (120.5° E, tile 5) is the cell set to NaN.
     expect(land.values[0]).toBeNaN();
-    expect(block.codes[0]).toBe(Math.round(10 / CODE_SCALE));
+    expect(block.codes[0]).toBe(Math.round(10 / POTTMP.scale));
     expect(MISSING).toBe(-32768);
+    expect(volume.anomaly).toBeUndefined();
+  });
+
+  it("reads the anomaly at its own precision, beside the absolute month", async () => {
+    const requested: string[] = [];
+    const reader = {
+      fetchChunkResult: async (variable: string, indices: number[]) => {
+        requested.push(variable);
+        const anomaly = variable === POTTMP_ANOM.name;
+        const value = anomaly ? 1.2345 + indices[1] : 20 + indices[1];
+        const data = new Float32Array(60 * 60 * 60).fill(value);
+        return { data, missing: false, url: "" };
+      },
+    };
+    const block = await loadBlock(reader, POTTMP, box, 0, 60, 130, TILE);
+    const departures = await loadBlock(
+      reader,
+      POTTMP_ANOM,
+      box,
+      0,
+      60,
+      130,
+      TILE,
+    );
+    expect(new Set(requested)).toEqual(new Set(["pottmp", "pottmp_anom"]));
+    expect(departures.scale).toBe(0.001);
+    const volume = monthVolume(block, box, 0, 3, 25, undefined, departures);
+    expect(volume.values[0]).toBeCloseTo(20, 3);
+    // 0.001 °C codes keep the third decimal the 0.002 °C ones would round.
+    expect(volume.anomaly![0]).toBeCloseTo(1.235, 3);
+    expect(volume.anomaly!.length).toBe(volume.values.length);
   });
 
   it("loads a block once and keeps the most recent ones", async () => {
     let loads = 0;
     const cache = new BlockCache(async (index) => {
       loads++;
-      return { index, start: 0, months: 0, codes: new Int16Array() };
+      return {
+        index,
+        start: 0,
+        months: 0,
+        scale: 0.002,
+        codes: new Int16Array(),
+      };
     }, 2);
     await Promise.all([cache.get(0), cache.get(0)]);
     await cache.get(1);

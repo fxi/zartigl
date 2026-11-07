@@ -6,11 +6,13 @@
 
 import palettes from "../lib/palettes.json";
 
-export type PaletteName = "turbo" | "thermal";
+/** Turbo and thermal for the temperature; balance (diverging) for the anomaly. */
+export type PaletteName = "turbo" | "thermal" | "balance";
 
 export const PALETTE_LABELS: Record<PaletteName, string> = {
   turbo: "Turbo",
   thermal: "Thermal",
+  balance: "Balance",
 };
 
 const SIZE = 256;
@@ -67,9 +69,7 @@ export function rampBytes(name: PaletteName): Uint8Array {
   const color =
     name === "turbo"
       ? turbo
-      : stops(
-          (palettes as Record<string, { colors: string[] }>).thermal.colors,
-        );
+      : stops((palettes as Record<string, { colors: string[] }>)[name].colors);
   const bytes = new Uint8Array(SIZE * 4);
   for (let i = 0; i < SIZE; i++) {
     const [r, g, b] = color(i / (SIZE - 1));

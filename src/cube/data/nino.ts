@@ -7,7 +7,7 @@
 
 import { NINO34, unwrap } from "./box";
 import type { ChunkReader } from "./blocks";
-import { VARIABLE } from "./blocks";
+import { POTTMP } from "./blocks";
 
 export const BASE_PERIOD: [number, number] = [1991, 2020];
 /** ONI-style thresholds, °C, held for at least five overlapping seasons. */
@@ -67,7 +67,7 @@ export async function ninoSeries(
     for (const [key, cells] of tiles) {
       const [y, x] = key.split(".").map(Number);
       tasks.push(
-        reader.fetchChunkResult(VARIABLE, [b, 0, y, x]).then(({ data }) => {
+        reader.fetchChunkResult(POTTMP.name, [b, 0, y, x]).then(({ data }) => {
           const months = Math.min(timeChunk, totalMonths - b * timeChunk);
           for (let m = 0; m < months; m++) {
             for (const cell of cells) {

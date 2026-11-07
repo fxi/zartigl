@@ -4,8 +4,9 @@ precision highp sampler3D;
 
 // One ray per fragment through the month volume, composited front to back:
 // the three slice planes and the first crossing of the isotherm as a shaded
-// surface, with depth contours. Volumes hold (T · valid,
-// valid), so linear filtering never mixes land into the sea (T = r / g).
+// surface, with depth contours. Volumes hold (T · valid, valid, A · valid, 0),
+// so linear filtering never mixes land into the sea (T = r / g, the anomaly A = b / g).
+// In anomaly mode the slices show A; the isotherm keeps the shape of T and turns neutral.
 
 in vec3 v_world;
 out vec4 o_color;
@@ -16,7 +17,8 @@ uniform sampler3D u_vol_a;
 uniform sampler3D u_vol_b;
 uniform float u_mix;
 uniform sampler2D u_lut;
-uniform vec2 u_domain;
+uniform vec2 u_domain;         // of the shown quantity: T, or A in anomaly mode
+uniform float u_anomaly;       // 1 in anomaly mode
 uniform float u_steps_z;       // depth steps of the volume texture
 uniform vec3 u_slice;          // world x, y, z of the slice planes
 uniform vec3 u_show;           // slices, isotherm, depth contours on the isotherm
@@ -27,6 +29,7 @@ uniform float u_step;          // march step, world units
 const vec3 LAND = vec3(0.13, 0.135, 0.14);
 const float SLICE_ALPHA = 0.93;
 const float ISO_ALPHA = 0.9;
+const vec3 NEUTRAL = vec3(0.62);
 // Depth contours drawn on the isotherm, metres: every MINOR, stronger every MAJOR.
 const float MINOR = 25.0;
 const float MAJOR = 100.0;
@@ -41,6 +44,13 @@ vec3 uvw(vec3 p) {
 vec2 field(vec3 p) {
     vec3 t = uvw(p);
     return mix(texture(u_vol_a, t).rg, texture(u_vol_b, t).rg, u_mix);
+}
+
+// The quantity the slices show: T, or the anomaly A in anomaly mode, with the validity.
+vec2 shown(vec3 p) {
+    vec3 t = uvw(p);
+    vec4 s = mix(texture(u_vol_a, t), texture(u_vol_b, t), u_mix);
+    return vec2(u_anomaly > 0.5 ? s.b : s.r, s.g);
 }
 
 float temperature(vec2 s) {
@@ -61,7 +71,7 @@ void over(inout vec4 acc, vec3 color, float alpha) {
 }
 
 void slice(inout vec4 acc, vec3 p) {
-    vec2 s = field(p);
+    vec2 s = shown(p);
     if (s.y < 0.5) {
         over(acc, LAND, 0.8);
         return;
@@ -157,7 +167,8 @@ void main() {
             vec3 n = isoNormal(hit);
             float light = 0.35 + 0.65 * abs(dot(n, normalize(vec3(-0.4, -0.5, 0.75))));
             float rim = pow(1.0 - abs(dot(n, -d)), 2.0);
-            vec3 color = ramp(u_iso) * light + vec3(0.35) * rim;
+            vec3 base = u_anomaly > 0.5 ? NEUTRAL : ramp(u_iso);
+            vec3 color = base * light + vec3(0.35) * rim;
             if (hitDepth < 0.0) {
                 hitDepth = (u_half.z - hit.z) / (2.0 * u_half.z) * u_bottom;
                 isoWeight = (1.0 - acc.a) * ISO_ALPHA;

@@ -345,6 +345,11 @@ input[type="range"]:focus-visible {
   border-left: 1px solid var(--rule);
 }
 
+.segmented button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 [aria-pressed="true"] {
   background: var(--ink) !important;
   color: var(--ground) !important;

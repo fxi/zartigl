@@ -1,25 +1,36 @@
 /**
  * Five-year blocks of the cube, read from the point-series store
  * (geoChunked.zarr, chunks of 60 months × 1 level × 60 × 60 cells). A block is
- * one time chunk of every tile and level the box needs, kept as int16 codes
- * of 0.002 °C (about 44 MB), so three blocks stay well under 200 MB.
+ * one time chunk of every tile and level the box needs for one variable, kept
+ * as int16 codes at the store's own precision (about 44 MB), so three blocks
+ * stay well under 200 MB.
  */
 
 import type { ZarrSource } from "../../lib/ZarrSource";
 import type { Box } from "./box";
 import { depthWeights, interpolate } from "./depth";
 
-export const VARIABLE = "pottmp";
+/** A store variable the cube reads, with its int16 precision. */
+export interface CubeVariable {
+  name: string;
+  /** Degrees per int16 code: the store's own scale factor. */
+  scale: number;
+}
+
+/** Absolute potential temperature. */
+export const POTTMP: CubeVariable = { name: "pottmp", scale: 0.002 };
+/** Departure from the 1991–2020 monthly climatology. */
+export const POTTMP_ANOM: CubeVariable = { name: "pottmp_anom", scale: 0.001 };
 /** Code of a missing cell (land, below the sea floor). */
 export const MISSING = -32768;
-/** Degrees per int16 code: the store's own precision. */
-export const CODE_SCALE = 0.002;
 
 export interface Block {
   index: number;
   /** First month of the block, as an index on the store's time axis. */
   start: number;
   months: number;
+  /** Degrees per code. */
+  scale: number;
   /** Codes in [month][level][lat][lon] order. */
   codes: Int16Array;
 }
@@ -63,11 +74,12 @@ function cellOffset(
 }
 
 /**
- * Reads a block: every (level, tile) chunk of time chunk `index`, copied into
- * the box. `timeChunk` and the tile size come from the store's chunk shape.
+ * Reads a block of `variable`: every (level, tile) chunk of time chunk `index`,
+ * copied into the box. `timeChunk` and the tile size come from the store's chunk shape.
  */
 export async function loadBlock(
   reader: ChunkReader,
+  variable: CubeVariable,
   box: Box,
   index: number,
   timeChunk: number,
@@ -89,7 +101,7 @@ export async function loadBlock(
   for (let k = 0; k < levels; k++) {
     for (const [tileLat, tileLon] of box.tiles) {
       tasks.push(async () => {
-        const result = await reader.fetchChunkResult(VARIABLE, [
+        const result = await reader.fetchChunkResult(variable.name, [
           index,
           k,
           tileLat,
@@ -112,7 +124,7 @@ export async function loadBlock(
                 data[(m * tileSize.latitude + y) * tileSize.longitude + x];
               codes[at(m, k, r, c)] = Number.isNaN(value)
                 ? MISSING
-                : Math.round(value / CODE_SCALE);
+                : Math.round(value / variable.scale);
             }
           }
         }
@@ -122,7 +134,7 @@ export async function loadBlock(
     }
   }
   await pooled(tasks, concurrency);
-  return { index, start, months, codes };
+  return { index, start, months, scale: variable.scale, codes };
 }
 
 /** A month of a block, resampled on the regular depth grid. */
@@ -132,10 +144,13 @@ export interface Volume {
   steps: number;
   /** °C in [step][lat][lon] order; NaN where missing. */
   values: Float32Array;
+  /** Departure from the 1991–2020 climatology, same layout, when the anomaly is shown. */
+  anomaly?: Float32Array;
 }
 
 /**
- * Resamples month `m` of a block onto `steps` depths from 0 to `bottom` m.
+ * Resamples month `m` of a block onto `steps` depths from 0 to `bottom` m,
+ * with the same month of an anomaly block when given (both blocks share the time chunk).
  * `weights` can be shared between calls (see depthWeights).
  */
 export function monthVolume(
@@ -145,14 +160,31 @@ export function monthVolume(
   steps: number,
   bottom: number,
   weights = depthWeights(box.depth, steps, bottom),
+  anomaly?: Block,
 ): Volume {
-  const rows = box.lat.index.length;
-  const cols = box.lon.index.length;
+  return {
+    cols: box.lon.index.length,
+    rows: box.lat.index.length,
+    steps,
+    values: resample(block, box, m, steps, weights),
+    ...(anomaly ? { anomaly: resample(anomaly, box, m, steps, weights) } : {}),
+  };
+}
+
+/** Month `m` of a block on `steps` depths, in [step][lat][lon] order. */
+function resample(
+  block: Block,
+  box: Box,
+  m: number,
+  steps: number,
+  weights: ReturnType<typeof depthWeights>,
+): Float32Array {
+  const plane = box.lat.index.length * box.lon.index.length;
   const levels = box.depth.length;
-  const plane = rows * cols;
   const values = new Float32Array(steps * plane);
   const base = m * levels * plane;
-  const decode = (code: number) => (code === MISSING ? NaN : code * CODE_SCALE);
+  const decode = (code: number) =>
+    code === MISSING ? NaN : code * block.scale;
   for (let step = 0; step < steps; step++) {
     const upper = base + weights.upper[step] * plane;
     const lower = base + weights.lower[step] * plane;
@@ -166,7 +198,7 @@ export function monthVolume(
       );
     }
   }
-  return { cols, rows, steps, values };
+  return values;
 }
 
 /** Keeps the most recently used blocks and loads each one once. */

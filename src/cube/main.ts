@@ -13,9 +13,11 @@ import { requireCatalogEntry, resolveLocalizedText } from "../catalog";
 import { ZarrSource } from "../lib/ZarrSource";
 import {
   BlockCache,
-  VARIABLE,
+  POTTMP,
+  POTTMP_ANOM,
   loadBlock,
   monthVolume,
+  type CubeVariable,
   type Volume,
 } from "./data/blocks";
 import { NINO34, createBox, latLabel, lonLabel } from "./data/box";
@@ -51,7 +53,15 @@ import { SlicePanel, type Cursor, type SliceKind } from "./ui/slice2d";
 import { Timeline, type BlockStatus } from "./ui/timeline";
 
 const ENTRY_ID = "1a088ef7-b187-4234-b651-1643978aa3b5";
+/**
+ * The anomaly entry: its store (v2) holds pottmp and pottmp_anom on one time axis, so
+ * the cube reads both from it. The absolute entry still points at v1 (same pottmp).
+ */
+const ANOMALY_ENTRY_ID = "638a12a1-a953-48ac-b435-076496cf579a";
 const DOMAIN: [number, number] = [10, 30];
+/** The anomaly entry's catalog color domain. */
+const ANOMALY_DOMAIN: [number, number] = [-5, 5];
+type Mode = "absolute" | "anomaly";
 const ISO = 20;
 const MOBILE = 760;
 const PRESET_NAMES: Record<Preset, string> = {
@@ -97,13 +107,13 @@ function icon(button: HTMLElement, name: string): void {
 
 async function main(): Promise<void> {
   const entry = requireCatalogEntry(ENTRY_ID);
-  const zarr = entry.sources.find((source) => source.type === "zarr");
+  const anomalyEntry = requireCatalogEntry(ANOMALY_ENTRY_ID);
+  const zarr = anomalyEntry.sources.find((source) => source.type === "zarr");
   const url =
     zarr && "endpoints" in zarr ? zarr.endpoints.pointSeries : undefined;
   if (!url) {
-    throw new Error("The GODAS entry has no point-series store");
+    throw new Error("The GODAS anomaly entry has no point-series store");
   }
-  $("entry-title").textContent = resolveLocalizedText(entry.title, "en");
 
   const loading = $("loading");
   const status = (text: string | null) => {
@@ -116,7 +126,7 @@ async function main(): Promise<void> {
   await source.init();
   const coords = source.getCoords();
   const times = source.getTimeDimension().values;
-  const chunk = source.getChunkShape(VARIABLE);
+  const chunk = source.getChunkShape(POTTMP.name);
   const [timeChunk, , tileLat, tileLon] = chunk;
   const tile = { latitude: tileLat, longitude: tileLon };
   const box = createBox(
@@ -133,36 +143,53 @@ async function main(): Promise<void> {
   const range = `${monthText(times[0])} – ${monthText(times[lastMonth])}`;
   const allDepths = Array.from(coords.vertical);
 
-  facts($("dataset"), [
-    ["Dataset", "pottmp (monthly means, bias-corrected)"],
-    [
-      "Period",
-      `${range} · ${allDepths.length} levels · ${allDepths[0]} m to ${allDepths[allDepths.length - 1]} m`,
-    ],
-    ["Grid", "1° × 1/3° · 74.5° S – 64.5° N"],
-    ["Kind", "scalar · variable: pottmp"],
-    ["id", ENTRY_ID],
-  ]);
-  $("bar-facts").textContent =
-    `VAR: pottmp (°C) | REGION: ${lonLabel(space.west)}–${lonLabel(space.east)}, ${latLabel(-14.5, 1)}–${latLabel(15)} | ROI: NIÑO 3.4 | DEPTH: 0–${BOTTOM} m | TIME: ${range} (MONTHLY)`;
-  facts($("cube-facts"), [
-    ["VARIABLE", "pottmp (°C)"],
-    ["GRID", "1° × 1/3°"],
-    [
-      "LEVELS",
-      `${box.depth.length} of ${allDepths.length} (${box.depth[0]}–${box.depth[box.depth.length - 1]} m)`,
-    ],
-    ["TIME", range],
-    ["REGION", "Equatorial Pacific"],
-    [
-      "SCALE",
-      `lat ×${LAT_STRETCH} · depth ×${space.exaggeration.toLocaleString("en")}`,
-    ],
-    [
-      "BLOCKS",
-      `${timeChunk} months · ${box.tiles.length * box.depth.length} chunks`,
-    ],
-  ]);
+  /** The facts that name the shown variable. */
+  const describe = (anomalyMode: boolean) => {
+    const variable = anomalyMode
+      ? "pottmp_anom (°C, base 1991–2020)"
+      : "pottmp (°C)";
+    $("entry-title").textContent = resolveLocalizedText(
+      (anomalyMode ? anomalyEntry : entry).title,
+      "en",
+    );
+    $("entry-subtitle").textContent = anomalyMode
+      ? "Monthly departure of sea water potential temperature from 1991–2020"
+      : "Monthly mean sea water potential temperature";
+    facts($("dataset"), [
+      ["Dataset", "pottmp (monthly means, bias-corrected)"],
+      [
+        "Period",
+        `${range} · ${allDepths.length} levels · ${allDepths[0]} m to ${allDepths[allDepths.length - 1]} m`,
+      ],
+      ["Grid", "1° × 1/3° · 74.5° S – 64.5° N"],
+      [
+        "Kind",
+        `scalar · variable: ${anomalyMode ? POTTMP_ANOM.name : POTTMP.name}`,
+      ],
+      ["id", anomalyMode ? ANOMALY_ENTRY_ID : ENTRY_ID],
+    ]);
+    $("bar-facts").textContent =
+      `VAR: ${variable} | REGION: ${lonLabel(space.west)}–${lonLabel(space.east)}, ${latLabel(-14.5, 1)}–${latLabel(15)} | ROI: NIÑO 3.4 | DEPTH: 0–${BOTTOM} m | TIME: ${range} (MONTHLY)`;
+    facts($("cube-facts"), [
+      ["VARIABLE", variable],
+      ["GRID", "1° × 1/3°"],
+      [
+        "LEVELS",
+        `${box.depth.length} of ${allDepths.length} (${box.depth[0]}–${box.depth[box.depth.length - 1]} m)`,
+      ],
+      ["TIME", range],
+      ["REGION", "Equatorial Pacific"],
+      [
+        "SCALE",
+        `lat ×${LAT_STRETCH} · depth ×${space.exaggeration.toLocaleString("en")}`,
+      ],
+      [
+        "BLOCKS",
+        `${timeChunk} months · ${box.tiles.length * box.depth.length} chunks`,
+      ],
+    ]);
+  };
+  describe(false);
   $("time-range").textContent = `(${range})`;
   $("scale").textContent =
     `lat ×${LAT_STRETCH} · depth ×${space.exaggeration.toLocaleString("en")} · ${box.depth.length} levels to ${box.depth[box.depth.length - 1]} m`;
@@ -195,6 +222,10 @@ async function main(): Promise<void> {
 
   // State.
   let palette: PaletteName = "turbo";
+  /** Absolute temperature, or its departure from 1991–2020 (balance palette, fixed). */
+  let mode: Mode = "absolute";
+  const anomalyMode = () => mode === "anomaly";
+  const domain = () => (anomalyMode() ? ANOMALY_DOMAIN : DOMAIN);
   let ramp = rampBytes(palette);
   renderer.setPalette(ramp);
   const show: Show = {
@@ -221,37 +252,61 @@ async function main(): Promise<void> {
   let dirty = true;
   const requestDraw = () => (dirty = true);
 
-  // Data.
-  const cache = new BlockCache(
-    (index) =>
-      loadBlock(
-        source,
-        box,
-        index,
-        timeChunk,
-        times.length,
-        tile,
-        (progress) => {
-          if (Math.floor(month / timeChunk) === index && !cache.has(index)) {
-            const first = monthText(times[index * timeChunk]).slice(0, 4);
-            const last = monthText(
-              times[Math.min(lastMonth, (index + 1) * timeChunk - 1)],
-            ).slice(0, 4);
-            status(
-              `LOADING ${first}–${last} · ${progress.done}/${progress.total} CHUNKS`,
-            );
-          }
-          updateBlocks();
-        },
-      ),
-    3,
-  );
+  // Data: one cache per variable; the anomaly is only read in anomaly mode.
+  const blockCache = (variable: CubeVariable, label: string) => {
+    const cache: BlockCache = new BlockCache(
+      (index) =>
+        loadBlock(
+          source,
+          variable,
+          box,
+          index,
+          timeChunk,
+          times.length,
+          tile,
+          (progress) => {
+            if (Math.floor(month / timeChunk) === index && !cache.has(index)) {
+              const first = monthText(times[index * timeChunk]).slice(0, 4);
+              const last = monthText(
+                times[Math.min(lastMonth, (index + 1) * timeChunk - 1)],
+              ).slice(0, 4);
+              status(
+                `LOADING ${label}${first}–${last} · ${progress.done}/${progress.total} CHUNKS`,
+              );
+            }
+            updateBlocks();
+          },
+        ),
+      3,
+    );
+    return cache;
+  };
+  const temperatures = blockCache(POTTMP, "");
+  const departures = blockCache(POTTMP_ANOM, "ANOMALY ");
+  /** The caches the current mode needs, read together. */
+  const caches = () =>
+    anomalyMode() ? [temperatures, departures] : [temperatures];
+  const cache = {
+    has: (b: number) => caches().every((c) => c.has(b)),
+    loading: (b: number) => caches().some((c) => c.loading(b)),
+    get: (b: number) => Promise.all(caches().map((c) => c.get(b))),
+  };
   const blockOf = (m: number) => Math.floor(m / timeChunk);
   const volumeOf = (m: number): Volume | null => {
-    const block = cache.peek(blockOf(m));
-    return block
-      ? monthVolume(block, box, m - block.start, STEPS, BOTTOM, weights)
-      : null;
+    const block = temperatures.peek(blockOf(m));
+    const anomaly = anomalyMode() ? departures.peek(blockOf(m)) : undefined;
+    if (!block || (anomalyMode() && !anomaly)) {
+      return null;
+    }
+    return monthVolume(
+      block,
+      box,
+      m - block.start,
+      STEPS,
+      BOTTOM,
+      weights,
+      anomaly,
+    );
   };
 
   // Slice panels.
@@ -272,7 +327,8 @@ async function main(): Promise<void> {
         { ...cursor },
         {
           ramp,
-          domain: DOMAIN,
+          domain: domain(),
+          anomaly: anomalyMode(),
           contours: show.contours,
           roi: show.roi,
           coast: show.coast,
@@ -449,7 +505,7 @@ async function main(): Promise<void> {
     requestDraw();
   }
 
-  /** The month, cursors and view preset in the URL: #t=YYYY-MM&x=…&y=…&z=…&v=front. */
+  /** The month, cursors, view preset and mode in the URL: #t=YYYY-MM&x=…&y=…&z=…&v=front&m=a. */
   function writeHash(): void {
     const parts = [
       `t=${monthText(times[Math.floor(month)])}`,
@@ -457,6 +513,7 @@ async function main(): Promise<void> {
       `y=${cursor.lat.toFixed(2)}`,
       `z=${Math.round(cursor.depth)}`,
       ...(preset ? [`v=${preset}`] : []),
+      ...(anomalyMode() ? ["m=a"] : []),
       ...(capture ? ["capture"] : []),
     ];
     history.replaceState(null, "", `#${parts.join("&")}`);
@@ -572,6 +629,12 @@ async function main(): Promise<void> {
   }
   const legend = $<HTMLCanvasElement>("legend");
   const drawLegend = () => {
+    const [low, high] = domain();
+    // Absolute: a tick every 2 °C, labelled every 4; anomaly: every 1, labelled every 2.
+    const tick = anomalyMode() ? 1 : 2;
+    $("legend-title").textContent = anomalyMode()
+      ? "ANOMALY vs 1991–2020 (°C)"
+      : "COLORMAP (°C)";
     const ratio = window.devicePixelRatio || 1;
     const rect = legend.getBoundingClientRect();
     legend.width = Math.round(rect.width * ratio);
@@ -589,33 +652,60 @@ async function main(): Promise<void> {
     ctx.fillStyle = "rgba(235, 237, 240, 0.9)";
     ctx.strokeStyle = "rgba(235, 237, 240, 0.9)";
     ctx.textBaseline = "middle";
-    for (let t = DOMAIN[0]; t <= DOMAIN[1]; t += 2) {
-      const y =
-        barTop + (1 - (t - DOMAIN[0]) / (DOMAIN[1] - DOMAIN[0])) * barHeight;
+    for (let t = low; t <= high; t += tick) {
+      const y = barTop + (1 - (t - low) / (high - low)) * barHeight;
+      const labelled = t % (2 * tick) === 0;
       ctx.beginPath();
       ctx.moveTo(22, y);
-      ctx.lineTo(t % 4 === 0 ? 28 : 25, y);
+      ctx.lineTo(labelled ? 28 : 25, y);
       ctx.stroke();
-      if (t % 4 === 0) {
-        ctx.fillText(String(t), 31, y);
+      if (labelled) {
+        ctx.fillText(anomalyMode() && t > 0 ? `+${t}` : String(t), 31, y);
       }
     }
   };
-  for (const button of document.querySelectorAll<HTMLButtonElement>(
-    "[data-palette]",
-  )) {
+  const paletteButtons =
+    document.querySelectorAll<HTMLButtonElement>("[data-palette]");
+  /** The ramp of the mode: the chosen one for the temperature, balance for the anomaly. */
+  const applyRamp = () => {
+    ramp = rampBytes(anomalyMode() ? "balance" : palette);
+    renderer.setPalette(ramp);
+    for (const button of paletteButtons) {
+      button.disabled = anomalyMode();
+      button.setAttribute(
+        "aria-pressed",
+        String(!anomalyMode() && button.dataset.palette === palette),
+      );
+    }
+    drawLegend();
+    drawPanels();
+    requestDraw();
+  };
+  for (const button of paletteButtons) {
     button.addEventListener("click", () => {
       palette = button.dataset.palette as PaletteName;
-      ramp = rampBytes(palette);
-      renderer.setPalette(ramp);
-      for (const other of document.querySelectorAll<HTMLButtonElement>(
-        "[data-palette]",
-      )) {
-        other.setAttribute("aria-pressed", String(other === button));
+      applyRamp();
+    });
+  }
+  const modeButtons =
+    document.querySelectorAll<HTMLButtonElement>("[data-mode]");
+  /** Switches the shown values; the month is shown again once the blocks it needs are read. */
+  const setMode = (next: Mode) => {
+    mode = next;
+    for (const button of modeButtons) {
+      button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+    }
+    describe(anomalyMode());
+    applyRamp();
+    shown = -1;
+    nextMonth = -1;
+    void setMonth(Math.floor(month));
+  };
+  for (const button of modeButtons) {
+    button.addEventListener("click", () => {
+      if (button.dataset.mode !== mode) {
+        setMode(button.dataset.mode as Mode);
       }
-      drawLegend();
-      drawPanels();
-      requestDraw();
     });
   }
 
@@ -771,7 +861,7 @@ async function main(): Promise<void> {
     }
     const point = [0, 1, 2].map((i) => origin[i] + d[i] * t);
     const [lon, lat, depth] = fromWorld(space, point);
-    const { cols, rows, steps, values } = current;
+    const { cols, rows, steps, values, anomaly } = current;
     const c = Math.min(
       cols - 1,
       Math.max(
@@ -791,8 +881,14 @@ async function main(): Promise<void> {
       Math.max(0, Math.round((depth / BOTTOM) * (steps - 1))),
     );
     const value = values[(s * rows + r) * cols + c];
+    const departure = anomaly?.[(s * rows + r) * cols + c];
+    const text = Number.isNaN(value)
+      ? "land / sea floor"
+      : departure === undefined || Number.isNaN(departure)
+        ? `${value.toFixed(2)} °C`
+        : `${departure >= 0 ? "+" : ""}${departure.toFixed(2)} °C (${value.toFixed(2)} °C)`;
     $("pick").textContent =
-      `PICK ${lonLabel(lon, 1)} · ${latLabel(lat, 1)} · ${Math.round(depth)} m · ${Number.isNaN(value) ? "land / sea floor" : `${value.toFixed(2)} °C`}`;
+      `PICK ${lonLabel(lon, 1)} · ${latLabel(lat, 1)} · ${Math.round(depth)} m · ${text}`;
   }
 
   // Layout.
@@ -873,7 +969,8 @@ async function main(): Promise<void> {
           slice: sliceWorld,
           show,
           mix,
-          domain: DOMAIN,
+          domain: domain(),
+          anomaly: anomalyMode(),
           iso: ISO,
           bottom: BOTTOM,
           step: width < MOBILE ? 0.012 : 0.006,
@@ -891,12 +988,20 @@ async function main(): Promise<void> {
   updateBlocks();
   resize();
   requestAnimationFrame(loop);
-  // #t=YYYY-MM&x=…&y=…&z=…&v=… opens that month, cursors and view; the last month otherwise.
+  // #t=YYYY-MM&x=…&y=…&z=…&v=…&m=a opens that month, cursors, view and mode; the last month otherwise.
   const param = (key: string) =>
     new RegExp(`[#&]${key}=([^&]+)`).exec(location.hash)?.[1];
   // Read everything first: applying the cursors rewrites the hash.
   const shared = param("t");
   const sharedPreset = param("v");
+  if (param("m") === "a") {
+    mode = "anomaly";
+    for (const button of modeButtons) {
+      button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+    }
+    describe(true);
+    applyRamp();
+  }
   const sharedMonth = shared
     ? Array.from(times, monthText).indexOf(shared)
     : -1;

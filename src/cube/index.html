@@ -16,7 +16,7 @@
       <header class="meta frame">
         <div class="meta-title">
           <h1 id="entry-title">Ocean Subsurface Temperature (GODAS)</h1>
-          <p>Monthly mean sea water potential temperature</p>
+          <p id="entry-subtitle">Monthly mean sea water potential temperature</p>
           <p id="entry-provider">
             NCEP Global Ocean Data Assimilation System (NOAA PSL)
           </p>
@@ -76,6 +76,14 @@
               <input type="checkbox" id="show-coast" checked />
               <span>COASTLINES</span>
             </label>
+            <div class="segmented" role="radiogroup" aria-label="Values">
+              <button type="button" data-mode="absolute" aria-pressed="true">
+                ABSOLUTE
+              </button>
+              <button type="button" data-mode="anomaly" aria-pressed="false">
+                ANOMALY
+              </button>
+            </div>
             <div class="segmented" role="radiogroup" aria-label="Palette">
               <button type="button" data-palette="turbo" aria-pressed="true">
                 TURBO
@@ -86,7 +94,7 @@
             </div>
           </div>
           <figure class="legend">
-            <figcaption>COLORMAP (°C)</figcaption>
+            <figcaption id="legend-title">COLORMAP (°C)</figcaption>
             <canvas id="legend"></canvas>
           </figure>
         </section>
