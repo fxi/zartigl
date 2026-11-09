@@ -1,7 +1,7 @@
 /**
  * MapLibre-free rendering primitives: GeoVideo archives, manifests and frame
- * decoding, color ramps, color grade, backdrop, trail fading, WebGL helpers
- * and shared GLSL chunks. Published as `@fxi/zartigl/engine` for renderers
+ * decoding, the Zarr reader and its persistent chunk cache, color ramps,
+ * color grade, backdrop, trail fading, WebGL helpers and shared GLSL chunks. Published as `@fxi/zartigl/engine` for renderers
  * that own their projection and canvas, such as `@fxi/projversor`.
  */
 export {
@@ -76,6 +76,19 @@ export type {
   ColorRampInput,
   PaletteMeta,
 } from "./lib/gl-util";
+export { ZarrSource } from "./lib/ZarrSource";
+export type {
+  DecodedChunk,
+  ZarrArrayMeta,
+  ZarrAttrs,
+  ZarrChunkFetchResult,
+  ZarrConsolidatedMeta,
+  ZarrPointSeriesResult,
+  ZarrTimeDimension,
+  ZarrVerticalDimension,
+} from "./lib/types";
+export { cacheChunkStore, chunkRevision } from "./lib/chunkStore";
+export type { ChunkEntry, ChunkStore } from "./lib/chunkStore";
 export { validateScalarColorDomain } from "./lib/scalar-color-domain";
 export type { ScalarColorDomain } from "./lib/scalar-color-domain";
 export { TrailFade, fadeToFrames, fadeToOpacity } from "./lib/trail-fade";
