@@ -25,8 +25,8 @@
 
 The projversor renderer, its demos (explorer, story, home page) and their
 browser tests live in their own repository,
-[fxi/projversor](https://github.com/fxi/projversor), next to this one in MapX
-(`submodules/projversor`). projversor depends on zartigl
+[fxi/projversor](https://github.com/fxi/projversor), cloned next to this one
+(`../projversor`; neither is a MapX submodule). projversor depends on zartigl
 (`file:../zartigl` during development) and uses only the `engine`,
 `catalog` and `story` entries. zartigl never imports projversor, and MapX
 uses only the MapLibre entry and the catalog. A primitive both renderers
