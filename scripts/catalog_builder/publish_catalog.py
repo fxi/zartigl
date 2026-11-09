@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["boto3>=1.35", "jsonschema>=4.0"]
+# dependencies = ["boto3>=1.35", "jsonschema>=4.0", "markdown>=3.5"]
 # ///
 """Publish the built-in catalog to the zartigl bucket, where apps built against
 an older package (MapX) read it live: `loadCatalog()` in @fxi/zartigl/catalog.
 
   catalog/v<schema>/catalog.json            live, rewritten on each change, 60 s cache
   catalog/v<schema>/releases/<version>.json immutable copy of a release (--release)
+  docs/layers/<uuid>/v<n>/index.html        layer documentation, immutable (see skills/layer_docs.py)
+  docs/layers/<uuid>/index.html             latest documentation of the layer, 60 s cache
 
 The catalog is validated first. The published document adds `minEngine`, the
 package version: an older engine still reads it and ignores newer style keys.
@@ -37,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "scripts" / "catalog_builder" / "skills"))
 import validate_catalog  # noqa: E402
+import layer_docs  # noqa: E402
 from copernicus_metadata import fetch_json, zarr_valid_start  # noqa: E402
 from s3_bucket import read_dotenv, require_bucket_cors, s3_client  # noqa: E402
 
@@ -111,6 +114,53 @@ def live_catalog(key: str) -> dict | None:
         raise
 
 
+MISSING = {"404", "NoSuchKey", "NotFound"}
+
+
+def head_or_none(client: Any, bucket: str, key: str) -> dict | None:
+    """The object's HEAD, None only when it does not exist: any other error
+    (denied, server) is raised, so an immutable object is never taken for
+    missing and rewritten."""
+    try:
+        return client.head_object(Bucket=bucket, Key=key)
+    except client.exceptions.ClientError as exc:
+        if str(exc.response.get("Error", {}).get("Code")) in MISSING:
+            return None
+        raise
+
+
+def publish_docs(client: Any, bucket: str, docs: list[dict[str, Any]]) -> list[str]:
+    """
+    Uploads the documentation pages. A published version is never rewritten:
+    if its Markdown source changed, the run fails and asks for a new version.
+    Returns the errors; the latest copies are written only when every version
+    is consistent.
+    """
+    errors: list[str] = []
+    writes: list[dict[str, Any]] = []
+    for page in docs:
+        head = head_or_none(client, bucket, page["key"])
+        if head is None:
+            writes.append(page)
+            continue
+        published_sha = head.get("Metadata", {}).get("source-sha256")
+        if published_sha == page["sha256"]:
+            print(f"{page['key']} unchanged")
+        elif page["immutable"]:
+            errors.append(f"{page['key']}: {page['source']} changed since this version was published; "
+                          "bump its version in scripts/catalog_builder/docs.json and the entry's documentation")
+        else:
+            writes.append(page)
+    if errors:
+        return errors
+    for page in writes:
+        client.put_object(Bucket=bucket, Key=page["key"], Body=page["body"], ACL="public-read",
+                          ContentType="text/html; charset=utf-8", CacheControl=page["cache"],
+                          Metadata={"source-sha256": page["sha256"]})
+        print(f"published {page['source']} to {page['key']}")
+    return []
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--release", action="store_true", help="Also write the immutable copy of this version")
@@ -126,7 +176,10 @@ def main() -> int:
     print(json.dumps({"coverageChanges": changes, "coverageFailures": failures}, indent=2))
     document = published(catalog, version)
     body = (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode()
+    docs = layer_docs.pages(catalog, layer_docs.load_registry())
     if args.dry_run:
+        for page in docs:
+            print(f"would publish {page['source']} to {page['key']} ({page['cache']})")
         for key, cache in keys:
             print(f"would publish {len(catalog['layers'])} layers, minEngine {version}, to {key} ({cache})")
         return 1 if failures else 0
@@ -134,14 +187,16 @@ def main() -> int:
     client, env = s3_client()
     bucket = env["S3_BUCKET"]
     require_bucket_cors(client, bucket)
+    # Pages first: the catalog never links to a page that is not there yet.
+    doc_errors = publish_docs(client, bucket, docs)
+    if doc_errors:
+        print("Documentation not published:\n" + "\n".join(doc_errors), file=sys.stderr)
+        return 1
     for key, cache in keys:
         if cache.endswith("immutable"):
-            try:
-                client.head_object(Bucket=bucket, Key=key)
+            if head_or_none(client, bucket, key) is not None:
                 print(f"{key} exists; releases are immutable, skipped")
                 continue
-            except client.exceptions.ClientError:
-                pass
         elif live == document:
             print(f"{key} unchanged")
             continue

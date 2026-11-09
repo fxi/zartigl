@@ -13,6 +13,9 @@ on:
       - scripts/catalog_builder/publish_catalog.py
       - scripts/catalog_builder/skills/validate_catalog.py
       - scripts/catalog_builder/skills/copernicus_metadata.py
+      - scripts/catalog_builder/skills/layer_docs.py
+      - scripts/catalog_builder/docs.json
+      - scripts/to_zarr/**/METHODOLOGY.md
       - .github/workflows/catalog.yml
   # Nightly, before the GeoVideo archive: refresh the producer-declared start
   # of Copernicus sources (rolling NRT archives); a failure is the alert.

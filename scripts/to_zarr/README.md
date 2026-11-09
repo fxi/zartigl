@@ -98,6 +98,10 @@ uv run scripts/to_zarr/contract.py cams/gfas    # one product
    provider key as a repository secret. Backfill by dispatching the workflow
    with a long budget and `force-geo`, then run `contract.py` on the product.
 7. Only then propose catalog entries (`scripts/catalog_builder/DEVELOPERS.md`).
+8. Write `METHODOLOGY.md` next to `convert.py` (sources, processing,
+   variables, limits, licence and credit) and register it in
+   `scripts/catalog_builder/docs.json`: it is published as the entry's
+   `documentation` ("Layer documentation" in `DEVELOPERS.md`).
 
 Changing a store in place is limited to its metadata. Anything else (grid,
 encoding, variable set, adding a variable) means a new store version, or a

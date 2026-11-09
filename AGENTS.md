@@ -57,6 +57,12 @@ scale, unit, extent), deterministic local statistics from
 `valid_min`/`valid_max` only as a final fallback. Never select the first scalar
 variable implicitly.
 
+A layer cited by a tool or report links its methodology page through the
+entry's `documentation` (Markdown registered in
+`scripts/catalog_builder/docs.json`, published immutable per version by
+`publish_catalog.py`). Tools resolve it from the live catalog with
+`catalogLink()`; see "Layer documentation" in `DEVELOPERS.md`.
+
 A Copernicus Zarr source's real start is the producer's STAC `validStartDate`,
 not its store time axis. `publish_catalog.py` resolves it into the live catalog
 at each publish (and nightly). Never hand-write it in `catalog.json`.

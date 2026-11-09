@@ -12,6 +12,8 @@ Sources are discriminated and independently renderable:
 - `wmts`: GetCapabilities URL, native layer identifier, and optional service overrides.
 - `geovideo`: a version 3 `manifestUrl` for one artifact, or an `indexUrl` for an incremental archive whose policy lives in `scripts/geovideo/archive.json` (see `scripts/geovideo/README.md`).
 
+An entry may link its methodology page with `documentation`; see "Layer documentation" below.
+
 Every source has its own UUID and localized title. Put provider-native names under `provenance.provider` and `provenance.identifiers`; Copernicus uses `product` and `dataset`. A new provider slug also needs its display name in `PROVIDER_LABELS` (`src/catalog/index.ts`): MapX legends show it as the subtitle. Put discovery-only cadence and coverage mode under `temporal`. Live source metadata remains authoritative.
 
 For Copernicus scalar entries, the default WMTS JSON legend is the authoritative visualization contract: palette, color domain, scale, clamp behavior, units, and extent. Deterministic locally derived univariate statistics are the fallback when upstream statistics are unavailable. They also replace a legend range computed on a single time slice that misrepresents the record, such as a seasonally sign-changing flux (`med-co2-flux`, which then uses a diverging palette). Zarr `valid_min`/`valid_max` are validity bounds and are used only as the final range fallback.
@@ -50,3 +52,15 @@ Catalog validation checks structure and cross-references, not remote availabilit
 A merged catalog change is live at once: `.github/workflows/catalog.yml` publishes `catalog.json` to `catalog/v2/catalog.json` on the zartigl bucket (`scripts/catalog_builder/publish_catalog.py`), and each release tag keeps an immutable `catalog/v2/releases/<version>.json`. Apps built against an older package read the live copy with `loadCatalog()` from `@fxi/zartigl/catalog` (MapX `ArcoMapLegend` does by default), falling back to their bundled catalog when it cannot be read. A new entry therefore reaches MapX without a MapX release, but it is drawn by MapX's engine: a style key or palette that engine predates is ignored or replaced, with a warning. The published document adds `minEngine`, the package version that published it. A schema change publishes under `catalog/v3/`; `v2/` then stays frozen for older apps.
 
 Do not hand-write `temporal.start` on a Copernicus Zarr source. A store's time axis can begin years before its data (the NRT wind store from 2020-07, its data from 2024-06-13), and rolling NRT archives move that start. The producer declares it in the dataset STAC (`assets.<timeChunked|geoChunked>.viewDims.time.validStartDate`, else `properties.admp_valid_start_date`), which the Copernicus Marine Toolbox also applies. Each publish resolves it (`zarr_valid_start` in `copernicus_metadata.py`) into the live catalog only, and the workflow also runs nightly. A STAC that cannot be read keeps the live value and fails the run, which is the alert. `publish_catalog.py --dry-run` prints the coverage changes against the live catalog for review. zartigl bounds the time controls, source selection, and point series to that start, and GeoVideo archives drop the earlier timestamps.
+
+## Layer documentation
+
+A layer that a tool or a report cites gets a methodology page: sources, processing, variables, limits, licence and credit. Pipeline products keep it next to their pipeline (`scripts/to_zarr/<org>/<product>/METHODOLOGY.md`). `scripts/catalog_builder/docs.json` lists, for each documented entry, its Markdown source and its version, and the entry's `documentation` links to that version:
+
+```
+https://sos-ch-gva-2.exo.io/mapx-zartigl/docs/layers/<entry uuid>/v<version>/index.html
+```
+
+`publish_catalog.py` renders each page (`skills/layer_docs.py`) and uploads it before the catalog, so the catalog never links to a missing page: `v<version>/index.html` once and immutable, and `index.html`, the latest version, beside it. A published version is never rewritten: if its Markdown changed, the publish fails until the version in `docs.json` and the entry's `documentation` are bumped, and the old version stays where it was cited. Validation checks that every `documentation` link matches `docs.json` and that its source exists.
+
+Tools do not store these links: they resolve them from the live catalog with `catalogLink(uuidOrAlias, "documentation", (await loadCatalog()).catalog)` from `@fxi/zartigl/catalog` (also `"field"`, `"pointSeries"` and `"geovideo"`), so a move of the bucket only needs a republished catalog.

@@ -134,6 +134,12 @@ def main():
     if dupe_data:
         fail(f"Duplicate data layers: {set(dupe_data)}")
 
+    import layer_docs
+
+    doc_errors = layer_docs.check(catalog, layer_docs.load_registry())
+    if doc_errors:
+        fail("Documentation:\n  " + "\n  ".join(doc_errors))
+
     print(f"✓ catalog.json is valid ({len(layers)} layer(s))")
 
 

@@ -135,6 +135,65 @@ export function requireCatalogEntry(
   return entry;
 }
 
+/** The links a catalog entry can resolve to; see `catalogLink`. */
+export type CatalogLinkKind =
+  | "documentation"
+  | "field"
+  | "pointSeries"
+  | "geovideo";
+
+/**
+ * A link of a catalog entry, found by UUID or alias: its methodology page
+ * (`documentation`), its Zarr stores (`field`, `pointSeries`) or its GeoVideo
+ * index or manifest (`geovideo`). Undefined when the entry or the link does
+ * not exist. `pointSeries` comes from the entry's query source first, the
+ * other links from its default source first; then any source of the kind.
+ *
+ * Pass the live catalog (`(await loadCatalog()).catalog`) rather than the
+ * bundled one, so links follow the catalog when objects move.
+ */
+export function catalogLink(
+  layer: string,
+  kind: CatalogLinkKind,
+  data: Catalog = catalog,
+): string | undefined {
+  const entry =
+    getCatalogEntry(layer, data) ??
+    data.layers.find((candidate) => candidate.aliases?.includes(layer));
+  if (!entry) {
+    return undefined;
+  }
+  if (kind === "documentation") {
+    return entry.documentation;
+  }
+  // Point series come from the query source, as `Zartigl` queries them;
+  // the other links from the displayed source.
+  const order =
+    kind === "pointSeries"
+      ? [entry.defaults.querySourceId, entry.defaults.sourceId]
+      : [entry.defaults.sourceId, entry.defaults.querySourceId];
+  const rank = (source: CatalogSource) => {
+    const index = order.indexOf(source.id);
+    return index < 0 ? order.length : index;
+  };
+  const sources = [...entry.sources].sort((a, b) => rank(a) - rank(b));
+  for (const source of sources) {
+    if (kind === "geovideo" && source.type === "geovideo") {
+      return source.indexUrl ?? source.manifestUrl;
+    }
+    if (
+      source.type === "zarr" &&
+      (kind === "field" || kind === "pointSeries")
+    ) {
+      const url = source.endpoints[kind];
+      if (url) {
+        return url;
+      }
+    }
+  }
+  return undefined;
+}
+
 // WMTS comes last: the server styles its tiles, so the layer style would not
 // apply. "auto" stays on client-styled sources while one is available.
 const SCALAR_SOURCE_PRIORITY: CatalogSource["type"][] = [

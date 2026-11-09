@@ -85,6 +85,8 @@ export interface CatalogEntry {
   aliases?: string[];
   title: LocalizedText;
   description?: LocalizedText;
+  /** Methodology and sources: an immutable page published with the catalog. */
+  documentation?: string;
   category: string;
   tags?: string[];
   kind: "scalar" | "vector";

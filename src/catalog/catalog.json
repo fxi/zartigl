@@ -6823,6 +6823,7 @@
       "description": {
         "en": "Yearly median Landsat SWIR1 surface reflectance around Malé, Maldives (about 30 m): land, sand and buildings are bright, water is dark, so islands reclaimed from the lagoon appear as they are built. Until 2012 each frame pools three years of Landsat 7 scenes; pixels without a clear observation keep the previous year's value."
       },
+      "documentation": "https://sos-ch-gva-2.exo.io/mapx-zartigl/docs/layers/92d7a79b-68ba-47f7-b4e4-ef4d5757a966/v1/index.html",
       "category": "coast",
       "tags": [
         "coast",

@@ -1,0 +1,12 @@
+{
+  "upload": {
+    "prefix": "docs/layers"
+  },
+  "docs": [
+    {
+      "catalogEntryId": "92d7a79b-68ba-47f7-b4e4-ef4d5757a966",
+      "file": "scripts/to_zarr/usgs/landsat_mndwi/METHODOLOGY.md",
+      "version": 1
+    }
+  ]
+}

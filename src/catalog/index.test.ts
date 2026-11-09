@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   catalog,
+  catalogLink,
   entryHeader,
   findCatalogEntries,
   getCatalogEntry,
@@ -309,5 +310,54 @@ describe("entryHeader", () => {
     expect(entryHeader({ ...entry, sources: [entry.sources[0]] })).toEqual({
       title: { en: "Custom" },
     });
+  });
+});
+
+describe("catalogLink", () => {
+  const male = "92d7a79b-68ba-47f7-b4e4-ef4d5757a966";
+  const base = "https://sos-ch-gva-2.exo.io/mapx-zartigl";
+
+  it("resolves an entry's links by UUID or alias", () => {
+    const documentation = `${base}/docs/layers/${male}/v1/index.html`;
+    expect(catalogLink(male, "documentation")).toBe(documentation);
+    expect(catalogLink("male-reclamation", "documentation")).toBe(
+      documentation,
+    );
+    expect(catalogLink("male-reclamation", "field")).toBe(
+      `${base}/zarr/usgs/landsat-mndwi-male/v1/timeChunked.zarr`,
+    );
+    expect(catalogLink("male-reclamation", "pointSeries")).toBe(
+      `${base}/zarr/usgs/landsat-mndwi-male/v1/geoChunked.zarr`,
+    );
+    expect(catalogLink("male-reclamation", "geovideo")).toMatch(
+      new RegExp(`/geovideo/${male}/[0-9a-f-]+/index\\.json$`),
+    );
+  });
+
+  it("is undefined for an unknown entry or a missing link", () => {
+    expect(catalogLink("no-such-layer", "field")).toBeUndefined();
+    const undocumented = catalog.layers.find((entry) => !entry.documentation)!;
+    expect(catalogLink(undocumented.id, "documentation")).toBeUndefined();
+  });
+
+  it("takes fields from the default source and point series from the query source", () => {
+    const zarr = (id: string): CatalogSource =>
+      ({
+        id,
+        type: "zarr",
+        endpoints: { field: `${id}.field`, pointSeries: `${id}.series` },
+      }) as CatalogSource;
+    const entry = {
+      id: "entry",
+      sources: [zarr("a"), zarr("b"), zarr("c")],
+      defaults: { sourceId: "c", querySourceId: "b" },
+    } as CatalogEntry;
+    const data = { ...catalog, layers: [entry] };
+    expect(catalogLink("entry", "field", data)).toBe("c.field");
+    expect(catalogLink("entry", "pointSeries", data)).toBe("b.series");
+    entry.defaults.sourceId = "x";
+    expect(catalogLink("entry", "field", data)).toBe("b.field");
+    entry.defaults.querySourceId = undefined;
+    expect(catalogLink("entry", "pointSeries", data)).toBe("a.series");
   });
 });
