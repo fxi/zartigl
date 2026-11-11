@@ -1,0 +1,20 @@
+{
+  "product": "Alplakes Lake Geneva 3D hydrodynamic model (Eawag, Delft3D-Flow): water temperature and currents, 3-hourly",
+  "sourceUrl": "https://alplakes-api.eawag.ch/simulations/file/delft3d-flow/geneva/{sunday}",
+  "userAgent": "zartigl-to-zarr (+https://github.com/fxi/zartigl)",
+  "requestIntervalSeconds": 2,
+  "headerBlockBytes": 4194304,
+  "start": "2018-12-30",
+  "stepsPerDay": 8,
+  "settleDays": 2,
+  "publicationDelayDays": 4,
+  "crs": "EPSG:21781",
+  "grid": {"west": 6.145, "south": 46.2, "dlon": 0.005, "dlat": 0.0035, "nlon": 160, "nlat": 94},
+  "maxDistanceMeters": 360,
+  "prefix": "zarr/eawag/alplakes-geneva/v1",
+  "stores": {
+    "timeChunked": {"time": 1, "depth": 97, "latitude": 94, "longitude": 160},
+    "geoChunked": {"time": 240, "depth": 1, "latitude": 47, "longitude": 40}
+  },
+  "geoSyncMinLagDays": 30
+}

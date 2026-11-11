@@ -81,6 +81,7 @@ export const PROVIDER_LABELS: Record<string, string> = {
   "noaa-psl": "NOAA PSL (NCEP GODAS)",
   "jrc-tmf": "EC JRC Tropical Moist Forests",
   "usgs-landsat": "USGS Landsat",
+  eawag: "Eawag (Alplakes)",
 };
 
 /** A provider's display name; an unknown slug is returned as is. */

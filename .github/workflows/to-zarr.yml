@@ -44,7 +44,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        product: [noaa/crw_dhw, noaa/godas, cams/global_forecast, cams/gfas, jrc/tmf, usgs/landsat_mndwi]
+        product: [noaa/crw_dhw, noaa/godas, cams/global_forecast, cams/gfas, jrc/tmf, usgs/landsat_mndwi,
+                  eawag/alplakes_geneva]
+        # Days fetched ahead in parallel; the Alplakes API is rate limited, so one at a time there.
+        include:
+          - product: eawag/alplakes_geneva
+            jobs: 1
     # One writer per store.
     concurrency:
       group: to-zarr-${{ matrix.product }}
@@ -53,6 +58,7 @@ jobs:
       CONVERT: scripts/to_zarr/${{ matrix.product }}/convert.py
       BUDGET: ${{ inputs.budget || '90m' }}
       FORCE_GEO: ${{ inputs.force-geo && '--force' || '' }}
+      JOBS: ${{ matrix.jobs && format('--jobs {0}', matrix.jobs) || '' }}
       S3_KEY: ${{ secrets.S3_KEY }}
       S3_SECRET: ${{ secrets.S3_SECRET }}
       ADS_KEY: ${{ secrets.ADS_KEY }}
@@ -75,7 +81,7 @@ jobs:
 
       - name: Append new days
         if: steps.selected.outputs.run == 'true'
-        run: uv run "$CONVERT" run --budget "$BUDGET"
+        run: uv run "$CONVERT" run --budget "$BUDGET" $JOBS
 
       - name: Sync point-series store
         if: steps.selected.outputs.run == 'true'

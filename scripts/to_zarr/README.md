@@ -188,6 +188,55 @@ uv run scripts/to_zarr/noaa/godas/convert.py run --local /tmp/godas --max-years 
 GODAS data are in the public domain; acknowledge "GODAS data provided by the
 NOAA PSL, Boulder, Colorado, USA, from their website at https://psl.noaa.gov".
 
+## Alplakes Lake Geneva model (`eawag/alplakes_geneva`)
+
+This is the reference for a curvilinear model grid with currents. It takes
+the Delft3D-Flow model of Lake Geneva run by Eawag
+([Alplakes](https://www.alplakes.eawag.ch)) every 3 hours from 2018-12-30
+(`stepsPerDay: 8`). One store holds `temperature` (degC) and the currents
+`u`/`v` (m/s, east and north). All three are (time, depth, latitude,
+longitude) on 97 levels from 0.17 m to 299.74 m, on a regular grid of about
+390 m. The method is in `METHODOLOGY.md`, next to `convert.py`.
+
+The source is the raw weekly output of the Alplakes API, one NetCDF4 file of
+about 1.9 GB per week starting on Sunday. The pipeline never downloads it
+whole:
+- it reads the HDF5 header once per week, in a few range requests of
+  `headerBlockBytes`;
+- it reads the raw (uncompressed) blocks of `R1`, `U1` and `V1` for the 8
+  steps of a day, about 62 MB in 3 requests;
+- the velocities are averaged from the cell faces to the centres and rotated
+  by `ALFAS`, the same operations as the Alplakes API (they match its
+  `layer` endpoint to its rounding);
+- the curvilinear grid is resampled by nearest neighbour.
+
+A grid that differs from the first week read stops the pipeline, because it
+needs a new store version.
+
+The API is rate limited, so the pipeline treats it with care:
+- every request goes through one session with the descriptive `userAgent` of
+  the config;
+- requests are spaced by `requestIntervalSeconds`;
+- on 429 or 5xx it waits for `Retry-After`, or backs off exponentially;
+- the workflow runs it with `--jobs 1`.
+
+A day is stored once it is `settleDays` old, so no forecast step enters the
+store. A stored step is never rewritten.
+
+A day adds about 10 MB to each store. The backfill (about 2900 days, about
+180 GB read, 6 to 8 h at the polite pace) needs a few manual dispatches of
+`.github/workflows/to-zarr.yml` (input `product: eawag/alplakes_geneva`)
+with a budget of `10h` and `force-geo`.
+
+```bash
+uv run scripts/to_zarr/eawag/alplakes_geneva/convert.py plan
+uv run scripts/to_zarr/eawag/alplakes_geneva/convert.py run --local /tmp/leman --max-days 2 --jobs 1
+uv run scripts/to_zarr/eawag/alplakes_geneva/convert.py sync-geo --local /tmp/leman --force
+```
+
+Alplakes data are CC BY 4.0. Credit "Data: Alplakes, Eawag (CC BY 4.0)" and
+cite Baracchini et al. (2020), doi:10.1016/j.watres.2020.115529.
+
 ## CAMS (Copernicus Atmosphere Data Store)
 
 `cams/ads.py` converts any CAMS dataset from its `config.json`. The config holds

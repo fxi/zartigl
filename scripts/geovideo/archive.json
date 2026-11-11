@@ -1724,6 +1724,73 @@
         "maxBitrate": "48M",
         "tune": "psnr"
       }
+    },
+    {
+      "sourceId": "2c104916-56db-4291-8c77-a323f7c501ac",
+      "catalogEntryId": "1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2",
+      "title": "Lake Geneva Water Temperature (Alplakes)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "output": {
+        "crf": 8,
+        "maxBitrate": "48M",
+        "tune": "psnr"
+      },
+      "depths": {
+        "name": "depth",
+        "units": "m",
+        "positive": "down",
+        "surface": 0.17,
+        "values": [
+          2.0,
+          5.03,
+          10.17,
+          20.4,
+          30.85,
+          50.69,
+          102.38,
+          197.93,
+          299.74
+        ]
+      }
+    },
+    {
+      "sourceId": "c714a2e3-4663-44a4-847a-5c9be9e433dd",
+      "catalogEntryId": "0bbf350c-d81d-4933-9b00-634a5c424e7a",
+      "title": "Lake Geneva Currents (Alplakes)",
+      "windows": [
+        {
+          "full": true
+        }
+      ],
+      "output": {
+        "factor": 1,
+        "crf": 14,
+        "gop": 12,
+        "fps": 4,
+        "transfer": "sqrt",
+        "valueDomain": 0.5
+      },
+      "depths": {
+        "name": "depth",
+        "units": "m",
+        "positive": "down",
+        "surface": 0.17,
+        "values": [
+          2.0,
+          5.03,
+          10.17,
+          20.4,
+          30.85,
+          50.69,
+          102.38,
+          197.93,
+          299.74
+        ]
+      }
     }
   ]
 }

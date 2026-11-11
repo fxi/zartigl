@@ -7394,6 +7394,140 @@
         },
         "querySourceId": "5ea13b45-fea2-4777-9f26-a713439628f1"
       }
+    },
+    {
+      "id": "1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2",
+      "aliases": [
+        "lake-geneva-temperature",
+        "alplakes-geneva-temperature"
+      ],
+      "title": {
+        "en": "Lake Geneva Water Temperature (Alplakes)"
+      },
+      "description": {
+        "en": "Water temperature of Lake Geneva every 3 hours from December 2018, from the surface to 300 m on 97 levels (about 390 m grid), from the Alplakes Delft3D-Flow hydrodynamic model run by Eawag. Model output, not observations."
+      },
+      "documentation": "https://sos-ch-gva-2.exo.io/mapx-zartigl/docs/layers/1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2/v1/index.html",
+      "category": "freshwater",
+      "tags": [
+        "temperature",
+        "lake",
+        "lake-geneva",
+        "leman",
+        "thermocline",
+        "alplakes"
+      ],
+      "kind": "scalar",
+      "sources": [
+        {
+          "id": "278a5033-3297-4b0f-879f-06c544e55dcd",
+          "type": "zarr",
+          "title": {
+            "en": "Alplakes Lake Geneva Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "eawag",
+            "identifiers": {
+              "product": "Alplakes delft3d-flow geneva",
+              "dataset": "weekly raw model output, 3-hourly"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/eawag/alplakes-geneva/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/eawag/alplakes-geneva/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "scalar",
+            "value": "temperature"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "278a5033-3297-4b0f-879f-06c544e55dcd",
+        "palette": "thermal",
+        "raster": {
+          "opacity": 0.9,
+          "logScale": false,
+          "vibrance": 0.2,
+          "colorDomain": [
+            4,
+            26
+          ]
+        },
+        "querySourceId": "278a5033-3297-4b0f-879f-06c544e55dcd"
+      }
+    },
+    {
+      "id": "0bbf350c-d81d-4933-9b00-634a5c424e7a",
+      "aliases": [
+        "lake-geneva-currents",
+        "alplakes-geneva-currents"
+      ],
+      "title": {
+        "en": "Lake Geneva Currents (Alplakes)"
+      },
+      "description": {
+        "en": "Eastward and northward water velocity of Lake Geneva every 3 hours from December 2018, from the surface to 300 m on 97 levels (about 390 m grid), from the Alplakes Delft3D-Flow hydrodynamic model run by Eawag. Model output, not observations."
+      },
+      "documentation": "https://sos-ch-gva-2.exo.io/mapx-zartigl/docs/layers/0bbf350c-d81d-4933-9b00-634a5c424e7a/v1/index.html",
+      "category": "freshwater",
+      "tags": [
+        "currents",
+        "lake",
+        "lake-geneva",
+        "leman",
+        "alplakes"
+      ],
+      "kind": "vector",
+      "sources": [
+        {
+          "id": "fc000129-212d-4b25-b50d-cd5ed110f135",
+          "type": "zarr",
+          "title": {
+            "en": "Alplakes Lake Geneva Zarr (converted)"
+          },
+          "provenance": {
+            "provider": "eawag",
+            "identifiers": {
+              "product": "Alplakes delft3d-flow geneva",
+              "dataset": "weekly raw model output, 3-hourly"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "endpoints": {
+            "field": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/eawag/alplakes-geneva/v1/timeChunked.zarr",
+            "pointSeries": "https://sos-ch-gva-2.exo.io/mapx-zartigl/zarr/eawag/alplakes-geneva/v1/geoChunked.zarr"
+          },
+          "variables": {
+            "kind": "vector",
+            "u": "u",
+            "v": "v"
+          }
+        }
+      ],
+      "defaults": {
+        "sourceId": "fc000129-212d-4b25-b50d-cd5ed110f135",
+        "palette": "rdylbu",
+        "renderMode": "particles",
+        "particles": {
+          "density": 0.033,
+          "speed": 1,
+          "fade": 0.7
+        },
+        "raster": {
+          "opacity": 1,
+          "logScale": true,
+          "vibrance": 0.39
+        },
+        "querySourceId": "fc000129-212d-4b25-b50d-cd5ed110f135"
+      }
     }
   ]
 }

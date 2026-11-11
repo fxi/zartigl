@@ -7,6 +7,16 @@
       "catalogEntryId": "92d7a79b-68ba-47f7-b4e4-ef4d5757a966",
       "file": "scripts/to_zarr/usgs/landsat_mndwi/METHODOLOGY.md",
       "version": 1
+    },
+    {
+      "catalogEntryId": "1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2",
+      "file": "scripts/to_zarr/eawag/alplakes_geneva/METHODOLOGY.md",
+      "version": 1
+    },
+    {
+      "catalogEntryId": "0bbf350c-d81d-4933-9b00-634a5c424e7a",
+      "file": "scripts/to_zarr/eawag/alplakes_geneva/METHODOLOGY.md",
+      "version": 1
     }
   ]
 }

@@ -88,7 +88,9 @@ File-only products (netCDF/GRIB/HDF) become catalog-ready only through a
 maintained `scripts/to_zarr/<org>/<product>/` pipeline that publishes to
 the zartigl bucket (see `scripts/to_zarr/README.md`); propose one when
 ARCO has no equivalent. NOAA Coral Reef Watch heat stress (`noaa/crw_dhw`) is
-the reference implementation for plain files; CAMS products from the
+the reference implementation for plain files; Alplakes Lake Geneva
+(`eawag/alplakes_geneva`) is the one for a curvilinear model grid with
+currents, read by range requests from a rate-limited API; CAMS products from the
 Atmosphere Data Store (`cams/global_forecast`, `cams/gfas`) only need a
 `config.json` for `cams/ads.py`. Before writing to the bucket, follow "Adding
 a product" in `scripts/to_zarr/README.md`; the store contract
