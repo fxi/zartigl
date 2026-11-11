@@ -190,6 +190,15 @@ class WeekTest(Fixture):
             reader.week(later)
 
 
+    def test_rounding_of_cell_centres_is_the_same_grid(self):
+        later = SUNDAY + timedelta(days=7)
+        url = self.config["sourceUrl"].format(sunday=f"{later:%Y%m%d}")
+        self.source.files[url] = write_week(self.directory / "rounded.nc", later, shift=0.03)
+        reader = self.reader()
+        reader.week(SUNDAY)
+        self.assertIsNotNone(reader.week(later))
+
+
 class PhysicsTest(Fixture):
     def day(self) -> convert.Day:
         return self.reader().fetch_day(self.config, date(2025, 11, 4), self.directory)

@@ -83,6 +83,9 @@ STEP = np.timedelta64(3, "h")
 MAX_OFFSET = np.timedelta64(30, "m")
 GRID_VARIABLES = ("XZ", "YZ", "ALFAS", "KCS", "KCU", "KCV", "DPS0", "ZK_LYR")
 DATA_VARIABLES = ("R1", "U1", "V1")
+# Cell centres (LV03 metres) are rewritten with float32 rounding that varies between weeks (3 cm seen from
+# 2024-05-19): positions within this tolerance are the same grid. Masks, angles and layers must match exactly.
+GRID_TOLERANCE_METERS = {"XZ": 1.0, "YZ": 1.0}
 LICENSE = ("CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Data: Alplakes, Eawag. Cite Baracchini, T., "
            "Wüest, A., Bouffard, D. (2020) Meteolakes: An operational online three-dimensional forecasting "
            "platform for lake hydrodynamics. Water Research 172, 115529. Re-packaged by UNEP/GRID-Geneva.")
@@ -344,7 +347,11 @@ class Reader:
             self.grid = grid
             return
         for name in GRID_VARIABLES:
-            if not np.array_equal(grid[name], self.grid[name]):
+            tolerance = GRID_TOLERANCE_METERS.get(name)
+            same = (np.array_equal(grid[name], self.grid[name]) if tolerance is None else
+                    grid[name].shape == self.grid[name].shape
+                    and np.allclose(grid[name], self.grid[name], rtol=0, atol=tolerance, equal_nan=True))
+            if not same:
                 raise RuntimeError(f"week {sunday}: {name} differs from the first week read; "
                                    "a new model grid needs a new store version")
 
