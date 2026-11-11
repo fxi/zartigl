@@ -71,7 +71,11 @@ must be High profile at level 5.0 at most. When a render fails the
 field-error budget, it is re-encoded from the frames already computed (the
 source is not read again, but `frames.rgb` holds every raw frame meanwhile)
 along a fixed ladder: the configured encoding, its ceiling doubled up to 96M,
-then CRF lowered by two and four at that ceiling, never to lossless CRF 0.
+then CRF lowered by two and four at that ceiling, and last CRF 1, never
+lossless CRF 0. Upward velocity at 266 m and 1942 m keeps isolated spikes
+(max 18–67) down to CRF 4; a month at 266 m still fails at CRF 2 (max 26)
+and passes at CRF 1 (max ≈ 11, about 20 MB). The last step costs nothing to
+chunks that pass before it.
 Headroom comes before a lower CRF, which asks for more bits than a ceiling
 allows and can starve the encoder on a hard frame. `report.json` records the
 encoding used and the failed attempts under `encoding`; the ladder does not

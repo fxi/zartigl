@@ -262,7 +262,7 @@ def encoding_ladder(output: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Encodings tried in order until one passes the error budget: the configured
     one, its bitrate ceiling doubled (at most 96M), then lower CRF at that
-    ceiling. A low CRF needs headroom first, or the VBV starves it.
+    ceiling, down to CRF 1. A low CRF needs headroom first, or the VBV starves it.
     """
     crf = int(output["crf"])
     configured = bitrate_bits(output["maxBitrate"])
@@ -273,6 +273,8 @@ def encoding_ladder(output: dict[str, Any]) -> list[dict[str, Any]]:
         # CRF 0 is lossless: High 4:4:4 Predictive, without VBV.
         {"crf": max(1, crf - 2), "maxBitrate": ceiling},
         {"crf": max(1, crf - 4), "maxBitrate": ceiling},
+        # Noisy fields (vertical velocity at depth) keep isolated spikes above CRF 1.
+        {"crf": 1, "maxBitrate": ceiling},
     ]
     return [step for i, step in enumerate(ladder) if step not in ladder[:i]]
 

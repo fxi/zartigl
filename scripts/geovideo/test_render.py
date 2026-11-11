@@ -332,12 +332,13 @@ class EncodingLadderTest(unittest.TestCase):
             {"crf": 8, "maxBitrate": "96M"},
             {"crf": 6, "maxBitrate": "96M"},
             {"crf": 4, "maxBitrate": "96M"},
+            {"crf": 1, "maxBitrate": "96M"},
         ])
 
     def test_never_exceeds_the_level_ceiling(self):
         ladder = encoding_ladder({**self.OUTPUT, "maxBitrate": "96M"})
-        self.assertEqual([step["maxBitrate"] for step in ladder], ["96M", "96M", "96M"])
-        self.assertEqual([step["crf"] for step in ladder], [8, 6, 4])
+        self.assertEqual([step["maxBitrate"] for step in ladder], ["96M"] * 4)
+        self.assertEqual([step["crf"] for step in ladder], [8, 6, 4, 1])
 
     def test_never_retries_lossless(self):
         ladder = encoding_ladder({**self.OUTPUT, "crf": 2, "maxBitrate": "96M"})
