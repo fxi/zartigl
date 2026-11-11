@@ -456,6 +456,9 @@
       "sourceId": "6a271f03-c682-495b-a730-2b9140233b3e",
       "catalogEntryId": "fa853610-4656-4308-a0c3-8a2ac546326f",
       "title": "Upward Sea Water Velocity",
+      "validation": {
+        "maxAbsoluteCodeError": 48
+      },
       "windows": [
         {
           "full": true

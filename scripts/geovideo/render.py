@@ -48,6 +48,8 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "src" / "catalog" / "catalog.json"
 P99_CODE_ERROR_LIMIT = 8
 MAX_CODE_ERROR_LIMIT = 16
+# The most an archive's `validation.maxAbsoluteCodeError` may loosen the maximum to.
+MAX_CODE_ERROR_CEILING = 64
 # Fewer valid grid cells than this (a sparse deep mask) validates spread valid pixels instead.
 MIN_VALIDATION_PIXELS = 256
 # H.264 level 5.0 (ffprobe reports 50), which phones decode in hardware: its
@@ -121,9 +123,24 @@ def catalog_style(layer: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def code_error_limits(config: dict[str, Any]) -> dict[str, int]:
+    """The field-error budget. The p99 is fixed; a noisy field (vertical velocity at depth)
+    may loosen only the maximum, through `validation.maxAbsoluteCodeError`."""
+    validation = config.get("validation") or {}
+    if not isinstance(validation, dict) or set(validation) - {"maxAbsoluteCodeError"}:
+        raise ValueError("validation only accepts maxAbsoluteCodeError")
+    maximum = validation.get("maxAbsoluteCodeError", MAX_CODE_ERROR_LIMIT)
+    if (not isinstance(maximum, int) or isinstance(maximum, bool)
+            or not MAX_CODE_ERROR_LIMIT <= maximum <= MAX_CODE_ERROR_CEILING):
+        raise ValueError(f"validation.maxAbsoluteCodeError must be an integer within "
+                         f"[{MAX_CODE_ERROR_LIMIT}, {MAX_CODE_ERROR_CEILING}]")
+    return {"p99AbsoluteCodeError": P99_CODE_ERROR_LIMIT, "maxAbsoluteCodeError": maximum}
+
+
 def validate_config(raw: dict[str, Any], layer: dict[str, Any] | None = None) -> dict[str, Any]:
     layer_id = uuid4(required(raw, "catalogEntryId"), "catalogEntryId")
     artifact_id = uuid4(required(raw, "id"), "id")
+    code_error_limits(raw)
     if "style" in raw:
         raise ValueError("GeoVideo style is resolved from catalog defaults; remove config.style")
     layer = layer or load_layer(layer_id)
@@ -786,9 +803,11 @@ def validate_encoded_values(
     positions: np.ndarray,
     width: int,
     height: int,
+    limits: dict[str, int] | None = None,
 ) -> dict[str, Any]:
-    """Decode the artifact and enforce the code error budget at `positions`
-    against the frames as encoded (`raw_path`, rgb24)."""
+    """Decode the artifact and enforce the code error budget (`limits`, by default the
+    fixed one) at `positions` against the frames as encoded (`raw_path`, rgb24)."""
+    limits = limits or code_error_limits({})
     ffmpeg = shutil.which("ffmpeg")
     assert ffmpeg is not None
     if positions.size == 0:
@@ -835,42 +854,42 @@ def validate_encoded_values(
         "meanAbsoluteCodeError": float(np.mean(combined)),
         "p99AbsoluteCodeError": int(np.percentile(combined, 99, method="higher")),
         "maxAbsoluteCodeError": int(np.max(combined)),
-        "limits": {
-            "p99AbsoluteCodeError": P99_CODE_ERROR_LIMIT,
-            "maxAbsoluteCodeError": MAX_CODE_ERROR_LIMIT,
-        },
+        "limits": dict(limits),
     }
     if (
-        report["p99AbsoluteCodeError"] > P99_CODE_ERROR_LIMIT or
-        report["maxAbsoluteCodeError"] > MAX_CODE_ERROR_LIMIT
+        report["p99AbsoluteCodeError"] > limits["p99AbsoluteCodeError"] or
+        report["maxAbsoluteCodeError"] > limits["maxAbsoluteCodeError"]
     ):
         raise CodeErrorBudgetError(report)
     return report
 
 
-def validate_value_report(report_path: Path) -> dict[str, Any]:
-    """Require a successful value-fidelity report before publishing an artifact."""
+def validate_value_report(report_path: Path, limits: dict[str, int] | None = None) -> dict[str, Any]:
+    """Require a successful value-fidelity report, validated against `limits` (by default
+    the fixed budget), before publishing an artifact."""
+    limits = limits or code_error_limits({})
     if not report_path.exists():
         raise RuntimeError(f"Scalar-luma validation report not found: {report_path}")
     report = json.loads(report_path.read_text())
     validation = report.get("valueValidation")
     if not isinstance(validation, dict):
         raise RuntimeError("Scalar-luma artifact has no valueValidation result")
-    limits = validation.get("limits")
-    if not isinstance(limits, dict):
+    recorded = validation.get("limits")
+    if not isinstance(recorded, dict):
         raise RuntimeError("Scalar-luma artifact has no valueValidation limits")
     p99 = validation.get("p99AbsoluteCodeError")
     maximum = validation.get("maxAbsoluteCodeError")
-    recorded_p99_limit = limits.get("p99AbsoluteCodeError")
-    recorded_maximum_limit = limits.get("maxAbsoluteCodeError")
+    recorded_p99_limit = recorded.get("p99AbsoluteCodeError")
+    recorded_maximum_limit = recorded.get("maxAbsoluteCodeError")
     if not all(
         isinstance(value, (int, float))
         for value in (p99, maximum, recorded_p99_limit, recorded_maximum_limit)
     ):
         raise RuntimeError("Scalar-luma artifact has an invalid valueValidation result")
-    if recorded_p99_limit != P99_CODE_ERROR_LIMIT or recorded_maximum_limit != MAX_CODE_ERROR_LIMIT:
+    if (recorded_p99_limit != limits["p99AbsoluteCodeError"]
+            or recorded_maximum_limit != limits["maxAbsoluteCodeError"]):
         raise RuntimeError("Scalar-luma artifact was validated against a different error budget")
-    if p99 > P99_CODE_ERROR_LIMIT or maximum > MAX_CODE_ERROR_LIMIT:
+    if p99 > limits["p99AbsoluteCodeError"] or maximum > limits["maxAbsoluteCodeError"]:
         raise RuntimeError(f"Scalar-luma artifact exceeds its recorded code error budget: {validation}")
     return report
 
@@ -1045,6 +1064,7 @@ def encode_within_budget(
         try:
             validation = validate_encoded_values(
                 video_path, raw_path, positions, config["output"]["width"], config["output"]["height"],
+                code_error_limits(config),
             )
         except CodeErrorBudgetError as exc:
             failed.append({**encoding, "valueValidation": exc.report})
@@ -1195,7 +1215,7 @@ def main() -> int:
         if not video_path.exists() or not mask_path.exists() or not manifest_path.exists():
             raise RuntimeError(f"Generated artifact not found: {directory}")
         probe_media(video_path, config, config["durationSeconds"])
-        validate_value_report(report_path)
+        validate_value_report(report_path, code_error_limits(config))
         url = publish(directory, config, artifact_id)
         print(json.dumps({"manifestUrl": url}, indent=2))
         return 0

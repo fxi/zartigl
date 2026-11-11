@@ -1,4 +1,5 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -9,6 +10,7 @@ import xarray as xr
 from render import (
     CodeErrorBudgetError,
     ScalarFrames,
+    code_error_limits,
     create_manifest,
     encode_within_budget,
     encoding_ladder,
@@ -25,6 +27,7 @@ from render import (
     vertical_axis,
     validate_config,
     validate_monthly_samples,
+    validate_value_report,
 )
 
 
@@ -394,6 +397,36 @@ class EncodingLadderTest(unittest.TestCase):
                 mock.patch("render.validate_encoded_values", side_effect=CodeErrorBudgetError({})):
             with self.assertRaises(CodeErrorBudgetError):
                 encode_within_budget(config, Path("video.mp4"), Path("frames.rgb"), np.arange(4), 2)
+
+
+class CodeErrorLimitsTest(unittest.TestCase):
+    def test_defaults_to_the_fixed_budget(self):
+        self.assertEqual(code_error_limits({}), {"p99AbsoluteCodeError": 8, "maxAbsoluteCodeError": 16})
+
+    def test_an_archive_loosens_only_the_maximum(self):
+        limits = code_error_limits({"validation": {"maxAbsoluteCodeError": 48}})
+        self.assertEqual(limits, {"p99AbsoluteCodeError": 8, "maxAbsoluteCodeError": 48})
+        for validation in ({"maxAbsoluteCodeError": 12}, {"maxAbsoluteCodeError": 65},
+                           {"maxAbsoluteCodeError": 20.5}, {"p99AbsoluteCodeError": 12}, [48]):
+            with self.assertRaises(ValueError):
+                code_error_limits({"validation": validation})
+
+    def test_the_ladder_validates_against_the_archive_budget(self):
+        config = {"output": EncodingLadderTest.OUTPUT, "validation": {"maxAbsoluteCodeError": 48}}
+        with mock.patch("render.probe_media", return_value={}), \
+                mock.patch("render.validate_encoded_values", return_value={"maxAbsoluteCodeError": 40}) as validate:
+            encode_within_budget(config, Path("video.mp4"), Path("frames.rgb"), np.arange(4), 2)
+        self.assertEqual(validate.call_args.args[-1]["maxAbsoluteCodeError"], 48)
+
+    def test_a_report_is_checked_against_the_budget_it_was_validated_with(self):
+        limits = code_error_limits({"validation": {"maxAbsoluteCodeError": 48}})
+        report = {"valueValidation": {"p99AbsoluteCodeError": 5, "maxAbsoluteCodeError": 40, "limits": limits}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            path.write_text(json.dumps(report))
+            self.assertEqual(validate_value_report(path, limits), report)
+            with self.assertRaisesRegex(RuntimeError, "different error budget"):
+                validate_value_report(path)
 
 
 class BucketCorsTest(unittest.TestCase):

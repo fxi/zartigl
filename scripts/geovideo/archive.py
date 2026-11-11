@@ -90,6 +90,10 @@ def load_archives(path: Path = ARCHIVE_PATH) -> dict[str, Any]:
             window_interval(window, np.datetime64("2000-01-01", "ns"))
         if archive.get("chunk") is not None and archive["chunk"] not in CHUNK_PERIODS:
             raise ValueError(f"{archive['sourceId']}: chunk must be one of {sorted(CHUNK_PERIODS)}")
+        try:
+            render.code_error_limits(archive)
+        except ValueError as exc:
+            raise ValueError(f"{archive['sourceId']}: {exc}") from None
         validate_depths(archive)
     return data
 
@@ -447,6 +451,8 @@ def render_samples(archive: dict[str, Any], layer: dict[str, Any], chunk: dict[s
             },
             "bounds": bounds,
             "output": output,
+            # The budget decides publication only: it stays out of the chunk key.
+            **({"validation": archive["validation"]} if archive.get("validation") else {}),
             **({"depth": archive["depth"]} if archive.get("depth") else {}),
         }, layer)
         frame_count = round(config["durationSeconds"] * config["output"]["fps"])

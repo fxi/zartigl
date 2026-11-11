@@ -72,10 +72,16 @@ field-error budget, it is re-encoded from the frames already computed (the
 source is not read again, but `frames.rgb` holds every raw frame meanwhile)
 along a fixed ladder: the configured encoding, its ceiling doubled up to 96M,
 then CRF lowered by two and four at that ceiling, and last CRF 1, never
-lossless CRF 0. Upward velocity at 266 m and 1942 m keeps isolated spikes
-(max 18–67) down to CRF 4; a month at 266 m still fails at CRF 2 (max 26)
-and passes at CRF 1 (max ≈ 11, about 20 MB). The last step costs nothing to
-chunks that pass before it.
+lossless CRF 0. The last step costs nothing to chunks that pass before it.
+
+A field noisy enough to keep isolated spikes whatever the encoding may loosen
+its maximum (never the p99) in `archive.json` with
+`"validation": {"maxAbsoluteCodeError": 48}` (at most 64). The budget only
+decides publication, so it stays out of the chunk key; `report.json` records
+the limits a chunk was validated against. Upward velocity at 266 m and 1942 m
+is the case: p99 4–8 and mean below 2, but a maximum of 18–40 even at CRF 1
+at the 96M ceiling, which CRF 1 (about 130 Mbit/s asked) exceeds, so the
+outcome varied between machines.
 Headroom comes before a lower CRF, which asks for more bits than a ceiling
 allows and can starve the encoder on a hard frame. `report.json` records the
 encoding used and the failed attempts under `encoding`; the ladder does not
