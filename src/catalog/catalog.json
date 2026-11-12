@@ -7552,7 +7552,7 @@
       ],
       "defaults": {
         "sourceId": "fc000129-212d-4b25-b50d-cd5ed110f135",
-        "palette": "rdylbu",
+        "palette": "viridis",
         "renderMode": "particles",
         "particles": {
           "density": 0.033,
