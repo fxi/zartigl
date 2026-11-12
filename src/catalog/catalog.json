@@ -7555,9 +7555,9 @@
         "palette": "viridis",
         "renderMode": "particles",
         "particles": {
-          "density": 0.033,
+          "density": 0.001,
           "speed": 1,
-          "fade": 0.7
+          "fade": 0.92
         },
         "raster": {
           "opacity": 1,
