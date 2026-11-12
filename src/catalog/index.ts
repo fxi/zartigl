@@ -1,8 +1,11 @@
 import catalogJson from "./catalog.json";
 import type {
   Catalog,
+  CatalogBounds,
   CatalogEntry,
   CatalogEntrySelector,
+  CatalogGeoVideoArchiveSource,
+  CatalogGeoVideoSource,
   CatalogSearchOptions,
   CatalogSource,
   LocalizedText,
@@ -10,6 +13,7 @@ import type {
 
 export type {
   Catalog,
+  CatalogBounds,
   CatalogEntry,
   CatalogEntrySelector,
   CatalogGeoVideoSource,
@@ -453,3 +457,16 @@ export type {
   LoadedCatalog,
   PublishedCatalog,
 } from "./remote";
+
+/**
+ * Geographic extent of an entry: west, south, east, north, from its GeoVideo
+ * archive, else from a single GeoVideo artifact (often a regional event).
+ * Undefined when no GeoVideo source declares one.
+ */
+export function entryBounds(entry: CatalogEntry): CatalogBounds | undefined {
+  const sources = entry.sources.filter(
+    (source): source is CatalogGeoVideoSource | CatalogGeoVideoArchiveSource =>
+      source.type === "geovideo" && !!source.bounds,
+  );
+  return (sources.find((s) => s.indexUrl) ?? sources[0])?.bounds;
+}

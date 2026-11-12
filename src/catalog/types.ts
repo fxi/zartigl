@@ -55,11 +55,16 @@ export interface CatalogWmtsSource extends CatalogSourceBase {
   tileUrlTemplate?: string;
 }
 
+/** Geographic extent: west, south, east, north, in degrees. */
+export type CatalogBounds = [number, number, number, number];
+
 /** One published artifact. */
 export interface CatalogGeoVideoSource extends CatalogSourceBase {
   type: "geovideo";
   manifestUrl: string;
   indexUrl?: never;
+  /** Extent of the encoded frames, as in the manifest. */
+  bounds?: CatalogBounds;
 }
 
 /**
@@ -70,6 +75,8 @@ export interface CatalogGeoVideoArchiveSource extends CatalogSourceBase {
   type: "geovideo";
   indexUrl: string;
   manifestUrl?: never;
+  /** Extent of the encoded frames, as in the chunk manifests. */
+  bounds?: CatalogBounds;
 }
 
 export type CatalogSource =

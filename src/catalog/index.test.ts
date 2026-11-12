@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalog,
   catalogLink,
+  entryBounds,
   entryHeader,
   findCatalogEntries,
   getCatalogEntry,
@@ -359,5 +360,29 @@ describe("catalogLink", () => {
     expect(catalogLink("entry", "field", data)).toBe("b.field");
     entry.defaults.querySourceId = undefined;
     expect(catalogLink("entry", "pointSeries", data)).toBe("a.series");
+  });
+});
+
+describe("entryBounds", () => {
+  const byAlias = (alias: string) =>
+    catalog.layers.find((entry) => entry.aliases?.includes(alias))!;
+
+  it("gives every GeoVideo source of the catalog its bounds", () => {
+    for (const entry of catalog.layers) {
+      for (const source of entry.sources) {
+        if (source.type === "geovideo") {
+          expect(source.bounds, entry.id).toHaveLength(4);
+        }
+      }
+    }
+  });
+
+  it("prefers the archive over a single regional artifact", () => {
+    const [west, , east] = entryBounds(byAlias("surface-wind"))!;
+    expect(east - west).toBeGreaterThanOrEqual(359);
+  });
+
+  it("is undefined without a GeoVideo source", () => {
+    expect(entryBounds(byAlias("coral-bleaching-alert"))).toBeUndefined();
   });
 });

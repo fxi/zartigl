@@ -60,7 +60,13 @@
             "mode": "analysis-forecast",
             "cadence": "PT6H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/61a81ddd-6c8e-4020-a59f-06ef13a90419/4f0f1677-be89-4751-b2b5-c387a81c477a/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/61a81ddd-6c8e-4020-a59f-06ef13a90419/4f0f1677-be89-4751-b2b5-c387a81c477a/index.json",
+          "bounds": [
+            -180.041659,
+            -79.958326,
+            179.958336,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -140,7 +146,13 @@
             "cadence": "PT1H",
             "start": "2024-12-12T00:00:00Z",
             "end": "2024-12-16T23:00:00Z"
-          }
+          },
+          "bounds": [
+            25,
+            -35,
+            75,
+            5
+          ]
         },
         {
           "id": "98157b79-2ffb-44b2-b067-36af80ce4cd5",
@@ -159,7 +171,13 @@
             "mode": "near-real-time",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/98157b79-2ffb-44b2-b067-36af80ce4cd5/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/72aa3549-8cdf-4275-b8f7-5b32ca40a3f2/98157b79-2ffb-44b2-b067-36af80ce4cd5/index.json",
+          "bounds": [
+            -180,
+            -90,
+            180,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -260,7 +278,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/39296bd8-f93f-4fce-91ab-44faf9d91e90/5a2fbc5e-389a-49db-b4bf-eae7ee1f5d0d/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/39296bd8-f93f-4fce-91ab-44faf9d91e90/5a2fbc5e-389a-49db-b4bf-eae7ee1f5d0d/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -336,7 +360,13 @@
             "mode": "analysis-forecast",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88f00432-ffad-4ebd-85ac-9f8de1ee5213/35a8e696-157f-4faf-ad2d-1ac5dff1009e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88f00432-ffad-4ebd-85ac-9f8de1ee5213/35a8e696-157f-4faf-ad2d-1ac5dff1009e/index.json",
+          "bounds": [
+            -180.041667,
+            -79.958333,
+            179.958333,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -436,7 +466,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/28599e51-320c-42f8-835a-02ad06f7a131/4a339c9c-66eb-4528-a202-d1f8d5284791/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/28599e51-320c-42f8-835a-02ad06f7a131/4a339c9c-66eb-4528-a202-d1f8d5284791/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -534,7 +570,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/4609f41a-7089-4389-963f-38716335509b/a7240768-e655-4de3-9f60-7ff7a85167be/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/4609f41a-7089-4389-963f-38716335509b/a7240768-e655-4de3-9f60-7ff7a85167be/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -632,7 +674,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/287d265b-6342-4f4a-bd57-aa861f84a269/2a998955-7f72-4ec4-9f22-cb433c115b6a/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/287d265b-6342-4f4a-bd57-aa861f84a269/2a998955-7f72-4ec4-9f22-cb433c115b6a/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -730,7 +778,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b38f7b2c-9ff4-4b3c-96ab-eb4c01e69a45/aa076d8f-af69-4c87-8c95-e68eb661128b/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b38f7b2c-9ff4-4b3c-96ab-eb4c01e69a45/aa076d8f-af69-4c87-8c95-e68eb661128b/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -805,7 +859,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/c67b6ca4-3924-456e-b197-16dc85daff25/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/89f148bd-dd9d-4428-85ee-21f8af513627/c67b6ca4-3924-456e-b197-16dc85daff25/index.json",
+          "bounds": [
+            9.041542053222656,
+            53.008296966552734,
+            30.207401275634766,
+            65.8909912109375
+          ]
         }
       ],
       "defaults": {
@@ -903,7 +963,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/840609cc-28d2-42f8-afc7-5dfb322e93da/6eb2e47c-1627-49ff-9073-4a1de68135d0/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/840609cc-28d2-42f8-afc7-5dfb322e93da/6eb2e47c-1627-49ff-9073-4a1de68135d0/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1001,7 +1067,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/83bfbf02-d5a4-40d6-8265-a16ef2c7a8a4/25fcf580-fa4b-46d5-8231-95ca3abb941d/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/83bfbf02-d5a4-40d6-8265-a16ef2c7a8a4/25fcf580-fa4b-46d5-8231-95ca3abb941d/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1099,7 +1171,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/04ad1cbd-3f21-4e84-845d-cd17930a49a2/6ea81ae4-618d-4602-957c-a027053d22e0/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/04ad1cbd-3f21-4e84-845d-cd17930a49a2/6ea81ae4-618d-4602-957c-a027053d22e0/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.75,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1174,7 +1252,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/2d53f9dd-cd8d-4031-9826-09f40ad0f959/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/a7d9835c-0a80-4112-8b43-694e359384ac/2d53f9dd-cd8d-4031-9826-09f40ad0f959/index.json",
+          "bounds": [
+            -180,
+            45,
+            180,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1272,7 +1356,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/3db0120b-17d2-4789-9952-efcc0953ecc4/1c21d5ae-ee20-47aa-aec0-30e69506bc9b/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/3db0120b-17d2-4789-9952-efcc0953ecc4/1c21d5ae-ee20-47aa-aec0-30e69506bc9b/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.91668701171875,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1376,7 +1466,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/5250b6f9-d877-4e9e-a11a-f63205688b61/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5e94f1b2-1342-4a1f-936e-09170d7d4db8/5250b6f9-d877-4e9e-a11a-f63205688b61/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.9166717529297,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1474,7 +1570,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/95553290-0513-43bd-9806-a5bb060737b7/1cdd2e31-f466-4bf6-add0-adb948888c57/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/95553290-0513-43bd-9806-a5bb060737b7/1cdd2e31-f466-4bf6-add0-adb948888c57/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.91668701171875,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1572,7 +1674,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa853610-4656-4308-a0c3-8a2ac546326f/6a271f03-c682-495b-a730-2b9140233b3e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa853610-4656-4308-a0c3-8a2ac546326f/6a271f03-c682-495b-a730-2b9140233b3e/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.91668701171875,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1647,7 +1755,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/ccb8500b-5bc1-41a1-acb3-cbd8cd758b92/e37da4a3-e5b2-4041-8484-99ddfb06a670/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/ccb8500b-5bc1-41a1-acb3-cbd8cd758b92/e37da4a3-e5b2-4041-8484-99ddfb06a670/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.91668701171875,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1903,7 +2017,13 @@
             "mode": "analysis-forecast",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/67cc53f8-8810-42d9-adbf-bd28b16227c2/8e457f46-45d9-4190-80bb-a252174cebe8/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/67cc53f8-8810-42d9-adbf-bd28b16227c2/8e457f46-45d9-4190-80bb-a252174cebe8/index.json",
+          "bounds": [
+            -180,
+            -80,
+            179.91666666666663,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -1984,7 +2104,13 @@
             "mode": "analysis-forecast",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bb38fd23-b0b0-4cd0-b59d-0224be3052f9/a88028a4-8ea7-4d63-b164-7c2a56b2a46e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bb38fd23-b0b0-4cd0-b59d-0224be3052f9/a88028a4-8ea7-4d63-b164-7c2a56b2a46e/index.json",
+          "bounds": [
+            -180.041667,
+            -79.958333,
+            179.958333,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -2062,7 +2188,13 @@
             "mode": "analysis-forecast",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/40733539-e493-448e-80b5-2a7874f47b85/03d4ad76-edbc-4c90-8c7f-78d86583c8e0/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/40733539-e493-448e-80b5-2a7874f47b85/03d4ad76-edbc-4c90-8c7f-78d86583c8e0/index.json",
+          "bounds": [
+            -180.041659,
+            -79.958326,
+            179.958336,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -2163,7 +2295,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/f0812aa5-f9b6-4149-ab51-3de9d9d100c3/1de88e28-2847-4c2e-8f6c-883169fc5c7e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/f0812aa5-f9b6-4149-ab51-3de9d9d100c3/1de88e28-2847-4c2e-8f6c-883169fc5c7e/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2262,7 +2400,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0e05907e-a3e9-4537-a68a-bc0780d261f2/743ef7b8-aed4-4871-9990-2f8418f520f2/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0e05907e-a3e9-4537-a68a-bc0780d261f2/743ef7b8-aed4-4871-9990-2f8418f520f2/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2361,7 +2505,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7a499cff-5934-4145-96ac-27477faf58f0/47a6002f-5660-4ab6-b78e-bf0ed3fec155/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7a499cff-5934-4145-96ac-27477faf58f0/47a6002f-5660-4ab6-b78e-bf0ed3fec155/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2460,7 +2610,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/ddf10ab0-2654-4c37-88d9-1bbd9b0ee947/fbdc7c5d-40aa-4e2b-b58e-b3d97e34c44b/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/ddf10ab0-2654-4c37-88d9-1bbd9b0ee947/fbdc7c5d-40aa-4e2b-b58e-b3d97e34c44b/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2559,7 +2715,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/43fbd59e-060a-4797-8588-529d0fb79542/7e6c6f46-b8ae-4a5d-95d2-be36aa462c92/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/43fbd59e-060a-4797-8588-529d0fb79542/7e6c6f46-b8ae-4a5d-95d2-be36aa462c92/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2658,7 +2820,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5c3c8139-bb64-46fc-847a-b3c0750b49b6/a87f3237-52ed-4a83-9579-7a62b8a463e7/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5c3c8139-bb64-46fc-847a-b3c0750b49b6/a87f3237-52ed-4a83-9579-7a62b8a463e7/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2757,7 +2925,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f9843e3-a525-4fa0-b982-419e3e63d1d0/94284f8a-754e-4ad4-921a-3019f13f7617/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f9843e3-a525-4fa0-b982-419e3e63d1d0/94284f8a-754e-4ad4-921a-3019f13f7617/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2856,7 +3030,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/123bd37b-f9ec-484c-adb9-e365e35c367f/e21f7e51-1aea-4c0a-8e5f-0df51a999f39/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/123bd37b-f9ec-484c-adb9-e365e35c367f/e21f7e51-1aea-4c0a-8e5f-0df51a999f39/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -2955,7 +3135,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6f4bf0dc-7c62-4879-8fb7-a8e1d89fbde9/d52db46a-45c9-4fd7-a7b5-267fc6579e70/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6f4bf0dc-7c62-4879-8fb7-a8e1d89fbde9/d52db46a-45c9-4fd7-a7b5-267fc6579e70/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3054,7 +3240,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/552aaa35-3255-4151-848c-8995409f8518/fcf9ced6-05ae-4ac1-a722-7215665920e4/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/552aaa35-3255-4151-848c-8995409f8518/fcf9ced6-05ae-4ac1-a722-7215665920e4/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3153,7 +3345,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9fce8c6e-f639-4fc9-9ae0-52d435a033ff/8930edc4-ecb5-4b95-9044-911b0c371533/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9fce8c6e-f639-4fc9-9ae0-52d435a033ff/8930edc4-ecb5-4b95-9044-911b0c371533/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3252,7 +3450,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/52b3d290-4da7-45ca-9a25-e35c61c6726e/4c25cbfe-0748-4104-a87c-572ab2b65f9e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/52b3d290-4da7-45ca-9a25-e35c61c6726e/4c25cbfe-0748-4104-a87c-572ab2b65f9e/index.json",
+          "bounds": [
+            -6,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3351,7 +3555,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f60b714-82eb-4a1b-ae97-829923bbe97a/66b49e58-3d66-4fd5-9e44-2a2d485118e3/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f60b714-82eb-4a1b-ae97-829923bbe97a/66b49e58-3d66-4fd5-9e44-2a2d485118e3/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3450,7 +3660,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/d6a9f6d0-479c-4bbd-b093-74b3ad88a4a9/c2cf00bb-7c14-40e8-8757-37370b5493c9/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/d6a9f6d0-479c-4bbd-b093-74b3ad88a4a9/c2cf00bb-7c14-40e8-8757-37370b5493c9/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3549,7 +3765,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/213acff6-54fb-4be4-ad14-1e7cae1b926c/d3fd3adb-f8d9-48b5-96e0-85f37cb6fa92/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/213acff6-54fb-4be4-ad14-1e7cae1b926c/d3fd3adb-f8d9-48b5-96e0-85f37cb6fa92/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3648,7 +3870,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/d9b6b74c-63d2-48a5-9be6-dc81e93a9468/abae156e-0bd7-416a-940c-8faae9312c2b/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/d9b6b74c-63d2-48a5-9be6-dc81e93a9468/abae156e-0bd7-416a-940c-8faae9312c2b/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3747,7 +3975,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/94dd0605-52f3-43e9-a428-0d9b491253dc/11964751-d798-4bd6-98c8-38b459e05a84/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/94dd0605-52f3-43e9-a428-0d9b491253dc/11964751-d798-4bd6-98c8-38b459e05a84/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3846,7 +4080,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5b2d0fa7-a73f-4c0a-9ec0-a43b6fd00a53/776d6a01-3576-41cc-9e86-3d4c30f30340/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/5b2d0fa7-a73f-4c0a-9ec0-a43b6fd00a53/776d6a01-3576-41cc-9e86-3d4c30f30340/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -3945,7 +4185,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/acf3b528-6915-4c3c-8a31-0d5200fc800b/a7655702-31f0-47f0-b2d0-aed5b3fd00ec/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/acf3b528-6915-4c3c-8a31-0d5200fc800b/a7655702-31f0-47f0-b2d0-aed5b3fd00ec/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4044,7 +4290,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f1ca7a7-0ca4-45b2-bcb0-419cf3baca5e/4101fcc1-9bb5-4fcd-a21c-dedc65510717/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7f1ca7a7-0ca4-45b2-bcb0-419cf3baca5e/4101fcc1-9bb5-4fcd-a21c-dedc65510717/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4143,7 +4395,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/dc379e9d-c53a-4456-b62e-892c4755c336/05401397-037c-49ef-81c6-d26f5ac289b9/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/dc379e9d-c53a-4456-b62e-892c4755c336/05401397-037c-49ef-81c6-d26f5ac289b9/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4242,7 +4500,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fd5977e0-4a6a-4fcd-b9c8-d9c88e0c57bc/0aa7cb1f-117e-47f1-ab74-945537893c53/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fd5977e0-4a6a-4fcd-b9c8-d9c88e0c57bc/0aa7cb1f-117e-47f1-ab74-945537893c53/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4341,7 +4605,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/92e90806-496c-466c-b0c7-0d22f74bdc1c/f51e03a3-712d-4ae4-a552-d082f054801a/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/92e90806-496c-466c-b0c7-0d22f74bdc1c/f51e03a3-712d-4ae4-a552-d082f054801a/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4440,7 +4710,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/26ff90d9-fc53-44f7-bc96-35b8a135933a/db577c1e-42fc-4ca6-9fe6-b76b319015c7/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/26ff90d9-fc53-44f7-bc96-35b8a135933a/db577c1e-42fc-4ca6-9fe6-b76b319015c7/index.json",
+          "bounds": [
+            -5.541666507720947,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4539,7 +4815,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fb2f7a2b-3e20-45f5-bea3-fdaaeb964226/6f350879-4684-4a11-9a8d-411748cde9d7/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fb2f7a2b-3e20-45f5-bea3-fdaaeb964226/6f350879-4684-4a11-9a8d-411748cde9d7/index.json",
+          "bounds": [
+            -18.125,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4638,7 +4920,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bc4c2a48-eba3-470e-a37e-7ed8ac67c58a/abbce022-e9cf-4f83-bb32-9edec196ff32/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/bc4c2a48-eba3-470e-a37e-7ed8ac67c58a/abbce022-e9cf-4f83-bb32-9edec196ff32/index.json",
+          "bounds": [
+            -18.125,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4737,7 +5025,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/98f55236-7380-4430-9d5b-9bc011546ea7/b59c1e11-da3d-4cab-9ce4-efd79094374c/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/98f55236-7380-4430-9d5b-9bc011546ea7/b59c1e11-da3d-4cab-9ce4-efd79094374c/index.json",
+          "bounds": [
+            -18.125,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4836,7 +5130,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa73cf0e-f78e-4f46-8a06-23a13f4cccbe/9216bc20-a130-460d-8005-25cac805e08c/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa73cf0e-f78e-4f46-8a06-23a13f4cccbe/9216bc20-a130-460d-8005-25cac805e08c/index.json",
+          "bounds": [
+            -18.125,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -4935,7 +5235,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/255de3fe-a0fe-491a-a35c-e605953d8b62/ca2a5fa0-6a0b-4050-ba3a-0155d552077d/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/255de3fe-a0fe-491a-a35c-e605953d8b62/ca2a5fa0-6a0b-4050-ba3a-0155d552077d/index.json",
+          "bounds": [
+            -18.125,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -5034,7 +5340,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/724706e2-924c-4ae6-9bdb-8f4128324245/c82a3a55-c5c1-4de5-ad14-8d6c21519f52/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/724706e2-924c-4ae6-9bdb-8f4128324245/c82a3a55-c5c1-4de5-ad14-8d6c21519f52/index.json",
+          "bounds": [
+            -18.125,
+            30.1875,
+            36.29166793823242,
+            45.97916793823242
+          ]
         }
       ],
       "defaults": {
@@ -5133,7 +5445,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/075b8ee5-c521-4eee-91cb-0d0a3ec7d93a/6ce11edc-f2db-485b-9187-392cf9638f24/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/075b8ee5-c521-4eee-91cb-0d0a3ec7d93a/6ce11edc-f2db-485b-9187-392cf9638f24/index.json",
+          "bounds": [
+            -30.03125,
+            19.96875,
+            42.03125,
+            66.03125
+          ]
         }
       ],
       "defaults": {
@@ -5232,7 +5550,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7bf14fbb-f7bf-44e2-8f88-dbe72480d3b1/7bb0c2ae-ccea-4edb-93cd-3a1c1696d899/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7bf14fbb-f7bf-44e2-8f88-dbe72480d3b1/7bb0c2ae-ccea-4edb-93cd-3a1c1696d899/index.json",
+          "bounds": [
+            -5.9935760498046875,
+            30.005064010620117,
+            36.49357604980469,
+            45.994937896728516
+          ]
         }
       ],
       "defaults": {
@@ -5331,7 +5655,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1508bd3a-5a24-4499-a329-7cfc77d8259a/70b6748e-5ed1-4456-8952-c09ec0d5ca22/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1508bd3a-5a24-4499-a329-7cfc77d8259a/70b6748e-5ed1-4456-8952-c09ec0d5ca22/index.json",
+          "bounds": [
+            -5.974335670471191,
+            30.02020263671875,
+            36.474334716796875,
+            45.97979736328125
+          ]
         }
       ],
       "defaults": {
@@ -5430,7 +5760,13 @@
             "mode": "historical",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/688114b5-3118-4617-8306-6bfa00a8b233/c049fd05-3596-48bc-95b0-daecc774c292/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/688114b5-3118-4617-8306-6bfa00a8b233/c049fd05-3596-48bc-95b0-daecc774c292/index.json",
+          "bounds": [
+            -18.125,
+            30.125,
+            36.32500076293945,
+            46.025001525878906
+          ]
         }
       ],
       "defaults": {
@@ -5506,7 +5842,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/35bd7fd2-747c-4d10-a704-181f4538f935/85f82a7d-215d-4383-b4ae-b08712a03cbd/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/35bd7fd2-747c-4d10-a704-181f4538f935/85f82a7d-215d-4383-b4ae-b08712a03cbd/index.json",
+          "bounds": [
+            -6.020833,
+            30.166666,
+            36.312501,
+            46.000002
+          ]
         }
       ],
       "defaults": {
@@ -5584,7 +5926,13 @@
             "mode": "historical",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7c8fa700-91cf-4365-bbda-52b445bb87ad/fdf758b0-b198-4dba-b363-f7227253eb32/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7c8fa700-91cf-4365-bbda-52b445bb87ad/fdf758b0-b198-4dba-b363-f7227253eb32/index.json",
+          "bounds": [
+            -6.020833,
+            30.166666,
+            36.312501,
+            46.000002
+          ]
         }
       ],
       "defaults": {
@@ -5662,7 +6010,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/cd27eb64-c6d0-4dfa-83ab-a2a731d1b16a/6936e31b-3a1d-4ba3-b99e-f150815d48ee/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/cd27eb64-c6d0-4dfa-83ab-a2a731d1b16a/6936e31b-3a1d-4ba3-b99e-f150815d48ee/index.json",
+          "bounds": [
+            -18.145833,
+            30.166666,
+            36.270833,
+            46.000002
+          ]
         }
       ],
       "defaults": {
@@ -5745,7 +6099,13 @@
             "mode": "historical",
             "cadence": "PT1H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9e1a9c3a-e5ba-40a6-8a43-fad9720fcbc3/df45a7d5-a7c4-42d1-9bad-afdc86848ec8/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9e1a9c3a-e5ba-40a6-8a43-fad9720fcbc3/df45a7d5-a7c4-42d1-9bad-afdc86848ec8/index.json",
+          "bounds": [
+            -18.145833,
+            30.166666,
+            36.270833,
+            46.000002
+          ]
         }
       ],
       "defaults": {
@@ -5829,7 +6189,13 @@
             "mode": "near-real-time",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7b020ade-b780-4b5c-972a-fed23632a11e/97ea8543-1c11-487d-aed3-ffe0466478ee/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/7b020ade-b780-4b5c-972a-fed23632a11e/97ea8543-1c11-487d-aed3-ffe0466478ee/index.json",
+          "bounds": [
+            -180,
+            -60,
+            180,
+            60
+          ]
         }
       ],
       "defaults": {
@@ -6039,7 +6405,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6f875f3f-1ddd-41af-98f1-5db02c39a85d/bf82e932-baa3-44bf-b678-8cc309f365ef/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6f875f3f-1ddd-41af-98f1-5db02c39a85d/bf82e932-baa3-44bf-b678-8cc309f365ef/index.json",
+          "bounds": [
+            -180,
+            -90,
+            179.6,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -6121,7 +6493,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/105b3302-b7c9-46cf-a235-eb79346793dd/6b10984a-848a-459d-92cc-4a5921258912/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/105b3302-b7c9-46cf-a235-eb79346793dd/6b10984a-848a-459d-92cc-4a5921258912/index.json",
+          "bounds": [
+            -180,
+            -90,
+            179.6,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -6203,7 +6581,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/aec4f72e-4654-45b5-9b94-562aa4cf6d91/abe45138-b89b-4af6-a3ef-bfbd91cffac0/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/aec4f72e-4654-45b5-9b94-562aa4cf6d91/abe45138-b89b-4af6-a3ef-bfbd91cffac0/index.json",
+          "bounds": [
+            -180,
+            -90,
+            179.6,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -6284,7 +6668,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa2b5219-0f1d-44d2-a105-d9388dba7acb/cbaa8c36-b9c4-444d-a316-14941719196e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/fa2b5219-0f1d-44d2-a105-d9388dba7acb/cbaa8c36-b9c4-444d-a316-14941719196e/index.json",
+          "bounds": [
+            -180,
+            -90,
+            179.6,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -6365,7 +6755,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b45b2598-c7c1-4367-a3c2-4acb9b31deba/0e61c20a-8bba-4f93-9f78-c69faf09ad5c/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b45b2598-c7c1-4367-a3c2-4acb9b31deba/0e61c20a-8bba-4f93-9f78-c69faf09ad5c/index.json",
+          "bounds": [
+            -180,
+            -90,
+            179.6,
+            90
+          ]
         }
       ],
       "defaults": {
@@ -6446,7 +6842,13 @@
             "mode": "near-real-time",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/c495a019-0bc8-4ee7-a9de-b1422751e31f/3194a161-71af-4f9e-854e-4fe7365ac12e/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/c495a019-0bc8-4ee7-a9de-b1422751e31f/3194a161-71af-4f9e-854e-4fe7365ac12e/index.json",
+          "bounds": [
+            -179.95,
+            -89.95,
+            179.95,
+            89.95
+          ]
         }
       ],
       "defaults": {
@@ -6530,7 +6932,13 @@
             "mode": "near-real-time",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9298ea47-af9a-4fd1-bc83-5eb9dbf25c42/1e3586b4-0bef-43b1-a2b1-ff8c958d0865/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/9298ea47-af9a-4fd1-bc83-5eb9dbf25c42/1e3586b4-0bef-43b1-a2b1-ff8c958d0865/index.json",
+          "bounds": [
+            -179.95,
+            -89.95,
+            179.95,
+            89.95
+          ]
         }
       ],
       "defaults": {
@@ -6613,7 +7021,13 @@
             "mode": "near-real-time",
             "cadence": "P1D"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0389b091-6a73-4aef-9769-5995ac5d7cc4/992af902-2b1b-438a-bb64-2f75e82ed4b9/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0389b091-6a73-4aef-9769-5995ac5d7cc4/992af902-2b1b-438a-bb64-2f75e82ed4b9/index.json",
+          "bounds": [
+            -179.95,
+            -89.95,
+            179.95,
+            89.95
+          ]
         }
       ],
       "defaults": {
@@ -6702,7 +7116,13 @@
             "start": "1990-12-31T00:00:00Z",
             "end": "2025-12-31T00:00:00Z"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88b29912-c10d-4acc-b6b9-0205d3d7833c/3d66ceef-9f6e-4773-be12-7039a8ac3ac7/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/88b29912-c10d-4acc-b6b9-0205d3d7833c/3d66ceef-9f6e-4773-be12-7039a8ac3ac7/index.json",
+          "bounds": [
+            8.0025,
+            -5.9975,
+            31.997500000000002,
+            5.9975000000000005
+          ]
         }
       ],
       "defaults": {
@@ -6791,7 +7211,13 @@
             "start": "1990-12-31T00:00:00Z",
             "end": "2025-12-31T00:00:00Z"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1e3abb00-7174-48fa-bcd6-344aad3f5551/ec30ecc0-ffdd-4c38-87c6-e4811f4cfdcc/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1e3abb00-7174-48fa-bcd6-344aad3f5551/ec30ecc0-ffdd-4c38-87c6-e4811f4cfdcc/index.json",
+          "bounds": [
+            8.0025,
+            -5.9975,
+            31.997500000000002,
+            5.9975000000000005
+          ]
         }
       ],
       "defaults": {
@@ -6878,7 +7304,13 @@
             "mode": "historical",
             "cadence": "P1Y"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/92d7a79b-68ba-47f7-b4e4-ef4d5757a966/eb34b015-d457-4be8-ab40-dcf0cf93e6f6/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/92d7a79b-68ba-47f7-b4e4-ef4d5757a966/eb34b015-d457-4be8-ab40-dcf0cf93e6f6/index.json",
+          "bounds": [
+            73.380135,
+            4.130135,
+            73.559955,
+            4.269995
+          ]
         }
       ],
       "defaults": {
@@ -6963,7 +7395,13 @@
             "mode": "near-real-time",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1a088ef7-b187-4234-b651-1643978aa3b5/dad60818-3a96-40a4-bf21-c231e694fb77/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1a088ef7-b187-4234-b651-1643978aa3b5/dad60818-3a96-40a4-bf21-c231e694fb77/index.json",
+          "bounds": [
+            -179.5,
+            -74.5,
+            179.5,
+            64.499
+          ]
         }
       ],
       "defaults": {
@@ -7045,7 +7483,13 @@
             "mode": "near-real-time",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1d4f88ea-5cff-4926-9b1f-39a994f7f503/4532dec5-a37e-4263-8f80-fc156f5120d9/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1d4f88ea-5cff-4926-9b1f-39a994f7f503/4532dec5-a37e-4263-8f80-fc156f5120d9/index.json",
+          "bounds": [
+            -179.5,
+            -74.5,
+            179.5,
+            64.499
+          ]
         }
       ],
       "defaults": {
@@ -7127,7 +7571,13 @@
             "mode": "near-real-time",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b31b8768-d764-47c0-b12e-967cb59163d7/90f55afa-a1d7-449c-a8a7-a6c104652444/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/b31b8768-d764-47c0-b12e-967cb59163d7/90f55afa-a1d7-449c-a8a7-a6c104652444/index.json",
+          "bounds": [
+            -179.5,
+            -74.5,
+            179.5,
+            64.499
+          ]
         }
       ],
       "defaults": {
@@ -7211,7 +7661,13 @@
             "mode": "near-real-time",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/638a12a1-a953-48ac-b435-076496cf579a/55821345-4ffa-4bdc-82a2-f5fc353d07eb/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/638a12a1-a953-48ac-b435-076496cf579a/55821345-4ffa-4bdc-82a2-f5fc353d07eb/index.json",
+          "bounds": [
+            -179.5,
+            -74.5,
+            179.5,
+            64.499
+          ]
         }
       ],
       "defaults": {
@@ -7294,7 +7750,13 @@
             "mode": "near-real-time",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6db5ec4b-6d2d-4924-840b-e5c349aef627/09005b4b-0c06-42f6-bb8b-5f8898d35a16/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/6db5ec4b-6d2d-4924-840b-e5c349aef627/09005b4b-0c06-42f6-bb8b-5f8898d35a16/index.json",
+          "bounds": [
+            -179.5,
+            -74.5,
+            179.5,
+            64.499
+          ]
         }
       ],
       "defaults": {
@@ -7377,7 +7839,13 @@
             "mode": "near-real-time",
             "cadence": "P1M"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/4e55df16-a95e-47b0-ab07-44a69b31ec6f/334ff0b8-0c8a-4966-8fa8-a166971febcc/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/4e55df16-a95e-47b0-ab07-44a69b31ec6f/334ff0b8-0c8a-4966-8fa8-a166971febcc/index.json",
+          "bounds": [
+            -179.5,
+            -74.5,
+            179.5,
+            64.499
+          ]
         }
       ],
       "defaults": {
@@ -7462,7 +7930,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2/2c104916-56db-4291-8c77-a323f7c501ac/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2/2c104916-56db-4291-8c77-a323f7c501ac/index.json",
+          "bounds": [
+            6.145,
+            46.2,
+            6.94,
+            46.5255
+          ]
         }
       ],
       "defaults": {
@@ -7547,7 +8021,13 @@
             "mode": "near-real-time",
             "cadence": "PT3H"
           },
-          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0bbf350c-d81d-4933-9b00-634a5c424e7a/c714a2e3-4663-44a4-847a-5c9be9e433dd/index.json"
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0bbf350c-d81d-4933-9b00-634a5c424e7a/c714a2e3-4663-44a4-847a-5c9be9e433dd/index.json",
+          "bounds": [
+            6.1425,
+            46.19825,
+            6.9425,
+            46.52725
+          ]
         }
       ],
       "defaults": {

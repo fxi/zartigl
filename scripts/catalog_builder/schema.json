@@ -106,7 +106,8 @@
           "properties": {
             "id": { "$ref": "#/$defs/Uuid" }, "type": { "const": "geovideo" }, "title": { "$ref": "#/$defs/Localized" },
             "provenance": { "$ref": "#/$defs/Provenance" }, "temporal": { "$ref": "#/$defs/Temporal" },
-            "manifestUrl": { "$ref": "#/$defs/Url" }, "indexUrl": { "$ref": "#/$defs/Url" }
+            "manifestUrl": { "$ref": "#/$defs/Url" }, "indexUrl": { "$ref": "#/$defs/Url" },
+            "bounds": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
           },
           "oneOf": [{ "required": ["manifestUrl"] }, { "required": ["indexUrl"] }]
         }

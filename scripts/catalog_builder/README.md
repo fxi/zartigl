@@ -29,6 +29,12 @@ Each layer has:
 
 Time, vertical, spatial, and variable metadata are resolved live from each Zarr store. They are intentionally not duplicated in the catalog.
 
+The one exception is GeoVideo `bounds` (west, south, east, north), copied from
+the manifests so apps can tell which layers overlap (projversor offers a
+particle tint only where it covers the flow) without reading the archives.
+After publishing a new GeoVideo archive, run
+`node scripts/catalog_builder/fill_bounds.mjs` (`--all` refreshes every source).
+
 Scalar discovery follows provider metadata rather than visual trial and error.
 `query_dataset.py` follows the Copernicus WMTS service to its default JSON
 legend and returns catalog-ready palette, range, scale, unit, and extent. When
