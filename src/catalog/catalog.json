@@ -7444,6 +7444,25 @@
             "kind": "scalar",
             "value": "temperature"
           }
+        },
+        {
+          "id": "2c104916-56db-4291-8c77-a323f7c501ac",
+          "type": "geovideo",
+          "title": {
+            "en": "Video archive"
+          },
+          "provenance": {
+            "provider": "eawag",
+            "identifiers": {
+              "product": "Alplakes delft3d-flow geneva",
+              "dataset": "weekly raw model output, 3-hourly"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/1fbb46c4-d21e-4028-ade5-a9bdfdb8f5b2/2c104916-56db-4291-8c77-a323f7c501ac/index.json"
         }
       ],
       "defaults": {
@@ -7510,6 +7529,25 @@
             "u": "u",
             "v": "v"
           }
+        },
+        {
+          "id": "c714a2e3-4663-44a4-847a-5c9be9e433dd",
+          "type": "geovideo",
+          "title": {
+            "en": "Particle animation archive"
+          },
+          "provenance": {
+            "provider": "eawag",
+            "identifiers": {
+              "product": "Alplakes delft3d-flow geneva",
+              "dataset": "weekly raw model output, 3-hourly"
+            }
+          },
+          "temporal": {
+            "mode": "near-real-time",
+            "cadence": "PT3H"
+          },
+          "indexUrl": "https://sos-ch-gva-2.exo.io/mapx-zartigl/geovideo/0bbf350c-d81d-4933-9b00-634a5c424e7a/c714a2e3-4663-44a4-847a-5c9be9e433dd/index.json"
         }
       ],
       "defaults": {
