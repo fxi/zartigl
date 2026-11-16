@@ -219,3 +219,33 @@ describe("particle shader invalid-state guards", () => {
     );
   });
 });
+
+// GLSL ES defaults (lowp sampler2D, mediump int in fragment shaders) are
+// ignored on desktop GPUs but honoured on Mali: float state and velocity reads
+// come back as fp16, particles freeze into points, and the integer hash wraps.
+describe("shader precision on mobile GPUs", () => {
+  const shaders = import.meta.glob<string>("./shaders/*.glsl", {
+    eager: true,
+    import: "default",
+  });
+  // Entry shaders declare their float precision; chunks are included into them.
+  const entries = Object.entries(shaders).filter(([, source]) =>
+    /^precision \w+ float;$/m.test(source),
+  );
+
+  it("finds the entry shaders", () => {
+    expect(entries.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it.each(entries)("%s samples textures at highp", (_path, source) => {
+    if (/\bsampler2D\b/.test(source.replace(/^precision .*$/gm, ""))) {
+      expect(source).toMatch(/^precision highp sampler2D;$/m);
+    }
+  });
+
+  it.each(entries)("%s runs integer math at highp", (_path, source) => {
+    if (/\b(uint|uvec[234])\b/.test(source)) {
+      expect(source).toMatch(/^precision highp int;$/m);
+    }
+  });
+});

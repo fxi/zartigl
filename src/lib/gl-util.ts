@@ -524,6 +524,16 @@ export interface WebGLRendererInfo {
   unmaskedVendor?: string;
   unmaskedRenderer?: string;
   version?: string;
+  /**
+   * Fragment shader precision, in bits: float mantissa, int range. Mali reports
+   * 10 and 15 for mediump, where desktop GPUs report full 32-bit precision.
+   */
+  fragmentPrecision?: {
+    mediumpFloat: number;
+    mediumpInt: number;
+    highpFloat: number;
+    highpInt: number;
+  };
 }
 
 export function getWebGLRendererInfo(
@@ -544,6 +554,25 @@ export function getWebGLRendererInfo(
       ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) ?? "")
       : undefined,
     version: String(gl.getParameter(gl.VERSION) ?? ""),
+    fragmentPrecision: fragmentPrecision(gl),
+  };
+}
+
+function fragmentPrecision(
+  gl: WebGL2RenderingContext,
+): WebGLRendererInfo["fragmentPrecision"] {
+  if (typeof gl.getShaderPrecisionFormat !== "function") {
+    return undefined;
+  }
+  const bits = (type: number, int: boolean): number => {
+    const format = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, type);
+    return (int ? format?.rangeMax : format?.precision) ?? 0;
+  };
+  return {
+    mediumpFloat: bits(gl.MEDIUM_FLOAT, false),
+    mediumpInt: bits(gl.MEDIUM_INT, true),
+    highpFloat: bits(gl.HIGH_FLOAT, false),
+    highpInt: bits(gl.HIGH_INT, true),
   };
 }
 

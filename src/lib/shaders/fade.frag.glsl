@@ -1,5 +1,6 @@
 #version 300 es
 precision mediump float;
+precision highp sampler2D;
 
 uniform sampler2D u_screen;
 uniform float u_opacity;

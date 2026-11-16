@@ -1,4 +1,5 @@
 precision mediump float;
+precision highp sampler2D;
 
 uniform sampler2D u_color;
 uniform sampler2D u_color_next;

@@ -1,6 +1,8 @@
 // Integer hash (PCG, Jarzynski & Olano 2020). fract(sin(x) * 43758.5453)
 // keeps only a few hundred distinct values in float32, and fewer on GPUs with
 // coarse sin: respawns then fall on rings and spokes.
+// The including shader must declare `precision highp int;`: mediump ints are
+// 16-bit on Mali, where the hash wraps and random() collapses to 0.
 
 uint pcg(uint v) {
     uint state = v * 747796405u + 2891336453u;

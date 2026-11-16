@@ -118,6 +118,36 @@ describe("WebGL utility helpers", () => {
     });
   });
 
+  it("reports fragment shader precision, which mobile GPUs lower for mediump", () => {
+    const gl = Object.assign(makeFakeGl(), {
+      FRAGMENT_SHADER: 0x8b30,
+      MEDIUM_FLOAT: 0x8df1,
+      HIGH_FLOAT: 0x8df2,
+      MEDIUM_INT: 0x8df4,
+      HIGH_INT: 0x8df5,
+      // Mali-G715 values: fp16 mantissa, 16-bit ints.
+      getShaderPrecisionFormat: vi.fn(
+        (_shader: number, type: number) =>
+          ({
+            0x8df1: { rangeMin: 15, rangeMax: 15, precision: 10 },
+            0x8df2: { rangeMin: 127, rangeMax: 127, precision: 23 },
+            0x8df4: { rangeMin: 15, rangeMax: 15, precision: 0 },
+            0x8df5: { rangeMin: 31, rangeMax: 30, precision: 0 },
+          })[type] ?? null,
+      ),
+    });
+
+    expect(
+      getWebGLRendererInfo(gl as unknown as WebGL2RenderingContext)
+        .fragmentPrecision,
+    ).toEqual({
+      mediumpFloat: 10,
+      mediumpInt: 15,
+      highpFloat: 23,
+      highpInt: 30,
+    });
+  });
+
   it("uses RGBA8 packed state when float render extensions are missing", () => {
     const gl = makeFakeGl();
 

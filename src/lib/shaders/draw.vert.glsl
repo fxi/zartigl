@@ -1,4 +1,5 @@
 precision highp float;
+precision highp sampler2D;
 
 attribute float a_index;
 attribute float a_is_curr;   // 0 = back-projected prev endpoint, 1 = current endpoint

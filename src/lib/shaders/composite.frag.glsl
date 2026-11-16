@@ -1,5 +1,6 @@
 #version 300 es
 precision mediump float;
+precision highp sampler2D;
 
 // Display of the trail texture: fade.frag.glsl at opacity 1, plus the
 // optional glow (glow.glsl) and color grade (color-grade.glsl). Off, colors

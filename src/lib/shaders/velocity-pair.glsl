@@ -1,4 +1,6 @@
 #include ./velocity-blend.glsl;
+// The including shader must declare `precision highp sampler2D;`: the default
+// lowp sampler returns fp16 on Mali, too coarse for float velocity fields.
 
 uniform sampler2D u_velocity_next;
 uniform vec2 u_velocity_next_min;

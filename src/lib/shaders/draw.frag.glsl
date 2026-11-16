@@ -1,4 +1,5 @@
 precision mediump float;
+precision highp sampler2D;
 
 uniform sampler2D u_color_ramp;
 uniform float u_particle_contrast; // 1.0: select black/white against the raster

@@ -1,4 +1,5 @@
 precision mediump float;
+precision highp sampler2D;
 
 uniform sampler2D u_field;
 uniform sampler2D u_color_ramp;

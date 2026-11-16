@@ -1,5 +1,6 @@
 #version 300 es
 precision mediump float;
+precision highp sampler2D;
 
 // Glow pass: the trails reduced to the glow texture (glow.glsl).
 uniform sampler2D u_screen;

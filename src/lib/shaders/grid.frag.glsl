@@ -1,4 +1,5 @@
 precision mediump float;
+precision highp sampler2D;
 
 uniform sampler2D u_field;        // velocity texture: R=u_norm, G=v_norm, A=validity
 uniform sampler2D u_color_ramp;   // 256x1 color gradient
