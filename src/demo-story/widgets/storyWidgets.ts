@@ -1,6 +1,6 @@
 import { findCatalogEntries } from "../../catalog";
-import type { StoryRegistry, StoryWidgetContext } from "../../story";
-import { resolveLocalizedText } from "../../story";
+import type { StoryRegistry, StoryWidgetContext } from "@fxi/story/browser";
+import { resolveLocalizedText } from "@fxi/story/browser";
 import { ARCTIC_POINT, MAYOTTE_POINT } from "../scenes";
 import { mobileMediaQuery } from "../breakpoints";
 import ensoJson from "../data/enso.json";

@@ -1,9 +1,8 @@
 import globals from "globals";
 import style from "./quality/style.config.mjs";
 
-// zartigl never imports projversor: projversor is a client of the engine,
-// catalog and story entries. ESLint replaces a rule's options per block, so
-// the story block below repeats this pattern.
+// zartigl never imports projversor: projversor is a client of the engine and
+// catalog entries. The story format lives in @fxi/story (../story).
 const NO_PROJVERSOR = {
   group: ["@fxi/projversor", "@fxi/projversor/*"],
   message: "zartigl never imports projversor; projversor depends on zartigl.",
@@ -17,24 +16,6 @@ export default [
     languageOptions: { globals: globals.browser },
     rules: {
       "no-restricted-imports": ["error", { patterns: [NO_PROJVERSOR] }],
-    },
-  },
-  {
-    // The story runtime stands alone: no other zartigl module.
-    files: ["src/story/**/*.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["../*", "!../story", "!../story/*"],
-              message: "The story runtime imports no other zartigl module.",
-            },
-            NO_PROJVERSOR,
-          ],
-        },
-      ],
     },
   },
   {

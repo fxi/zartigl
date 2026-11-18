@@ -10,7 +10,7 @@ import {
   type StoryDocument,
   type StoryViewsDocument,
   type StoryWidgetBlock,
-} from "../story";
+} from "@fxi/story/browser";
 
 function storyFixture(): StoryDocument {
   return {

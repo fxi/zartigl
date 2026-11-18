@@ -20,7 +20,7 @@ import {
   type StoryScene,
   type StoryViewAdapter,
   type StoryWidgetRun,
-} from "../story";
+} from "@fxi/story/browser";
 import { registerStoryWidgets } from "./widgets/storyWidgets";
 
 const documents = parseStoryDocuments(storyJson, viewsJson);

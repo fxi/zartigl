@@ -16,7 +16,6 @@ const rules = {
   "zartigl.js": [PROJVERSOR],
   "catalog.js": [PROJVERSOR, MAPLIBRE],
   "engine.js": [PROJVERSOR, MAPLIBRE],
-  "story.js": [PROJVERSOR, MAPLIBRE],
 };
 
 /** Bare imports reached from an entry, with the file importing each. */

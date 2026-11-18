@@ -22,10 +22,6 @@
     "./engine": {
       "import": "./dist/engine.js",
       "types": "./dist/engine.d.ts"
-    },
-    "./story": {
-      "import": "./dist/story.js",
-      "types": "./dist/story.d.ts"
     }
   },
   "files": [
@@ -118,6 +114,7 @@
     "vite-plugin-dts": "^4.5.4",
     "vite-plugin-glsl": "^1.5.5",
     "vitest": "^4.1.7",
-    "world-atlas": "^2.0.2"
+    "world-atlas": "^2.0.2",
+    "@fxi/story": "file:../story"
   }
 }

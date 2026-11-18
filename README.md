@@ -287,8 +287,10 @@ Three entries need no MapLibre (`maplibre-gl` is an optional peer):
   WebGL helpers and the shared GLSL chunks as strings (`VIBRANCE_GLSL`,
   `COLOR_GRADE_GLSL`, `RANDOM_GLSL`).
 - `@fxi/zartigl/catalog`: the built-in catalog, named palettes and styles.
-- `@fxi/zartigl/story`: the story runtime, with JSON documents, localized
-  copy and scroll activation.
+
+The story runtime moved to its own package,
+[`@fxi/story`](https://github.com/fxi/story): `@fxi/zartigl/story` is gone.
+The story demo below is built on it, with a MapLibre adapter.
 
 [projversor](https://github.com/fxi/projversor) (`@fxi/projversor`), the
 renderer of GeoVideo archives on a sphere that morphs between world

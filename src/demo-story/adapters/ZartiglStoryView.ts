@@ -12,7 +12,7 @@ import type {
   StoryScene,
   StoryViewAdapter,
   StoryViewDefinition,
-} from "../../story";
+} from "@fxi/story/browser";
 import ensoJson from "../data/enso.json";
 import chidoTrackJson from "../data/chido-track.json";
 import { ENSO_REGION_COLORS, MAP_LABEL_HALO_COLOR } from "../palette";

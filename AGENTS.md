@@ -7,10 +7,11 @@
 - `src/catalog/` contains the built-in catalog JSON and TypeScript exports.
 - `src/engine.ts` is `@fxi/zartigl/engine`: the MapLibre-free primitives
   (GeoVideo decoding and archives, palettes, color grade, backdrop, trail
-  fade, WebGL helpers, shared GLSL chunks as strings). `engine`, `catalog`
-  and `story` never import MapLibre (`npm run build:lib` checks the dist).
-- `src/story/` contains the story runtime (documents, registry, pager, scene
-  timer), published as `@fxi/zartigl/story`.
+  fade, WebGL helpers, shared GLSL chunks as strings). `engine` and
+  `catalog` never import MapLibre (`npm run build:lib` checks the dist).
+- The story format and runtime live in `@fxi/story` (`../story`, a dev
+  dependency); `src/demo-story/` is the MapLibre story demo built on it.
+  `@fxi/zartigl/story` no longer exists.
 - `src/explorer/` is the catalog explorer, the full interactive demo app.
 - `src/mapx/` contains MapX snippet generation helpers.
 - `scripts/catalog_builder/` contains the catalog maintenance docs, schema, and
